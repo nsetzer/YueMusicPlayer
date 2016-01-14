@@ -9,7 +9,7 @@ import os,sys
 
 dirpath = os.path.dirname(os.path.abspath(__file__))
 dirpath = os.path.dirname(dirpath)
-sys.path.append(dirpath)
+sys.path.insert(0,dirpath)
 
 from kivy.app import App
 from kivy.uix.widget import Widget

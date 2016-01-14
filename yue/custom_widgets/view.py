@@ -49,6 +49,13 @@ TODO:
             maybe darker towards the top of the tree.
             maybe different colors from a palette for every level
 
+    This widget draws ontop of widgets that are above
+        is there a way to layer widgets, or set a clipping region for drawing?
+        see  ScissorPush,ScissorPop
+        because this widget is such a hack, it may not work.
+        add_widget(...,canvas=self.canvas) does not work
+        maybe Stencil
+        https://kivy.org/docs/api-kivy.graphics.stencil_instructions.html
 """
 
 from kivy.app import App
@@ -58,6 +65,7 @@ from kivy.properties import ObjectProperty, NumericProperty
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.graphics.texture import Texture
+from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
 import kivy.metrics
 
 from expander import Expander
@@ -123,12 +131,6 @@ class TreeElem(ListElem):
             node = node.parent
         return depth
 
-class TrackTreeElem(TreeElem):
-    """ Tree Element with unique id reference to an item in a database """
-    def __init__(self,uid,text):
-        super(TrackTreeElem, self).__init__(text)
-        self.uid = uid
-
 class NodeWidget(Widget):
     """ represents a single row in a view """
     # TODO these properties need to be renamed
@@ -152,7 +154,7 @@ class ListNodeWidget(NodeWidget):
                     valign='middle',
                     markup=True,
                     shorten = True) # truncate long lines
-        self.add_widget(self.lbl1)
+        self.add_widget(self.lbl1,canvas=self.canvas)
 
         self.height = height
 
@@ -199,25 +201,28 @@ class TreeNodeWidget(NodeWidget):
 
         # create a button for expanding / contracting the tree
         self.btn1 = Expander()
-        self.add_widget(self.btn1)
+        self.add_widget(self.btn1,canvas=self.canvas)
         self.btn1.bind(on_user=self.on_expand)
 
         # This 'button' is reserved for an icon to differentiate artist, album, song
         self.btn2 = Button(text="-")
-        self.add_widget(self.btn2)
+        self.add_widget(self.btn2,canvas=self.canvas)
 
         # Checkbox to select artists, albums or individual tracks
         self.chk1 = TriStateCheckBox()
-        self.add_widget(self.chk1)
+        self.add_widget(self.chk1,canvas=self.canvas)
         self.chk1.bind(on_user=self.on_select)
 
+        # TODO: need to use a japanese font for japanese characters,
+        # e.g. DroidSansJapanese.ttf
         self.lbl1 = Label(text="",
                 font_size = font_size,
+                #font_name ="DroidSansJapanese",
                 halign='left',
                 valign='middle',
                 markup=True,
                 shorten = True) # truncate long lines
-        self.add_widget(self.lbl1)
+        self.add_widget(self.lbl1,canvas=self.canvas)
 
         self.height = height
         # example texture to  create a gradient in the background (doesnt work)
@@ -269,7 +274,7 @@ class TreeNodeWidget(NodeWidget):
         if not b:
             self.remove_widget(self.btn1)
         elif self.expandable != b:
-            self.add_widget(self.btn1)
+            self.add_widget(self.btn1,canvas=self.canvas)
 
         self.expandable = b
 
@@ -320,12 +325,12 @@ class ViewWidget(Widget):
     offset_pos = NumericProperty()
     offset_max = NumericProperty(1000)
 
-    def __init__(self, data, font_size, NodeFactory, **kwargs):
+    def __init__(self, font_size, NodeFactory, **kwargs):
         super(ViewWidget, self).__init__(**kwargs)
 
         self.font_size = font_size
         self.node_factory = NodeFactory
-        self.data = data
+        self.data = []
 
         self.bind(size=self.resize)
         self.bind(offset=self.on_update_offset)
@@ -334,13 +339,20 @@ class ViewWidget(Widget):
         self.nodes = []
         self.create_rows(20) # TODO resize based on height
 
+
+
+
+
+
+    def setData(self, data):
+        self.data = data
         self.update_labels()
 
     def create_rows(self,n):
         for i in range(n):
             nd = self.node_factory(height=self.row_height,
                              font_size = self.font_size );
-            self.add_widget( nd )
+            self.add_widget( nd,canvas=self.canvas )
             self.nodes.append( nd )
 
     def update_labels(self):
@@ -358,7 +370,8 @@ class ViewWidget(Widget):
 
     def on_touch_down(self,touch):
 
-        if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right:
+        if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
+           self.x < touch.y < self.x + self.height:
             touch.grab(self)
             return True
         return super(ViewWidget, self).on_touch_down(touch)
@@ -380,6 +393,14 @@ class ViewWidget(Widget):
         move child widgets into position to create the illusion of
         an scrolling tree view
         """
+        #with self.canvas.before:
+        #    # before children
+        #    x,y = self.pos #self.to_window(*self.pos)
+        #    #x,y = self.to_window(*self.pos)
+        #    width, height = self.size
+        #    ScissorPush(x=int(round(x)), y=int(round(y)),
+        #                width=int(round(width)), height=int(round(height)))
+
         n = self.height // self.row_height
         pad = self.height - n * self.row_height
         for i,nd in enumerate(self.nodes):
@@ -387,10 +408,16 @@ class ViewWidget(Widget):
                 nd.width = self.width
                 nd.pos = (self.x, self.y + (n-i-1)*self.row_height + pad + self.offset_pos)
 
+
+        #with self.canvas.after:
+            # after children
+        #    ScissorPop()
+
+
 class ListViewWidget(ViewWidget):
 
-    def __init__(self, data, font_size = 12, **kwargs):
-        super(ListViewWidget, self).__init__(data, font_size, ListNodeWidget, **kwargs)
+    def __init__(self, font_size = 12, **kwargs):
+        super(ListViewWidget, self).__init__(font_size, ListNodeWidget, **kwargs)
 
     def update_labels(self):
 
@@ -399,7 +426,7 @@ class ListViewWidget(ViewWidget):
             idx = self.offset_idx + index
             if idx < len(self.data):
                 if self.nodes[index].parent is None:
-                    self.add_widget(self.nodes[index])
+                    self.add_widget(self.nodes[index],canvas=self.canvas)
                 self.nodes[index].setData(self.data[idx])
             else:
                 break
@@ -413,8 +440,8 @@ class ListViewWidget(ViewWidget):
 
 class TreeViewWidget(ViewWidget):
 
-    def __init__(self, data, font_size = 12, **kwargs):
-        super(TreeViewWidget, self).__init__(data, font_size, TreeNodeWidget, **kwargs)
+    def __init__(self, font_size = 12, **kwargs):
+        super(TreeViewWidget, self).__init__(font_size, TreeNodeWidget, **kwargs)
 
     def update_labels(self):
         # walk the tree and determine visible elements
@@ -441,7 +468,7 @@ class TreeViewWidget(ViewWidget):
         index = idx - self.offset_idx
         if 0 <= index < len(self.nodes):
             if self.nodes[index].parent is None:
-                self.add_widget(self.nodes[index])
+                self.add_widget(self.nodes[index],canvas=self.canvas)
             self.nodes[index].setData(elem)
         if elem.expanded:
             for j,child in enumerate(elem.children):

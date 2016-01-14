@@ -1,5 +1,7 @@
 
 
+
+
 goals:
 
     Home Screen provides access to different menu layouts
@@ -22,3 +24,7 @@ goals:
 
         Presets
             user defined filters which create dynamic playlists
+
+notes:
+    multi touch emulation causes orange dots to appear on right click for
+    some platforms

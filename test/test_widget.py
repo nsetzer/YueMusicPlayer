@@ -13,13 +13,18 @@ Example:
 """
 dirpath = os.path.dirname(os.path.abspath(__file__))
 dirpath = os.path.dirname(dirpath)
-sys.path.append(dirpath)
+sys.path.insert(0,dirpath)
 
-from kivy.app import App
+print(dirpath)
 
+import yue
 from yue.custom_widgets.expander import Expander
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.tristate import TriStateCheckBox
+from yue.library import Library
+
+from kivy.app import App
+from kivy.core.text import LabelBase
 
 def build_expander():
     return Expander()
@@ -28,43 +33,33 @@ def build_tristatecheckbox():
     return TriStateCheckBox()
 
 def build_treeview():
-    art1 = TreeElem("Artist-1")
-    alb = art1.addChild( TreeElem("Album-1") )
-    alb.addChild(TreeElem("Title-1-1"))
-    alb.addChild(TreeElem("Title-1-2"))
-    alb.addChild(TreeElem("Title-1-3"))
-    alb.addChild(TreeElem("Title-1-4"))
-    alb.addChild(TreeElem("Title-1-5"))
-    alb = art1.addChild( TreeElem("Album-2") )
-    alb.addChild(TreeElem("Title-2-1"))
-    alb.addChild(TreeElem("Title-2-2"))
-    alb.addChild(TreeElem("Title-2-3"))
-    alb.addChild(TreeElem("Title-2-4"))
-    alb.addChild(TreeElem("Title-2-5"))
-    art2 = TreeElem("Artist-2")
-    temp = art2.addChild( TreeElem("Album-3") )
-    temp.addChild(TreeElem("Title-3-1"))
-    temp.addChild(TreeElem("Title-3-2"))
-    temp.addChild(TreeElem("Title-3-3"))
-    temp.addChild(TreeElem("Title-3-4"))
-    temp.addChild(TreeElem("Title-3-5"))
-    data = [ art1, art2 ]
 
-    return TreeViewWidget( data, font_size=16 )
+    Library.test_init()
+    data = Library.instance().toTree()
+
+    view = TreeViewWidget( font_size=16 )
+    view.setData(data)
+    return view
 
 def build_listview():
-        data = [
-            ListElem("item-1"),
-            ListElem("item-2"),
-            ListElem("item-3"),
-            ListElem("item-4"),
-            ListElem("item-5"),
-        ]
-        return ListViewWidget( data, font_size=16 )
+    data = [
+        ListElem("item-1"),
+        ListElem("item-2"),
+        ListElem("item-3"),
+        ListElem("item-4"),
+        ListElem("item-5"),
+    ]
+    view = ListViewWidget( font_size=16 )
+    view.setData(data)
+    return view
 
 class TestApp(App):
 
     def build(self):
+
+        font = r"C:\Users\Nick\Documents\GitHub\YueMusicPlayer\DroidSansJapanese.ttf"
+        if os.path.exists(font):
+            LabelBase.register("DroidSansJapanese",font)
 
         ptn = "none"
         if len(sys.argv)>1:
