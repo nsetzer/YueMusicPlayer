@@ -1,0 +1,24 @@
+
+
+goals:
+
+    Home Screen provides access to different menu layouts
+        Now Playing:
+            displays a list of songs in the now playing playlist
+            displays controls for volume, current song progress, etc
+
+        Library:
+            tree view list of songs in the library
+            filters can be applied to search within library
+                these may not be needed
+            select all select none button
+            create playlist button.
+                this should go to another screen
+                providing additional options for creating the playlist.
+
+        Playlists
+            predefined user created playlists that list songs in order
+            I have no use for this, so it is wishlisted.
+
+        Presets
+            user defined filters which create dynamic playlists
