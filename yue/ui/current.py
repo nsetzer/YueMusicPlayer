@@ -35,5 +35,5 @@ class CurrentPlaylistScreen(Screen):
         self.vbox.add_widget( self.hbox )
         self.vbox.add_widget( self.view )
 
-    def setLibraryTree(self,data):
+    def setPlayList(self,data):
         self.view.setData(data)

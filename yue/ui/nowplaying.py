@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 
 from yue.settings import Settings
+from yue.sound import SoundManager
 
 class NowPlayingScreen(Screen):
     def __init__(self,**kwargs):
@@ -28,8 +29,17 @@ class NowPlayingScreen(Screen):
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
 
+        self.btn_playpause = Button(text="play/pause")
+        self.btn_playpause.bind(on_press=(lambda *x : SoundManager.instance().playpause()))
+
+        self.btn_next = Button(text="next")
+        self.btn_next.bind(on_press=(lambda *x : SoundManager.instance().next()))
+
+        self.btn_prev = Button(text="prev")
+        self.btn_prev.bind(on_press=(lambda *x : SoundManager.instance().prev()))
+
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
-
-    def setLibraryTree(self,data):
-        self.view.setData(data)
+        self.vbox.add_widget( self.btn_playpause )
+        self.vbox.add_widget( self.btn_next )
+        self.vbox.add_widget( self.btn_prev )

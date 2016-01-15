@@ -1,6 +1,15 @@
 
-from .custom_widgets.view import TreeElem
-from .song import Song
+import os,sys
+
+from kivy.logger import Logger
+
+from yue.settings import Settings
+
+from yue.custom_widgets.view import TreeElem
+from yue.custom_widgets.playlist import PlayListElem
+
+
+from ConfigParser import ConfigParser
 
 class TrackTreeElem(TreeElem):
     """ Tree Element with unique id reference to an item in a database """
@@ -18,56 +27,93 @@ class Library(object):
     @staticmethod
     def init():
         Library.__instance = Library()
-        self.load()
-
-    @staticmethod
-    def test_init():
-        Library.__instance = Library()
-
-        lib = Library.__instance
-                # for now, just create a dummy library of songs
-        lib.songs.append(Song.New("Beast","Beast","City",""))
-        lib.songs.append(Song.New("Beast","Beast","Devil",""))
-        lib.songs.append(Song.New("Beast","Beast","Mr Hurricane",""))
-        lib.songs.append(Song.New("The Chikitas","Butchery","Fizzy Whisky",""))
-        lib.songs.append(Song.New("The Chikitas","Butchery","Anarschloch",""))
-        lib.songs.append(Song.New("Myutant","Gothic Emily","Isolation",""))
-        lib.songs.append(Song.New("Myutant","Gothic Emily","The Screen Behind the Pictures",""))
-        #print ''.join(["\\u%0X"%ord(c) for c in u"..."])
-        name=u"\u30C7\u30F3\u30B8\u30E3\u30FC\u2606\u30AE\u30E3\u30F3\u30B0"
-        lib.songs.append(Song.New(name,"Gothic Emily",u"core -\u5FC3-",""))
-        lib.songs.append(Song.New(name,"Unkown Story",u"Survive",""))
-        lib.songs.append(Song.New(name,"Unkown Story",u"DUTY",""))
-        lib.songs.append(Song.New(name,"Unkown Story",u"S -esu-",""))
-        lib.songs.append(Song.New(name,"V.I.O.",u"RED DARKNESS",""))
-        lib.songs.append(Song.New(name,"V.I.O.",u"bitter as death",""))
-        lib.songs.append(Song.New("louna",
-                u"\u0421\u0434\u0435\u043B\u0430\u0439\u0020\u0433\u0440\u043E\u043C\u0447\u0435\u0021",
-                u"\u0410\u0440\u043C\u0430\u0433\u0435\u0434\u0434\u043E\u043D",""))
 
     @staticmethod
     def instance():
         return Library.__instance
 
-    def load(self):
+    def loadTestData(self,inipath,force=False):
+        """
+        read an ini file containing names and locations of songs.
 
-        pass
+        force: reload ini even if library db exists
+
+        each section should be an unique integer starting at 1
+
+        example:
+
+        [1]
+        artist=David Bowie
+        title=....
+        album=....
+        path=/path/to/file
+
+        [2]
+        artist=David Bowie
+        title=....
+        album=....
+        path=/path/to/file
+        """
+
+        if not force and os.path.exists(Settings.instance().db_library_path):
+            # delete the library to load the test file
+            Logger.info('Library Found - not loading test data')
+            return
+
+        if not os.path.exists(inipath):
+            Logger.critical('test library not found: %s'%inipath)
+            return
+
+        Logger.info('loading test library: %s'%inipath)
+
+        config = ConfigParser()
+        config.read(inipath)
+
+        def get_default(section,option,default):
+            if config.has_option(section,option):
+                return config.get(section,option)
+            return default
+
+        for section in config.sections():
+            song = {
+                "artist" : get_default(section,"artist","Unkown Artist"),
+                "album"  : get_default(section,"album" ,"Unkown Album"),
+                "title"  : get_default(section,"title" ,"Unkown Title"),
+                "path"   : get_default(section,"path"  ,""),
+
+            }
+            Settings.instance().db_library.put(int(section), **song)
+
     def toTree(self):
 
         artists = {}
 
-        for song in self.songs:
-            if song.artist not in artists:
-                artists[ song.artist ] = TreeElem(song.artist)
+        library = Settings.instance().db_library
+        for key in library.keys():
+            song = library.get(key)
+
+            if song['artist'] not in artists:
+                artists[ song['artist'] ] = TreeElem(song['artist'])
 
             album = None
-            for child in artists[ song.artist ]:
-                if child.text == song.album:
+            for child in artists[ song['artist'] ]:
+                if child.text == song['album']:
                     album = child
                     break;
             else:
-                album = artists[ song.artist ].addChild(TreeElem(song.album))
+                album = artists[ song['artist'] ].addChild(TreeElem(song['album']))
 
-            album.addChild(TrackTreeElem(song.uid,song.title))
+            album.addChild(TrackTreeElem(key,song['title']))
 
         return list(artists.values())
+
+    def PlayListToViewList(self,playlist):
+        out = []
+        library = Settings.instance().db_library
+        for uid in playlist:
+            song = library.get(uid)
+            out.append(PlayListElem( uid, song ))
+        return out
+
+
+

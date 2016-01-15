@@ -63,3 +63,5 @@ docs/_build/
 # PyBuilder
 target/
 *.ttf
+library.ini
+*.db

@@ -25,12 +25,11 @@ from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget
 
 class PlayListElem(ListElem):
     """ Tree Element with unique id reference to an item in a database """
-    def __init__(self,uid,artist,title,aart=None):
-        super(PlayListElem, self).__init__(artist+" "+title)
+    def __init__(self,uid,song):
+        """ song as dictionary """
+        text = song['artist'] + " - " + song['title']
+        super(PlayListElem, self).__init__(text)
         self.uid = uid
-        self.artist=artist
-        self.title=title
-        self.aart = None
 
 class PlayListNodeWidget(NodeWidget):
     """docstring for PlayListNodeWidget"""

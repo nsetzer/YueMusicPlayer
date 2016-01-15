@@ -1,12 +1,11 @@
 
 
-path = r"D:\Music\Japanese\6ft.Down\[2010] Invitation to Anesthesia\01 Fanatic For Rejection.mp3"
-
-
 from kivy.properties import BooleanProperty
 from kivy.graphics import Color, Rectangle, Line
 
 from kivy.core.audio import SoundLoader
+from yue.settings import Settings
+
 
 #sound = SoundLoader.load(path)
 #sound.bind(on_play=)
@@ -30,6 +29,9 @@ class SoundManager(object):
         # when false, stop was issued by end-of-file
         self.mode_stop = False
 
+        self.current_playlist = []
+        self.playlist_index = 0 # current song, from current playlist
+
     @staticmethod
     def init():
         SoundManager.__instance = SoundManager()
@@ -38,13 +40,20 @@ class SoundManager(object):
     def instance():
         return SoundManager.__instance
 
+    def unload(self):
+        if self.sound is not None:
+            self.sound.unload()
+
     def load(self,path):
+
+        self.unload()
 
         self.sound = SoundLoader.load(path)
         if self.sound is not None:
             self.sound.volume = self.volume
             self.sound.bind(on_play=self.on_play)
             self.sound.bind(on_stop=self.on_stop)
+            self.current_position = 0
 
     def play(self):
         if self.sound is not None:
@@ -101,5 +110,44 @@ class SoundManager(object):
             self.mode_stop = False
         else:
             print("end of file")
+
+    def currentSong(self):
+        if self.playlist_index < len(self.current_playlist):
+            key = self.current_playlist[ self.playlist_index ]
+            return Settings.instance().db_library.get( key )
+        return None
+
+    def next(self):
+        """ play the next song in the playlist
+        """
+
+        if self.playlist_index < len(self.current_playlist) - 1:
+            self.playlist_index += 1
+
+            song = self.currentSong()
+            if song is not None:
+                self.load( song['path'] )
+                self.play()
+
+    def prev(self):
+        """ play the next song in the playlist
+        """
+
+        if self.playlist_index > 0:
+            self.playlist_index -= 1
+
+            song = self.currentSong()
+            if song is not None:
+                self.load( song['path'] )
+                self.play()
+
+
+    def setCurrentPlayList(self,lst):
+        self.current_playlist = lst
+        self.playlist_index = 0 # current song, from current playlist
+        if len(lst) > 0:
+            song = self.currentSong()
+            self.load( song['path'] )
+
 
 
