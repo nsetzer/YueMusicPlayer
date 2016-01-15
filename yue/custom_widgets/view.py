@@ -63,6 +63,10 @@ TODO:
         this is probably not ideal for all devices.
         unsure how to decide width correctly.
 
+    instead of the view deciding the row height, each node should determine
+        the height it needs.
+        for now: i have no interest in enabling each row to have a different height
+
 
 """
 
@@ -89,7 +93,6 @@ class ListElem(object):
 
     def __repr__(self):
         return "<%s(%s)>"%(self.__class__.__name__,self.text)
-
 
 class TreeElem(ListElem):
     """data element """
@@ -172,10 +175,16 @@ class NodeWidget(Widget):
             self.resizeEvent()
 
     def on_complete(self,widget,elem_idx):
-        self.parent.swipeEvent(elem_idx,self.elem,"right")
         self.parent.setScrollDisabled(False)
         self.x = self.parent.x
+        self.parent.swipeEvent(elem_idx,self.elem,"right")
         self.resizeEvent()
+
+    def setData(self,data):
+        raise NotImplementedError()
+
+    def resizeEvent(self,*args):
+        raise NotImplementedError()
 
 class ListNodeWidget(NodeWidget):
     """ represents a single row in a list view """
@@ -430,8 +439,9 @@ class ViewWidget(Widget):
             o = self.offset + round(touch.dy)
             self.offset = max(0,min(self.offset_max,o))
             idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
-            if 0 <= idx < len(self.nodes) and self.nodes[idx].parent is not None:
-                self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
+            if 0 <= idx < len(self.nodes):
+                if self.nodes[idx].parent is not None:
+                    self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
                 # if a diagonal drag selects a different row,
                 # reset the previous row.
                 if idx != self._touch_last_index:
@@ -485,8 +495,8 @@ class ViewWidget(Widget):
 
 class ListViewWidget(ViewWidget):
 
-    def __init__(self, font_size = 12, **kwargs):
-        super(ListViewWidget, self).__init__(font_size, ListNodeWidget, **kwargs)
+    def __init__(self, font_size = 12, NodeFactory=ListNodeWidget, **kwargs):
+        super(ListViewWidget, self).__init__(font_size, NodeFactory, **kwargs)
 
     def update_labels(self):
 
