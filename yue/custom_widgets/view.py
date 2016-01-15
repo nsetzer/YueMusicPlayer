@@ -1,4 +1,4 @@
-#! python2.7 ../../test/test_widget.py tree
+#! python2.7 ../../test/test_widget.py list
 """
 
 a Tree View data structure
@@ -56,6 +56,14 @@ TODO:
         add_widget(...,canvas=self.canvas) does not work
         maybe Stencil
         https://kivy.org/docs/api-kivy.graphics.stencil_instructions.html
+
+    may need a mutex to lock scroll events
+
+    swipe currently activates when the user drags the widget 1/6 of the width.
+        this is probably not ideal for all devices.
+        unsure how to decide width correctly.
+
+
 """
 
 from kivy.app import App
@@ -66,6 +74,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.graphics.texture import Texture
 from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
+from kivy.animation import Animation
 import kivy.metrics
 
 from expander import Expander
@@ -76,9 +85,11 @@ class ListElem(object):
     def __init__(self, text):
         super(ListElem, self).__init__()
         self.text = text # text to display
+        self.offset_x = 0
 
     def __repr__(self):
-        return "<%s(%s)>"%(self.__class__.__nane__,self.text)
+        return "<%s(%s)>"%(self.__class__.__name__,self.text)
+
 
 class TreeElem(ListElem):
     """data element """
@@ -142,11 +153,37 @@ class NodeWidget(Widget):
     def setData(self,elem):
         raise NotImplementedError()
 
+    def swipe(self,elem_idx, dx):
+        if self.elem is not None and self.parent is not None:
+            self.elem.offset_x += dx
+            self.resizeEvent()
+
+            if self.elem.offset_x > self.parent.width/6 and not self.parent.scroll_disabled:
+                self.parent.setScrollDisabled(True)
+                tx = self.parent.x+self.parent.width
+                self.anim = Animation(x=tx,t='out_quad',duration=.3)
+                self.anim.on_complete = lambda w : self.on_complete(w,elem_idx)
+                self.anim.start(self)
+                self.elem.offset_x = 0
+
+    def swipe_reset(self):
+        if self.elem is not None and self.parent is not None:
+            self.elem.offset_x = 0
+            self.resizeEvent()
+
+    def on_complete(self,widget,elem_idx):
+        self.parent.swipeEvent(elem_idx,self.elem,"right")
+        self.parent.setScrollDisabled(False)
+        self.x = self.parent.x
+        self.resizeEvent()
+
 class ListNodeWidget(NodeWidget):
     """ represents a single row in a list view """
 
     def __init__(self, height=32, font_size = 12, **kwargs):
         super(ListNodeWidget, self).__init__(**kwargs)
+
+        self.elem = None
 
         self.lbl1 = Label(text="",
                     font_size = font_size,
@@ -171,6 +208,7 @@ class ListNodeWidget(NodeWidget):
 
         elem : the element containing data to display
         """
+        self.elem = elem
         self.setText( elem.text )
         self.resizeEvent()
 
@@ -187,6 +225,10 @@ class ListNodeWidget(NodeWidget):
 
         self.pad_left = self.x
         self.pad_right = self.x + self.width
+
+        if self.parent is not None:
+            if self.elem is not None and not self.parent.scroll_disabled:
+                self.x = self.elem.offset_x
 
 class TreeNodeWidget(NodeWidget):
     """ represents a single row in a tree view """
@@ -339,10 +381,7 @@ class ViewWidget(Widget):
         self.nodes = []
         self.create_rows(20) # TODO resize based on height
 
-
-
-
-
+        self.scroll_disabled = False
 
     def setData(self, data):
         self.data = data
@@ -371,22 +410,54 @@ class ViewWidget(Widget):
     def on_touch_down(self,touch):
 
         if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
-           self.x < touch.y < self.x + self.height:
+           self.x < touch.y < self.x + self.height and \
+           not self.scroll_disabled:
             touch.grab(self)
+            self._touch_last_index = -1 # see on_touch_move for usage
             return True
         return super(ViewWidget, self).on_touch_down(touch)
 
     def on_touch_up(self,touch):
         if touch.grab_current is self:
             touch.ungrab(self)
+            idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
+            if 0 <= idx < len(self.nodes) and self.nodes[idx].parent is not None:
+                self.nodes[idx].swipe_reset()
         return super(ViewWidget, self).on_touch_up(touch)
 
     def on_touch_move(self,touch):
         if touch.grab_current is self:
             o = self.offset + round(touch.dy)
             self.offset = max(0,min(self.offset_max,o))
+            idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
+            if 0 <= idx < len(self.nodes) and self.nodes[idx].parent is not None:
+                self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
+                # if a diagonal drag selects a different row,
+                # reset the previous row.
+                if idx != self._touch_last_index:
+                    self.nodes[self._touch_last_index].swipe_reset()
+                self._touch_last_index = idx
             return True
         return super(ViewWidget, self).on_touch_move(touch)
+
+    def swipeEvent(self,elem_idx, elem,direction):
+        """ direction is one of : "left", "right" """
+        print(elem_idx,elem,direction)
+
+    def setScrollDisabled(self,b):
+        self.scroll_disabled = b
+
+    def _pad_top(self):
+        h = self.height
+        rh = self.row_height
+        n = (h // rh)
+        pad = h - n * rh + self.offset_pos
+        return n,pad
+
+    def pos_to_row_index(self,x,y):
+        """ convert y-coordinate to index in self.nodes """
+        n,pad = self._pad_top()
+        return int( - ((y - pad) // self.row_height) + n - 1 )
 
     def resize(self,*args):
         """
@@ -401,18 +472,16 @@ class ViewWidget(Widget):
         #    ScissorPush(x=int(round(x)), y=int(round(y)),
         #                width=int(round(width)), height=int(round(height)))
 
-        n = self.height // self.row_height
-        pad = self.height - n * self.row_height
+        n , pad = self._pad_top()
         for i,nd in enumerate(self.nodes):
             if nd.parent is not None:
                 nd.width = self.width
-                nd.pos = (self.x, self.y + (n-i-1)*self.row_height + pad + self.offset_pos)
+                nd.y = self.y + (n-i-1)*self.row_height + pad
 
 
         #with self.canvas.after:
             # after children
         #    ScissorPop()
-
 
 class ListViewWidget(ViewWidget):
 

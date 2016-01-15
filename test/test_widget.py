@@ -1,4 +1,4 @@
-#! python2.7 $this tree
+#! python2.7 $this list
 import os,sys
 
 """
