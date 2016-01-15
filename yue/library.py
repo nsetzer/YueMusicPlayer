@@ -5,6 +5,7 @@ from kivy.logger import Logger
 
 from yue.settings import Settings
 
+from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeElem
 from yue.custom_widgets.playlist import PlayListElem
 
@@ -114,6 +115,19 @@ class Library(object):
             song = library.get(uid)
             out.append(PlayListElem( uid, song ))
         return out
+
+    def PlayListFromTree(self, tree ):
+
+        out = []
+        for art in tree:
+            if art.check_state is not TriState.unchecked:
+                for alb in art.children:
+                    if alb.check_state is not TriState.unchecked:
+                        for ttl in alb.children:
+                            if ttl.check_state is TriState.checked:
+                                out.append(ttl.uid)
+        return out
+
 
 
 
