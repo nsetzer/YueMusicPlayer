@@ -21,6 +21,7 @@ import yue
 from yue.custom_widgets.expander import Expander
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.tristate import TriStateCheckBox
+from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.library import Library
 
 from kivy.app import App
@@ -53,6 +54,19 @@ def build_listview():
     view.setData(data)
     return view
 
+def build_playlistview():
+    data = [
+        PlayListElem(0,"Art","item-1"),
+        PlayListElem(1,"Art","item-2"),
+        PlayListElem(2,"Art","item-3"),
+        PlayListElem(3,"Art","item-4"),
+        PlayListElem(4,"Art","item-5"),
+    ]
+    view = PlayListViewWidget( font_size=16 )
+    view.setData(data)
+    return view
+
+
 class TestApp(App):
 
     def build(self):
@@ -67,6 +81,7 @@ class TestApp(App):
             widgets = {
                 'treeview' : build_treeview,
                 'listview' : build_listview,
+                'playlistview' : build_playlistview,
                 'expander' : build_expander,
                 'tristatecheckbox' : build_tristatecheckbox,
             }

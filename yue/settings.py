@@ -1,6 +1,8 @@
 
-
+import os,sys
 import kivy.metrics
+
+from kivy.storage.dictstore import DictStore
 
 class Settings(object):
     """docstring for Library"""
@@ -15,6 +17,20 @@ class Settings(object):
         self.screen_home = 'Home'
         self.screen_library = 'Library'
         self.screen_now_playing = 'Now Playing'
+        self.screen_current_playlist = 'Current Playlist'
+
+        self.platform = sys.platform
+        if os.environ.get("NDKPLATFORM") is not None:
+            self.platform = "android"
+            base_path = '/data/data/com.github.nsetzer.yue/'
+            self.db_settings_path = base_path + "settings.db"
+            self.db_library_path  = base_path + "library.db"
+        else:
+            self.db_settings_path = "./settings.db"
+            self.db_library_path  = "./library.db"
+
+        self.db_settings = DictStore( self.db_settings_path )
+        self.db_library = DictStore( self.db_library_path )
 
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """
@@ -22,7 +38,6 @@ class Settings(object):
 
     def row_height(self):
         return self.font_factor * self.font_height( self.font_size )
-
 
     def go_home(self, *args):
         self.manager.current = self.screen_home
@@ -32,6 +47,9 @@ class Settings(object):
 
     def go_now_playing(self, *args):
         self.manager.current = self.screen_now_playing
+
+    def go_current_playlist(self, *args):
+        self.manager.current = self.screen_current_playlist
 
     @staticmethod
     def init():
