@@ -33,7 +33,7 @@ class Settings(object):
 
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """
-        return kivy.metrics.pt( font_size )
+        return kivy.metrics.sp( font_size )
 
     def row_height(self):
         return self.font_factor * self.font_height( self.font_size )

@@ -388,7 +388,7 @@ class ViewWidget(Widget):
         self.bind(size=self.resize)
         self.bind(offset=self.on_update_offset)
 
-        self.row_height = 1.5 * kivy.metrics.pt( font_size )
+        self.row_height = 1.5 * kivy.metrics.sp( font_size )
         self.nodes = []
         self.create_rows(20) # TODO resize based on height
 
