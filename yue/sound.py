@@ -15,11 +15,19 @@ TODO:
         self.dispatch('on_song_end')
     https://kivy.org/docs/api-kivy.event.html#kivy.event.EventDispatcher
 
+    seeking does not work for flac files
+        duration() does work
+        may be related to flac files create on windows,
+        flac files have 'seek' points contained inside the file
+
 """
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
 from kivy.event import EventDispatcher
+from kivy.logger import Logger
+
 from yue.settings import Settings
+from yue.library import Library
 
 from enum import Enum
 
@@ -34,6 +42,9 @@ class SoundManager(EventDispatcher):
         super(SoundManager, self).__init__()
         self.current_playlist = []
         self.playlist_index = 0 # current song, from current playlist
+
+        self.register_event_type('on_song_end')
+        self.register_event_type('on_playlist_end')
 
     @staticmethod
     def init():
@@ -90,6 +101,8 @@ class SoundManager(EventDispatcher):
 
     def next(self):
         """ play the next song in the playlist
+
+        return true if a song was successfully loaded and playback began
         """
         #TODO: next causes 'end of file' stop
         if self.playlist_index < len(self.current_playlist) - 1:
@@ -99,9 +112,13 @@ class SoundManager(EventDispatcher):
             if song is not None:
                 self.load( song['path'] )
                 self.play()
+                return True # TODO this isnt quite right
+        return False
 
     def prev(self):
         """ play the next song in the playlist
+
+        return true if a song was successfully loaded and playback began
         """
 
         if self.playlist_index > 0:
@@ -111,11 +128,13 @@ class SoundManager(EventDispatcher):
             if song is not None:
                 self.load( song['path'] )
                 self.play()
+                return True # TODO this isnt quite right
+        return False
 
     def currentSong(self):
         if self.playlist_index < len(self.current_playlist):
             key = self.current_playlist[ self.playlist_index ]
-            return Settings.instance().db_library.get( key )
+            return Library.instance().songFromId( key )
         return None
 
     def setCurrentPlayList(self,lst):
@@ -138,11 +157,14 @@ class SoundManager(EventDispatcher):
 
     def on_song_end(self):
         """ callback for when current song finishes playing """
-        pass
+        Logger.info(" song finished ")
+        if not self.next():
+            self.dispatch('on_playlist_end')
 
     def on_playlist_end(self):
         """callback for when there are no more songs in the current playlist"""
-        pass
+        Logger.info(" playlist finished ")
+        self.unload()
 
 class KivySoundManager(SoundManager):
     """Playback implementation of SoundManager using Kivy"""
@@ -163,6 +185,7 @@ class KivySoundManager(SoundManager):
     def unload(self):
         if self.sound is not None:
             self.sound.unload()
+            self.setClock(False)
 
     def load(self,path):
 
@@ -208,7 +231,7 @@ class KivySoundManager(SoundManager):
 
     def seek(self,pos):
         if self.sound is not None:
-            self.sound.seek(pos)
+            self.sound.seek(int(pos))
 
     def position(self):
         """ return current position in seconds (float)"""
@@ -255,7 +278,7 @@ class KivySoundManager(SoundManager):
         if self.mode_stop:
             self.mode_stop = False
         else:
-            self.on_song_end()
+            self.dispatch('on_song_end')
 
 
 
