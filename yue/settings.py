@@ -29,7 +29,7 @@ class Settings(object):
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
 
         self.db_settings = DictStore( self.db_settings_path )
-        self.db_library = DictStore( self.db_library_path )
+
 
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """

@@ -4,6 +4,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.logger import Logger
 
 from yue.settings import Settings
 from yue.sound import SoundManager
@@ -38,8 +39,21 @@ class NowPlayingScreen(Screen):
         self.btn_prev = Button(text="prev")
         self.btn_prev.bind(on_press=(lambda *x : SoundManager.instance().prev()))
 
+        self.btn_test = Button(text="jump to end")
+        self.btn_test.bind(on_press=self.jump_to_end)
+
+
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
         self.vbox.add_widget( self.btn_playpause )
         self.vbox.add_widget( self.btn_next )
         self.vbox.add_widget( self.btn_prev )
+        self.vbox.add_widget( self.btn_test )
+
+    def jump_to_end(self,*args):
+
+        sm = SoundManager.instance()
+        t = sm.duration() - 2.0
+        Logger.info("> jump to %d/%d"%(t,sm.duration()))
+        sm.seek( t )
+

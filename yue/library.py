@@ -2,6 +2,7 @@
 import os,sys
 
 from kivy.logger import Logger
+from kivy.storage.dictstore import DictStore
 
 from yue.settings import Settings
 
@@ -24,6 +25,8 @@ class Library(object):
     def __init__(self):
         super(Library, self).__init__()
         self.songs = []
+
+        self.db = DictStore( Settings.instance().db_library_path )
 
     @staticmethod
     def init():
@@ -83,15 +86,17 @@ class Library(object):
                 "path"   : get_default(section,"path"  ,""),
 
             }
-            Settings.instance().db_library.put(int(section), **song)
+            self.db.put(int(section), **song)
+
+    def songFromId(self,uid):
+        return self.db.get(uid)
 
     def toTree(self):
 
         artists = {}
 
-        library = Settings.instance().db_library
-        for key in library.keys():
-            song = library.get(key)
+        for key in self.db.keys():
+            song = self.db.get(key)
 
             if song['artist'] not in artists:
                 artists[ song['artist'] ] = TreeElem(song['artist'])
@@ -110,9 +115,8 @@ class Library(object):
 
     def PlayListToViewList(self,playlist):
         out = []
-        library = Settings.instance().db_library
         for uid in playlist:
-            song = library.get(uid)
+            song = self.db.get(uid)
             out.append(PlayListElem( uid, song ))
         return out
 

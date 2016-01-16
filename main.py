@@ -45,7 +45,7 @@ class YueApp(App):
             Settings.instance().platform_path,"library.ini") );
 
         tree = Library.instance().toTree()
-        lst = list(Settings.instance().db_library.keys())
+        lst = list(Library.instance().db.keys())
         viewlst = Library.instance().PlayListToViewList( lst )
 
         SoundManager.instance().setCurrentPlayList( lst )
