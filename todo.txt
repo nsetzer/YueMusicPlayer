@@ -4,6 +4,12 @@
 
 goals:
 
+    create a widget with buttons for all of the different screens
+        use an icon instead of words
+        place at the top of every screen
+        eventually, the home screen may not be needed at all.
+            this depends on how many screens I have
+
     Home Screen provides access to different menu layouts
         Now Playing:
             displays a list of songs in the now playing playlist

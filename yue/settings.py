@@ -20,14 +20,13 @@ class Settings(object):
         self.screen_current_playlist = 'Current Playlist'
 
         self.platform = sys.platform
+        self.platform_path = os.getcwd()
         if os.environ.get("NDKPLATFORM") is not None:
             self.platform = "android"
-            base_path = '/data/data/com.github.nsetzer.yue/'
-            self.db_settings_path = base_path + "settings.db"
-            self.db_library_path  = base_path + "library.db"
-        else:
-            self.db_settings_path = "./settings.db"
-            self.db_library_path  = "./library.db"
+            self.platform_path = '/data/data/com.github.nsetzer.yue/'
+
+        self.db_settings_path = os.path.join(self.platform_path, "settings.db")
+        self.db_library_path  = os.path.join(self.platform_path, "library.db")
 
         self.db_settings = DictStore( self.db_settings_path )
         self.db_library = DictStore( self.db_library_path )

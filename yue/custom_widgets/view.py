@@ -79,6 +79,8 @@ from kivy.uix.label import Label
 from kivy.graphics.texture import Texture
 from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
 from kivy.animation import Animation
+from kivy.logger import Logger
+
 import kivy.metrics
 
 from expander import Expander
@@ -450,8 +452,9 @@ class ViewWidget(Widget):
             return True
         return super(ViewWidget, self).on_touch_move(touch)
 
-    def swipeEvent(self,elem_idx, elem,direction):
+    def swipeEvent(self,elem_idx, elem, direction):
         """ direction is one of : "left", "right" """
+        Logger.info("swipe right event no implemented")
         print(elem_idx,elem,direction)
 
     def setScrollDisabled(self,b):
@@ -492,6 +495,10 @@ class ViewWidget(Widget):
         #with self.canvas.after:
             # after children
         #    ScissorPop()
+
+    def scrollTo(self,idx):
+        """ scroll widget so that idx is displayed """
+        pass
 
 class ListViewWidget(ViewWidget):
 

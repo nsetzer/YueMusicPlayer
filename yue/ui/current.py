@@ -7,6 +7,16 @@ from kivy.uix.label import Label
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
+from yue.sound import SoundManager
+
+class CurrentPlayListViewWidget(PlayListViewWidget):
+    """docstring for PlayListViewWidget"""
+
+    def swipeEvent(self,elem_idx, elem,direction):
+        """ direction is one of : "left", "right" """
+        super(CurrentPlayListViewWidget,self).swipeEvent(elem_idx, elem, direction)
+
+        SoundManager.instance().playlist_remove( elem_idx )
 
 class CurrentPlaylistScreen(Screen):
     def __init__(self,**kwargs):
@@ -29,7 +39,7 @@ class CurrentPlaylistScreen(Screen):
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
 
-        self.view = PlayListViewWidget(font_size = Settings.instance().font_size)
+        self.view = CurrentPlayListViewWidget(font_size = Settings.instance().font_size)
 
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )

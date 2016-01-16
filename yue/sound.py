@@ -149,5 +149,9 @@ class SoundManager(object):
             song = self.currentSong()
             self.load( song['path'] )
 
+    def playlist_remove(self,idx):
+        if 0 <= idx < len(self.current_playlist):
+            del self.current_playlist[ idx ]
+
 
 
