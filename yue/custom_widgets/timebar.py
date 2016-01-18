@@ -17,16 +17,14 @@ def fmttime(s):
 
 class TimeBar(Widget):
     value = NumericProperty(0)
-    duration = NumericProperty(0)
+    duration = NumericProperty(100)
     expanded = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(TimeBar, self).__init__(**kwargs)
-        self.duration = 100
-        self.value = 25
 
-        self.lbl_value = Label(text='foo')
-        self.lbl_duration = Label(text='bar')
+        self.lbl_value = Label(text='0:00')
+        self.lbl_duration = Label(text='0:00')
 
         self.add_widget(self.lbl_value,canvas=self.canvas)
         self.add_widget(self.lbl_duration,canvas=self.canvas)
@@ -95,6 +93,6 @@ class TimeBar(Widget):
             self.dispatch('on_seek',v*self.duration)
 
     def on_seek(self,position):
-        pass
+        self.value = position
 
 

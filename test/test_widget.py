@@ -1,4 +1,4 @@
-#! python2.7 $this tree
+#! python2.7 $this time
 import os,sys
 
 """
@@ -22,7 +22,7 @@ from yue.custom_widgets.expander import Expander
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
-from yue.custom_widgets.time import TimeBar
+from yue.custom_widgets.timebar import TimeBar
 from yue.library import Library
 from yue.settings import Settings
 

@@ -9,7 +9,7 @@ from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.logger import Logger
 
-from yue.custom_widgets.time import TimeBar
+from yue.custom_widgets.timebar import TimeBar
 from yue.settings import Settings
 from yue.sound import SoundManager
 from yue.song import ArtNotFound, get_album_art
