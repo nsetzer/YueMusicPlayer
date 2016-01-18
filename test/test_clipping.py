@@ -1,4 +1,13 @@
 
+"""
+
+example of using clipping instructions in kivy
+
+a red rectangle is drawn across the entire widget. Stencil instructions
+are used to create a rectangle mask so that only a portion of
+the rectangle is displayed
+
+"""
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
@@ -14,7 +23,6 @@ class TestWidget(Widget):
     def __init__(self, **kwargs):
         super(TestWidget, self).__init__(**kwargs)
 
-
         with self.canvas.before:
             StencilPush()
             self.rect_mask = Rectangle() # see self.resize()
@@ -29,20 +37,15 @@ class TestWidget(Widget):
             StencilUnUse()
             StencilPop()
 
-
         self.bind(size=self.resize)
 
     def resize(self,*args):
 
-        x,y = self.pos
-        x += self.width/4
-
-        self.rect_mask.pos = (x,y)
+        self.rect_mask.pos = (self.x + self.width//4,self.y)
         self.rect_mask.size = (self.width/2,self.height)
 
         self.rect_main.pos = self.pos
         self.rect_main.size = self.size
-
 
 class TestApp(App):
 
