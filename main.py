@@ -11,6 +11,7 @@ from yue.ui.library import LibraryScreen
 from yue.ui.home import HomeScreen
 from yue.ui.nowplaying import NowPlayingScreen
 from yue.ui.current import CurrentPlaylistScreen
+from yue.ui.preset import PresetScreen
 from yue.library import Library
 from yue.settings import Settings
 from yue.sound import SoundManager
@@ -32,11 +33,13 @@ class YueApp(App):
         ns = NowPlayingScreen(name=Settings.instance().screen_now_playing)
         cs = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
         ls = LibraryScreen(name=Settings.instance().screen_library)
+        ps = PresetScreen(name=Settings.instance().screen_presets)
 
         sm.add_widget(hs)
         sm.add_widget(cs)
         sm.add_widget(ns)
         sm.add_widget(ls)
+        sm.add_widget(ps)
 
         # initialize data to be displayed
 

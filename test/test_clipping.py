@@ -28,10 +28,9 @@ class TestWidget(Widget):
             self.rect_mask = Rectangle() # see self.resize()
             StencilUse()
 
-        w,h = self.size
         with self.canvas:
             Color(.5,0,0,.5)
-            self.rect_main = Rectangle(pos=(self.x,self.y),size=(w,h))
+            self.rect_main = Rectangle(pos=(self.x,self.y),size=self.size)
 
         with self.canvas.after:
             StencilUnUse()
