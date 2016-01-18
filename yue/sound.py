@@ -20,6 +20,10 @@ TODO:
         may be related to flac files create on windows,
         flac files have 'seek' points contained inside the file
 
+    create a playlist class and move common playlist operations to this class
+        playlists have a 'current index', which must me updated
+        whenever an operation adds or removes elements before the index
+
 """
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
@@ -35,6 +39,16 @@ class MediaState(Enum):
     not_ready = 0
     play = 1
     pause = 2
+
+class PlayList(object):
+    """docstring for PlayList"""
+    def __init__(self, list):
+        super(PlayList, self).__init__()
+
+        self.list
+    def __getitem__(self,index):
+        return self.list[index]
+
 
 class SoundManager(EventDispatcher):
     """ interface class for playing audio, managing current playlist """
@@ -98,6 +112,16 @@ class SoundManager(EventDispatcher):
         raise NotImplementedError()
 
     # current playlist management
+    def play_index(self,idx):
+        if 0 <= idx < len(self.current_playlist):
+            self.playlist_index = idx
+            key = self.current_playlist[ idx ]
+            song = Library.instance().songFromId( key )
+            self.load( song['path'] )
+            self.play()
+            return True # TODO this isnt quite right
+        return False
+
 
     def next(self):
         """ play the next song in the playlist
@@ -107,7 +131,6 @@ class SoundManager(EventDispatcher):
         #TODO: next causes 'end of file' stop
         if self.playlist_index < len(self.current_playlist) - 1:
             self.playlist_index += 1
-
             song = self.currentSong()
             if song is not None:
                 self.load( song['path'] )
@@ -123,7 +146,6 @@ class SoundManager(EventDispatcher):
 
         if self.playlist_index > 0:
             self.playlist_index -= 1
-
             song = self.currentSong()
             if song is not None:
                 self.load( song['path'] )
@@ -147,6 +169,14 @@ class SoundManager(EventDispatcher):
     def playlist_remove(self,idx):
         if 0 <= idx < len(self.current_playlist):
             del self.current_playlist[ idx ]
+
+    def playlist_move(self, i, j):
+        # TODO: update current playback index
+
+        if 0 <= i < len(self.current_playlist):
+            item = self.current_playlist[i]
+            del self.current_playlist[i]
+            self.current_playlist.insert(j,item)
 
     def on_song_tick(self, *args):
         """ during playback, used to update the ui """
@@ -186,6 +216,7 @@ class KivySoundManager(SoundManager):
         if self.sound is not None:
             self.sound.unload()
             self.setClock(False)
+            self.sound = None
 
     def load(self,path):
 

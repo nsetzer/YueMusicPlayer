@@ -67,6 +67,12 @@ TODO:
         the height it needs.
         for now: i have no interest in enabling each row to have a different height
 
+    during a drag, if the user holds the item near the edge of the screen
+        scroll the window.
+
+    nodes/elems setData() can i move self.elem = elem and resize event
+    to the parent implementation and only call super in the child classes?
+
 
 """
 
@@ -85,6 +91,8 @@ import kivy.metrics
 
 from expander import Expander
 from tristate import TriState, TriStateCheckBox
+
+import time
 
 class ListElem(object):
     """docstring for ListElem"""
@@ -158,6 +166,11 @@ class NodeWidget(Widget):
     def setData(self,elem):
         raise NotImplementedError()
 
+    def resizeEvent(self,*args):
+        if self.parent is not None:
+            if self.elem is not None and not self.parent.scroll_disabled:
+                self.x = self.elem.offset_x
+
     def swipe(self,elem_idx, dx):
         if self.elem is not None and self.parent is not None:
             self.elem.offset_x += dx
@@ -183,9 +196,6 @@ class NodeWidget(Widget):
         self.resizeEvent()
 
     def setData(self,data):
-        raise NotImplementedError()
-
-    def resizeEvent(self,*args):
         raise NotImplementedError()
 
 class ListNodeWidget(NodeWidget):
@@ -224,7 +234,7 @@ class ListNodeWidget(NodeWidget):
         self.resizeEvent()
 
     def resizeEvent(self,*args):
-
+        super(ListNodeWidget,self).resizeEvent(*args)
         # attempt to draw gradient (fails, not correct place)
         #self.canvas.clear() # TODO: instead of clear, remove only the rectangle
         #with self.canvas.before:
@@ -236,10 +246,6 @@ class ListNodeWidget(NodeWidget):
 
         self.pad_left = self.x
         self.pad_right = self.x + self.width
-
-        if self.parent is not None:
-            if self.elem is not None and not self.parent.scroll_disabled:
-                self.x = self.elem.offset_x
 
 class TreeNodeWidget(NodeWidget):
     """ represents a single row in a tree view """
@@ -318,7 +324,6 @@ class TreeNodeWidget(NodeWidget):
         self.lbl1.size = (self.width - lpad - rpad,self.height)
         self.lbl1.text_size = self.lbl1.size
 
-
         self.pad_left = self.x + lpad
         self.pad_right = self.chk1.x
 
@@ -394,6 +399,12 @@ class ViewWidget(Widget):
 
         self.scroll_disabled = False
 
+        self.register_event_type('on_tap')
+        self.register_event_type('on_double_tap')
+        self.register_event_type('on_drop')
+
+        self.tap_max_duration = .2 # cutoff between a tap and press
+
     def setData(self, data):
         self.data = data
         self.update_labels()
@@ -418,6 +429,18 @@ class ViewWidget(Widget):
             self.update_labels()
         self.resize()
 
+    def on_tap(self,index,*args):
+        """ index into self.data where a tap occured """
+        print("tap",index)
+
+    def on_double_tap(self,index,*args):
+        """ index into self.data where a tap occured """
+        print("double tap",index)
+
+    def on_drop(self,idx_from,idx_to,*args):
+        """ index into self.data where a drag initiated and ended """
+        Logger.info("drop: from %d to %d"%(idx_from,idx_to))
+
     def on_touch_down(self,touch):
 
         if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
@@ -425,6 +448,11 @@ class ViewWidget(Widget):
            not self.scroll_disabled:
             touch.grab(self)
             self._touch_last_index = -1 # see on_touch_move for usage
+            self._touch_dy = 0 # measure y delta during touch
+            self._touch_t_s = time.clock() # measure y delta during touch
+            self._touch_drag = False
+            self._touch_drag_idx = -1
+            self._touch_token = None
             return True
         return super(ViewWidget, self).on_touch_down(touch)
 
@@ -434,21 +462,61 @@ class ViewWidget(Widget):
             idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
             if 0 <= idx < len(self.nodes) and self.nodes[idx].parent is not None:
                 self.nodes[idx].swipe_reset()
+
+            # todo need to test that pixels scale correctly
+            # to detect a tap, I may want to measure time
+            #  e.g. if it is less than N milliseconds
+            t = time.clock() - self._touch_t_s
+            if self._touch_drag == True:
+                # correct the index for drop targets
+                if idx > len(self.data):
+                    idx = len(self.data) - 1
+                self.dispatch('on_drop',self._touch_drag_idx,idx)
+            # arbitrary time in milliseconds
+            elif self._touch_dy < self.row_height//3 and t < .2:
+                if touch.is_double_tap:
+                    self.dispatch('on_double_tap',idx)
+                else:
+                    self.dispatch('on_tap',idx)
+
+            if self._touch_token is not None:
+                self.remove_widget(self._touch_token)
+                self._touch_token = None
+
         return super(ViewWidget, self).on_touch_up(touch)
 
     def on_touch_move(self,touch):
         if touch.grab_current is self:
-            o = self.offset + round(touch.dy)
-            self.offset = max(0,min(self.offset_max,o))
+            self._touch_dy += abs(touch.dy)
             idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
-            if 0 <= idx < len(self.nodes):
-                if self.nodes[idx].parent is not None:
-                    self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
-                # if a diagonal drag selects a different row,
-                # reset the previous row.
-                if idx != self._touch_last_index:
-                    self.nodes[self._touch_last_index].swipe_reset()
-                self._touch_last_index = idx
+            if not self._touch_drag and \
+                self._touch_dy < self.row_height//3 and \
+                time.clock() - self._touch_t_s > .2 and \
+                0 <= idx < len(self.data):
+                Logger.info("drag start: %d"%idx)
+                self._touch_drag_idx = idx
+                self._touch_drag = True
+                self._touch_token = self.node_factory( height=self.row_height,
+                                            font_size = self.font_size )
+                self._touch_token.setData( self.data[idx] )
+                self.add_widget( self._touch_token )
+
+            if not self._touch_drag:
+                o = self.offset + round(touch.dy)
+                self.offset = max(0,min(self.offset_max,o))
+                idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
+
+                if 0 <= idx < len(self.nodes):
+                    if self.nodes[idx].parent is not None:
+                        self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
+                    # if a diagonal drag selects a different row,
+                    # reset the previous row.
+                    if idx != self._touch_last_index:
+                        self.nodes[self._touch_last_index].swipe_reset()
+                    self._touch_last_index = idx
+            else:
+                self._touch_token.x = touch.px - self._touch_token.width//2
+                self._touch_token.y = touch.py - self._touch_token.height//2
             return True
         return super(ViewWidget, self).on_touch_move(touch)
 

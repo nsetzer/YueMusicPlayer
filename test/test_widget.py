@@ -1,4 +1,4 @@
-#! python2.7 $this list
+#! python2.7 $this tree
 import os,sys
 
 """
@@ -23,6 +23,7 @@ from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, Li
 from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.library import Library
+from yue.settings import Settings
 
 from kivy.app import App
 from kivy.core.text import LabelBase
@@ -35,7 +36,8 @@ def build_tristatecheckbox():
 
 def build_treeview():
 
-    Library.test_init()
+    Settings.init()
+    Library.init()
     data = Library.instance().toTree()
 
     view = TreeViewWidget( font_size=16 )

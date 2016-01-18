@@ -9,6 +9,8 @@ todo:
     left side a square should be reserved for album art. square has
     a height equal to the two lines of text
 
+    touch a row and drag should swap elements
+
     touching a row should display two buttons, side by side for moving
     the element, up or down in the list.
 
@@ -66,6 +68,7 @@ class PlayListNodeWidget(NodeWidget):
         self.resizeEvent()
 
     def resizeEvent(self,*args):
+        super(PlayListNodeWidget, self).resizeEvent(*args)
 
         self.lbl1.pos = self.pos
         self.lbl1.size = self.size
@@ -74,9 +77,6 @@ class PlayListNodeWidget(NodeWidget):
         self.pad_left = self.x
         self.pad_right = self.x + self.width
 
-        if self.parent is not None:
-            if self.elem is not None and not self.parent.scroll_disabled:
-                self.x = self.elem.offset_x
 
 class PlayListViewWidget(ListViewWidget):
     """docstring for PayListView"""

@@ -1,5 +1,8 @@
 
-
+"""
+todo:
+    swipe right on SONG : add to next in current playlist
+"""
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button

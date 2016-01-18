@@ -8,6 +8,10 @@ import os,sys
 
 # https://kivy.org/docs/api-kivy.metrics.html#kivy.metrics.MetricsBase.density
 
+os.environ['KIVY_DPI'] = "557"
+os.environ['KIVY_METRICS_DENSITY'] = ".5"
+size = "1280x720"
+
 #os.environ['KIVY_DPI'] = "72"
 #os.environ['KIVY_METRICS_DENSITY'] = "1"
 #size = "1280x720"
@@ -18,9 +22,14 @@ import os,sys
 #size = "1280x720"
 
 # Motorola Droid 2
-os.environ['KIVY_DPI'] = "240"
-os.environ['KIVY_METRICS_DENSITY'] = "1.5"
-size = "854x480"
+#os.environ['KIVY_DPI'] = "240"
+#os.environ['KIVY_METRICS_DENSITY'] = "1.5"
+#size = "854x480"
+
+#os.environ['KIVY_DPI'] = "423"
+#os.environ['KIVY_METRICS_DENSITY'] = "2"
+#size = "854x480"
+
 
 os.chdir("..")
 

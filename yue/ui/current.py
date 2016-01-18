@@ -18,6 +18,20 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
 
         SoundManager.instance().playlist_remove( elem_idx )
 
+    def on_drop(self,i,j):
+        if j < i : # ensure droped element is inserted after
+            j += 1
+        item = self.data[i]
+        del self.data[i]
+        self.data.insert(j,item)
+        SoundManager.instance().playlist_move( i, j )
+        self.update_labels()
+
+    def on_double_tap(self,index):
+        SoundManager.instance().play_index( index )
+
+
+
 class CurrentPlaylistScreen(Screen):
     def __init__(self,**kwargs):
         super(CurrentPlaylistScreen,self).__init__(**kwargs)
