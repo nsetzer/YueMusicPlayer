@@ -38,7 +38,7 @@ class NowPlayingScreen(Screen):
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
 
-        self.img_albumart = Image(source="./cover.jpg");
+        self.img_albumart = Image();
 
         self.btn_playpause = Button(text="play/pause")
         self.btn_playpause.bind(on_press=(lambda *x : SoundManager.instance().playpause()))

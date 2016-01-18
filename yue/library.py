@@ -12,6 +12,7 @@ from yue.custom_widgets.playlist import PlayListElem
 
 
 from ConfigParser import ConfigParser
+import codecs
 
 class TrackTreeElem(TreeElem):
     """ Tree Element with unique id reference to an item in a database """
@@ -71,7 +72,7 @@ class Library(object):
         Logger.info('loading test library: %s'%inipath)
 
         config = ConfigParser()
-        config.read(inipath)
+        config.readfp(codecs.open(inipath,"r","utf-8"))
 
         def get_default(section,option,default):
             if config.has_option(section,option):
@@ -96,7 +97,7 @@ class Library(object):
         artists = {}
 
         for key in self.db.keys():
-            song = self.db.get(key)
+            song = self.songFromId(key)
 
             if song['artist'] not in artists:
                 artists[ song['artist'] ] = TreeElem(song['artist'])
@@ -116,7 +117,7 @@ class Library(object):
     def PlayListToViewList(self,playlist):
         out = []
         for uid in playlist:
-            song = self.db.get(uid)
+            song = self.songFromId(uid)
             out.append(PlayListElem( uid, song ))
         return out
 

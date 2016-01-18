@@ -225,8 +225,12 @@ class KivySoundManager(SoundManager):
     def load(self, song):
 
         self.unload()
+        # TODO: if path is unicode, some files will actually
+        # be loaded correctly, even if there are unicode characters
+        # in the path. decoding as utf-8 seems to always work correctly
+        # at least on windows. further research is required.
         path = song['path']
-        self.sound = SoundLoader.load(path)
+        self.sound = SoundLoader.load( path.encode('utf-8') )
         if self.sound is not None:
             self.sound.volume = self.volume
             self.sound.bind(on_play=self.on_play)

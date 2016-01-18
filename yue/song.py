@@ -50,6 +50,10 @@ def get_album_art( song_path, temp_path):
     """
     ext = os.path.splitext(song_path)[1].lower()
 
+    print(type(song_path))
+    #if type(song_path) is str:
+    #    song_path = str.decode("utf-8")
+
     data = None
     try:
         if ext == ".mp3":
@@ -60,7 +64,6 @@ def get_album_art( song_path, temp_path):
         Logger.error("mutagen: %s"%e)
 
     if data is not None:
-        print("found data")
         with open(temp_path,"wb") as wb:
             wb.write( data )
         return temp_path
@@ -68,9 +71,7 @@ def get_album_art( song_path, temp_path):
     dirname = os.path.dirname( song_path )
 
     for name in ["cover.jpg","cover.png","folder.jpg","folder.png"]:
-
         path = os.path.join(dirname,name)
-        print(path)
         if os.path.exists( path ):
             return path
 
