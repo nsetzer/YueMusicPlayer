@@ -57,6 +57,7 @@ class SoundManager(EventDispatcher):
         self.current_playlist = []
         self.playlist_index = 0 # current song, from current playlist
 
+        self.register_event_type('on_song_tick')
         self.register_event_type('on_song_end')
         self.register_event_type('on_playlist_end')
         self.register_event_type('on_load')
@@ -182,12 +183,18 @@ class SoundManager(EventDispatcher):
             del self.current_playlist[i]
             self.current_playlist.insert(j,item)
 
-    def on_song_tick(self, *args):
+    def on_song_tick(self, value):
+        """ during playback, used to update the ui """
+        # todo: need a mechanism to bind functions to events,
+        # so that this object does not need to know about the UI.
+        pass
+
+    def on_song_tick_callback(self, *args):
         """ during playback, used to update the ui """
         # todo: need a mechanism to bind functions to events,
         # so that this object does not need to know about the UI.
 
-        print( self.position(), self.duration() )
+        self.dispatch('on_song_tick',self.position())
 
     def on_song_end(self):
         """ callback for when current song finishes playing """
@@ -304,10 +311,10 @@ class KivySoundManager(SoundManager):
 
         if self.clock_scheduled == False and state == True:
             self.clock_scheduled = True
-            Clock.schedule_interval( self.on_song_tick, self.clock_interval )
+            Clock.schedule_interval( self.on_song_tick_callback, self.clock_interval )
         elif self.clock_scheduled == True and state == False:
             self.clock_scheduled = False
-            Clock.unschedule( self.on_song_tick )
+            Clock.unschedule( self.on_song_tick_callback )
 
     def on_play(self,*args):
         pass

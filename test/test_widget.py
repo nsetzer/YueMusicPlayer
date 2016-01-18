@@ -22,6 +22,7 @@ from yue.custom_widgets.expander import Expander
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
+from yue.custom_widgets.time import TimeBar
 from yue.library import Library
 from yue.settings import Settings
 
@@ -33,6 +34,9 @@ def build_expander():
 
 def build_tristatecheckbox():
     return TriStateCheckBox()
+
+def build_timebar():
+    return TimeBar()
 
 def build_treeview():
 
@@ -85,6 +89,7 @@ class TestApp(App):
                 'listview' : build_listview,
                 'playlistview' : build_playlistview,
                 'expander' : build_expander,
+                'time' : build_timebar,
                 'tristatecheckbox' : build_tristatecheckbox,
             }
 

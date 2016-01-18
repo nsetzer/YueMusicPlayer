@@ -9,6 +9,7 @@ from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.logger import Logger
 
+from yue.custom_widgets.time import TimeBar
 from yue.settings import Settings
 from yue.sound import SoundManager
 from yue.song import ArtNotFound, get_album_art
@@ -50,8 +51,7 @@ class NowPlayingScreen(Screen):
         self.btn_prev = Button(text="prev")
         self.btn_prev.bind(on_press=(lambda *x : SoundManager.instance().prev()))
 
-        self.btn_test = Button(text="jump to end")
-        self.btn_test.bind(on_press=self.jump_to_end)
+        self.timebar = TimeBar()
 
         self.hbox_btns.add_widget( self.btn_prev )
         self.hbox_btns.add_widget( self.btn_playpause )
@@ -62,18 +62,22 @@ class NowPlayingScreen(Screen):
         self.vbox.add_widget( self.img_albumart )
         self.vbox.add_widget( self.hbox_btns )
 
-        self.vbox.add_widget( self.btn_test )
+        self.vbox.add_widget( self.timebar )
 
-        SoundManager.instance().bind(on_load=self.update_albumart)
+        self.timebar.bind(on_seek=self.change_position)
+        SoundManager.instance().bind(on_load=self.update)
+        SoundManager.instance().bind(on_song_tick=self.on_tick)
 
-    def jump_to_end(self,*args):
+    def on_tick(self,obj,value):
+        self.timebar.value = value
 
-        sm = SoundManager.instance()
-        t = sm.duration() - 2.0
-        Logger.info("nowplaying: jump to %d/%d"%(t,sm.duration()))
-        sm.seek( t )
+    def update(self,obj,song):
 
-    def update_albumart(self,obj,song):
+        self.timebar.value = 0
+        self.timebar.duration = SoundManager.instance().duration()
+        self.update_albumart(song)
+
+    def update_albumart(self,song):
          # TODO this needs to be done async
         try:
             default_path = os.path.join(Settings.instance().platform_path,"cover.jpg")
@@ -84,9 +88,12 @@ class NowPlayingScreen(Screen):
         except ArtNotFound as e:
             Logger.warning("nowplaying: no art found for %s"%song['path'])
             self.img_albumart.source = ""
+
         except Exception as e:
             self.img_albumart.source = ""
             Logger.error("nowplaying: unable to load art for %s"%song['path'])
             traceback.print_exc()
 
+    def change_position(self,obj,position):
 
+        SoundManager.instance().seek( position )
