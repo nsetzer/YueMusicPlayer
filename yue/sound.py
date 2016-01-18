@@ -59,6 +59,7 @@ class SoundManager(EventDispatcher):
 
         self.register_event_type('on_song_end')
         self.register_event_type('on_playlist_end')
+        self.register_event_type('on_load')
 
     @staticmethod
     def init():
@@ -67,6 +68,9 @@ class SoundManager(EventDispatcher):
     @staticmethod
     def instance():
         return SoundManager.__instance
+
+    def on_load(self,song):
+        pass
 
     # playback controls
 
@@ -117,7 +121,7 @@ class SoundManager(EventDispatcher):
             self.playlist_index = idx
             key = self.current_playlist[ idx ]
             song = Library.instance().songFromId( key )
-            self.load( song['path'] )
+            self.load( song )
             self.play()
             return True # TODO this isnt quite right
         return False
@@ -133,7 +137,7 @@ class SoundManager(EventDispatcher):
             self.playlist_index += 1
             song = self.currentSong()
             if song is not None:
-                self.load( song['path'] )
+                self.load( song )
                 self.play()
                 return True # TODO this isnt quite right
         return False
@@ -148,7 +152,7 @@ class SoundManager(EventDispatcher):
             self.playlist_index -= 1
             song = self.currentSong()
             if song is not None:
-                self.load( song['path'] )
+                self.load( song )
                 self.play()
                 return True # TODO this isnt quite right
         return False
@@ -164,7 +168,7 @@ class SoundManager(EventDispatcher):
         self.playlist_index = 0 # current song, from current playlist
         if len(lst) > 0:
             song = self.currentSong()
-            self.load( song['path'] )
+            self.load( song )
 
     def playlist_remove(self,idx):
         if 0 <= idx < len(self.current_playlist):
@@ -218,16 +222,17 @@ class KivySoundManager(SoundManager):
             self.setClock(False)
             self.sound = None
 
-    def load(self,path):
+    def load(self, song):
 
         self.unload()
-
+        path = song['path']
         self.sound = SoundLoader.load(path)
         if self.sound is not None:
             self.sound.volume = self.volume
             self.sound.bind(on_play=self.on_play)
             self.sound.bind(on_stop=self.on_stop)
             self.current_position = 0
+            self.dispatch('on_load',song)
 
     def play(self):
         if self.sound is not None:

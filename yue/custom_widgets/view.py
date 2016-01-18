@@ -163,9 +163,6 @@ class NodeWidget(Widget):
     pad_left = NumericProperty() # gutter, width of space before text label
     pad_right = NumericProperty() # gutter, width of space after text label
 
-    def setData(self,elem):
-        raise NotImplementedError()
-
     def resizeEvent(self,*args):
         if self.parent is not None:
             if self.elem is not None and not self.parent.scroll_disabled:
@@ -431,11 +428,11 @@ class ViewWidget(Widget):
 
     def on_tap(self,index,*args):
         """ index into self.data where a tap occured """
-        print("tap",index)
+        Logger.info("tap: %d"%index)
 
     def on_double_tap(self,index,*args):
         """ index into self.data where a tap occured """
-        print("double tap",index)
+        Logger.info("double tap: %d"%index)
 
     def on_drop(self,idx_from,idx_to,*args):
         """ index into self.data where a drag initiated and ended """
