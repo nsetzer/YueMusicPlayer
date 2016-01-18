@@ -49,14 +49,6 @@ TODO:
             maybe darker towards the top of the tree.
             maybe different colors from a palette for every level
 
-    This widget draws ontop of widgets that are above
-        is there a way to layer widgets, or set a clipping region for drawing?
-        see  ScissorPush,ScissorPop
-        because this widget is such a hack, it may not work.
-        add_widget(...,canvas=self.canvas) does not work
-        maybe Stencil
-        https://kivy.org/docs/api-kivy.graphics.stencil_instructions.html
-
     may need a mutex to lock scroll events
 
     swipe currently activates when the user drags the widget 1/6 of the width.
@@ -87,6 +79,8 @@ try: # older kivy versions do not support this, currently not used.
     from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
 except:
     pass
+from kivy.graphics.stencil_instructions import StencilPush,StencilUse, \
+    StencilUnUse,StencilPop
 from kivy.animation import Animation
 from kivy.logger import Logger
 
@@ -176,7 +170,9 @@ class NodeWidget(Widget):
             self.elem.offset_x += dx
             self.resizeEvent()
 
-            if self.elem.offset_x > self.parent.width/6 and not self.parent.scroll_disabled:
+            if self.elem.offset_x > self.parent.width/6 and \
+                not self.parent.scroll_disabled and \
+                self.parent.enable_swipe:
                 self.parent.setScrollDisabled(True)
                 tx = self.parent.x+self.parent.width
                 self.anim = Animation(x=tx,t='out_quad',duration=.3)
@@ -405,6 +401,18 @@ class ViewWidget(Widget):
 
         self.tap_max_duration = .2 # cutoff between a tap and press
 
+        with self.canvas.before:
+            StencilPush()
+            self.rect_mask = Rectangle() # see self.resize()
+            StencilUse()
+
+        with self.canvas.after:
+            StencilUnUse()
+            StencilPop()
+
+        self.enable_drag_and_drop = True
+        self.enable_swipe = True
+
     def setData(self, data):
         self.data = data
         self.update_labels()
@@ -443,18 +451,25 @@ class ViewWidget(Widget):
 
     def on_touch_down(self,touch):
 
-        if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
-           self.x < touch.y < self.x + self.height and \
-           not self.scroll_disabled:
-            touch.grab(self)
-            self._touch_last_index = -1 # see on_touch_move for usage
-            self._touch_dy = 0 # measure y delta during touch
-            self._touch_t_s = time.clock() # measure y delta during touch
-            self._touch_drag = False
-            self._touch_drag_idx = -1
-            self._touch_token = None
-            return True
-        return super(ViewWidget, self).on_touch_down(touch)
+        if self.collide_point( *touch.pos ):
+
+            if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
+               not self.scroll_disabled:
+                touch.grab(self)
+                self._touch_last_index = -1 # see on_touch_move for usage
+                self._touch_dy = 0 # measure y delta during touch
+                self._touch_t_s = time.clock() # measure y delta during touch
+                self._touch_drag = False
+                self._touch_drag_idx = -1
+                self._touch_token = None
+                return True
+
+            # event is contained within this widget, but is not a scroll
+            # event, so pass the even on to a child widget
+            return super(ViewWidget, self).on_touch_down(touch)
+        # event is not contained within THIS widget, do not propogate
+        # event to children
+        return False
 
     def on_touch_up(self,touch):
         if touch.grab_current is self:
@@ -489,7 +504,7 @@ class ViewWidget(Widget):
         if touch.grab_current is self:
             self._touch_dy += abs(touch.dy)
             idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
-            if not self._touch_drag and \
+            if self.enable_drag_and_drop and not self._touch_drag and \
                 self._touch_dy < self.row_height//3 and \
                 time.clock() - self._touch_t_s > .2 and \
                 0 <= idx < len(self.data):
@@ -545,24 +560,15 @@ class ViewWidget(Widget):
         move child widgets into position to create the illusion of
         an scrolling tree view
         """
-        #with self.canvas.before:
-        #    # before children
-        #    x,y = self.pos #self.to_window(*self.pos)
-        #    #x,y = self.to_window(*self.pos)
-        #    width, height = self.size
-        #    ScissorPush(x=int(round(x)), y=int(round(y)),
-        #                width=int(round(width)), height=int(round(height)))
+
+        self.rect_mask.pos = self.pos
+        self.rect_mask.size = self.size
 
         n , pad = self._pad_top()
         for i,nd in enumerate(self.nodes):
             if nd.parent is not None:
                 nd.width = self.width
                 nd.y = self.y + (n-i-1)*self.row_height + pad
-
-
-        #with self.canvas.after:
-            # after children
-        #    ScissorPop()
 
     def scrollTo(self,idx):
         """ scroll widget so that idx is displayed """
@@ -596,6 +602,9 @@ class TreeViewWidget(ViewWidget):
 
     def __init__(self, font_size = 12, **kwargs):
         super(TreeViewWidget, self).__init__(font_size, TreeNodeWidget, **kwargs)
+
+        self.enable_drag_and_drop = False
+        self.enable_swipe = False
 
     def update_labels(self):
         # walk the tree and determine visible elements
