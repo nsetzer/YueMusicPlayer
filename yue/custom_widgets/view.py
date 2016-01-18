@@ -83,7 +83,10 @@ from kivy.properties import ObjectProperty, NumericProperty
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.graphics.texture import Texture
-from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
+try: # older kivy versions do not support this, currently not used.
+    from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
+except:
+    pass
 from kivy.animation import Animation
 from kivy.logger import Logger
 

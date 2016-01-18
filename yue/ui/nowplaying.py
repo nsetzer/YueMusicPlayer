@@ -1,4 +1,5 @@
 
+import os
 import traceback
 
 from kivy.uix.screenmanager import Screen
@@ -69,13 +70,14 @@ class NowPlayingScreen(Screen):
 
         sm = SoundManager.instance()
         t = sm.duration() - 2.0
-        Logger.info("> jump to %d/%d"%(t,sm.duration()))
+        Logger.info("nowplaying: jump to %d/%d"%(t,sm.duration()))
         sm.seek( t )
 
     def update_albumart(self,obj,song):
          # TODO this needs to be done async
         try:
-            art_path = get_album_art(song['path'],"./cover.jpg")
+            default_path = os.path.join(Settings.instance().platform_path,"cover.jpg")
+            art_path = get_album_art(song['path'],default_path)
             self.img_albumart.source = art_path
             Logger.info("nowplaying: found art")
 
