@@ -8,6 +8,7 @@ from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, Li
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
 from yue.sound import SoundManager
+from yue.library import Library
 
 class CurrentPlayListViewWidget(PlayListViewWidget):
     """docstring for PlayListViewWidget"""
@@ -50,8 +51,13 @@ class CurrentPlaylistScreen(Screen):
         self.btn_nowplaying.size_hint = (1.0,None)
         self.btn_nowplaying.height = row_height
         self.btn_nowplaying.bind(on_press=Settings.instance().go_now_playing)
+        self.btn_shuffle = Button(text="Shuffle")
+        self.btn_shuffle.size_hint = (1.0,None)
+        self.btn_shuffle.height = row_height
+        self.btn_shuffle.bind(on_press=self.shuffle_playlist)
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
+        self.hbox.add_widget(self.btn_shuffle)
 
         self.view = CurrentPlayListViewWidget(font_size = Settings.instance().font_size)
 
@@ -61,3 +67,10 @@ class CurrentPlaylistScreen(Screen):
 
     def setPlayList(self,data):
         self.view.setData(data)
+
+    def shuffle_playlist(self,*args):
+
+        SoundManager.instance().playlist_shuffle()
+        lst = SoundManager.instance().current_playlist
+        viewlst = Library.instance().PlayListToViewList( lst )
+        self.setPlayList( viewlst )

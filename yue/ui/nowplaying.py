@@ -60,9 +60,9 @@ class NowPlayingScreen(Screen):
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
         self.vbox.add_widget( self.img_albumart )
+        self.vbox.add_widget( self.timebar )
         self.vbox.add_widget( self.hbox_btns )
 
-        self.vbox.add_widget( self.timebar )
 
         self.timebar.bind(on_seek=self.change_position)
         SoundManager.instance().bind(on_load=self.update)

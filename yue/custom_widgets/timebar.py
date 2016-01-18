@@ -18,13 +18,12 @@ def fmttime(s):
 class TimeBar(Widget):
     value = NumericProperty(0)
     duration = NumericProperty(100)
-    expanded = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(TimeBar, self).__init__(**kwargs)
 
-        self.lbl_value = Label(text='0:00')
-        self.lbl_duration = Label(text='0:00')
+        self.lbl_value = Label(text='00:00')
+        self.lbl_duration = Label(text='00:00')
 
         self.add_widget(self.lbl_value,canvas=self.canvas)
         self.add_widget(self.lbl_duration,canvas=self.canvas)
@@ -33,10 +32,6 @@ class TimeBar(Widget):
         y = self.height//2 #- h//2
         with self.canvas.before:
 
-            #Color(.75,.5,.5,.5)
-            #Rectangle(pos=(self.x,self.y),size=(self.width//2,y))
-            #Color(.5,.5,.75,.5)
-            #Rectangle(pos=(self.x+self.width//2,self.y),size=(self.width//2,y))
             Color(.5,.5,.5,.5)
             self.rect_main = Rectangle(pos=(self.x,self.y+y),size=(self.width,h))
             Color(1,0,0,1)
@@ -60,7 +55,6 @@ class TimeBar(Widget):
         self.lbl_value.y=self.y
         self.lbl_value.width= self.width/2
         self.lbl_value.height=y
-        #self.lbl_value.text_size = self.lbl_value.size
 
         self.lbl_duration.x=self.x + self.lbl_value.width
         self.lbl_duration.y=self.y

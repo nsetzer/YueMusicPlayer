@@ -34,6 +34,7 @@ from yue.settings import Settings
 from yue.library import Library
 
 from enum import Enum
+import random
 
 class MediaState(Enum):
     not_ready = 0
@@ -48,7 +49,6 @@ class PlayList(object):
         self.list
     def __getitem__(self,index):
         return self.list[index]
-
 
 class SoundManager(EventDispatcher):
     """ interface class for playing audio, managing current playlist """
@@ -127,7 +127,6 @@ class SoundManager(EventDispatcher):
             return True # TODO this isnt quite right
         return False
 
-
     def next(self):
         """ play the next song in the playlist
 
@@ -182,6 +181,13 @@ class SoundManager(EventDispatcher):
             item = self.current_playlist[i]
             del self.current_playlist[i]
             self.current_playlist.insert(j,item)
+
+    def playlist_shuffle(self):
+
+        b= self.current_playlist[:self.playlist_index+1]
+        a= self.current_playlist[self.playlist_index+1:]
+        random.shuffle(a)
+        self.current_playlist = b + a
 
     def on_song_tick(self, value):
         """ during playback, used to update the ui """
