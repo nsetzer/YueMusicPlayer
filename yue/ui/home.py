@@ -51,6 +51,7 @@ class HomeScreen(Screen):
         self.btn_current.bind(on_press=Settings.instance().go_current_playlist)
         self.btn_nowplaying.bind(on_press=Settings.instance().go_now_playing)
         self.btn_presets.bind(on_press=Settings.instance().go_presets)
+        self.btn_settings.bind(on_press=Settings.instance().go_settings)
 
     def setLibraryTree(self,data):
         self.view.setData(data)

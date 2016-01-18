@@ -21,6 +21,7 @@ class Settings(object):
         self.screen_presets = 'Presets'
         self.screen_modify_preset = 'Modify Presets'
         self.screen_ingest = 'Ingest'
+        self.screen_settings = 'Settings'
 
         self.platform = sys.platform
         self.platform_path = os.getcwd()
@@ -60,6 +61,9 @@ class Settings(object):
 
     def go_ingest(self, *args):
         self.manager.current = self.screen_ingest
+
+    def go_settings(self, *args):
+        self.manager.current = self.screen_settings
 
     @staticmethod
     def init():
