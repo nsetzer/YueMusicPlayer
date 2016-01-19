@@ -11,8 +11,8 @@ import random
 
 def fmttime(s):
     m,s = divmod(int(s),60)
-    #h,m = divmod(m,60)
-    return "%02d:%02d"%(m,s)
+    h,m = divmod(m,60)
+    return "%02d:%02d:%02d"%(h,m,s)
 
 
 class TimeBar(Widget):
@@ -22,8 +22,8 @@ class TimeBar(Widget):
     def __init__(self, **kwargs):
         super(TimeBar, self).__init__(**kwargs)
 
-        self.lbl_value = Label(text='00:00')
-        self.lbl_duration = Label(text='00:00')
+        self.lbl_value = Label(text='00:00:00',halign='left',valign='top')
+        self.lbl_duration = Label(text='00:00:00',halign='right',valign='top')
 
         self.add_widget(self.lbl_value,canvas=self.canvas)
         self.add_widget(self.lbl_duration,canvas=self.canvas)
@@ -46,27 +46,33 @@ class TimeBar(Widget):
 
         self.register_event_type('on_seek')
 
+        self.margin = .05
+
     def update_canvas(self,*args):
 
         h = self.height/5
         y = self.height//2 #- h//2
+        x = int(self.width*self.margin)
+        w = self.width - 2*x
 
-        self.lbl_value.x=self.x
+        self.lbl_value.x=self.x + x
         self.lbl_value.y=self.y
-        self.lbl_value.width= self.width/2
+        self.lbl_value.width= self.width/2 - x
         self.lbl_value.height=y
+        self.lbl_value.text_size = self.lbl_value.size
 
-        self.lbl_duration.x=self.x + self.lbl_value.width
+        self.lbl_duration.x=self.lbl_value.x + self.lbl_value.width
         self.lbl_duration.y=self.y
-        self.lbl_duration.width=self.width/2
+        self.lbl_duration.width=self.lbl_value.width
         self.lbl_duration.height=y
+        self.lbl_duration.text_size = self.lbl_duration.size
 
-        w = int(self.width * self.value / self.duration)
+        self.rect_main.size = w,h
+        self.rect_main.pos = self.x+x,self.y+y
+
+        w = int(w * self.value / self.duration)
         self.rect_value.size = w,h
-        self.rect_value.pos = self.x,self.y+y
-
-        self.rect_main.size = self.width,h
-        self.rect_main.pos = self.x,self.y+y
+        self.rect_value.pos = self.x+x,self.y+y
 
     def update_value(self,*args):
         self.lbl_value.text = fmttime(self.value)
@@ -80,9 +86,8 @@ class TimeBar(Widget):
 
             x,y = self.to_widget(*touch.pos)
             w = self.width
-            #m = 0.00 # left margin
-            #v =  (x - w*m) / (w*(1.0-m))
-            v = x/self.width
+            m = self.margin
+            v =  (x - w*m) / (w*(1.0-2*m))
             v = min(1.0,max(0.0,v))
             self.dispatch('on_seek',v*self.duration)
 
