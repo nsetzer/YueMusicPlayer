@@ -8,20 +8,29 @@ from mutagen import mp3
 
 from kivy.logger import Logger
 
-class ArtNotFound(IOError):
-    pass
-
-
 def read_tags(path):
 
     ext = os.path.splitext(path)[1].lower()
 
+    song = None
     if ext == ".mp3":
-        return read_mp3_tags( path )
+        song = read_mp3_tags( path )
     elif ext == '.flac':
-        return read_flac_tags( path )
+        song = read_flac_tags( path )
+    else:
+        raise ValueError(ext)
 
-    raise ValueError(ext)
+    if song is None:
+        raise ValueError("todo")
+
+    song['playcount']=0
+    song['last_played']=0
+    song['rating']=0
+    song['lang']=""
+    song['country']=""
+    song['path']=path
+
+    return song
 
 def read_mp3_tags(path):
     pass
@@ -29,11 +38,54 @@ def read_mp3_tags(path):
     # album, artist, title, genre
     # tracknumber -> as int, parse 'x/y' and 'x' formats
 
+    audio = EasyID3( path )
+
+    song = {
+        'artist' : get_str(audio,'artist'),
+        'album'  : get_str(audio,'album'),
+        'title'  : get_str(audio,'title'),
+        'genre'  : get_str(audio,'genre'),
+        'year'   : get_int(audio,'date','-'),
+        'album_index'  : get_int(audio,'tracknumber','/'),
+    }
+
+    return song
+
 def read_flac_tags(path):
 
     # album, artist, title, genre
     # tracknumber: '0x'
     # alternative: albumartist
+    audio = FLAC( path )
+
+    song = {
+        'artist' : get_str(audio,'artist'),
+        'album'  : get_str(audio,'album'),
+        'title'  : get_str(audio,'title'),
+        'genre'  : get_str(audio,'genre'),
+        'year '  : get_int(audio,'year','-'),
+        'album_index'  : get_int(audio,'tracknumber','/'),
+    }
+
+    return song
+
+def get_str(audio,tag):
+    if tag in audio:
+        return audio[tag][0]
+    return 'unknown ' + tag
+
+def get_int(audio,tag,split_on=None):
+    try:
+        if tag in audio:
+            field = audio[tag][0]
+            if split_on:
+                field = field.split(split_on)[0]
+            return int(field)
+    except Exception as e:
+        Logger.error("mutagen: error reading %s: %s"%(tag,e))
+    return 0
+
+class ArtNotFound(IOError):
     pass
 
 def get_album_art( song_path, temp_path):
@@ -77,7 +129,6 @@ def get_album_art( song_path, temp_path):
 
     raise ArtNotFound(ext) # todo: file not found error
 
-
 def get_album_art_mp3( path ):
     audio = ID3(path)
     if 'APIC' in audio:
@@ -98,16 +149,9 @@ if __name__ == '__main__':
 
     m = r"D:\Music\Discography\Discography - Beast\[2009] Beast\04-beast-interlude_1-crn.mp3"
     f = r"D:\Music\Discography\Discography - Beast\[2009] Beast\FLAC\04 Interlude 1.flac"
-    #audio = EasyID3(m)
-    #print( dir(audio) )
-    #audio = FLAC(f)
-    #print(audio.keys())
-    #print("APIC:" in audio)
-    #print("covr" in audio)
-    ##audio = EasyID3(p)
-    #for key in audio.keys():
-    #    print("%s:%s"%(key,audio[key]))
-    #print( dir(audio) )
-    #print(audio.pictures)
 
-    get_album_art(f,"./cover.jpg")
+    s = read_tags(m)
+    print(s)
+
+    s = read_tags(f)
+    print(s)
