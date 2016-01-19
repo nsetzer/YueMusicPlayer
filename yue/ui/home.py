@@ -40,18 +40,21 @@ class HomeScreen(Screen):
         self.btn_library    = Button(text="Library")
         self.btn_presets    = Button(text="Dynamic Playlists")
         self.btn_settings   = Button(text="Settings")
+        self.btn_ingest   = Button(text="Ingest")
 
         self.vbox.add_widget(self.btn_nowplaying)
         self.vbox.add_widget(self.btn_current)
         self.vbox.add_widget(self.btn_library)
         self.vbox.add_widget(self.btn_presets)
         self.vbox.add_widget(self.btn_settings)
+        self.vbox.add_widget(self.btn_ingest)
 
         self.btn_library.bind(on_press=Settings.instance().go_library)
         self.btn_current.bind(on_press=Settings.instance().go_current_playlist)
         self.btn_nowplaying.bind(on_press=Settings.instance().go_now_playing)
         self.btn_presets.bind(on_press=Settings.instance().go_presets)
         self.btn_settings.bind(on_press=Settings.instance().go_settings)
+        self.btn_ingest.bind(on_press=Settings.instance().go_ingest)
 
     def setLibraryTree(self,data):
         self.view.setData(data)

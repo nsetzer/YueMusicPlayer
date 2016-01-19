@@ -23,6 +23,8 @@ class Settings(object):
         self.screen_ingest = 'Ingest'
         self.screen_settings = 'Settings'
 
+        self.supported_types = ['.mp3', '.flac']
+
         self.platform = sys.platform
         self.platform_path = os.getcwd()
         if os.environ.get("NDKPLATFORM") is not None:
@@ -64,6 +66,13 @@ class Settings(object):
 
     def go_settings(self, *args):
         self.manager.current = self.screen_settings
+
+    def newSongUid(self):
+        uid = 1
+        if self.db_settings.exists("next_uid"):
+            uid = self.db_settings.get("next_uid")['value']
+        self.db_settings.put("next_uid",value=uid+1)
+        return uid
 
     @staticmethod
     def init():

@@ -31,8 +31,6 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
     def on_double_tap(self,index):
         SoundManager.instance().play_index( index )
 
-
-
 class CurrentPlaylistScreen(Screen):
     def __init__(self,**kwargs):
         super(CurrentPlaylistScreen,self).__init__(**kwargs)
@@ -55,6 +53,7 @@ class CurrentPlaylistScreen(Screen):
         self.btn_shuffle.size_hint = (1.0,None)
         self.btn_shuffle.height = row_height
         self.btn_shuffle.bind(on_press=self.shuffle_playlist)
+
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
         self.hbox.add_widget(self.btn_shuffle)

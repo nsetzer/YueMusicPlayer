@@ -1,5 +1,13 @@
 #! cd .. && python2.7 main.py --size=480x640
 import os
+"""
+
+todo:
+    https://kivy.org/docs/api-kivy.app.html
+    see built in support for settings,
+
+    Pause Mode
+"""
 
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
@@ -18,7 +26,8 @@ from yue.settings import Settings
 from yue.sound import SoundManager
 
 class YueApp(App):
-
+    title = "Yue Music Player"
+    icon = "./img/icon.png"
     def build(self):
 
         # init controller objects
@@ -35,8 +44,8 @@ class YueApp(App):
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
         lb_scr = LibraryScreen(name=Settings.instance().screen_library)
         pr_scr = PresetScreen(name=Settings.instance().screen_presets)
-        in_scr = PresetScreen(name=Settings.instance().screen_ingest)
-        se_scr = PresetScreen(name=Settings.instance().screen_settings)
+        in_scr = IngestScreen(name=Settings.instance().screen_ingest)
+        se_scr = SettingsScreen(name=Settings.instance().screen_settings)
 
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)
@@ -62,6 +71,12 @@ class YueApp(App):
         lb_scr.setLibraryTree( tree )
 
         return sm
+
+    def on_pause():
+        return True # prevent on_stop when in background
+
+    def on_resume():
+        pass # not guaranteed after an on_pause
 
     def on_start(self):
         Logger.info('Yue Start')

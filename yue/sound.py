@@ -24,6 +24,9 @@ TODO:
         playlists have a 'current index', which must me updated
         whenever an operation adds or removes elements before the index
 
+    kivy sound class does not reliably detect audio duration
+        - use mutagen
+
 """
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock

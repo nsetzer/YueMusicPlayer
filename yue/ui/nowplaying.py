@@ -40,6 +40,13 @@ class NowPlayingScreen(Screen):
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
 
+        self.lbl_title = Label()
+        self.lbl_title.size_hint=(1.0,None)
+        self.lbl_title.height=row_height
+        self.lbl_artist = Label()
+        self.lbl_artist.size_hint=(1.0,None)
+        self.lbl_artist.height=row_height
+
         self.img_albumart = Image();
 
         self.btn_playpause = Button(text="play/pause")
@@ -59,9 +66,11 @@ class NowPlayingScreen(Screen):
 
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
+        self.vbox.add_widget( self.lbl_title )
+        self.vbox.add_widget( self.lbl_artist )
         self.vbox.add_widget( self.img_albumart )
-        self.vbox.add_widget( self.timebar )
         self.vbox.add_widget( self.hbox_btns )
+        self.vbox.add_widget( self.timebar )
 
 
         self.timebar.bind(on_seek=self.change_position)
@@ -76,6 +85,8 @@ class NowPlayingScreen(Screen):
         self.timebar.value = 0
         self.timebar.duration = SoundManager.instance().duration()
         self.update_albumart(song)
+        self.lbl_title.text = song['title']
+        self.lbl_artist.text = song['artist']
 
     def update_albumart(self,song):
          # TODO this needs to be done async

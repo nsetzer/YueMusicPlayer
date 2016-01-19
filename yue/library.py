@@ -5,6 +5,7 @@ from kivy.logger import Logger
 from kivy.storage.dictstore import DictStore
 
 from yue.settings import Settings
+from yue.song import read_tags
 
 from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeElem
@@ -87,10 +88,32 @@ class Library(object):
                 "path"   : get_default(section,"path"  ,""),
 
             }
-            self.db.put(int(section), **song)
+            uid = Settings.instance().newSongUid()
+            self.db.put(uid, **song)
+
+    def loadPath(self,songpath):
+        """ does not check for duplicates """
+        song = read_tags( songpath )
+        key = Settings.instance().newSongUid()
+        self.db.put( key, **song)
+        return key
 
     def songFromId(self,uid):
         return self.db.get(uid)
+
+    def toPathMap(self):
+        """
+        the current kivy datastore impl for find() is to scan the entire store
+        for a key value pair that matches a given filter.
+
+        this pre-computes a dictionary of path -> uid, to quickly test if
+        a given path exists in the db.
+        """
+        m = {}
+        for key in self.db.keys():
+            song = self.songFromId(key)
+            m[song['path']] = key
+        return m
 
     def toTree(self):
 
