@@ -27,6 +27,9 @@ TODO:
     kivy sound class does not reliably detect audio duration
         - use mutagen
 
+    vlc fails to play next song when current song finishes
+        the song is loaded, but the player crashes.
+
 """
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
@@ -75,10 +78,10 @@ class SoundManager(EventDispatcher):
 
     @staticmethod
     def init():
-        if vlc_support:
-            SoundManager.__instance = VlcSoundManager()
-        else:
-            SoundManager.__instance = KivySoundManager()
+        #if vlc_support:
+        #    SoundManager.__instance = VlcSoundManager()
+        #else:
+        SoundManager.__instance = KivySoundManager()
 
     @staticmethod
     def instance():
@@ -160,6 +163,8 @@ class SoundManager(EventDispatcher):
                 self.load( song )
                 self.play()
                 return True # TODO this isnt quite right
+            else:
+                print("no next song to play")
         return False
 
     def prev(self):
@@ -350,7 +355,7 @@ class VlcSoundManager(SoundManager):
     def __init__(self):
         super(VlcSoundManager, self).__init__()
         self.volume = 0.5
-        self.duration = 100 # updated on load
+        self.media_duration = 100 # updated on load
 
         self.clock_scheduled = False
         self.clock_interval = 0.5 # in seconds
@@ -379,15 +384,28 @@ class VlcSoundManager(SoundManager):
         else:
             try:
                 self.__player__ = self.__instance__.media_player_new()
+
             except Exception as e:
                 print "VLC Player Error: %s"%(e.args)
 
             self.setVolume( self.volume )
 
+
+
         self.__media__ = None
+
+    def destroy(self):
+
+        self.unload()
+        self.__player__.release()
+        self.__player__ = None
+        self.__instance__.release()
+        self.__instance__ = None
+        print("vlc destroyed")
 
     def unload(self):
         if self.__media__ is not None:
+            self.__media__.release()
             self.__media__ = None
             self.setClock(False)
 
@@ -399,11 +417,15 @@ class VlcSoundManager(SoundManager):
         # in the path. decoding as utf-8 seems to always work correctly
         # at least on windows. further research is required.
         path = song['path']
-        self.duration = song.get('duration',100)
+        self.media_duration = song.get('length',60)
         if self.__media__ is None:
             self.__media__ = self.__instance__.media_new(path)
             self.__player__.set_media(self.__media__)
-            print("got here",self.__player__,self.__media__)
+            eventmgr = self.__player__.event_manager()
+            eventmgr.event_attach(vlc.EventType.MediaPlayerEndReached,self.on_stop)
+            self.dispatch('on_load',song)
+        else:
+            print("error loading")
 
     def play(self):
         if self.__media__ is not None:
@@ -436,7 +458,9 @@ class VlcSoundManager(SoundManager):
             return 0
 
     def duration(self):
-        return self.duration
+        #t = self.__media__.get_duration()/1000.0
+        #print("duration: %d"%t)
+        return self.media_duration
 
     def setVolume(self,volume):
 
@@ -451,7 +475,7 @@ class VlcSoundManager(SoundManager):
             return MediaState.not_ready;
 
         s = self.__player__.get_state();
-        print(s)
+
         if s == vlc.State.NothingSpecial:
             return MediaState.not_ready
         elif s == vlc.State.Opening:
@@ -478,6 +502,11 @@ class VlcSoundManager(SoundManager):
         elif self.clock_scheduled == True and state == False:
             self.clock_scheduled = False
             Clock.unschedule( self.on_song_tick_callback )
+
+    def on_stop(self,vlcEvent):
+        print("on stop", vlcEvent)
+        self.dispatch('on_song_end')
+
 
 
 

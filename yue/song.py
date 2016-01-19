@@ -4,7 +4,7 @@ import os
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3
 from mutagen.flac import FLAC
-from mutagen import mp3
+from mutagen.mp3 import MP3
 
 from kivy.logger import Logger
 
@@ -39,7 +39,7 @@ def read_mp3_tags(path):
     # tracknumber -> as int, parse 'x/y' and 'x' formats
 
     audio = EasyID3( path )
-
+    audio2 = MP3( path )
     song = {
         'artist' : get_str(audio,'artist'),
         'album'  : get_str(audio,'album'),
@@ -47,6 +47,7 @@ def read_mp3_tags(path):
         'genre'  : get_str(audio,'genre'),
         'year'   : get_int(audio,'date','-'),
         'album_index'  : get_int(audio,'tracknumber','/'),
+        'length' : int(audio2.info.length)
     }
 
     return song
@@ -65,6 +66,7 @@ def read_flac_tags(path):
         'genre'  : get_str(audio,'genre'),
         'year '  : get_int(audio,'year','-'),
         'album_index'  : get_int(audio,'tracknumber','/'),
+        'length' : int(audio.info.length)
     }
 
     return song
