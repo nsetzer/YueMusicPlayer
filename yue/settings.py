@@ -7,13 +7,13 @@ from kivy.storage.dictstore import DictStore
 class Settings(object):
     """docstring for Library"""
     __instance = None
-    def __init__(self):
+    def __init__(self, manager):
         super(Settings, self).__init__()
 
         self.font_size = 16
         self.font_factor = 1.5
 
-        self.manager = None
+        self.manager = manager
         self.screen_home = 'Home'
         self.screen_library = 'Library'
         self.screen_now_playing = 'Now Playing'
@@ -27,12 +27,15 @@ class Settings(object):
 
         self.init_platform()
 
+        self.default_ingest_path = r'D:\Music\Flac'
+        if self.platform == 'android':
+            self.default_ingest_path = r'/sdcard'
 
+        self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
 
-        self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings = DictStore( self.db_settings_path )
 
@@ -91,8 +94,8 @@ class Settings(object):
         return uid
 
     @staticmethod
-    def init():
-        Settings.__instance = Settings()
+    def init( manager ):
+        Settings.__instance = Settings( manager )
 
     @staticmethod
     def instance():

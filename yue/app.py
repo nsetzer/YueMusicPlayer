@@ -30,14 +30,13 @@ class YueApp(App):
     icon = "./img/icon.png"
     def build(self):
 
-        # init controller objects
-        Settings.init()
-        Library.init()
-        SoundManager.init( Settings.instance().platform_libpath )
-
         # create the screen manager and application screens
         sm = ScreenManager(transition=FadeTransition())
-        Settings.instance().manager = sm
+
+        # init controller objects
+        Settings.init( sm )
+        Library.init()
+        SoundManager.init( Settings.instance().platform_libpath )
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)

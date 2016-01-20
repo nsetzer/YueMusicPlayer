@@ -66,7 +66,7 @@ class IngestScreen(Screen):
 
         self.vbox.remove_widget( self.btn_start )
         #self.vbox.remove_widget( self.btn_home )
-        self.thread = Ingest(self,r'D:\Music\Flac')
+        self.thread = Ingest(self, Settings.instance().default_ingest_path )
         self.thread.start()
 
     @mainthread
