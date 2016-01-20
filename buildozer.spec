@@ -67,6 +67,7 @@ fullscreen = 1
 
 # (list) Permissions
 #android.permissions = INTERNET
+android.permissions = MODIFY_AUDIO_SETTINGS, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE
 
 # (int) Android API to use
 #android.api = 19

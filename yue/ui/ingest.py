@@ -87,14 +87,21 @@ class Ingest(Thread):
         self.parent = parent # instance of IngestScreen
         self.dirs = dirs
 
+        Logger.info(u"ingest: directory list %s"%(self.dirs))
+
     def run(self):
 
+        Logger.info("ingest: thread start")
         self.init_lut()
+
+        Logger.info(u"ingest: directory list%s"%(self.dirs))
 
         for d in self.dirs:
             self.walk_directory(d)
 
         self.parent.ingest_finished()
+
+        Logger.info("ingest: thread exit")
 
     def init_lut(self):
 
@@ -106,6 +113,8 @@ class Ingest(Thread):
         self.tstart = time.clock()
         count = 0
         for dirpath,_,filenames in os.walk( unicode(dir) ):
+
+            Logger.info(u"ingest: %s"%(dirpath))
 
             count += self.load_directory(dirpath,filenames)
 

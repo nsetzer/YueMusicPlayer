@@ -93,6 +93,7 @@ class Library(object):
 
     def loadPath(self,songpath):
         """ does not check for duplicates """
+        Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
         key = Settings.instance().newSongUid()
         self.db.put( key, **song)

@@ -24,17 +24,32 @@ class BassSoundDevice(SoundDevice):
         BassPlayer.init()
 
         #TODO: support other plugins
-        try:
-            for name in os.listdir(libpath):
-                if 'flac' in name:
-                    BassPlayer.loadPlugin( os.path.join(libpath,name) )
-        except OSError as e:
-            Logger.error(" Error Loading Plugin Directory : %s"%libpath)
-            Logger.error(" Error Loading Plugin Directory : %s"%e)
+        self.load_plugin(libpath, "bassflac")
 
         self.device = BassPlayer()
 
         self.device.setStreamEndCallback( self.on_end )
+
+    def load_plugin(self,libpath,name):
+
+        try:
+
+            plugin_path = os.path.join(libpath,"lib%s.so")
+            if os.path.exists( plugin_path ):
+                return BassPlayer.loadPlugin( plugin_path )
+
+            plugin_path = os.path.join(libpath,"%s.dll")
+            if os.path.exists( plugin_path ):
+                return BassPlayer.loadPlugin( plugin_path )
+
+            Logger.error("Plugin not found '%s' in %s."%(name,libpath))
+
+        except OSError as e:
+            Logger.error("Error Loading Plugin Directory : %s"%libpath)
+            Logger.error("Error Loading Plugin Directory : %s"%e)
+        except Exception as e:
+            Logger.error("Error Loading Plugin: %s"%name)
+            Logger.error("Error Loading Plugin: %s"%e)
 
     def unload(self):
 

@@ -59,8 +59,8 @@ class SoundManager(object):
         #    SoundManager.__instance = VlcSoundManager()
         #else:
         #    SoundManager.__instance = KivySoundManager()
-        #SoundManager.__instance = KivySoundDevice( libpath )
-        SoundManager.__instance = BassSoundDevice( libpath )
+        SoundManager.__instance = KivySoundDevice( libpath )
+        #SoundManager.__instance = BassSoundDevice( libpath )
 
     @staticmethod
     def instance():

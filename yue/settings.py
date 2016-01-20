@@ -1,6 +1,7 @@
 
 import os, sys, platform
 import kivy.metrics
+from kivy.logger import Logger
 
 from kivy.storage.dictstore import DictStore
 
@@ -30,14 +31,17 @@ class Settings(object):
         self.default_ingest_path = r'D:\Music\Flac'
         if self.platform == 'android':
             self.default_ingest_path = r'/sdcard'
-        if self.platform == 'linux2':
+        elif self.platform == 'linux2':
             self.default_ingest_path = r"/mnt/data/music/6ft.Down"
+
+        Logger.info("settings: ingest path : %s"%self.default_ingest_path)
+        self.default_ingest_path = r'/sdcard'
+        Logger.info("settings: ingest path : %s"%self.default_ingest_path)
 
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
-
 
         self.db_settings = DictStore( self.db_settings_path )
 
@@ -53,15 +57,18 @@ class Settings(object):
                                              self.platform,
                                              self.arch)
 
-        # TODO: bass is trying to read:
-        #   /data/data/com.github.nsetzer.yue/files/lib/linux4/x86
-        # despite not returning linux4 anywhere ?
-        if os.environ.get("NDKPLATFORM") is not None:
+        # there seems no better way to check if we are running on android
+        #if os.environ.get("NDKPLATFORM") is not None:
+        app_path = '/data/data/com.github.nsetzer.yue/'
+        if os.path.exists(app_path):
             self.platform = "android"
             self.platform_path = '/data/data/com.github.nsetzer.yue/'
             self.arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
             self.platform_libpath = os.path.join(self.platform_path,'lib')
 
+        Logger.info("settings: platform name: %s"%self.platform)
+        Logger.info("settings: platform path: %s"%self.platform_path)
+        Logger.info("settings: platform lib : %s"%self.platform_libpath)
 
 
     def font_height(self, font_size ):
