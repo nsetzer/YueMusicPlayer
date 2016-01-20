@@ -32,6 +32,8 @@ class Settings(object):
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
 
+        self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
+
         self.db_settings = DictStore( self.db_settings_path )
 
     def init_platform(self):

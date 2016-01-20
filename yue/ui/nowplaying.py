@@ -98,8 +98,7 @@ class NowPlayingScreen(Screen):
 
         except ArtNotFound as e:
             Logger.warning("nowplaying: no art found for %s"%song['path'])
-            self.img_albumart.source = ""
-
+            self.img_albumart.source = Settings.instance().img_noart_path
         except Exception as e:
             self.img_albumart.source = ""
             Logger.error("nowplaying: unable to load art for %s"%song['path'])

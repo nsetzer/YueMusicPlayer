@@ -490,9 +490,9 @@ class ViewWidget(Widget):
             # arbitrary time in milliseconds
             elif self._touch_dy < self.row_height//3 and t < .2:
                 if touch.is_double_tap:
-                    self.dispatch('on_double_tap',idx)
+                    self.dispatch('on_double_tap',idx+self.offset_idx)
                 else:
-                    self.dispatch('on_tap',idx)
+                    self.dispatch('on_tap',idx+self.offset_idx)
 
             if self._touch_token is not None:
                 self.remove_widget(self._touch_token)
