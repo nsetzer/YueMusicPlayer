@@ -12,7 +12,7 @@ from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.settings import Settings
 from yue.library import Library
-from yue.sound import SoundManager
+from yue.sound.manager import SoundManager
 
 class LibraryScreen(Screen):
 

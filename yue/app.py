@@ -23,7 +23,7 @@ from yue.ui.settings import SettingsScreen
 
 from yue.library import Library
 from yue.settings import Settings
-from yue.sound import SoundManager
+from yue.sound.manager import SoundManager
 
 class YueApp(App):
     title = "Yue Music Player"

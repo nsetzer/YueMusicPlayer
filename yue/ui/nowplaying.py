@@ -11,7 +11,7 @@ from kivy.logger import Logger
 
 from yue.custom_widgets.timebar import TimeBar
 from yue.settings import Settings
-from yue.sound import SoundManager
+from yue.sound.manager import SoundManager
 from yue.song import ArtNotFound, get_album_art
 
 class NowPlayingScreen(Screen):

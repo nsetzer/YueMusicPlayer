@@ -33,7 +33,6 @@ from kivy.clock import mainthread
 from kivy.logger import Logger
 
 from yue.settings import Settings
-from yue.sound import SoundManager
 from yue.library import Library
 
 from threading import Thread

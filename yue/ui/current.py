@@ -7,7 +7,7 @@ from kivy.uix.label import Label
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
-from yue.sound import SoundManager
+from yue.sound.manager import SoundManager
 from yue.library import Library
 
 class CurrentPlayListViewWidget(PlayListViewWidget):
