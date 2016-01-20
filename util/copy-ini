@@ -1,9 +1,0 @@
-#!/usr/bin/python
-
-# usage:
-#   copy-ini path/to/ini
-#
-# use adb to copy items in an ini file onto a device.
-# a copy of the ini is made and placed on the device
-# under /data/data/com.github.nsetzer.yue
-

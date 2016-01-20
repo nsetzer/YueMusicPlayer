@@ -50,13 +50,13 @@ class BassPlayer(object):
     isINIT = False
 
     @staticmethod
-    def init(sampleRate=44100):
+    def init(sampleRate=44100,platform=None):
 
         if BassPlayer.isINIT:
             return
 
         # float dsp is needed for my custom dsp blocks
-        pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
+        #pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
         # enable automatic switching to the default device
         # used when someone plugs in / unplugs headphones, etc.
         pybass.BASS_SetConfig(pybass.BASS_CONFIG_DEV_DEFAULT,True);
@@ -64,8 +64,8 @@ class BassPlayer(object):
 
         if not pybass.BASS_Init(-1, sampleRate, 0, 0, 0):
             print('BASS_Init error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
-        if not BassPlayer.supportsFloat() :
-            raise FloatingPointError("BASS does not support Floating Point DSP.")
+        #if not BassPlayer.supportsFloat() :
+        #    raise FloatingPointError("BASS does not support Floating Point DSP.")
         BassPlayer.isINIT = True
 
         BassPlayer.fft_n = {

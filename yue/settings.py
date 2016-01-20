@@ -30,6 +30,8 @@ class Settings(object):
         self.default_ingest_path = r'D:\Music\Flac'
         if self.platform == 'android':
             self.default_ingest_path = r'/sdcard'
+        if self.platform == 'linux2':
+            self.default_ingest_path = r"/mnt/data/music/6ft.Down"
 
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
@@ -43,17 +45,24 @@ class Settings(object):
         self.platform = sys.platform
         self.platform_path = os.getcwd()
         self.arch = 'x86_64'
+
+        if platform.architecture()[0] != '64bit':
+                self.arch = 'x86'
+
+        self.platform_libpath = os.path.join(self.platform_path,'lib',
+                                             self.platform,
+                                             self.arch)
+
+        # TODO: bass is trying to read:
+        #   /data/data/com.github.nsetzer.yue/files/lib/linux4/x86
+        # despite not returning linux4 anywhere ?
         if os.environ.get("NDKPLATFORM") is not None:
             self.platform = "android"
             self.platform_path = '/data/data/com.github.nsetzer.yue/'
             self.arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
-        else:
-            # TODO: 32bit untested
-            if platform.architecture()[0] != '64bit':
-                self.arch = 'x86'
-        self.platform_libpath = os.path.join(self.platform_path,'lib',
-                                             self.platform,
-                                             self.arch)
+            self.platform_libpath = os.path.join(self.platform_path,'lib')
+
+
 
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """

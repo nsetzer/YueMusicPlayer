@@ -127,10 +127,10 @@ android.sdk = 20
 #android.manifest.intent_filters =
 
 # (list) Android additionnal libraries to copy into libs/armeabi
-#android.add_libs_armeabi = libs/android/*.so
-#android.add_libs_armeabi_v7a = libs/android-v7/*.so
-#android.add_libs_x86 = libs/android-x86/*.so
-#android.add_libs_mips = libs/android-mips/*.so
+android.add_libs_armeabi = lib/android/armeabi/*.so
+#android.add_libs_armeabi_v7a = %(source.dir)s/lib/android/armeabi-v7a/*.so
+#android.add_libs_x86 = %(source.dir)s/lib/android/x86/*.so
+#android.add_libs_mips = %(source.dir)s/lib/android-mips/*.so
 
 # (bool) Indicate whether the screen should stay on
 # Don't forget to add the WAKE_LOCK permission if you set this to True
