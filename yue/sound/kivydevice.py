@@ -9,7 +9,7 @@ from .device import SoundDevice, MediaState
 class KivySoundDevice(SoundDevice):
     """Playback implementation of SoundManager using Kivy"""
     __instance = None
-    def __init__(self):
+    def __init__(self, libpath):
         super(KivySoundDevice, self).__init__()
         self.sound = None
         self.volume = 0.5

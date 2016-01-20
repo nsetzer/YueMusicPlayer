@@ -39,6 +39,7 @@ from yue.library import Library
 import random
 
 from .kivydevice import KivySoundDevice
+from .bassdevice import BassSoundDevice
 
 class PlayList(object):
     """docstring for PlayList"""
@@ -53,12 +54,13 @@ class PlayList(object):
 class SoundManager(object):
 
     @staticmethod
-    def init():
+    def init( libpath ):
         #if vlc_support:
         #    SoundManager.__instance = VlcSoundManager()
         #else:
         #    SoundManager.__instance = KivySoundManager()
-        SoundManager.__instance = KivySoundDevice()
+        #SoundManager.__instance = KivySoundDevice( libpath )
+        SoundManager.__instance = BassSoundDevice( libpath )
 
     @staticmethod
     def instance():

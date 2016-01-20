@@ -1,5 +1,5 @@
 
-import os,sys
+import os, sys, platform
 import kivy.metrics
 
 from kivy.storage.dictstore import DictStore
@@ -25,16 +25,30 @@ class Settings(object):
 
         self.supported_types = ['.mp3', '.flac']
 
-        self.platform = sys.platform
-        self.platform_path = os.getcwd()
-        if os.environ.get("NDKPLATFORM") is not None:
-            self.platform = "android"
-            self.platform_path = '/data/data/com.github.nsetzer.yue/'
+        self.init_platform()
+
+
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
 
         self.db_settings = DictStore( self.db_settings_path )
+
+    def init_platform(self):
+        self.platform = sys.platform
+        self.platform_path = os.getcwd()
+        self.arch = 'x86_64'
+        if os.environ.get("NDKPLATFORM") is not None:
+            self.platform = "android"
+            self.platform_path = '/data/data/com.github.nsetzer.yue/'
+            self.arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
+        else:
+            # TODO: 32bit untested
+            if platform.architecture()[0] != '64bit':
+                self.arch = 'x86'
+        self.platform_libpath = os.path.join(self.platform_path,'lib',
+                                             self.platform,
+                                             self.arch)
 
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """

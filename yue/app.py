@@ -33,7 +33,7 @@ class YueApp(App):
         # init controller objects
         Settings.init()
         Library.init()
-        SoundManager.init()
+        SoundManager.init( Settings.instance().platform_libpath )
 
         # create the screen manager and application screens
         sm = ScreenManager(transition=FadeTransition())

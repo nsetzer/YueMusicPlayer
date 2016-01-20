@@ -6,12 +6,12 @@ from kivy.logger import Logger
 
 from .device import SoundDevice, MediaState
 
-import .vlc
+from . import vlc
 
 class VlcSoundDevice(SoundDevice):
     """Playback implementation of SoundManager using Kivy"""
     __instance = None
-    def __init__(self):
+    def __init__(self, libpath):
         super(VlcSoundManager, self).__init__()
         self.volume = 0.5
         self.media_duration = 100 # updated on load
