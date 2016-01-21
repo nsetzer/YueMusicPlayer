@@ -34,10 +34,6 @@ class Settings(object):
         elif self.platform == 'linux2':
             self.default_ingest_path = r"/mnt/data/music/6ft.Down"
 
-        Logger.info("settings: ingest path : %s"%self.default_ingest_path)
-        self.default_ingest_path = r'/sdcard'
-        Logger.info("settings: ingest path : %s"%self.default_ingest_path)
-
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
