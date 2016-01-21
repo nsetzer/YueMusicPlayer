@@ -561,6 +561,17 @@ class ViewWidget(Widget):
         an scrolling tree view
         """
 
+        n =  int((self.height / self.row_height) + .5)
+        while n > len(self.nodes):
+            nd = self.node_factory(height=self.row_height,
+                             font_size = self.font_size );
+            #self.add_widget( nd,canvas=self.canvas )
+            self.nodes.append( nd )
+        while len(self.nodes) < n:
+            nd = self.nodes.pop()
+            if nd.parent is not None:
+                self.remove_widget( nd )
+
         self.rect_mask.pos = self.pos
         self.rect_mask.size = self.size
 
