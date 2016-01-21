@@ -26,7 +26,7 @@ class StreamPlayer(object):
 
     def __init__(self,Fs,chan=1):
 
-        flags = pybass.BASS_SAMPLE_FLOAT
+        flags = 0 # pybass.BASS_SAMPLE_FLOAT
         proc = pybass.STREAMPROC_PUSH
 
         channel = pybass.BASS_StreamCreate(int(Fs),chan,flags,proc,None);
@@ -35,9 +35,6 @@ class StreamPlayer(object):
         buffer = []
         length = 0;
         pybass.BASS_StreamPutData(self.channel,buffer,length)
-
-
-
 
 class BassPlayer(object):
 
@@ -118,6 +115,7 @@ class BassPlayer(object):
         r = pybass.BASS_StreamCreate(44100,2,pybass.BASS_SAMPLE_FLOAT,pybass.STREAMPROC(l),0);
         pybass.BASS_StreamFree(r);
         return r!=0;
+
     @staticmethod
     def statusMessage( status ):
         if status==BassPlayer.STOPPED:
@@ -149,7 +147,8 @@ class BassPlayer(object):
 
     def load(self,filepath):
 
-        lFlags = pybass.BASS_SAMPLE_FLOAT|pybass.BASS_STREAM_AUTOFREE
+        # pybass.BASS_SAMPLE_FLOAT |
+        lFlags = pybass.BASS_STREAM_AUTOFREE
         if isPosix:
             #lFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath).encode("utf-8")
@@ -197,7 +196,8 @@ class BassPlayer(object):
 
         self.unload()
 
-        dFlags = pybass.BASS_STREAM_DECODE|pybass.BASS_SAMPLE_FLOAT
+        # pybass.BASS_SAMPLE_FLOAT
+        dFlags = pybass.BASS_STREAM_DECODE
 
         if isPosix:
             #dFlags |= pybass.BASS_UNICODE
@@ -226,7 +226,7 @@ class BassPlayer(object):
 
         self.unload()
 
-        dFlags = pybass.BASS_SAMPLE_FLOAT
+        #dFlags = pybass.BASS_SAMPLE_FLOAT
         dProc  = pybass.STREAMPROC_PUSH
         print("create stream %d %d"%(rate,chans))
         channel = pybass.BASS_StreamCreate(rate,chans,dFlags,dProc,0)

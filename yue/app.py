@@ -42,12 +42,12 @@ class BackgroundDataLoad(Thread):
         scr_cur = settings.manager.get_screen( settings.screen_current_playlist )
 
         # simulate taking a long time to load:
-        n=20
-        for i in range(n):
-            msg = "please wait... %%%d"%(100*i/(n-1))
-            scr_cur.setPlaceholderText( msg )
-            scr_lib.setPlaceholderText( msg )
-            time.sleep(.25)
+        #n=20
+        #for i in range(n):
+        #    msg = "please wait... %%%d"%(100*i/(n-1))
+        #    scr_cur.setPlaceholderText( msg )
+        #    scr_lib.setPlaceholderText( msg )
+        #    time.sleep(.25)
 
         # load a test library into the database
         Library.instance().loadTestData( os.path.join( \
