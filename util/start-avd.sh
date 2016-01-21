@@ -1,4 +1,3 @@
-
 # build the app using:
 #  buildozer -v android debug
 
@@ -7,6 +6,6 @@
 #   'android' is found in ~/.buildozer/android/platform/android-sdk-20/tools
 
 sdk_ver=20
-adbath=~/.buildozer/android/platform/android-sdk-20/platform-tools/adb
+androidpath=~/.buildozer/android/platform/android-sdk-20/tools/android
 
-$adbath shell
+$androidpath avd
