@@ -99,6 +99,16 @@ class Ingest(Thread):
         for d in self.dirs:
             self.walk_directory(d)
 
+        # couple ways to do this:
+        #   1. after loading each song, update the tree.
+        #   2. refresh the tree when ingest finishes
+        # 2 is easier for now.
+
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_library )
+        tree = Library.instance().toTree()
+        lb_scr.setLibraryTree( tree )
+
         self.parent.ingest_finished()
 
         Logger.info("ingest: thread exit")

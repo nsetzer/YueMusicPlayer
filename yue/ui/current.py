@@ -3,6 +3,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.clock import mainthread
 
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.playlist import PlayListViewWidget
@@ -54,6 +55,8 @@ class CurrentPlaylistScreen(Screen):
         self.btn_shuffle.height = row_height
         self.btn_shuffle.bind(on_press=self.shuffle_playlist)
 
+        self.lbl_placeholder = Label(text="please wait")
+
         self.hbox.add_widget(self.btn_home)
         self.hbox.add_widget(self.btn_nowplaying)
         self.hbox.add_widget(self.btn_shuffle)
@@ -62,9 +65,20 @@ class CurrentPlaylistScreen(Screen):
 
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
-        self.vbox.add_widget( self.view )
+        self.vbox.add_widget( self.lbl_placeholder )
 
+    @mainthread
+    def setPlaceholderText(self,msg):
+        self.lbl_placeholder.text = msg
+
+    @mainthread
     def setPlayList(self,data):
+
+        if self.lbl_placeholder is not None:
+            self.vbox.remove_widget( self.lbl_placeholder )
+            self.vbox.add_widget( self.view, index=0 )
+            self.lbl_placeholder = None
+
         self.view.setData(data)
 
     def shuffle_playlist(self,*args):

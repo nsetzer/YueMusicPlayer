@@ -25,9 +25,59 @@ from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 
+from threading import Thread
+import time
+
+class BackgroundDataLoad(Thread):
+    def __init__(self):
+        super(BackgroundDataLoad,self).__init__()
+
+    def run(self):
+
+        Logger.info("data: starting background load thread")
+
+        settings = Settings.instance()
+
+        scr_lib = settings.manager.get_screen( settings.screen_library )
+        scr_cur = settings.manager.get_screen( settings.screen_current_playlist )
+
+        # simulate taking a long time to load:
+        n=20
+        for i in range(n):
+            msg = "please wait... %%%d"%(100*i/(n-1))
+            scr_cur.setPlaceholderText( msg )
+            scr_lib.setPlaceholderText( msg )
+            time.sleep(.25)
+
+        # load a test library into the database
+        Library.instance().loadTestData( os.path.join( \
+            Settings.instance().platform_path,"library.ini") );
+
+        # this is fairly slow for larger data sets
+        # I should launch a background thread which:
+        #     - loads current playlist and displays it in 'current'
+        #     - loads the tree view and displays it in 'library'
+        # while loading, display a 'please wait message' in the screen
+        # In the future, a different database may improve speed
+        tree = Library.instance().toTree()
+        lst = list(Library.instance().db.keys())[:20]
+        viewlst = Library.instance().PlayListToViewList( lst )
+        SoundManager.instance().setCurrentPlayList( lst )
+
+        scr_lib.setLibraryTree( tree )
+        scr_cur.setPlayList( viewlst )
+
+        Logger.info("data: background load thread finished")
+
+
 class YueApp(App):
     title = "Yue Music Player"
     icon = "./img/icon.png"
+
+    def __init__(self,**kwargs):
+        super(YueApp,self).__init__(**kwargs)
+        self.bg_thread = None
+
     def build(self):
 
         # create the screen manager and application screens
@@ -56,22 +106,8 @@ class YueApp(App):
 
         # initialize data to be displayed
 
-        # load a test library into the database
-        Library.instance().loadTestData( os.path.join( \
-            Settings.instance().platform_path,"library.ini") );
-
-        # this is fairly slow for larger data sets
-        # I should launch a background thread which:
-        #     - loads current playlist and displays it in 'current'
-        #     - loads the tree view and displays it in 'library'
-        # while loading, display a 'please wait message' in the screen
-        # In the future, a different database may improve speed
-        tree = Library.instance().toTree()
-        lst = list(Library.instance().db.keys())[:20]
-        viewlst = Library.instance().PlayListToViewList( lst )
-        SoundManager.instance().setCurrentPlayList( lst )
-        cu_scr.setPlayList( viewlst )
-        lb_scr.setLibraryTree( tree )
+        self.bg_thread = BackgroundDataLoad()
+        self.bg_thread.start()
 
         return sm
 
@@ -82,8 +118,15 @@ class YueApp(App):
         pass # not guaranteed after an on_pause
 
     def on_start(self):
-        Logger.info('Yue Start')
+        Logger.info('Yue: start')
 
     def on_stop(self):
         # TODO save current playlist to settings db
-        Logger.critical('Yue Exit.')
+
+        Logger.info('Yue: on exit joining threads')
+
+        if self.bg_thread is not None:
+            #TODO: send kill msg
+            self.bg_thread.join()
+
+        Logger.critical('Yue: exit')
