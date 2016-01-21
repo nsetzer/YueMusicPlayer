@@ -106,8 +106,7 @@ class Ingest(Thread):
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )
-        tree = Library.instance().toTree()
-        lb_scr.setLibraryTree( tree )
+        scr.setLibraryTree( Library.instance().toTree() )
 
         self.parent.ingest_finished()
 
