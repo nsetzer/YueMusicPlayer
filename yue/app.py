@@ -111,10 +111,10 @@ class YueApp(App):
 
         return sm
 
-    def on_pause():
+    def on_pause(self):
         return True # prevent on_stop when in background
 
-    def on_resume():
+    def on_resume(self):
         pass # not guaranteed after an on_pause
 
     def on_start(self):

@@ -70,7 +70,7 @@ fullscreen = 1
 android.permissions = MODIFY_AUDIO_SETTINGS, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE
 
 # (int) Android API to use
-#android.api = 19
+android.api = 19
 
 # (int) Minimum API required
 #android.minapi = 9

@@ -33,10 +33,6 @@ TODO:
 """
 
 from yue.settings import Settings
-from yue.library import Library
-
-
-import random
 
 from .kivydevice import KivySoundDevice
 from .bassdevice import BassSoundDevice
@@ -50,17 +46,13 @@ class PlayList(object):
     def __getitem__(self,index):
         return self.list[index]
 
-
 class SoundManager(object):
 
     @staticmethod
     def init( libpath ):
-        #if vlc_support:
-        #    SoundManager.__instance = VlcSoundManager()
-        #else:
-        #    SoundManager.__instance = KivySoundManager()
-        SoundManager.__instance = KivySoundDevice( libpath )
-        #SoundManager.__instance = BassSoundDevice( libpath )
+        #SoundManager.__instance = VlcSoundManager( libpath )
+        #SoundManager.__instance = KivySoundDevice( libpath )
+        SoundManager.__instance = BassSoundDevice( libpath )
 
     @staticmethod
     def instance():
