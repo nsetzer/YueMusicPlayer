@@ -12,6 +12,8 @@ todo:
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.logger import Logger
+from kivy.lib import osc
+from kivy.clock import Clock
 
 from yue.ui.library import LibraryScreen
 from yue.ui.home import HomeScreen
@@ -25,8 +27,16 @@ from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 
+import os,sys
+from subprocess import Popen
 from threading import Thread
 import time
+
+serviceport = 15123 # Todo select these at run time
+activityport = 15124
+
+def someapi_callback(message, *args):
+   print("got a message! %s" % message)
 
 class BackgroundDataLoad(Thread):
     def __init__(self):
@@ -77,6 +87,34 @@ class YueApp(App):
     def __init__(self,**kwargs):
         super(YueApp,self).__init__(**kwargs)
         self.bg_thread = None
+        self.pid = None # popen service reference
+        self.service = None # android service reference
+
+    def start_service(self):
+
+        if Settings.instance().platform == 'android':
+            from android import AndroidService
+            service = AndroidService('Yue Service', 'running')
+            service.start('service started')
+            self.service = service
+        else:
+            self.pid = Popen([sys.executable, "service/main.py"])
+
+        osc.init()
+        print(dir(osc))
+        oscid = osc.listen(ipAddr='127.0.0.1', port=activityport)
+        osc.bind(oscid, someapi_callback, '/some_api')
+        Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
+
+    def stop_service(self):
+        # note: not a kivy function, is not called automatically
+        if self.pid is not None:
+            Logger.info("stopping popen service")
+            self.pid.kill()
+        if self.service is not None:
+            Logger.info("stopping android service")
+            self.service.stop()
+            self.service = None
 
     def build(self):
 
@@ -86,6 +124,9 @@ class YueApp(App):
         # init controller objects
         Settings.init( sm )
         Library.init()
+
+        self.start_service()
+
         SoundManager.init( Settings.instance().platform_libpath )
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
@@ -108,6 +149,8 @@ class YueApp(App):
 
         self.bg_thread = BackgroundDataLoad()
         self.bg_thread.start()
+
+        osc.sendMsg('/some_api', dataArray=['call'], port=serviceport)
 
         return sm
 

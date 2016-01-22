@@ -47,6 +47,7 @@ class PlayList(object):
         return self.list[index]
 
 class SoundManager(object):
+    __instance = None
 
     @staticmethod
     def init( libpath ):
