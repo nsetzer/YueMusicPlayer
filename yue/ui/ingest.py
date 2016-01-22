@@ -137,8 +137,8 @@ class Ingest(Thread):
             try:
                 path = os.path.join(dirpath,name).encode('utf-8')
                 path = path.decode('utf-8')
-                self.load_file( path )
-                count += 1
+                if self.load_file( path ):
+                    count += 1
             except Exception as e:
                 Logger.error("bg: error %s"%e)
                 traceback.print_exc()
@@ -146,10 +146,14 @@ class Ingest(Thread):
 
     def load_file(self, path):
 
+
+
         ext = os.path.splitext(path)[1].lower()
         if ext in self.types and path not in self.path_lut:
             key = Library.instance().loadPath( path )
             self.path_lut[path] = key # not strictly necessary here.
+            return True
+        return False
 
     def rate_limit(self,t1,t2,msg,count):
         # rate limit background thread (needs some work)
