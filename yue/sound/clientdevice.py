@@ -28,20 +28,24 @@ class ClientSoundDevice(SoundDevice):
         self.clock_interval = 0.5 # in seconds
 
         # osc.bind(self.info.oscid, someapi_callback, '/some_api')
-        osc.sendMsg('/init', dataArray=[libpath,], port=self.info.serviceport)
+        #osc.sendMsg('/init', dataArray=[libpath,], port=self.info.serviceport)
 
+        #self.setClock(True)
+        self._state = True
 
     def unload(self):
-        pass
+        osc.sendMsg('/audio_action', dataArray=["unload"], port=self.info.serviceport)
 
     def load(self, song):
         osc.sendMsg('/load_path', dataArray=[song['path'],], port=self.info.serviceport)
 
     def play(self):
-        pass
+        osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)
+        self._state = True
 
     def pause(self):
-        pass
+        osc.sendMsg('/audio_action', dataArray=["pause"], port=self.info.serviceport)
+        self._state = False
 
     #def stop(self):
     #    if self.sound is not None:
@@ -63,7 +67,10 @@ class ClientSoundDevice(SoundDevice):
         pass
 
     def state(self):
-        pass
+        if self._state:
+            return MediaState.play
+
+        return MediaState.pause
 
     def setClock(self,state):
         if self.clock_scheduled == False and state == True:
