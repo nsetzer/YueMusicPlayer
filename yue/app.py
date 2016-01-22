@@ -26,6 +26,7 @@ from yue.ui.settings import SettingsScreen
 from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
+from yue.sound.clientdevice import ServiceInfo
 
 import os,sys
 from subprocess import Popen
@@ -100,11 +101,13 @@ class YueApp(App):
         else:
             self.pid = Popen([sys.executable, "service/main.py"])
 
+        hostname = '127.0.0.1'
         osc.init()
-        print(dir(osc))
-        oscid = osc.listen(ipAddr='127.0.0.1', port=activityport)
-        osc.bind(oscid, someapi_callback, '/some_api')
+        oscid = osc.listen(ipAddr=hostname, port=activityport)
+
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
+
+        return ServiceInfo(oscid,hostname,activityport,serviceport)
 
     def stop_service(self):
         # note: not a kivy function, is not called automatically
@@ -125,9 +128,9 @@ class YueApp(App):
         Settings.init( sm )
         Library.init()
 
-        self.start_service()
+        info = self.start_service()
 
-        SoundManager.init( Settings.instance().platform_libpath )
+        SoundManager.init( Settings.instance().platform_libpath, info = info )
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
@@ -149,8 +152,6 @@ class YueApp(App):
 
         self.bg_thread = BackgroundDataLoad()
         self.bg_thread.start()
-
-        osc.sendMsg('/some_api', dataArray=['call'], port=serviceport)
 
         return sm
 

@@ -24,10 +24,14 @@ from yue.sound.manager import SoundManager
 def someapi_callback(message, *args):
    Logger.info("service: got a message! %s" % message)
 
+def load_path_callback(message, *args):
+   Logger.info("service: load_path: %s" % message)
+
 if __name__ == '__main__':
     osc.init()
     oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
     osc.bind(oscid, someapi_callback, '/some_api')
+    osc.bind(oscid, load_path_callback, '/load_path')
     while True:
         osc.readQueue(oscid)
         time.sleep(.1)
