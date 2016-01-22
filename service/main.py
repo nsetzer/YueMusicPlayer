@@ -21,16 +21,23 @@ activityport = 15124
 
 from yue.sound.manager import SoundManager
 
-def someapi_callback(message, *args):
-   Logger.info("service: got a message! %s" % message)
+def init_callback(message,*args):
+    Logger.info("service: init: %s" % message[2:])
+
+    SoundManager.init( message[2] )
+
+    res=osc.sendMsg('/pong', dataArray=[], port=activityport)
 
 def load_path_callback(message, *args):
-   Logger.info("service: load_path: %s" % message)
+    Logger.info("service: load_path: %s : %s" % (message,args))
+
+    SoundManager.instance().load( {'path':message[2],} )
+    SoundManager.instance().play()
 
 if __name__ == '__main__':
     osc.init()
     oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
-    osc.bind(oscid, someapi_callback, '/some_api')
+    osc.bind(oscid, init_callback, '/init')
     osc.bind(oscid, load_path_callback, '/load_path')
     while True:
         osc.readQueue(oscid)

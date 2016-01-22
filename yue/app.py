@@ -104,13 +104,18 @@ class YueApp(App):
         hostname = '127.0.0.1'
         osc.init()
         oscid = osc.listen(ipAddr=hostname, port=activityport)
+        osc.bind(oscid, lambda m,*a: Logger.info('pong') , '/pong')
 
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
+
+        time.sleep(.5)
 
         return ServiceInfo(oscid,hostname,activityport,serviceport)
 
     def stop_service(self):
         # note: not a kivy function, is not called automatically
+        # on windows, child processs is stopped when the shell
+        # exits.
         if self.pid is not None:
             Logger.info("stopping popen service")
             self.pid.kill()
@@ -131,6 +136,7 @@ class YueApp(App):
         info = self.start_service()
 
         SoundManager.init( Settings.instance().platform_libpath, info = info )
+
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)

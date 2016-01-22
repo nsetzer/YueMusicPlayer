@@ -18,7 +18,7 @@ ServiceInfo = namedtuple("ServiceInfo",['oscid', 'hostname','clientport','servic
 class ClientSoundDevice(SoundDevice):
     """Playback implementation of SoundManager for a remote provider"""
     __instance = None
-    def __init__(self, info):
+    def __init__(self, libpath, info):
         super(ClientSoundDevice, self).__init__()
         self.volume = 0.5
         self.info = info
@@ -27,8 +27,9 @@ class ClientSoundDevice(SoundDevice):
         self.clock_scheduled = False
         self.clock_interval = 0.5 # in seconds
 
-
         # osc.bind(self.info.oscid, someapi_callback, '/some_api')
+        osc.sendMsg('/init', dataArray=[libpath,], port=self.info.serviceport)
+
 
     def unload(self):
         pass
