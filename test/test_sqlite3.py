@@ -35,7 +35,8 @@ view = SQLView(store,"library", library_columns)
 
 # self.store.conn.execute("INSERT INTO library (artist, album, title, path) VALUES ('artist1','album1','title1','path1')")
 
-view.insert(artist="foo",album="bar",title="baz")
+view.insert(artist="fooa",album="bar",title="baz")
+view.insert(artist="foob",album="bar",title="baz")
 
 res = view.get(1)
 print(res)
@@ -45,3 +46,8 @@ print(res)
 
 res = view.get(1)
 print(res)
+
+print("---")
+
+for res in view.select(album="bar"):
+    print(">",res)

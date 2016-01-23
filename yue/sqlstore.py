@@ -37,6 +37,18 @@ class SQLView(object):
                 raise KeyError(key)
             return dict(zip(self.column_names,item))
 
+    def select(self,**kwargs):
+        with self.store.conn:
+            c = self.store.conn.cursor()
+            s = ', '.join('%s=?'%x for x in kwargs.keys())
+            fmt = "select * from %s WHERE %s"%(self.name,s)
+            print(fmt)
+            res = c.execute(fmt,list(kwargs.values()))
+            item = c.fetchone()
+            while item is not None:
+                yield dict(zip(self.column_names,item))
+                item = c.fetchone()
+
     def insert(self,**kwargs):
         with self.store.conn:
             c = self.store.conn.cursor()
