@@ -59,3 +59,9 @@ print("current",pl.next())
 print("current",pl.next())
 print("current",pl.prev())
 print("current",pl.prev())
+
+
+pl.set([2,4,6,8])
+print("--")
+for i,r in enumerate(pl.iter()):
+    print(r)

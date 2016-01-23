@@ -64,6 +64,14 @@ class PlayListView(object):
         self.db_lists = db_lists
         self.uid = uid
 
+    def set(self, lst):
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            c.execute("DELETE from playlist_songs where uid=?",(self.uid,))
+            for idx, key in enumerate( lst ):
+                self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+            self.db_names._update(c, self.uid, size=len(lst), idx=0)
+
     def append(self, key):
         with self.db_names.conn() as conn:
             c = conn.cursor()
