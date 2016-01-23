@@ -40,6 +40,7 @@ class PlaylistManager(object):
 
     @staticmethod
     def init( sqlstore ):
+        print("GOT HEER")
         PlaylistManager.__instance = PlaylistManager( sqlstore )
 
 
@@ -54,6 +55,21 @@ class PlaylistManager(object):
         view = PlayListView( self.db_names, self.db_lists, uid)
 
         return view
+
+    def openPlaylist(self, name):
+        """ create if it does not exist """
+
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            res = c.execute("SELECT uid from playlists where name=?", (name,))
+            item = res.fetchone()
+            if item is not None:
+                return PlayListView( self.db_names, self.db_lists, item[0])
+            # playlist does not exist, create a new empty one
+            uid = self.db_names._insert(c,name=name,size=0,idx=0)
+            view = PlayListView( self.db_names, self.db_lists, uid)
+            return view
+
 
 
 class PlayListView(object):

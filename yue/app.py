@@ -23,6 +23,7 @@ from yue.ui.preset import PresetScreen
 from yue.ui.ingest import IngestScreen
 from yue.ui.settings import SettingsScreen
 
+from yue.playlist import PlaylistManager
 from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
@@ -50,7 +51,9 @@ class BackgroundDataLoad(Thread):
 
         settings = Settings.instance()
         # someqhat annoying, but I need a uique library per thread
+
         library = Library(SQLStore(settings.db_path))
+
 
         scr_lib = settings.manager.get_screen( settings.screen_library )
         scr_cur = settings.manager.get_screen( settings.screen_current_playlist )
@@ -141,6 +144,7 @@ class YueApp(App):
         # init controller objects
         Settings.init( sm )
         Library.init( Settings.instance().sqldb )
+        PlaylistManager.init( Settings.instance().sqldb )
 
         info = self.start_service()
 

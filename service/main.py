@@ -21,12 +21,14 @@ activityport = 15124
 
 from yue.sound.manager import SoundManager
 from yue.sound.pybass import get_platform_path
+from yue.playlist import PlaylistManager
+from yue.sqlstore import SQLStore, SQLView
 
 def load_path_callback(message, *args):
     Logger.info("service: load_path: %s : %s" % (message,args))
 
     SoundManager.instance().load( {'path':message[2],} )
-    SoundManager.instance().play()
+    #SoundManager.instance().play()
 
 def audio_action_callback(message,*args):
     action = message[2]
@@ -47,7 +49,8 @@ if __name__ == '__main__':
     osc.bind(oscid, audio_action_callback, '/audio_action')
 
     libpath = get_platform_path()
-
+    db_path = "./yue.db"
+    PlaylistManager.init( SQLStore(db_path) )
     SoundManager.init( libpath )
 
     while True:

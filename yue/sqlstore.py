@@ -79,7 +79,6 @@ class SQLView(object):
         fmt="update %s set %s WHERE uid=%s"%(self.name,s,key)
         cursor.execute(fmt,list(kwargs.values()))
 
-
     def iter(self):
         with self.store.conn:
             c = self.store.conn.cursor()
