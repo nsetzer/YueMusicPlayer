@@ -19,6 +19,10 @@ class SQLView(object):
         self.column_names = [x[0] for x in columns]
         self.create( columns )
 
+    def conn(self):
+        """ return a reference to the db connection """
+        return self.store.conn
+
     def create(self, columns):
         with self.store.conn:
             field = ','.join(a+' '+b for a,b in columns)
@@ -31,11 +35,15 @@ class SQLView(object):
     def get(self,key):
         with self.store.conn:
             c = self.store.conn.cursor()
-            c.execute("select * from %s where uid=?"%self.name,[key,])
-            item = c.fetchone()
-            if item is None:
-                raise KeyError(key)
+            item = self._get( c, key )
             return dict(zip(self.column_names,item))
+
+    def _get(self, cursor, key):
+        cursor.execute("select * from %s where uid=?"%self.name,[key,])
+        item = cursor.fetchone()
+        if item is None:
+            raise KeyError(key)
+        return item
 
     def select(self,**kwargs):
         with self.store.conn:
@@ -52,18 +60,25 @@ class SQLView(object):
     def insert(self,**kwargs):
         with self.store.conn:
             c = self.store.conn.cursor()
-            s = ', '.join('%s'%x for x in kwargs.keys())
-            r = ('?,'*len(kwargs))[:-1]
-            fmt = "insert into %s (%s) VALUES (%s)"%(self.name,s,r)
-            res = c.execute(fmt,list(kwargs.values()))
-            return res.lastrowid
+            return self._insert(c, **kwargs)
+
+    def _insert(self, cursor, **kwargs):
+        s = ', '.join('%s'%x for x in kwargs.keys())
+        r = ('?,'*len(kwargs))[:-1]
+        fmt = "insert into %s (%s) VALUES (%s)"%(self.name,s,r)
+        res = cursor.execute(fmt,list(kwargs.values()))
+        return res.lastrowid
 
     def update(self,key,**kwargs):
         with self.store.conn:
             c = self.store.conn.cursor()
-            s = ', '.join('%s=?'%x for x in kwargs.keys())
-            fmt="update %s set %s WHERE uid=%s"%(self.name,s,key)
-            c.execute(fmt,list(kwargs.values()))
+            self._update(c,key,**kwargs)
+
+    def _update(self,cursor, key, **kwargs):
+        s = ', '.join('%s=?'%x for x in kwargs.keys())
+        fmt="update %s set %s WHERE uid=%s"%(self.name,s,key)
+        cursor.execute(fmt,list(kwargs.values()))
+
 
     def iter(self):
         with self.store.conn:
