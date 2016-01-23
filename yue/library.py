@@ -84,8 +84,11 @@ class Library(object):
         #    Logger.info('Library Found - not loading test data')
         #    return
 
-        if self.db.get(1) is not None:
+        try:
+            self.db.get(1)
             return
+        except:
+            pass
         #if not os.path.exists(inipath):
         #    Logger.critical('test library not found: %s'%inipath)
         #    return

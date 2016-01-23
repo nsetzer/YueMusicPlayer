@@ -33,9 +33,9 @@ class SQLView(object):
             c = self.store.conn.cursor()
             c.execute("select * from %s where uid=?"%self.name,[key,])
             item = c.fetchone()
-            if item is not None:
-                return dict(zip(self.column_names,item))
-            return None
+            if item is None:
+                raise KeyError(key)
+            return dict(zip(self.column_names,item))
 
     def insert(self,**kwargs):
         with self.store.conn:
@@ -57,7 +57,6 @@ class SQLView(object):
         with self.store.conn:
             c = self.store.conn.cursor()
             c.execute("select * from %s"%self.name)
-
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.column_names,item))

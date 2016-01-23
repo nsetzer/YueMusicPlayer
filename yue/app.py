@@ -68,13 +68,9 @@ class BackgroundDataLoad(Thread):
         library.loadTestData( os.path.join( \
             Settings.instance().platform_path,"library.ini") );
 
-        # this is fairly slow for larger data sets
-        # I should launch a background thread which:
-        #     - loads current playlist and displays it in 'current'
-        #     - loads the tree view and displays it in 'library'
-        # while loading, display a 'please wait message' in the screen
-        # In the future, a different database may improve speed
+
         tree = library.toTree()
+        # build a dummy playlist until it can be stored in the db
         Logger.warning(" got here ")
         lst = []
         g = library.db.iter()
