@@ -82,7 +82,7 @@ class PlayListView(object):
             c = conn.cursor()
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
             c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx))
-            self.db_names._update(c, self.uid, size=size-1)
+            c.execute("UPDATE playlists SET size=size-1 WHERE uid=?",(self.uid,))
 
     def reinsert(self,idx1,idx2):
         """ remove an element at idx1, then insert at idx2 """
