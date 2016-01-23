@@ -27,6 +27,7 @@ from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 from yue.sound.clientdevice import ServiceInfo
+from yue.sqlstore import SQLStore, SQLView
 
 import os,sys
 from subprocess import Popen
@@ -48,6 +49,8 @@ class BackgroundDataLoad(Thread):
         Logger.info("data: starting background load thread")
 
         settings = Settings.instance()
+        # someqhat annoying, but I need a uique library per thread
+        library = Library(SQLStore(settings.db_path))
 
         scr_lib = settings.manager.get_screen( settings.screen_library )
         scr_cur = settings.manager.get_screen( settings.screen_current_playlist )
@@ -61,7 +64,8 @@ class BackgroundDataLoad(Thread):
         #    time.sleep(.25)
 
         # load a test library into the database
-        Library.instance().loadTestData( os.path.join( \
+        Logger.warning(" load test data ")
+        library.loadTestData( os.path.join( \
             Settings.instance().platform_path,"library.ini") );
 
         # this is fairly slow for larger data sets
@@ -70,9 +74,18 @@ class BackgroundDataLoad(Thread):
         #     - loads the tree view and displays it in 'library'
         # while loading, display a 'please wait message' in the screen
         # In the future, a different database may improve speed
-        tree = Library.instance().toTree()
-        lst = list(Library.instance().db.keys())[:20]
-        viewlst = Library.instance().PlayListToViewList( lst )
+        tree = library.toTree()
+        Logger.warning(" got here ")
+        lst = []
+        g = library.db.iter()
+        try:
+            for i in range(20):
+                song = next(g)
+                lst.append(song['uid'])
+        except StopIteration as e:
+            pass
+        Logger.warning(" got here ")
+        viewlst = library.PlayListToViewList( lst )
         SoundManager.instance().setCurrentPlayList( lst )
 
         scr_lib.setLibraryTree( tree )
@@ -131,7 +144,7 @@ class YueApp(App):
 
         # init controller objects
         Settings.init( sm )
-        Library.init()
+        Library.init( Settings.instance().sqldb )
 
         info = self.start_service()
 

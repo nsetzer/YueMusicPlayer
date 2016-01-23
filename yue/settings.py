@@ -4,6 +4,7 @@ import kivy.metrics
 from kivy.logger import Logger
 
 from kivy.storage.dictstore import DictStore
+from yue.sqlstore import SQLStore, SQLView
 
 class Settings(object):
     """docstring for Library"""
@@ -38,8 +39,11 @@ class Settings(object):
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
         self.db_library_path  = os.path.join(self.platform_path, "library.db")
+        self.db_path  = os.path.join(self.platform_path, "yue.db")
 
         self.db_settings = DictStore( self.db_settings_path )
+
+        self.sqldb = SQLStore(self.db_path)
 
     def init_platform(self):
         self.platform = sys.platform

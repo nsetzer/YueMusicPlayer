@@ -127,6 +127,7 @@ class SoundDevice(EventDispatcher):
             return Library.instance().songFromId( key )
         return None
 
+    @mainthread
     def setCurrentPlayList(self,lst):
         self.current_playlist = lst
         self.playlist_index = 0 # current song, from current playlist

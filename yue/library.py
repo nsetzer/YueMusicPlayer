@@ -6,11 +6,11 @@ from kivy.storage.dictstore import DictStore
 
 from yue.settings import Settings
 from yue.song import read_tags
+from yue.sqlstore import SQLStore, SQLView
 
 from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeElem
 from yue.custom_widgets.playlist import PlayListElem
-
 
 from ConfigParser import ConfigParser
 import codecs
@@ -24,15 +24,33 @@ class TrackTreeElem(TreeElem):
 class Library(object):
     """docstring for Library"""
     __instance = None
-    def __init__(self):
+    def __init__(self, sqlstore):
         super(Library, self).__init__()
-        self.songs = []
 
-        self.db = DictStore( Settings.instance().db_library_path )
+        library_columns = [
+            ('uid','integer PRIMARY KEY AUTOINCREMENT'),
+            ('path',"text"),
+            ('artist',"text"),
+            ('composer',"text DEFAULT ''"),
+            ('album','text'),
+            ('title','text'),
+            ('genre',"text DEFAULT ''"),
+            ('year','integer DEFAULT 0'),
+            ('country',"text DEFAULT ''"),
+            ('lang',"text DEFAULT ''"),
+            ('comment',"text DEFAULT ''"),
+            ('album_index','integer DEFAULT 0'),
+            ('length','integer DEFAULT 0'),
+            ('last_played','integer DEFAULT 0'),
+            ('playcount','integer DEFAULT 0'),
+            ('rating','integer DEFAULT 0'),
+        ]
+
+        self.db = SQLView( sqlstore ,"library", library_columns)
 
     @staticmethod
-    def init():
-        Library.__instance = Library()
+    def init( sqlstore ):
+        Library.__instance = Library( sqlstore )
 
     @staticmethod
     def instance():
@@ -61,14 +79,16 @@ class Library(object):
         path=/path/to/file
         """
 
-        if not force and os.path.exists(Settings.instance().db_library_path):
-            # delete the library to load the test file
-            Logger.info('Library Found - not loading test data')
-            return
+        #if not force and os.path.exists(Settings.instance().db_path):
+        #    # delete the library to load the test file
+        #    Logger.info('Library Found - not loading test data')
+        #    return
 
-        if not os.path.exists(inipath):
-            Logger.critical('test library not found: %s'%inipath)
+        if self.db.get(1) is not None:
             return
+        #if not os.path.exists(inipath):
+        #    Logger.critical('test library not found: %s'%inipath)
+        #    return
 
         Logger.info('loading test library: %s'%inipath)
 
@@ -81,6 +101,7 @@ class Library(object):
             return default
 
         for section in config.sections():
+            print(section)
             song = {
                 "artist" : get_default(section,"artist","Unkown Artist"),
                 "album"  : get_default(section,"album" ,"Unkown Album"),
@@ -89,15 +110,16 @@ class Library(object):
 
             }
             uid = Settings.instance().newSongUid()
-            self.db.put(uid, **song)
+            self.db.insert(**song)
+
+        Logger.info('loading test library: %s'%inipath)
 
     def loadPath(self,songpath):
         """ does not check for duplicates """
         Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
         key = Settings.instance().newSongUid()
-        self.db.put( key, **song)
-        return key
+        return self.db.insert( **song)
 
     def songFromId(self,uid):
         return self.db.get(uid)
@@ -111,17 +133,15 @@ class Library(object):
         a given path exists in the db.
         """
         m = {}
-        for key in self.db.keys():
-            song = self.songFromId(key)
-            m[song['path']] = key
+        for song in self.db.iter():
+            m[song['path']] = song['uid']
         return m
 
     def toTree(self):
 
         artists = {}
 
-        for key in self.db.keys():
-            song = self.songFromId(key)
+        for song in self.db.iter():
 
             if song['artist'] not in artists:
                 artists[ song['artist'] ] = TreeElem(song['artist'])
@@ -134,7 +154,7 @@ class Library(object):
             else:
                 album = artists[ song['artist'] ].addChild(TreeElem(song['album']))
 
-            album.addChild(TrackTreeElem(key,song['title']))
+            album.addChild(TrackTreeElem(song['uid'],song['title']))
 
         return list(artists.values())
 
