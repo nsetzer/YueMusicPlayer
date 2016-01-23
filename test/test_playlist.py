@@ -28,10 +28,34 @@ print("--")
 for i,r in enumerate(pl.iter()):
     print(r)
 
-pl.delete(1)
-print(pl.size())
 
+pl.reinsert(2,0)
+print(pl.size())
 print("--")
 for i,r in enumerate(pl.iter()):
     print(r)
 
+pl.delete(1)
+print(pl.size())
+print("--")
+for i,r in enumerate(pl.iter()):
+    print(r)
+
+pl.insert(2,17)
+print(pl.size())
+print("--")
+for i,r in enumerate(pl.iter()):
+    print(r)
+
+pl.insert_next(15)
+print(pl.size())
+print("--")
+for i,r in enumerate(pl.iter()):
+    print(r)
+
+
+print("current",pl.current())
+print("current",pl.next())
+print("current",pl.next())
+print("current",pl.prev())
+print("current",pl.prev())

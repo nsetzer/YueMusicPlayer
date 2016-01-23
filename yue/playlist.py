@@ -77,7 +77,32 @@ class PlayListView(object):
             _, name, size, index = self.db_names._get( c, self.uid );
             return size
 
+    def insert(self,idx,key):
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
+            self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+            c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
+
+    def insert_next(self,key):
+        """ insert a song id after the current song id """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, name, size, idx = self.db_names._get( c, self.uid );
+            idx += 1
+            c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
+            self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+            c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
+
     def delete(self,idx):
+        """ remove an song from the playlist by it's position in the list """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
+            c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx))
+            c.execute("UPDATE playlists SET size=size-1 WHERE uid=?",(self.uid,))
+
+    def clear(self):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
@@ -86,16 +111,65 @@ class PlayListView(object):
 
     def reinsert(self,idx1,idx2):
         """ remove an element at idx1, then insert at idx2 """
-        pass
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx1)))
+            key = c.fetchone()[0]
+            c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx1))
+            c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx1))
+            c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx2))
+            self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
 
     def iter(self):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             c.execute("select * from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
-            item = c.fetchone()
-            while item is not None:
-                yield item
-                item = c.fetchone()
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    yield item
+                items = c.fetchmany()
+
+    def current(self):
+        """ return a 2-tuple, current index, and song_id """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, name, size, idx = self.db_names._get( c, self.uid );
+            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            key = c.fetchone()[0]
+            return idx,key
+
+    def next(self):
+        """ increase current index by 1
+            return a 2-tuple, current index, and song_id
+            raise StopIteration if no more songs
+        """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, name, size, idx = self.db_names._get( c, self.uid );
+            if idx >= size:
+                raise StopIteration()
+            idx += 1
+            self.db_names._update( c, self.uid, idx=idx)
+            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            key = c.fetchone()[0]
+            return idx,key
+
+    def prev(self):
+        """ increase current index by 1
+            return a 2-tuple, current index, and song_id
+            raise StopIteration if no more songs
+        """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, name, size, idx = self.db_names._get( c, self.uid );
+            if idx <= 0:
+                raise StopIteration()
+            idx -= 1
+            self.db_names._update( c, self.uid, idx=idx)
+            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            key = c.fetchone()[0]
+            return idx,key
 
 
 
