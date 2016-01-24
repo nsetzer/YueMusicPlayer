@@ -34,6 +34,7 @@ from kivy.logger import Logger
 
 from yue.settings import Settings
 from yue.library import Library
+from yue.sqlstore import SQLStore
 
 from threading import Thread
 import traceback
@@ -106,7 +107,9 @@ class Ingest(Thread):
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )
-        scr.setLibraryTree( Library.instance().toTree() )
+        #TODO
+
+        scr.setLibraryTree( self.library.toTree() )
 
         self.parent.ingest_finished()
 
@@ -114,7 +117,10 @@ class Ingest(Thread):
 
     def init_lut(self):
 
-        self.path_lut = Library.instance().toPathMap()
+        self.sqlstore = SQLStore(Settings.instance().db_path)
+        self.library = Library( self.sqlstore )
+
+        self.path_lut = self.library.toPathMap()
         self.types = Settings.instance().supported_types
 
     def walk_directory(self,dir):
@@ -145,12 +151,9 @@ class Ingest(Thread):
         return count
 
     def load_file(self, path):
-
-
-
         ext = os.path.splitext(path)[1].lower()
         if ext in self.types and path not in self.path_lut:
-            key = Library.instance().loadPath( path )
+            key = self.library.loadPath( path )
             self.path_lut[path] = key # not strictly necessary here.
             return True
         return False

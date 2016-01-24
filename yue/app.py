@@ -110,11 +110,13 @@ class YueApp(App):
     def start_service(self):
 
         if Settings.instance().platform == 'android':
+            Logger.info("service: Creating Android Service")
             from android import AndroidService
             service = AndroidService('Yue Service', 'running')
             service.start('service started')
             self.service = service
         else:
+            Logger.info("service: Creating Android Service as Secondary Process")
             self.pid = Popen([sys.executable, "service/main.py"])
 
         hostname = '127.0.0.1'
