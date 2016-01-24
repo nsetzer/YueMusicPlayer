@@ -12,8 +12,16 @@ import Queue
 from kivy.lib import osc
 from kivy.logger import Logger
 
-dirpath = os.path.dirname(os.path.abspath(__file__))
-dirpath = os.path.dirname(dirpath)
+app_path = '/data/data/com.github.nsetzer.yue/'
+if os.path.exists(app_path):
+    # android
+    dirpath = '/data/data/com.github.nsetzer.yue/files'
+else:
+    # other
+    dirpath = os.path.dirname(os.path.abspath(__file__))
+    dirpath = os.path.dirname(dirpath)
+    app_path = os.getcwd()
+# update system path with path to yue package
 sys.path.insert(0,dirpath)
 
 from yue.sound.manager import SoundManager
@@ -58,16 +66,16 @@ class YueServer(object):
         self.oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
         osc.bind(self.oscid, audio_action_callback, '/audio_action')
 
-        db_path = "./yue.db"
+        db_path = os.path.join(app_path,"yue.db")
         self.sqlstore = SQLStore(db_path)
         Library.init( self.sqlstore )
         PlaylistManager.init( self.sqlstore )
         libpath = get_platform_path()
         SoundManager.init( libpath )
 
-        SoundManager.instance().bind(on_song_state_changed=self.on_state_change)
-        SoundManager.instance().bind(on_song_end=self.on_song_end_event)
-        SoundManager.instance().bind(on_playlist_end=self.on_playlist_end)
+        SoundManager.instance().bind(on_state_changed=YueServer.on_state_change)
+        SoundManager.instance().bind(on_song_end=YueServer.on_song_end_event)
+        SoundManager.instance().bind(on_playlist_end=YueServer.on_playlist_end)
 
         self.event_queue = Queue.Queue()
         self.cv_wait = Condition()
@@ -90,7 +98,7 @@ class YueServer(object):
                 self.cv_wait.wait( .1 )
 
     def on_state_change(self,*args):
-        osc.sendMsg('/song_state', dataArray=args[1:], port=activityport)
+        osc.sendMsg('/song_state', dataArray=args, port=activityport)
 
     def on_song_end_event(self,*args):
         """ catch the song end event, then pass off to the main thread.

@@ -23,7 +23,7 @@ class SoundDevice(EventDispatcher):
         self.playlist_index = 0 # current song, from current playlist
 
         self.register_event_type('on_song_tick')
-        self.register_event_type('on_song_state_changed')
+        self.register_event_type('on_state_changed')
         self.register_event_type('on_song_end')
         self.register_event_type('on_playlist_end')
         self.register_event_type('on_load')
@@ -33,7 +33,7 @@ class SoundDevice(EventDispatcher):
     def on_load(self,song):
         pass
 
-    def on_song_state_changed(self,idx,key,state):
+    def on_state_changed(self,idx,key,state):
         pass
 
     def on_song_end(self):

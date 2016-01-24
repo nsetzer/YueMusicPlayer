@@ -146,12 +146,14 @@ class YueApp(App):
         scr = settings.manager.get_screen( settings.screen_now_playing )
         scr.on_tick(p,d)
 
-    def on_song_state_changed(self,idx,uid,state):
+    def on_state_changed(self,idx,uid,state):
 
+        Logger.info(" state changed %d %d %d"%(idx,uid,state))
         song = Library.instance().songFromId(uid)
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_now_playing )
-        scr.update( None, song)
+        scr.update( None, song )
+        scr.update_statechange( None, state )
 
     def build(self):
 
@@ -176,7 +178,7 @@ class YueApp(App):
         se_scr = SettingsScreen(name=Settings.instance().screen_settings)
 
         osc.bind(info.oscid, lambda m,*a: self.on_song_tick(m[2],m[3]) , '/song_tick')
-        osc.bind(info.oscid, lambda m,*a: self.on_song_state_changed(*m[2:]) , '/song_state')
+        osc.bind(info.oscid, lambda m,*a: self.on_state_changed(*m[2:]) , '/song_state')
 
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)

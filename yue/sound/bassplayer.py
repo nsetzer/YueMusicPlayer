@@ -272,6 +272,9 @@ class BassPlayer(object):
 
         if self.channelIsValid():
             pybass.BASS_ChannelPause(self.channel);
+            # todo check for errors
+            return True
+        return False
 
     def stop(self):
         pybass.BASS_ChannelStop(self.channel);

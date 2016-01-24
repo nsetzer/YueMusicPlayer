@@ -6,17 +6,22 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.image import Image
+from kivy.uix.image import Image, AsyncImage
 from kivy.logger import Logger
+from kivy.clock import mainthread
 
 from yue.custom_widgets.timebar import TimeBar
 from yue.settings import Settings
+from yue.playlist import PlaylistManager
 from yue.sound.manager import SoundManager
+from yue.sound.device import MediaState
 from yue.song import ArtNotFound, get_album_art
 
 class NowPlayingScreen(Screen):
     def __init__(self,**kwargs):
         super(NowPlayingScreen,self).__init__(**kwargs)
+
+        self.current_song = { 'uid': -1}
 
         row_height = Settings.instance().row_height()
         self.vbox = BoxLayout(orientation='vertical')
@@ -46,10 +51,13 @@ class NowPlayingScreen(Screen):
         self.lbl_artist = Label()
         self.lbl_artist.size_hint=(1.0,None)
         self.lbl_artist.height=row_height
+        self.lbl_index = Label()
+        self.lbl_index.size_hint=(1.0,None)
+        self.lbl_index.height=row_height
 
-        self.img_albumart = Image();
+        self.img_albumart = AsyncImage();
 
-        self.btn_playpause = Button(text="play/pause")
+        self.btn_playpause = Button(text="play")
         self.btn_playpause.bind(on_press=(lambda *x : SoundManager.instance().playpause()))
 
         self.btn_next = Button(text="next")
@@ -68,26 +76,45 @@ class NowPlayingScreen(Screen):
         self.vbox.add_widget( self.hbox )
         self.vbox.add_widget( self.lbl_title )
         self.vbox.add_widget( self.lbl_artist )
+        self.vbox.add_widget( self.lbl_index ) # for lack of a better place for now
         self.vbox.add_widget( self.img_albumart )
         self.vbox.add_widget( self.hbox_btns )
         self.vbox.add_widget( self.timebar )
-
 
         self.timebar.bind(on_seek=self.change_position)
         SoundManager.instance().bind(on_load=self.update)
         SoundManager.instance().bind(on_song_tick=self.on_tick)
 
+
     def on_tick(self,position,duration):
         self.timebar.value = position
         self.timebar.duration = duration
 
-    def update(self,obj,song):
+    @mainthread
+    def update(self, obj, song):
 
-        self.timebar.value = 0
-        #self.timebar.duration = SoundManager.instance().duration()
-        self.update_albumart(song)
-        self.lbl_title.text = song['title']
-        self.lbl_artist.text = song['artist']
+        if song['uid'] != self.current_song['uid']:
+            self.current_song = song
+            self.timebar.value = 0
+            #self.timebar.duration = SoundManager.instance().duration()
+            self.update_albumart(song)
+            self.lbl_title.text = song['title']
+            self.lbl_artist.text = song['artist']
+            pl = PlaylistManager.instance().openPlaylist('current')
+            idx,_ = pl.current()
+            sz = pl.size()
+            self.lbl_index.text = "%d/%d"%(idx+1,sz)
+
+
+
+    @mainthread
+    def update_statechange(self, obj, state):
+        print(state, state==MediaState.play,state==MediaState.pause)
+
+        if state==MediaState.play:
+            self.btn_playpause.text="pause"
+        else:
+            self.btn_playpause.text="play"
 
     def update_albumart(self,song):
          # TODO this needs to be done async
@@ -95,7 +122,9 @@ class NowPlayingScreen(Screen):
             default_path = os.path.join(Settings.instance().platform_path,"cover.jpg")
             art_path = get_album_art(song['path'],default_path)
             self.img_albumart.source = art_path
-            Logger.info("nowplaying: found art")
+
+            Logger.info("nowplaying: found art: %s"%art_path)
+            print("exists",os.path.exists(art_path))
 
         except ArtNotFound as e:
             Logger.warning("nowplaying: no art found for %s"%song['path'])

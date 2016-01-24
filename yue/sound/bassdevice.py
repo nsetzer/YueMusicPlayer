@@ -58,15 +58,23 @@ class BassSoundDevice(SoundDevice):
     def load(self, song):
         path = song['path']
         #self.media_duration = song.get('length',100)
-        if self.device.load( path ):
-            self.dispatch('on_load',song)
+        try:
+            self.device.unload()
+            if self.device.load( path ):
+                self.dispatch('on_load',song)
+        except UnicodeDecodeError as e:
+            Logger.error("bass device: %s"%e)
 
     def play(self):
-        self.device.play()
+        if self.device.play():
+            idx,key = self.playlist.current()
+            self.dispatch('on_state_changed',idx,key,self.state())
         #    self.setClock(True)
 
     def pause(self):
-        self.device.pause()
+        if self.device.pause():
+            idx,key = self.playlist.current()
+            self.dispatch('on_state_changed',idx,key,self.state())
         #    self.setClock(False)
 
     #def stop(self):

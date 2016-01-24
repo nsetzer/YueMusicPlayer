@@ -199,9 +199,9 @@ class PlayListView(object):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             _, name, size, idx = self.db_names._get( c, self.uid );
+            idx += 1
             if idx >= size:
                 raise StopIteration()
-            idx += 1
             self.db_names._update( c, self.uid, idx=idx)
             res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
             key = c.fetchone()[0]
@@ -215,9 +215,9 @@ class PlayListView(object):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             _, name, size, idx = self.db_names._get( c, self.uid );
-            if idx <= 0:
-                raise StopIteration()
             idx -= 1
+            if idx < 0:
+                raise StopIteration()
             self.db_names._update( c, self.uid, idx=idx)
             res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
             key = c.fetchone()[0]
