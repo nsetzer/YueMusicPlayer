@@ -40,7 +40,6 @@ class PlaylistManager(object):
 
     @staticmethod
     def init( sqlstore ):
-        print("GOT HEER")
         PlaylistManager.__instance = PlaylistManager( sqlstore )
 
 
@@ -101,6 +100,15 @@ class PlayListView(object):
             _, name, size, index = self.db_names._get( c, self.uid );
             return size
 
+    def get(self, idx):
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, _, size, _ = self.db_names._get( c, self.uid );
+            if 0 <= idx < size:
+                res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+                return c.fetchone()[0]
+        raise IndexError(idx)
+
     def insert(self,idx,key):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
@@ -143,6 +151,12 @@ class PlayListView(object):
             c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx2))
             self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
+
+    def shuffle_range(self,start,end):
+        """ shuffle a slice of the list, using python slice semantics
+            playlist[start:end]
+        """
+        pass
 
     def iter(self):
         with self.db_lists.conn() as conn:
