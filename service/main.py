@@ -73,9 +73,9 @@ class YueServer(object):
         libpath = get_platform_path()
         SoundManager.init( libpath )
 
-        SoundManager.instance().bind(on_state_changed=YueServer.on_state_change)
-        SoundManager.instance().bind(on_song_end=YueServer.on_song_end_event)
-        SoundManager.instance().bind(on_playlist_end=YueServer.on_playlist_end)
+        SoundManager.instance().bind(on_state_changed=self.on_state_change)
+        SoundManager.instance().bind(on_song_end=self.on_song_end_event)
+        SoundManager.instance().bind(on_playlist_end=self.on_playlist_end)
 
         self.event_queue = Queue.Queue()
         self.cv_wait = Condition()
@@ -115,12 +115,12 @@ class YueServer(object):
         else:
             pl = PlaylistManager.instance().openPlaylist('current')
             idx,key = pl.current()
-            sm.dispatch('on_song_state_changed',idx,key,sm.state())
+            sm.dispatch('on_state_changed',idx,key,sm.state())
 
     def on_playlist_end(self,*args):
         """callback for when there are no more songs in the current playlist"""
         Logger.info(" playlist finished ")
-        self.unload()
+        #sm.unload()
 
 class SongTick(Thread):
 

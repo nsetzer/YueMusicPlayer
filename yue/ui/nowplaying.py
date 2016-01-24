@@ -86,7 +86,7 @@ class NowPlayingScreen(Screen):
         SoundManager.instance().bind(on_song_tick=self.on_tick)
 
 
-    def on_tick(self,position,duration):
+    def on_tick(self,obj, position,duration):
         self.timebar.value = position
         self.timebar.duration = duration
 
@@ -94,6 +94,7 @@ class NowPlayingScreen(Screen):
     def update(self, obj, song):
 
         if song['uid'] != self.current_song['uid']:
+            print(song)
             self.current_song = song
             self.timebar.value = 0
             #self.timebar.duration = SoundManager.instance().duration()
@@ -104,8 +105,6 @@ class NowPlayingScreen(Screen):
             idx,_ = pl.current()
             sz = pl.size()
             self.lbl_index.text = "%d/%d"%(idx+1,sz)
-
-
 
     @mainthread
     def update_statechange(self, obj, state):

@@ -135,10 +135,10 @@ class YueApp(App):
         # on windows, child processs is stopped when the shell
         # exits.
         if self.pid is not None:
-            Logger.info("stopping popen service")
+            Logger.info("Yue: stopping popen service")
             self.pid.kill()
         if self.service is not None:
-            Logger.info("stopping android service")
+            Logger.info("Yue: stopping android service")
             self.service.stop()
             self.service = None
 
@@ -146,7 +146,7 @@ class YueApp(App):
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_now_playing )
-        scr.on_tick(p,d)
+        scr.on_tick(None, p,d)
 
     def on_state_changed(self,idx,uid,state):
 
@@ -210,6 +210,8 @@ class YueApp(App):
         # TODO save current playlist to settings db
 
         Logger.info('Yue: on exit joining threads')
+
+        self.stop_service()
 
         if self.bg_thread is not None:
             #TODO: send kill msg

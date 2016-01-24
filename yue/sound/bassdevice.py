@@ -59,7 +59,7 @@ class BassSoundDevice(SoundDevice):
         path = song['path']
         #self.media_duration = song.get('length',100)
         try:
-            self.device.unload()
+            #self.device.unload()
             if self.device.load( path ):
                 self.dispatch('on_load',song)
         except UnicodeDecodeError as e:
