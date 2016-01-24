@@ -15,6 +15,7 @@ from yue.custom_widgets.playlist import PlayListElem
 
 from ConfigParser import ConfigParser
 import codecs
+import random
 
 class PlaylistManager(object):
     """docstring for PlaylistManager"""
@@ -69,8 +70,6 @@ class PlaylistManager(object):
             view = PlayListView( self.db_names, self.db_lists, uid)
             return view
 
-
-
 class PlayListView(object):
     def __init__(self, db_names, db_lists, uid):
         super(PlayListView, self).__init__()
@@ -105,7 +104,7 @@ class PlayListView(object):
             c = conn.cursor()
             _, _, size, _ = self.db_names._get( c, self.uid );
             if 0 <= idx < size:
-                res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+                res = c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
                 return c.fetchone()[0]
         raise IndexError(idx)
 
@@ -156,16 +155,31 @@ class PlayListView(object):
         """ shuffle a slice of the list, using python slice semantics
             playlist[start:end]
         """
-        pass
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            # extract the set of songs in the given range
+            res = c.execute("SELECT song_id from playlist_songs where uid=? and idx BETWEEN ? and ?", (self.uid,start,end))
+            keys = []
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    keys.append( item[0] )# song_id
+                items = c.fetchmany()
+            # this part could probably be done better
+            # shuffle the song set
+            random.shuffle(keys)
+            # write the new order back to the list
+            for i,k in enumerate(keys):
+                c.execute("UPDATE playlist_songs SET song_id=? WHERE uid=? and idx=?",(k,self.uid,start+i))
 
     def iter(self):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            c.execute("select * from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
+            c.execute("select song_id from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
             items = c.fetchmany()
             while items:
                 for item in items:
-                    yield item
+                    yield item[0] # song_id
                 items = c.fetchmany()
 
     def current(self):

@@ -93,10 +93,10 @@ class CurrentPlaylistScreen(Screen):
 
         playlist = PlaylistManager.instance().openPlaylist('current')
 
-        idx,_ = playlist.current(current,end)
+        idx,_ = playlist.current()
         size = playlist.size()
-        playlist.shuffle_range(idx,size)
+        playlist.shuffle_range(idx+1,size)
 
-        lst = SoundManager.instance().current_playlist
+        lst = list(playlist.iter())
         viewlst = Library.instance().PlayListToViewList( lst )
         self.setPlayList( viewlst )
