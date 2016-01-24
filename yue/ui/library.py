@@ -13,6 +13,7 @@ from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.settings import Settings
 from yue.library import Library
+from yue.playlist import PlaylistManager
 from yue.sound.manager import SoundManager
 
 class LibraryScreen(Screen):
@@ -100,5 +101,7 @@ class LibraryScreen(Screen):
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_current_playlist )
         scr.setPlayList( viewlst )
-        SoundManager.instance().setCurrentPlayList( lst )
-        SoundManager.instance().play()
+
+        playlist = PlaylistManager.instance().openPlaylist('current')
+        playlist.set( lst )
+        SoundManager.instance().play_index(0)

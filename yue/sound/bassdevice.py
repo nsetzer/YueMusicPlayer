@@ -2,7 +2,7 @@
 # todo: bass syncproc
 import os
 from kivy.core.audio import SoundLoader
-from kivy.clock import Clock, mainthread
+from kivy.clock import Clock
 from kivy.event import EventDispatcher
 from kivy.logger import Logger
 
@@ -18,8 +18,8 @@ class BassSoundDevice(SoundDevice):
         self.volume = 0.5
         #self.media_duration = 100 # updated on load
 
-        self.clock_scheduled = False
-        self.clock_interval = 0.5 # in seconds
+        #self.clock_scheduled = False
+        #self.clock_interval = 0.5 # in seconds
 
         BassPlayer.init()
 
@@ -34,27 +34,26 @@ class BassSoundDevice(SoundDevice):
 
         try:
 
-            plugin_path = os.path.join(libpath,"lib%s.so")
+            plugin_path = os.path.join(libpath,"lib%s.so"%name)
             if os.path.exists( plugin_path ):
                 return BassPlayer.loadPlugin( plugin_path )
 
-            plugin_path = os.path.join(libpath,"%s.dll")
+            plugin_path = os.path.join(libpath,"%s.dll"%name)
             if os.path.exists( plugin_path ):
                 return BassPlayer.loadPlugin( plugin_path )
 
-            Logger.error("Plugin not found '%s' in %s."%(name,libpath))
+            Logger.error("Plugin: Plugin not found '%s' in %s."%(name,libpath))
 
         except OSError as e:
-            Logger.error("Error Loading Plugin Directory : %s"%libpath)
-            Logger.error("Error Loading Plugin Directory : %s"%e)
+            Logger.error("Plugin: Loading Plugin Directory : %s"%libpath)
+            Logger.error("Plugin: Loading Plugin Directory : %s"%e)
         except Exception as e:
-            Logger.error("Error Loading Plugin: %s"%name)
-            Logger.error("Error Loading Plugin: %s"%e)
+            Logger.error("Plugin: Loading Plugin: %s"%name)
+            Logger.error("Plugin: Loading Plugin: %s"%e)
 
     def unload(self):
-
         self.device.unload()
-        self.setClock(False)
+        #self.setClock(False)
 
     def load(self, song):
         path = song['path']
@@ -63,12 +62,12 @@ class BassSoundDevice(SoundDevice):
             self.dispatch('on_load',song)
 
     def play(self):
-        if self.device.play():
-            self.setClock(True)
+        self.device.play()
+        #    self.setClock(True)
 
     def pause(self):
-        if self.device.pause():
-            self.setClock(False)
+        self.device.pause()
+        #    self.setClock(False)
 
     #def stop(self):
     #    if self.sound is not None:
@@ -100,19 +99,19 @@ class BassSoundDevice(SoundDevice):
 
         return status
 
-    def setClock(self,state):
+    #def setClock(self,state):
+    #    if self.clock_scheduled == False and state == True:
+    #        self.clock_scheduled = True
+    #        Clock.schedule_interval( self.on_song_tick_callback, self.clock_interval )
+    #    elif self.clock_scheduled == True and state == False:
+    #        self.clock_scheduled = False
+    #        Clock.unschedule( self.on_song_tick_callback )
 
-        if self.clock_scheduled == False and state == True:
-            self.clock_scheduled = True
-            Clock.schedule_interval( self.on_song_tick_callback, self.clock_interval )
-        elif self.clock_scheduled == True and state == False:
-            self.clock_scheduled = False
-            Clock.unschedule( self.on_song_tick_callback )
-
-    @mainthread
     def on_end(self, player):
+        Logger.info("bass device: got to on end")
         self.dispatch('on_song_end')
 
-
-
-
+class ServerBassSoundDevice(BassSoundDevice):
+    """ interface class for playing audio, managing current playlist """
+    def __init__(self, libpath):
+        super(ServerBassSoundDevice, self).__init__( libpath )

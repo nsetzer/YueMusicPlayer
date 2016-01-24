@@ -30,47 +30,45 @@ class ClientSoundDevice(SoundDevice):
         # osc.bind(self.info.oscid, someapi_callback, '/some_api')
         #osc.sendMsg('/init', dataArray=[libpath,], port=self.info.serviceport)
 
-        #self.setClock(True)
-        self._state = True
-
     def unload(self):
         osc.sendMsg('/audio_action', dataArray=["unload"], port=self.info.serviceport)
 
     def load(self, song):
-        osc.sendMsg('/load_path', dataArray=[song['path'],], port=self.info.serviceport)
+        osc.sendMsg('/audio_action', dataArray=["load",song['path'],], port=self.info.serviceport)
+        self.dispatch('on_load',song)
 
     def play(self):
         osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)
-        self._state = True
 
     def pause(self):
         osc.sendMsg('/audio_action', dataArray=["pause"], port=self.info.serviceport)
-        self._state = False
+
+    def playpause(self):
+        """ toggle state of audio
+        """
+        osc.sendMsg('/audio_action', dataArray=["playpause"], port=self.info.serviceport)
 
     #def stop(self):
     #    if self.sound is not None:
     #        self.sound.stop()
 
     def seek(self,seconds):
-        pass
+        osc.sendMsg('/audio_action', dataArray=["seek",seconds], port=self.info.serviceport)
 
     def position(self):
-        pass
+        raise NotImplementedError()
 
     def duration(self):
-        pass
+        raise NotImplementedError()
 
     def setVolume(self,volume):
-        pass
+        osc.sendMsg('/audio_action', dataArray=["volume",volume], port=self.info.serviceport)
 
     def getVolume(self):
-        pass
+        raise NotImplementedError()
 
     def state(self):
-        if self._state:
-            return MediaState.play
-
-        return MediaState.pause
+        raise NotImplementedError()
 
     def setClock(self,state):
         if self.clock_scheduled == False and state == True:

@@ -77,13 +77,14 @@ class NowPlayingScreen(Screen):
         SoundManager.instance().bind(on_load=self.update)
         SoundManager.instance().bind(on_song_tick=self.on_tick)
 
-    def on_tick(self,obj,value):
-        self.timebar.value = value
+    def on_tick(self,position,duration):
+        self.timebar.value = position
+        self.timebar.duration = duration
 
     def update(self,obj,song):
 
         self.timebar.value = 0
-        self.timebar.duration = SoundManager.instance().duration()
+        #self.timebar.duration = SoundManager.instance().duration()
         self.update_albumart(song)
         self.lbl_title.text = song['title']
         self.lbl_artist.text = song['artist']

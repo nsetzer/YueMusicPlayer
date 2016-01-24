@@ -52,8 +52,10 @@ class BackgroundDataLoad(Thread):
         settings = Settings.instance()
         # someqhat annoying, but I need a uique library per thread
 
-        library = Library(SQLStore(settings.db_path))
-
+        sqlstore = SQLStore(settings.db_path)
+        library = Library( sqlstore )
+        plmgr = PlaylistManager( sqlstore )
+        plcur = plmgr.openPlaylist( 'current' )
 
         scr_lib = settings.manager.get_screen( settings.screen_library )
         scr_cur = settings.manager.get_screen( settings.screen_current_playlist )
@@ -74,7 +76,6 @@ class BackgroundDataLoad(Thread):
 
         tree = library.toTree()
         # build a dummy playlist until it can be stored in the db
-        Logger.warning(" got here ")
         lst = []
         g = library.db.iter()
         try:
@@ -83,9 +84,12 @@ class BackgroundDataLoad(Thread):
                 lst.append(song['uid'])
         except StopIteration as e:
             pass
-        Logger.warning(" got here ")
-        viewlst = library.PlayListToViewList( lst )
-        SoundManager.instance().setCurrentPlayList( lst )
+        if len(lst):
+            viewlst = library.PlayListToViewList( lst )
+            plcur.set( lst )
+            idx,key = plcur.current()
+            song = library.songFromId( key )
+            SoundManager.instance().load( song )
 
         scr_lib.setLibraryTree( tree )
         scr_cur.setPlayList( viewlst )
@@ -116,7 +120,7 @@ class YueApp(App):
         hostname = '127.0.0.1'
         osc.init()
         oscid = osc.listen(ipAddr=hostname, port=activityport)
-        osc.bind(oscid, lambda m,*a: Logger.info('pong') , '/pong')
+
 
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
 
@@ -136,6 +140,19 @@ class YueApp(App):
             self.service.stop()
             self.service = None
 
+    def on_song_tick(self,p,d):
+
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_now_playing )
+        scr.on_tick(p,d)
+
+    def on_song_state_changed(self,idx,uid,state):
+
+        song = Library.instance().songFromId(uid)
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_now_playing )
+        scr.update( None, song)
+
     def build(self):
 
         # create the screen manager and application screens
@@ -150,7 +167,6 @@ class YueApp(App):
 
         SoundManager.init( Settings.instance().platform_libpath, info = info )
 
-
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
@@ -158,6 +174,9 @@ class YueApp(App):
         pr_scr = PresetScreen(name=Settings.instance().screen_presets)
         in_scr = IngestScreen(name=Settings.instance().screen_ingest)
         se_scr = SettingsScreen(name=Settings.instance().screen_settings)
+
+        osc.bind(info.oscid, lambda m,*a: self.on_song_tick(m[2],m[3]) , '/song_tick')
+        osc.bind(info.oscid, lambda m,*a: self.on_song_state_changed(*m[2:]) , '/song_state')
 
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)

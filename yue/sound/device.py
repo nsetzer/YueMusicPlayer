@@ -23,14 +23,25 @@ class SoundDevice(EventDispatcher):
         self.playlist_index = 0 # current song, from current playlist
 
         self.register_event_type('on_song_tick')
+        self.register_event_type('on_song_state_changed')
         self.register_event_type('on_song_end')
         self.register_event_type('on_playlist_end')
         self.register_event_type('on_load')
 
         self.playlist = PlaylistManager.instance().openPlaylist('current')
 
-
     def on_load(self,song):
+        pass
+
+    def on_song_state_changed(self,idx,key,state):
+        pass
+
+    def on_song_end(self):
+        """ callback for when current song finishes playing """
+        pass
+
+    def on_playlist_end(self):
+        """callback for when there are no more songs in the current playlist"""
         pass
 
     # playback controls
@@ -82,9 +93,17 @@ class SoundDevice(EventDispatcher):
         """ return MediaState """
         raise NotImplementedError()
 
+    def load_current( self ):
+        idx, key = self.playlist.current()
+        song = Library.instance().songFromId( key )
+        self.load( song )
+
     # current playlist management
     def play_index(self,idx):
-        pass
+        key = self.playlist.get( idx )
+        song = Library.instance().songFromId( key )
+        self.load( song )
+        self.play()
 
     def next(self):
         """ play the next song in the playlist
@@ -129,24 +148,7 @@ class SoundDevice(EventDispatcher):
         song = Library.instance().songFromId( key )
         return song
 
-    @mainthread
-    def setCurrentPlayList(self,lst):
-        self.playlist.set(lst)
-        song = self.currentSong()
-        self.load( song )
-
-    def playlist_remove(self,idx):
-        self.playlist.delete(idx)
-
-    def playlist_move(self, i, j):
-        # TODO: update current playback index
-
-        self.playlist.reinsert(i,j)
-
-    def playlist_shuffle(self):
-        pass
-
-    def on_song_tick(self, value):
+    def on_song_tick(self, position, duration):
         """ during playback, used to update the ui """
         # todo: need a mechanism to bind functions to events,
         # so that this object does not need to know about the UI.
@@ -157,15 +159,9 @@ class SoundDevice(EventDispatcher):
         # todo: need a mechanism to bind functions to events,
         # so that this object does not need to know about the UI.
 
-        self.dispatch('on_song_tick',self.position())
+        self.dispatch('on_song_tick',self.position(), self.duration())
 
-    def on_song_end(self):
-        """ callback for when current song finishes playing """
-        Logger.info(" song finished ")
-        if not self.next():
-            self.dispatch('on_playlist_end')
 
-    def on_playlist_end(self):
-        """callback for when there are no more songs in the current playlist"""
-        Logger.info(" playlist finished ")
-        self.unload()
+
+
+

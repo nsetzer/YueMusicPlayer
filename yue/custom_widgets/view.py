@@ -538,7 +538,6 @@ class ViewWidget(Widget):
     def swipeEvent(self,elem_idx, elem, direction):
         """ direction is one of : "left", "right" """
         Logger.info("swipe right event no implemented")
-        print(elem_idx,elem,direction)
 
     def setScrollDisabled(self,b):
         self.scroll_disabled = b

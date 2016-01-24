@@ -35,7 +35,7 @@ TODO:
 from yue.settings import Settings
 
 from .kivydevice import KivySoundDevice
-from .bassdevice import BassSoundDevice
+from .bassdevice import BassSoundDevice, ServerBassSoundDevice
 from .clientdevice import ClientSoundDevice
 
 class PlayList(object):
@@ -52,12 +52,14 @@ class SoundManager(object):
 
     @staticmethod
     def init( libpath, info = None ):
+        """ instanciate a client device if info is not none
+        """
         #SoundManager.__instance = VlcSoundManager( libpath )
         #SoundManager.__instance = KivySoundDevice( libpath )
         if info is not None:
             SoundManager.__instance = ClientSoundDevice( libpath, info )
         else:
-            SoundManager.__instance = BassSoundDevice( libpath )
+            SoundManager.__instance = ServerBassSoundDevice( libpath )
 
     @staticmethod
     def instance():
