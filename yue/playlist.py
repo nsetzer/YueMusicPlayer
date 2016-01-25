@@ -99,6 +99,17 @@ class PlayListView(object):
             _, name, size, index = self.db_names._get( c, self.uid );
             return size
 
+    def set_index(self,idx):
+        """ set the current playlist index, return key at that position """
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, _, size, _ = self.db_names._get( c, self.uid );
+            if 0 <= idx < size:
+                self.db_names._update( c, self.uid, idx=idx );
+                res = c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
+                return c.fetchone()[0]
+        raise IndexError(idx)
+
     def get(self, idx):
         with self.db_lists.conn() as conn:
             c = conn.cursor()

@@ -101,7 +101,7 @@ class SoundDevice(EventDispatcher):
 
     # current playlist management
     def play_index(self,idx):
-        key = self.playlist.get( idx )
+        key = self.playlist.set_index( idx )
         song = Library.instance().songFromId( key )
         self.load( song )
         self.play()
