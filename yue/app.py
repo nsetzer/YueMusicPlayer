@@ -123,7 +123,6 @@ class YueApp(App):
         osc.init()
         oscid = osc.listen(ipAddr=hostname, port=activityport)
 
-
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
 
         time.sleep(.5)
@@ -157,6 +156,23 @@ class YueApp(App):
         scr.update( None, song )
         scr.update_statechange( None, state )
 
+    def ingest_update(self,message,*args):
+        print(message)
+
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_ingest )
+        scr.update_labels(*message[2:])
+
+    def ingest_finished(self,message,*args):
+        print(message)
+
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_library )
+        scr.setLibraryTree( Library.instance().toTree() )
+
+        scr = settings.manager.get_screen( settings.screen_ingest )
+        scr.ingest_finished()
+
     def build(self):
 
         # create the screen manager and application screens
@@ -168,6 +184,8 @@ class YueApp(App):
         PlaylistManager.init( Settings.instance().sqldb )
 
         info = self.start_service()
+
+        Settings.service_info = info
 
         SoundManager.init( Settings.instance().platform_libpath, info = info )
 
@@ -181,6 +199,8 @@ class YueApp(App):
 
         osc.bind(info.oscid, lambda m,*a: self.on_song_tick(m[2],m[3]) , '/song_tick')
         osc.bind(info.oscid, lambda m,*a: self.on_state_changed(*m[2:]) , '/song_state')
+        osc.bind(info.oscid, self.ingest_update , '/ingest_update')
+        osc.bind(info.oscid, self.ingest_finished , '/ingest_finished')
 
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)

@@ -103,11 +103,7 @@ class Settings(object):
         self.manager.current = self.screen_settings
 
     def newSongUid(self):
-        uid = 1
-        if self.db_settings.exists("next_uid"):
-            uid = self.db_settings.get("next_uid")['value']
-        self.db_settings.put("next_uid",value=uid+1)
-        return uid
+        raise RuntimeError("no longer used")
 
     @staticmethod
     def init( manager ):

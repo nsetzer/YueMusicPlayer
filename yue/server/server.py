@@ -13,6 +13,8 @@ from yue.library import Library
 from yue.playlist import PlaylistManager
 from yue.sqlstore import SQLStore, SQLView
 
+from yue.server.ingest import Ingest
+
 serviceport = 15123
 activityport = 15124
 
@@ -48,9 +50,10 @@ class YueServer(object):
         osc.init()
         self.oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
         osc.bind(self.oscid, audio_action_callback, '/audio_action')
+        osc.bind(self.oscid, self.ingest_start, '/ingest_start')
 
-        db_path = os.path.join(app_path,"yue.db")
-        self.sqlstore = SQLStore(db_path)
+        self.db_path = os.path.join(app_path,"yue.db")
+        self.sqlstore = SQLStore( self.db_path )
         Library.init( self.sqlstore )
         PlaylistManager.init( self.sqlstore )
         libpath = get_platform_path()
@@ -65,6 +68,8 @@ class YueServer(object):
 
         self.songtickthread = SongTick( activityport )
         self.songtickthread.start()
+
+        self.ingestthread = None
 
         self.alive = True
 
@@ -107,8 +112,14 @@ class YueServer(object):
         Logger.info(" playlist finished ")
         #sm.unload()
 
-class SongTick(Thread):
+    def ingest_start(self,message, *args):
 
+        print(message)
+        path = message[2]
+        self.ingestthread = Ingest( activityport, self.db_path, path )
+        self.ingestthread.start()
+
+class SongTick(Thread):
 
     # todo: condition variables to sleep this thread when not playing music
     def __init__(self, port):

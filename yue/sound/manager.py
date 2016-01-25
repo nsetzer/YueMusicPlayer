@@ -50,6 +50,8 @@ class PlayList(object):
 class SoundManager(object):
     __instance = None
 
+    supported_types = [".mp3", ".flac"]
+
     @staticmethod
     def init( libpath, info = None ):
         """ instanciate a client device if info is not none

@@ -31,6 +31,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import mainthread
 from kivy.logger import Logger
+from kivy.lib import osc
 
 from yue.settings import Settings
 from yue.library import Library
@@ -67,8 +68,12 @@ class IngestScreen(Screen):
 
         self.vbox.remove_widget( self.btn_start )
         #self.vbox.remove_widget( self.btn_home )
-        self.thread = Ingest(self, Settings.instance().default_ingest_path )
-        self.thread.start()
+        #self.thread = Ingest(self,  )
+        #self.thread.start()
+        data = [Settings.instance().default_ingest_path,]
+        port = Settings.instance().service_info.serviceport
+        print("ingest start",data,port)
+        osc.sendMsg('/ingest_start', dataArray=data, port=port)
 
     @mainthread
     def update_labels(self,dirname,count):
@@ -79,95 +84,4 @@ class IngestScreen(Screen):
     def ingest_finished(self):
         self.vbox.add_widget( self.btn_start, index = 4 )
         #self.vbox.add_widget( self.btn_home , index = 0 )
-
-class Ingest(Thread):
-    """ scan a list of directories asynchronously for media files
-    """
-    def __init__(self,parent, *dirs):
-        super(Ingest,self).__init__()
-        self.parent = parent # instance of IngestScreen
-        self.dirs = dirs
-
-        Logger.info(u"ingest: directory list %s"%(self.dirs))
-
-    def run(self):
-
-        Logger.info("ingest: thread start")
-        self.init_lut()
-
-        Logger.info(u"ingest: directory list%s"%(self.dirs))
-
-        for d in self.dirs:
-            self.walk_directory(d)
-
-        # couple ways to do this:
-        #   1. after loading each song, update the tree.
-        #   2. refresh the tree when ingest finishes
-        # 2 is easier for now.
-
-        settings = Settings.instance()
-        scr = settings.manager.get_screen( settings.screen_library )
-        #TODO
-
-        scr.setLibraryTree( self.library.toTree() )
-
-        self.parent.ingest_finished()
-
-        Logger.info("ingest: thread exit")
-
-    def init_lut(self):
-
-        self.sqlstore = SQLStore(Settings.instance().db_path)
-        self.library = Library( self.sqlstore )
-
-        self.path_lut = self.library.toPathMap()
-        self.types = Settings.instance().supported_types
-
-    def walk_directory(self,dir):
-
-        self.tstart = time.clock()
-        count = 0
-        for dirpath,_,filenames in os.walk( unicode(dir) ):
-
-            Logger.info(u"ingest: %s"%(dirpath))
-
-            count += self.load_directory(dirpath,filenames)
-
-            self.rate_limit(.2,.1,dirpath,count)
-
-        self.parent.update_labels("","%d"%count)
-
-    def load_directory(self,dirpath,filenames):
-        count = 0
-        for name in filenames:
-            try:
-                path = os.path.join(dirpath,name).encode('utf-8')
-                path = path.decode('utf-8')
-                if self.load_file( path ):
-                    count += 1
-            except Exception as e:
-                Logger.error("bg: error %s"%e)
-                traceback.print_exc()
-        return count
-
-    def load_file(self, path):
-        ext = os.path.splitext(path)[1].lower()
-        if ext in self.types and path not in self.path_lut:
-            key = self.library.loadPath( path )
-            self.path_lut[path] = key # not strictly necessary here.
-            return True
-        return False
-
-    def rate_limit(self,t1,t2,msg,count):
-        # rate limit background thread (needs some work)
-        # sleep for t2 seconds every t1 seconds.
-        # update the ui before sleeping ( this prevents flooding
-        # the event manager with ui updates ). This should
-        # also allow other apps time to run, access the disk
-        e = time.clock()
-        delta = e - self.tstart
-        if delta > t1 :
-            self.tstart = e
-            self.parent.update_labels(msg,"%d"%count)
-            time.sleep(t2)
 

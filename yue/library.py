@@ -112,7 +112,6 @@ class Library(object):
                 "path"   : get_default(section,"path"  ,""),
 
             }
-            uid = Settings.instance().newSongUid()
             self.db.insert(**song)
 
         Logger.info('loading test library: %s'%inipath)
@@ -121,8 +120,7 @@ class Library(object):
         """ does not check for duplicates """
         Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
-        key = Settings.instance().newSongUid()
-        return self.db.insert( **song)
+        return self.db.insert(**song)
 
     def songFromId(self,uid):
         return self.db.get(uid)

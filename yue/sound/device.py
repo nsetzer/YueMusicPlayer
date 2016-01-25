@@ -17,6 +17,7 @@ class MediaState(Enum):
 
 class SoundDevice(EventDispatcher):
     """ interface class for playing audio, managing current playlist """
+
     def __init__(self):
         super(SoundDevice, self).__init__()
         self.current_playlist = []
