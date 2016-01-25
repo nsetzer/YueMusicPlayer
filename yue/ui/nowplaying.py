@@ -67,6 +67,7 @@ class NowPlayingScreen(Screen):
         self.btn_prev.bind(on_press=(lambda *x : SoundManager.instance().prev()))
 
         self.timebar = TimeBar()
+        self.timebar.size_hint=(1.0,None)
 
         self.hbox_btns.add_widget( self.btn_prev )
         self.hbox_btns.add_widget( self.btn_playpause )
@@ -85,6 +86,11 @@ class NowPlayingScreen(Screen):
         SoundManager.instance().bind(on_load=self.update)
         SoundManager.instance().bind(on_song_tick=self.on_tick)
 
+        #self.bind(size=self.resize)
+
+
+    def resize( self, *args):
+        self.timebar.height=self.height/4
 
     def on_tick(self,obj, position,duration):
         self.timebar.value = position

@@ -82,9 +82,11 @@ class TimeBar(Widget):
         self.lbl_duration.text = fmttime(self.duration)
 
     def on_touch_up(self, touch):
-        if self.collide_point( *touch.pos ):
-
-            x,y = self.to_widget(*touch.pos)
+        y1 = self.height//2 #- h//2
+        y2 = y1 + self.height/5
+        x,y = self.to_widget(*touch.pos)
+        #if self.collide_point( *touch.pos ):
+        if 0 <= x < self.width and y1 <= y < y2:
             w = self.width
             m = self.margin
             v =  (x - w*m) / (w*(1.0-2*m))
