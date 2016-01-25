@@ -8,6 +8,7 @@ from kivy.lib import osc
 from kivy.logger import Logger
 
 from yue.sound.manager import SoundManager
+from yue.sound.device import MediaState
 from yue.sound.pybass import get_platform_path
 from yue.library import Library
 from yue.playlist import PlaylistManager
@@ -18,27 +19,7 @@ from yue.server.ingest import Ingest
 serviceport = 15123
 activityport = 15124
 
-def audio_action_callback(message,*args):
-    action = message[2]
 
-    Logger.info("action: %s"%action)
-    inst = SoundManager.instance()
-    if action == 'load':
-        inst.load( {'path':message[3],} )
-    elif action == 'play':
-        inst.play()
-    elif action == 'pause':
-        inst.pause()
-    elif action == 'playpause':
-        inst.playpause()
-    elif action == 'unload':
-        inst.unload()
-    elif action == 'seek':
-        seconds = message[3]
-        inst.seek(seconds)
-    elif action == 'volume':
-        volume = message[3]
-        inst.setVolume(volume)
 
 class YueServer(object):
     """docstring for YueServer"""
@@ -49,7 +30,7 @@ class YueServer(object):
 
         osc.init()
         self.oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
-        osc.bind(self.oscid, audio_action_callback, '/audio_action')
+        osc.bind(self.oscid, self.audio_action_callback, '/audio_action')
         osc.bind(self.oscid, self.ingest_start, '/ingest_start')
 
         self.db_path = os.path.join(app_path,"yue.db")
@@ -65,8 +46,9 @@ class YueServer(object):
 
         self.event_queue = Queue.Queue()
         self.cv_wait = Condition()
+        self.cv_tick = Condition()
 
-        self.songtickthread = SongTick( activityport )
+        self.songtickthread = SongTick( self.cv_tick, activityport )
         self.songtickthread.start()
 
         self.ingestthread = None
@@ -86,6 +68,34 @@ class YueServer(object):
             # wait for new events
             with self.cv_wait:
                 self.cv_wait.wait( .1 )
+
+    def audio_action_callback(self, message,*args):
+        action = message[2]
+
+        Logger.info("action: %s"%action)
+        inst = SoundManager.instance()
+        if action == 'load':
+            inst.load( {'path':message[3],} )
+        elif action == 'play':
+            inst.play()
+            with self.cv_tick:
+                self.cv_tick.notify()
+        elif action == 'pause':
+            inst.pause()
+            with self.cv_tick:
+                self.cv_tick.notify()
+        elif action == 'playpause':
+            inst.playpause()
+            with self.cv_tick:
+                self.cv_tick.notify()
+        elif action == 'unload':
+            inst.unload()
+        elif action == 'seek':
+            seconds = message[3]
+            inst.seek(seconds)
+        elif action == 'volume':
+            volume = message[3]
+            inst.setVolume(volume)
 
     def on_state_change(self,*args):
         osc.sendMsg('/song_state', dataArray=args, port=activityport)
@@ -113,22 +123,30 @@ class YueServer(object):
         #sm.unload()
 
     def ingest_start(self,message, *args):
-
-        print(message)
+        Logger.info("service: Ingest request recieved.")
         path = message[2]
         self.ingestthread = Ingest( activityport, self.db_path, path )
         self.ingestthread.start()
 
 class SongTick(Thread):
 
-    # todo: condition variables to sleep this thread when not playing music
-    def __init__(self, port):
+    def __init__(self, cv_tick, port):
         super(SongTick,self).__init__()
         self.port = port
+        self.cv_tick = cv_tick
 
     def run(self):
         while True:
+            # update ui with current position
             p=SoundManager.instance().position()
             d=SoundManager.instance().duration()
             osc.sendMsg('/song_tick', dataArray=[p,d], port=self.port)
+
+            # limit how often the message is sent.
             time.sleep(.5)
+
+            # pause this thread while playback is paused
+            with self.cv_tick:
+                while SoundManager.instance().state() != MediaState.play:
+                    self.cv_tick.wait()
+

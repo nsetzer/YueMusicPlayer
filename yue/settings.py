@@ -25,8 +25,6 @@ class Settings(object):
         self.screen_ingest = 'Ingest'
         self.screen_settings = 'Settings'
 
-        self.supported_types = ['.mp3', '.flac']
-
         self.init_platform()
 
         self.default_ingest_path = r'D:\Music\Flac'
@@ -38,7 +36,6 @@ class Settings(object):
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
-        self.db_library_path  = os.path.join(self.platform_path, "library.db")
         self.db_path  = os.path.join(self.platform_path, "yue.db")
 
         self.db_settings = DictStore( self.db_settings_path )
@@ -59,12 +56,12 @@ class Settings(object):
 
         # there seems no better way to check if we are running on android
         #if os.environ.get("NDKPLATFORM") is not None:
-        app_path = '/data/data/com.github.nsetzer.yue/'
+        app_path = '/data/data/com.github.nsetzer.yue'
         if os.path.exists(app_path):
             self.platform = "android"
-            self.platform_path = '/data/data/com.github.nsetzer.yue/'
+            self.platform_path = os.path.join(app_path,"files")
             self.arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
-            self.platform_libpath = os.path.join(self.platform_path,'lib')
+            self.platform_libpath = os.path.join(app_path,"lib")
 
         Logger.info("settings: platform name: %s"%self.platform)
         Logger.info("settings: platform path: %s"%self.platform_path)
@@ -101,9 +98,6 @@ class Settings(object):
 
     def go_settings(self, *args):
         self.manager.current = self.screen_settings
-
-    def newSongUid(self):
-        raise RuntimeError("no longer used")
 
     @staticmethod
     def init( manager ):
