@@ -159,6 +159,7 @@ class NodeWidget(Widget):
     # together, they define where the user can touch to initiate scrolling
     pad_left = NumericProperty() # gutter, width of space before text label
     pad_right = NumericProperty() # gutter, width of space after text label
+    height = NumericProperty()
 
     def resizeEvent(self,*args):
         if self.parent is not None:
@@ -194,6 +195,9 @@ class NodeWidget(Widget):
     def setData(self,data):
         raise NotImplementedError()
 
+    def rowHeight(self):
+        return self.height
+
 class ListNodeWidget(NodeWidget):
     """ represents a single row in a list view """
 
@@ -216,8 +220,8 @@ class ListNodeWidget(NodeWidget):
         self.bind(pos=self.resizeEvent)
         self.resizeEvent()
 
-    def setText(self,text):
-        self.lbl1.text = text
+    def rowHeight(self):
+        return self.height
 
     def setData(self,elem):
         """
@@ -226,7 +230,7 @@ class ListNodeWidget(NodeWidget):
         elem : the element containing data to display
         """
         self.elem = elem
-        self.setText( elem.text )
+        self.lbl1.text = elem.text
         self.resizeEvent()
 
     def resizeEvent(self,*args):
@@ -389,7 +393,6 @@ class ViewWidget(Widget):
         self.bind(size=self.resize)
         self.bind(offset=self.on_update_offset)
 
-        self.row_height = 1.5 * kivy.metrics.sp( font_size )
         self.nodes = []
         self.create_rows(20) # TODO resize based on height
 
@@ -418,11 +421,15 @@ class ViewWidget(Widget):
         self.update_labels()
 
     def create_rows(self,n):
+        # TODO: must pull row height from element, instead of setting here
+        suggested_height = 1.5 * kivy.metrics.sp( self.font_size )
         for i in range(n):
-            nd = self.node_factory(height=self.row_height,
+            nd = self.node_factory(height=suggested_height,
                              font_size = self.font_size );
             self.add_widget( nd,canvas=self.canvas )
             self.nodes.append( nd )
+
+        self.row_height = self.nodes[0].rowHeight()
 
     def update_labels(self):
         raise NotImplementedError()
