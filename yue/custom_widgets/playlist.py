@@ -22,6 +22,8 @@ todo:
 
 from kivy.uix.label import Label
 from kivy.graphics import Color
+from kivy.graphics.texture import Texture
+from kivy.graphics import Color, Ellipse, Rectangle
 
 
 from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget
@@ -49,7 +51,18 @@ class PlayListNodeWidget(NodeWidget):
 
         self.elem = None
 
+        self.texture_default = Texture.create(size=(1, 2), colorfmt='rgb')
+        buf = bytearray([135,135,135,135,135,200])
+        self.texture_default.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
+        self.texture_highlight = Texture.create(size=(1, 2), colorfmt='rgb')
+        buf = bytearray([100,100,100,100,100,240])
+        self.texture_highlight.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
         with self.canvas:
+
+            self.rect_grad = Rectangle(texture=self.texture_default)
+
             self.lbl_title = Label(text="",
                                    font_size = font_size+1,
                                    halign='left',
@@ -78,7 +91,7 @@ class PlayListNodeWidget(NodeWidget):
         self.bind(pos=self.resizeEvent)
         self.resizeEvent()
 
-    def setData(self,elem):
+    def setData(self,elem,bgtexture=None):
         """
         update this node to display a TreeElem
 
@@ -88,10 +101,15 @@ class PlayListNodeWidget(NodeWidget):
         self.lbl_title.text = "[b]"+elem.title+"[/b]"
         self.lbl_artist.text = elem.artist
         self.lbl_length.text = elem.length
+        # again, just hacking this feature for now
+        if bgtexture :
+            self.rect_grad.texture = self.texture_highlight
+        else:
+            self.rect_grad.texture = self.texture_default
         self.resizeEvent()
 
     def resizeEvent(self,*args):
-        super(PlayListNodeWidget, self).resizeEvent(*args)
+        #super(PlayListNodeWidget, self).resizeEvent(*args)
 
         hpad = self.width/20
         self.lbl_title.x = self.x + hpad
@@ -111,6 +129,9 @@ class PlayListNodeWidget(NodeWidget):
         self.lbl_length.width = self.width//4 - hpad
         self.lbl_length.height = self.height // 2
         self.lbl_length.text_size = self.lbl_length.size
+
+        self.rect_grad.size = self.size
+        self.rect_grad.pos  = self.pos
 
         self.pad_left = self.x
         self.pad_right = self.x + self.width

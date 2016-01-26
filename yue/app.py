@@ -73,7 +73,6 @@ class BackgroundDataLoad(Thread):
         library.loadTestData( os.path.join( \
             Settings.instance().platform_path,"library.ini") );
 
-
         tree = library.toTree()
         # build a dummy playlist until it can be stored in the db
         lst = []
