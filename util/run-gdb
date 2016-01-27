@@ -1,0 +1,17 @@
+#! /usr/bin/bash
+
+# notes on trying to get gdb working, so far unsuccessful.
+
+adbpath=~/.buildozer/android/platform/android-sdk-20/platform-tools/adb
+gdbpath=~/.buildozer/android/platform//android-ndk-r9c/prebuilt/android-arm/gdbserver/gdbserver
+
+"$adbpath" push "$gdbpath" /data/local/gdbserver
+#adb shell
+#chmod 755 gdbserver
+
+#~/.buildozer/android/platform//android-ndk-r9c/ndk-gdb --adb="/home/nsetzer/.buildozer/android/platform/android-sdk-20/platform-tools/adb"
+
+
+
+$ ~/android-ndk-r8b/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-gdb\
+ ~/python-for-android/dist/debug/private/libpymodules.so

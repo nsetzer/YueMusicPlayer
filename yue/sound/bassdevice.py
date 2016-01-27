@@ -28,7 +28,8 @@ class BassSoundDevice(SoundDevice):
 
         self.device = BassPlayer()
 
-        self.device.setStreamEndCallback( self.on_end )
+        # this feature causes a segfault on android.
+        #self.device.setStreamEndCallback( self.on_end )
 
     def load_plugin(self,libpath,name):
 
@@ -117,7 +118,7 @@ class BassSoundDevice(SoundDevice):
 
     def on_end(self, player):
         Logger.info("bass device: got to on end")
-        self.dispatch('on_song_end')
+        #self.dispatch('on_song_end')
 
 class ServerBassSoundDevice(BassSoundDevice):
     """ interface class for playing audio, managing current playlist """

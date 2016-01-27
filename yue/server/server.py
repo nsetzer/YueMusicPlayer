@@ -38,6 +38,7 @@ class YueServer(object):
         Library.init( self.sqlstore )
         PlaylistManager.init( self.sqlstore )
         libpath = get_platform_path()
+        Logger.info("service: lib path: %s"%libpath)
         SoundManager.init( libpath )
 
         SoundManager.instance().bind(on_state_changed=self.on_state_change)

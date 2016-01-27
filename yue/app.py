@@ -89,9 +89,9 @@ class BackgroundDataLoad(Thread):
             idx,key = plcur.current()
             song = library.songFromId( key )
             SoundManager.instance().load( song )
+            scr_cur.setPlayList( viewlst )
 
         scr_lib.setLibraryTree( tree )
-        scr_cur.setPlayList( viewlst )
 
         Logger.info("data: background load thread finished")
 

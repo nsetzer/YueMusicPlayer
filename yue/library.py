@@ -89,9 +89,9 @@ class Library(object):
             return
         except:
             pass
-        #if not os.path.exists(inipath):
-        #    Logger.critical('test library not found: %s'%inipath)
-        #    return
+        if not os.path.exists(inipath):
+            Logger.critical('test library not found: %s'%inipath)
+            return
 
         Logger.info('loading test library: %s'%inipath)
 
