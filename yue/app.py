@@ -155,6 +155,9 @@ class YueApp(App):
         scr.update( None, song )
         scr.update_statechange( None, state )
 
+        scr = settings.manager.get_screen( settings.screen_current_playlist )
+        scr.view.setHighlight(idx)
+
     def ingest_update(self,message,*args):
         print(message)
 

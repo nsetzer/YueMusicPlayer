@@ -22,13 +22,6 @@ class ClientSoundDevice(SoundDevice):
         super(ClientSoundDevice, self).__init__()
         self.volume = 0.5
         self.info = info
-        #self.media_duration = 100 # updated on load
-
-        self.clock_scheduled = False
-        self.clock_interval = 0.5 # in seconds
-
-        # osc.bind(self.info.oscid, someapi_callback, '/some_api')
-        #osc.sendMsg('/init', dataArray=[libpath,], port=self.info.serviceport)
 
     def unload(self):
         osc.sendMsg('/audio_action', dataArray=["unload"], port=self.info.serviceport)
@@ -69,12 +62,4 @@ class ClientSoundDevice(SoundDevice):
 
     def state(self):
         raise NotImplementedError()
-
-    def setClock(self,state):
-        if self.clock_scheduled == False and state == True:
-            self.clock_scheduled = True
-            Clock.schedule_interval( self.on_song_tick_callback, self.clock_interval )
-        elif self.clock_scheduled == True and state == False:
-            self.clock_scheduled = False
-            Clock.unschedule( self.on_song_tick_callback )
 

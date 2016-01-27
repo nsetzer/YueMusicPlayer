@@ -443,6 +443,10 @@ class ViewWidget(Widget):
     def update_labels(self):
         raise NotImplementedError()
 
+    def setHighlight(self,idx):
+        self.row_to_highlight = idx
+        self.update_labels()
+
     def on_update_offset(self,*args):
         new_idx,self.offset_pos = divmod(self.offset,self.row_height)
 
