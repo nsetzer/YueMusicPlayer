@@ -2,6 +2,11 @@
 import os
 import sqlite3
 
+"""
+todo: read sqlalchemy
+http://docs.sqlalchemy.org/en/rel_1_0/core/tutorial.html
+"""
+
 class SQLStore(object):
     """docstring for SQLStore"""
     def __init__(self, filename):

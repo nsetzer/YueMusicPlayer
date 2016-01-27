@@ -159,14 +159,12 @@ class YueApp(App):
         scr.view.setHighlight(idx)
 
     def ingest_update(self,message,*args):
-        print(message)
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_ingest )
         scr.update_labels(*message[2:])
 
     def ingest_finished(self,message,*args):
-        print(message)
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )

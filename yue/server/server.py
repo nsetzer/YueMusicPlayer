@@ -49,7 +49,7 @@ class YueServer(object):
         self.cv_wait = Condition()
         self.cv_tick = Condition()
 
-        self.songtickthread = SongTick( self.cv_tick, activityport )
+        self.songtickthread = SongTick( self.cv_tick, activityport, self.on_song_end_event )
         self.songtickthread.start()
 
         self.ingestthread = None
@@ -131,23 +131,43 @@ class YueServer(object):
 
 class SongTick(Thread):
 
-    def __init__(self, cv_tick, port):
+    """
+    Note: this design was due to a threading problem with the on song
+    end callback system within bass. Instead, this thread can now detect
+    the end of a song via polling and call the next function automatically.
+    this is a less than ideal temporary fix.
+    """
+    def __init__(self, cv_tick, port, cbk_end):
         super(SongTick,self).__init__()
         self.port = port
         self.cv_tick = cv_tick
+        self.cbk_end = cbk_end
 
     def run(self):
+        notified = True # prevent duplicate signals
+        tpos = -1 # only update when the time changes
+        tdur = -1
         while True:
             # update ui with current position
-            p=SoundManager.instance().position()
-            d=SoundManager.instance().duration()
-            osc.sendMsg('/song_tick', dataArray=[p,d], port=self.port)
+            tmp=SoundManager.instance().position()
+            tdur=SoundManager.instance().duration()
+            if tmp != tpos:
+                tpos = tmp
+                osc.sendMsg('/song_tick', dataArray=[tpos,tdur], port=self.port)
 
-            # limit how often the message is sent.
-            time.sleep(.5)
+            # rate limit this thread
+            time.sleep(.125)
 
             # pause this thread while playback is paused
-            with self.cv_tick:
-                while SoundManager.instance().state() != MediaState.play:
-                    self.cv_tick.wait()
+            state = SoundManager.instance().state()
+
+            if state == MediaState.end and not notified:
+                self.cbk_end()
+                notified = True
+            else:
+                with self.cv_tick:
+                    while state != MediaState.play:
+                        self.cv_tick.wait()
+                        state = SoundManager.instance().state()
+                    notified = False
 

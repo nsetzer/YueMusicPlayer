@@ -14,6 +14,7 @@ class MediaState(Enum):
     not_ready = 0
     play = 1
     pause = 2
+    end = 3
 
 class SoundDevice(EventDispatcher):
     """ interface class for playing audio, managing current playlist """

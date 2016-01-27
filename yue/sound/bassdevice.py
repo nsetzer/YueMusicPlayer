@@ -104,6 +104,7 @@ class BassSoundDevice(SoundDevice):
         status = {
             BassPlayer.PLAYING : MediaState.play,
             BassPlayer.PAUSED  : MediaState.pause,
+            BassPlayer.STOPPED  : MediaState.end,
         }.get(self.device.status(),MediaState.not_ready)
 
         return status
