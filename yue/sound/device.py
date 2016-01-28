@@ -12,9 +12,11 @@ from enum import Enum
 
 class MediaState(Enum):
     not_ready = 0
-    play = 1
-    pause = 2
-    end = 3
+    error = 1
+    play = 2
+    pause = 3
+    end = 4
+
 
 class SoundDevice(EventDispatcher):
     """ interface class for playing audio, managing current playlist """

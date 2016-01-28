@@ -105,6 +105,7 @@ class BassSoundDevice(SoundDevice):
             BassPlayer.PLAYING : MediaState.play,
             BassPlayer.PAUSED  : MediaState.pause,
             BassPlayer.STOPPED  : MediaState.end,
+            BassPlayer.UNKNOWN  : MediaState.error,
         }.get(self.device.status(),MediaState.not_ready)
 
         return status

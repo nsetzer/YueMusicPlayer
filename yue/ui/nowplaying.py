@@ -86,7 +86,7 @@ class NowPlayingScreen(Screen):
         SoundManager.instance().bind(on_load=self.update)
         SoundManager.instance().bind(on_song_tick=self.on_tick)
 
-        #self.bind(size=self.resize)
+        self.bind(size=self.resize)
 
 
     def resize( self, *args):
