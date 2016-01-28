@@ -166,6 +166,7 @@ class YueApp(App):
 
     def ingest_finished(self,message,*args):
 
+        Logger.info("ingest: signal finished received.")
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )
         #scr.setLibraryTree( Library.instance().toTree() )
@@ -174,6 +175,7 @@ class YueApp(App):
         tree = library.toTree()
         scr.setLibraryTree( tree )
 
+        Logger.info("ingest: updated tree")
 
         scr = settings.manager.get_screen( settings.screen_ingest )
         scr.ingest_finished()

@@ -73,22 +73,17 @@ class YueServer(object):
     def audio_action_callback(self, message,*args):
         action = message[2]
 
-        Logger.info("action: %s"%action)
+        Logger.info("service: action: %s"%action)
+
         inst = SoundManager.instance()
         if action == 'load':
             inst.load( {'path':message[3],} )
         elif action == 'play':
             inst.play()
-            with self.cv_tick:
-                self.cv_tick.notify()
         elif action == 'pause':
             inst.pause()
-            with self.cv_tick:
-                self.cv_tick.notify()
         elif action == 'playpause':
             inst.playpause()
-            with self.cv_tick:
-                self.cv_tick.notify()
         elif action == 'unload':
             inst.unload()
         elif action == 'seek':
@@ -97,6 +92,9 @@ class YueServer(object):
         elif action == 'volume':
             volume = message[3]
             inst.setVolume(volume)
+
+        with self.cv_tick:
+            self.cv_tick.notify()
 
     def on_state_change(self,*args):
         osc.sendMsg('/song_state', dataArray=args, port=activityport)
@@ -109,7 +107,7 @@ class YueServer(object):
             self.cv_wait.notify()
 
     def on_song_end(self):
-        Logger.info(" song finished ")
+        Logger.info("service: song finished ")
         sm = SoundManager.instance()
         if not sm.next():
             sm.dispatch('on_playlist_end')
@@ -117,10 +115,12 @@ class YueServer(object):
             pl = PlaylistManager.instance().openPlaylist('current')
             idx,key = pl.current()
             sm.dispatch('on_state_changed',idx,key,sm.state())
+        with self.cv_tick:
+            self.cv_tick.notify()
 
     def on_playlist_end(self,*args):
         """callback for when there are no more songs in the current playlist"""
-        Logger.info(" playlist finished ")
+        Logger.info("service: playlist finished ")
         #sm.unload()
 
     def ingest_start(self,message, *args):
@@ -166,8 +166,13 @@ class SongTick(Thread):
                 notified = True
             else:
                 with self.cv_tick:
-                    while state != MediaState.play:
+                    # TODO:
+                    # checking not_ready is a temporary patch where after seeking
+                    # bass will be not_ready for a moment on android (uncertain why).
+                    while state != MediaState.play and state != MediaState.not_ready:
+                        Logger.info("service: song tick thread going to sleep %s"%state)
                         self.cv_tick.wait()
                         state = SoundManager.instance().state()
+                        Logger.info("service: song tick thread waking up")
                     notified = False
 
