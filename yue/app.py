@@ -168,10 +168,16 @@ class YueApp(App):
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )
-        scr.setLibraryTree( Library.instance().toTree() )
+        #scr.setLibraryTree( Library.instance().toTree() )
+        sqlstore = SQLStore(settings.db_path)
+        library = Library( sqlstore )
+        tree = library.toTree()
+        scr.setLibraryTree( tree )
+
 
         scr = settings.manager.get_screen( settings.screen_ingest )
         scr.ingest_finished()
+
 
     def build(self):
 
