@@ -6,6 +6,7 @@ from kivy.logger import Logger
 
 from yue.settings import Settings
 from yue.library import Library
+from yue.playlist import PlaylistManager
 
 from enum import Enum
 
@@ -13,20 +14,36 @@ class MediaState(Enum):
     not_ready = 0
     play = 1
     pause = 2
+    end = 3
 
 class SoundDevice(EventDispatcher):
     """ interface class for playing audio, managing current playlist """
+
     def __init__(self):
         super(SoundDevice, self).__init__()
         self.current_playlist = []
         self.playlist_index = 0 # current song, from current playlist
 
         self.register_event_type('on_song_tick')
+        self.register_event_type('on_state_changed')
         self.register_event_type('on_song_end')
         self.register_event_type('on_playlist_end')
         self.register_event_type('on_load')
 
+        self.playlist = PlaylistManager.instance().openPlaylist('current')
+
     def on_load(self,song):
+        pass
+
+    def on_state_changed(self,idx,key,state):
+        pass
+
+    def on_song_end(self):
+        """ callback for when current song finishes playing """
+        pass
+
+    def on_playlist_end(self):
+        """callback for when there are no more songs in the current playlist"""
         pass
 
     # playback controls
@@ -78,16 +95,17 @@ class SoundDevice(EventDispatcher):
         """ return MediaState """
         raise NotImplementedError()
 
+    def load_current( self ):
+        idx, key = self.playlist.current()
+        song = Library.instance().songFromId( key )
+        self.load( song )
+
     # current playlist management
     def play_index(self,idx):
-        if 0 <= idx < len(self.current_playlist):
-            self.playlist_index = idx
-            key = self.current_playlist[ idx ]
-            song = Library.instance().songFromId( key )
-            self.load( song )
-            self.play()
-            return True # TODO this isnt quite right
-        return False
+        key = self.playlist.set_index( idx )
+        song = Library.instance().songFromId( key )
+        self.load( song )
+        self.play()
 
     def next(self):
         """ play the next song in the playlist
@@ -95,15 +113,18 @@ class SoundDevice(EventDispatcher):
         return true if a song was successfully loaded and playback began
         """
         #TODO: next causes 'end of file' stop
-        if self.playlist_index < len(self.current_playlist) - 1:
-            self.playlist_index += 1
-            song = self.currentSong()
-            if song is not None:
-                self.load( song )
-                self.play()
-                return True # TODO this isnt quite right
-            else:
-                print("no next song to play")
+
+        try:
+            idx,key = self.playlist.next()
+            song = Library.instance().songFromId( key )
+            self.load( song )
+            self.play()
+            return True # TODO this isnt quite right
+        except StopIteration:
+            Logger.info("no next song");
+        except KeyError as e:
+            Logger.info("no such song %s"%e);
+
         return False
 
     def prev(self):
@@ -112,48 +133,24 @@ class SoundDevice(EventDispatcher):
         return true if a song was successfully loaded and playback began
         """
 
-        if self.playlist_index > 0:
-            self.playlist_index -= 1
-            song = self.currentSong()
-            if song is not None:
-                self.load( song )
-                self.play()
-                return True # TODO this isnt quite right
+        try:
+            idx,key = self.playlist.prev()
+            song = Library.instance().songFromId( key )
+            self.load( song )
+            self.play()
+            return True # TODO this isnt quite right
+        except StopIteration:
+            Logger.info("no prev song");
+        except KeyError as e:
+            Logger.info("no such song %s"%e);
         return False
 
     def currentSong(self):
-        if self.playlist_index < len(self.current_playlist):
-            key = self.current_playlist[ self.playlist_index ]
-            return Library.instance().songFromId( key )
-        return None
+        idx,key = self.playlist.current()
+        song = Library.instance().songFromId( key )
+        return song
 
-    def setCurrentPlayList(self,lst):
-        self.current_playlist = lst
-        self.playlist_index = 0 # current song, from current playlist
-        if len(lst) > 0:
-            song = self.currentSong()
-            self.load( song )
-
-    def playlist_remove(self,idx):
-        if 0 <= idx < len(self.current_playlist):
-            del self.current_playlist[ idx ]
-
-    def playlist_move(self, i, j):
-        # TODO: update current playback index
-
-        if 0 <= i < len(self.current_playlist):
-            item = self.current_playlist[i]
-            del self.current_playlist[i]
-            self.current_playlist.insert(j,item)
-
-    def playlist_shuffle(self):
-
-        b= self.current_playlist[:self.playlist_index+1]
-        a= self.current_playlist[self.playlist_index+1:]
-        random.shuffle(a)
-        self.current_playlist = b + a
-
-    def on_song_tick(self, value):
+    def on_song_tick(self, position, duration):
         """ during playback, used to update the ui """
         # todo: need a mechanism to bind functions to events,
         # so that this object does not need to know about the UI.
@@ -164,15 +161,9 @@ class SoundDevice(EventDispatcher):
         # todo: need a mechanism to bind functions to events,
         # so that this object does not need to know about the UI.
 
-        self.dispatch('on_song_tick',self.position())
+        self.dispatch('on_song_tick',self.position(), self.duration())
 
-    def on_song_end(self):
-        """ callback for when current song finishes playing """
-        Logger.info(" song finished ")
-        if not self.next():
-            self.dispatch('on_playlist_end')
 
-    def on_playlist_end(self):
-        """callback for when there are no more songs in the current playlist"""
-        Logger.info(" playlist finished ")
-        self.unload()
+
+
+

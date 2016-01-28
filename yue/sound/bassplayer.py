@@ -188,7 +188,9 @@ class BassPlayer(object):
 
 
         #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_SETPOS,0,syncStreamSetPos, self.cptr_self )
-        pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_END,0,syncStreamEnd, self.cptr_self )
+        # this causes a segfault on android :(
+        #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_END,0,syncStreamEnd, self.cptr_self )
+
         return True
 
     def decode(self,filepath):
@@ -272,6 +274,9 @@ class BassPlayer(object):
 
         if self.channelIsValid():
             pybass.BASS_ChannelPause(self.channel);
+            # todo check for errors
+            return True
+        return False
 
     def stop(self):
         pybass.BASS_ChannelStop(self.channel);
@@ -438,6 +443,7 @@ P_PY_OBJECT = ctypes.POINTER(ctypes.py_object)
 @pybass.SYNCPROC
 def syncStreamEnd( handle, buffer, length, user):
     player =  ctypes.cast(user,P_PY_OBJECT)[0]
+    print(" *** stream end event : calling callback\n")
     cbk = player.sync_callbacks.get("stream_end",None)
     if cbk is not None:
         cbk( player )

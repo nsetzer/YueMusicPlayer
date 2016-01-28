@@ -40,7 +40,7 @@ def build_timebar():
 
 def build_treeview():
 
-    Settings.init()
+    Settings.init( "./yue.db" )
     Library.init()
     data = Library.instance().toTree()
 
@@ -62,14 +62,15 @@ def build_listview():
 
 def build_playlistview():
     data = [
-        PlayListElem(0,"Art","item-1"),
-        PlayListElem(1,"Art","item-2"),
-        PlayListElem(2,"Art","item-3"),
-        PlayListElem(3,"Art","item-4"),
-        PlayListElem(4,"Art","item-5"),
+        PlayListElem(0,{"artist":"Art1","title":"item-1","length":123}),
+        PlayListElem(1,{"artist":"Art1","title":"item-2","length":60 }),
+        PlayListElem(2,{"artist":"Art1","title":"item-3","length":400}),
+        PlayListElem(3,{"artist":"Art1","title":"item-4","length":123}),
+        PlayListElem(4,{"artist":"Art1","title":"item-5","length":123}),
     ]
     view = PlayListViewWidget( font_size=16 )
     view.setData(data)
+    view.setHighlight(3)
     return view
 
 

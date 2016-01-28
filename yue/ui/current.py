@@ -10,6 +10,7 @@ from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 from yue.library import Library
+from yue.playlist import PlaylistManager
 
 class CurrentPlayListViewWidget(PlayListViewWidget):
     """docstring for PlayListViewWidget"""
@@ -18,15 +19,22 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
         """ direction is one of : "left", "right" """
         super(CurrentPlayListViewWidget,self).swipeEvent(elem_idx, elem, direction)
 
-        SoundManager.instance().playlist_remove( elem_idx )
+        playlist = PlaylistManager.instance().openPlaylist('current')
+        playlist.delete( elem_idx )
 
     def on_drop(self,i,j):
         if j < i : # ensure droped element is inserted after
             j += 1
+
+        # execute a move in the playlist
+        playlist = PlaylistManager.instance().openPlaylist('current')
+        playlist.reinsert(i,j)
+
+        # re insert list view data
         item = self.data[i]
         del self.data[i]
         self.data.insert(j,item)
-        SoundManager.instance().playlist_move( i, j )
+
         self.update_labels()
 
     def on_double_tap(self,index):
@@ -83,7 +91,12 @@ class CurrentPlaylistScreen(Screen):
 
     def shuffle_playlist(self,*args):
 
-        SoundManager.instance().playlist_shuffle()
-        lst = SoundManager.instance().current_playlist
+        playlist = PlaylistManager.instance().openPlaylist('current')
+
+        idx,_ = playlist.current()
+        size = playlist.size()
+        playlist.shuffle_range(idx+1,size)
+
+        lst = list(playlist.iter())
         viewlst = Library.instance().PlayListToViewList( lst )
         self.setPlayList( viewlst )

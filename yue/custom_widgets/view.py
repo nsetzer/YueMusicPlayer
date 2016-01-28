@@ -1,4 +1,4 @@
-#! python2.7 ../../test/test_widget.py list
+#! python2.7 ../../test/test_widget.py tree
 """
 
 a Tree View data structure
@@ -159,6 +159,7 @@ class NodeWidget(Widget):
     # together, they define where the user can touch to initiate scrolling
     pad_left = NumericProperty() # gutter, width of space before text label
     pad_right = NumericProperty() # gutter, width of space after text label
+    height = NumericProperty()
 
     def resizeEvent(self,*args):
         if self.parent is not None:
@@ -191,8 +192,11 @@ class NodeWidget(Widget):
         self.parent.swipeEvent(elem_idx,self.elem,"right")
         self.resizeEvent()
 
-    def setData(self,data):
+    def setData(self,data,bgtexture=None):
         raise NotImplementedError()
+
+    def rowHeight(self):
+        return self.height
 
 class ListNodeWidget(NodeWidget):
     """ represents a single row in a list view """
@@ -216,17 +220,17 @@ class ListNodeWidget(NodeWidget):
         self.bind(pos=self.resizeEvent)
         self.resizeEvent()
 
-    def setText(self,text):
-        self.lbl1.text = text
+    def rowHeight(self):
+        return self.height
 
-    def setData(self,elem):
+    def setData(self,elem,bgtexture=None):
         """
         update this node to display a TreeElem
 
         elem : the element containing data to display
         """
         self.elem = elem
-        self.setText( elem.text )
+        self.lbl1.text = elem.text
         self.resizeEvent()
 
     def resizeEvent(self,*args):
@@ -254,6 +258,14 @@ class TreeNodeWidget(NodeWidget):
         self.expandable = True;
         self.elem = None # current TreeElem to display
 
+        # example texture to  create a gradient in the background (doesnt work)
+        #self.texture = Texture.create(size=(1, 2), colorfmt='rgb')
+        #buf = bytearray([64,128,192,0,0,80])
+        #self.texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
+        #with self.canvas:
+        #    self.rect_grad = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+
         # create a button for expanding / contracting the tree
         self.btn1 = Expander()
         self.add_widget(self.btn1,canvas=self.canvas)
@@ -280,21 +292,12 @@ class TreeNodeWidget(NodeWidget):
         self.add_widget(self.lbl1,canvas=self.canvas)
 
         self.height = height
-        # example texture to  create a gradient in the background (doesnt work)
-        #self.texture = Texture.create(size=(1, 2), colorfmt='rgb')
-        #buf = bytearray([64,128,192,0,0,80])
-        #self.texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
 
         self.bind(size=self.resizeEvent)
         self.bind(pos=self.resizeEvent)
         self.resizeEvent()
 
     def resizeEvent(self,*args):
-
-        # attempt to draw gradient (fails, not correct place)
-        #self.canvas.clear() # TODO: instead of clear, remove only the rectangle
-        #with self.canvas.before:
-        #    Rectangle(pos=self.pos, size=self.size, texture=self.texture)
 
         third = self.height//3
 
@@ -320,8 +323,13 @@ class TreeNodeWidget(NodeWidget):
         self.lbl1.size = (self.width - lpad - rpad,self.height)
         self.lbl1.text_size = self.lbl1.size
 
+        #self.rect_grad.size = self.size
+        #self.rect_grad.pos  = self.pos
+
         self.pad_left = self.x + lpad
         self.pad_right = self.chk1.x
+
+
 
     def setExpandable(self,b):
         """ set that this node (TreeElem) should display the expansion btn """
@@ -335,7 +343,7 @@ class TreeNodeWidget(NodeWidget):
     def setText(self,text):
         self.lbl1.text = text
 
-    def setData(self,elem):
+    def setData(self,elem,bgtexture=None):
         """
         update this node to display a TreeElem
 
@@ -389,7 +397,6 @@ class ViewWidget(Widget):
         self.bind(size=self.resize)
         self.bind(offset=self.on_update_offset)
 
-        self.row_height = 1.5 * kivy.metrics.sp( font_size )
         self.nodes = []
         self.create_rows(20) # TODO resize based on height
 
@@ -400,6 +407,11 @@ class ViewWidget(Widget):
         self.register_event_type('on_drop')
 
         self.tap_max_duration = .2 # cutoff between a tap and press
+
+        # todo, create an enum, enable alternate modes such as
+        # highlight, selected, possibly error labeling (song DNE)
+        # for now, shortcut the one feature i want
+        self.row_to_highlight = -1
 
         with self.canvas.before:
             StencilPush()
@@ -418,14 +430,22 @@ class ViewWidget(Widget):
         self.update_labels()
 
     def create_rows(self,n):
+        # TODO: must pull row height from element, instead of setting here
+        suggested_height = 1.5 * kivy.metrics.sp( self.font_size )
         for i in range(n):
-            nd = self.node_factory(height=self.row_height,
+            nd = self.node_factory(height=suggested_height,
                              font_size = self.font_size );
             self.add_widget( nd,canvas=self.canvas )
             self.nodes.append( nd )
 
+        self.row_height = self.nodes[0].rowHeight()
+
     def update_labels(self):
         raise NotImplementedError()
+
+    def setHighlight(self,idx):
+        self.row_to_highlight = idx
+        self.update_labels()
 
     def on_update_offset(self,*args):
         new_idx,self.offset_pos = divmod(self.offset,self.row_height)
@@ -513,8 +533,9 @@ class ViewWidget(Widget):
                 self._touch_drag = True
                 self._touch_token = self.node_factory( height=self.row_height,
                                             font_size = self.font_size )
-                self._touch_token.setData( self.data[idx] )
-                self.add_widget( self._touch_token )
+                self._touch_token.setData( self.data[idx+self.offset_idx] )
+                self.add_widget( self._touch_token, canvas=self.canvas, index=0 )
+
 
             if not self._touch_drag:
                 o = self.offset + round(touch.dy)
@@ -530,7 +551,9 @@ class ViewWidget(Widget):
                         self.nodes[self._touch_last_index].swipe_reset()
                     self._touch_last_index = idx
             else:
-                self._touch_token.x = touch.px - self._touch_token.width//2
+                self._touch_token.width = self.width
+                self._touch_token.height = self.row_height
+                self._touch_token.x = self.x#touch.px - self._touch_token.width//2
                 self._touch_token.y = touch.py - self._touch_token.height//2
             return True
         return super(ViewWidget, self).on_touch_move(touch)
@@ -538,7 +561,6 @@ class ViewWidget(Widget):
     def swipeEvent(self,elem_idx, elem, direction):
         """ direction is one of : "left", "right" """
         Logger.info("swipe right event no implemented")
-        print(elem_idx,elem,direction)
 
     def setScrollDisabled(self,b):
         self.scroll_disabled = b
@@ -598,7 +620,8 @@ class ListViewWidget(ViewWidget):
             if idx < len(self.data):
                 if self.nodes[index].parent is None:
                     self.add_widget(self.nodes[index],canvas=self.canvas)
-                self.nodes[index].setData(self.data[idx])
+                hl = idx == self.row_to_highlight
+                self.nodes[index].setData(self.data[idx],bgtexture=hl)
             else:
                 break
             index += 1

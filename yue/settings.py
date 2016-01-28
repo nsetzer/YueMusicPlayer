@@ -4,6 +4,7 @@ import kivy.metrics
 from kivy.logger import Logger
 
 from kivy.storage.dictstore import DictStore
+from yue.sqlstore import SQLStore, SQLView
 
 class Settings(object):
     """docstring for Library"""
@@ -24,8 +25,6 @@ class Settings(object):
         self.screen_ingest = 'Ingest'
         self.screen_settings = 'Settings'
 
-        self.supported_types = ['.mp3', '.flac']
-
         self.init_platform()
 
         self.default_ingest_path = r'D:\Music\Flac'
@@ -37,9 +36,11 @@ class Settings(object):
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
-        self.db_library_path  = os.path.join(self.platform_path, "library.db")
+        self.db_path  = os.path.join(self.platform_path, "yue.db")
 
         self.db_settings = DictStore( self.db_settings_path )
+
+        self.sqldb = SQLStore(self.db_path)
 
     def init_platform(self):
         self.platform = sys.platform
@@ -55,12 +56,12 @@ class Settings(object):
 
         # there seems no better way to check if we are running on android
         #if os.environ.get("NDKPLATFORM") is not None:
-        app_path = '/data/data/com.github.nsetzer.yue/'
+        app_path = '/data/data/com.github.nsetzer.yue'
         if os.path.exists(app_path):
             self.platform = "android"
-            self.platform_path = '/data/data/com.github.nsetzer.yue/'
+            self.platform_path = os.path.join(app_path,"files")
             self.arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
-            self.platform_libpath = os.path.join(self.platform_path,'lib')
+            self.platform_libpath = os.path.join(app_path,"lib")
 
         Logger.info("settings: platform name: %s"%self.platform)
         Logger.info("settings: platform path: %s"%self.platform_path)
@@ -97,13 +98,6 @@ class Settings(object):
 
     def go_settings(self, *args):
         self.manager.current = self.screen_settings
-
-    def newSongUid(self):
-        uid = 1
-        if self.db_settings.exists("next_uid"):
-            uid = self.db_settings.get("next_uid")['value']
-        self.db_settings.put("next_uid",value=uid+1)
-        return uid
 
     @staticmethod
     def init( manager ):

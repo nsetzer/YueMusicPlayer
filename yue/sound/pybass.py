@@ -69,13 +69,12 @@ def get_platform_path():
     platform_libpath = os.path.join(platform_path,'lib',
                                     platform_name,
                                     arch)
-    if os.environ.get("NDKPLATFORM") is not None:
+    app_path = '/data/data/com.github.nsetzer.yue'
+    if os.path.exists(app_path):
         platform_name = "android"
         platform_path = '/data/data/com.github.nsetzer.yue/'
         arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
-        platform_libpath = os.path.join(self.platform_path,'lib')
-
-    print(platform_libpath)
+        platform_libpath = os.path.join(platform_path,'lib')
     return platform_libpath
 
 def LookPath(relname):
@@ -86,7 +85,6 @@ def LookPath(relname):
     else:
         bname = "lib%s.so"%relname
     path= os.path.join(libpath,bname)
-    print(path)
     return path
 
 def LoadLibrary(libname):

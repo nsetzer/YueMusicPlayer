@@ -104,7 +104,6 @@ def get_album_art( song_path, temp_path):
     """
     ext = os.path.splitext(song_path)[1].lower()
 
-    print(type(song_path))
     #if type(song_path) is str:
     #    song_path = str.decode("utf-8")
 

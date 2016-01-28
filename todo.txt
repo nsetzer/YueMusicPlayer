@@ -2,6 +2,10 @@
 
 
 
+ - support floating point dsp in bassplayer on platforms that support is.
+ - create a background service
+    https://kivy.org/planet/2014/01/building-a-background-application-on-android-with-kivy/
+
 goals:
 
     create a widget with buttons for all of the different screens

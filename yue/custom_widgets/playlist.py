@@ -21,9 +21,17 @@ todo:
 """
 
 from kivy.uix.label import Label
+from kivy.graphics import Color
+from kivy.graphics.texture import Texture
+from kivy.graphics import Color, Ellipse, Rectangle
 
 
 from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget
+
+def fmttime(s):
+    m,s = divmod(int(s),60)
+    h,m = divmod(m,60)
+    return "%02d:%02d:%02d"%(h,m,s)
 
 class PlayListElem(ListElem):
     """ Tree Element with unique id reference to an item in a database """
@@ -31,6 +39,9 @@ class PlayListElem(ListElem):
         """ song as dictionary """
         text = song['artist'] + " - " + song['title']
         super(PlayListElem, self).__init__(text)
+        self.title = song['title']
+        self.artist = song['artist']
+        self.length = fmttime(song['length'])
         self.uid = uid
 
 class PlayListNodeWidget(NodeWidget):
@@ -40,39 +51,87 @@ class PlayListNodeWidget(NodeWidget):
 
         self.elem = None
 
-        self.lbl1 = Label(text="",
-                    font_size = font_size,
-                    halign='left',
-                    valign='middle',
-                    markup=True,
-                    shorten = True) # truncate long lines
-        self.add_widget(self.lbl1,canvas=self.canvas)
+        self.texture_default = Texture.create(size=(1, 2), colorfmt='rgb')
+        buf = bytearray([135,135,135,135,135,200])
+        self.texture_default.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
 
-        self.height = height
+        self.texture_highlight = Texture.create(size=(1, 2), colorfmt='rgb')
+        buf = bytearray([100,100,100,100,100,240])
+        self.texture_highlight.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+
+        with self.canvas:
+
+            self.rect_grad = Rectangle(texture=self.texture_default)
+
+            self.lbl_title = Label(text="",
+                                   font_size = font_size+1,
+                                   halign='left',
+                                   valign='middle',
+                                   markup=True,
+                                   shorten = True) # truncate long lines
+            self.lbl_artist = Label(text="",
+                                    font_size = font_size-1,
+                                    halign='left',
+                                    valign='middle',
+                                    markup=True,
+                                    shorten = True) # truncate long lines
+            self.lbl_length = Label(text="",
+                                    font_size = font_size,
+                                    halign='right',
+                                    valign='middle',
+                                    markup=True,
+                                    shorten = True) # truncate long lines
+        self.add_widget(self.lbl_title,canvas=self.canvas)
+        self.add_widget(self.lbl_artist,canvas=self.canvas)
+        self.add_widget(self.lbl_length,canvas=self.canvas)
+
+        self.height = 2 * height # given height is currently a suggestion
 
         self.bind(size=self.resizeEvent)
         self.bind(pos=self.resizeEvent)
         self.resizeEvent()
 
-    def setText(self,text):
-        self.lbl1.text = text
-
-    def setData(self,elem):
+    def setData(self,elem,bgtexture=None):
         """
         update this node to display a TreeElem
 
         elem : the element containing data to display
         """
         self.elem = elem
-        self.setText( elem.text )
+        self.lbl_title.text = "[b]"+elem.title+"[/b]"
+        self.lbl_artist.text = elem.artist
+        self.lbl_length.text = elem.length
+        # again, just hacking this feature for now
+        if bgtexture :
+            self.rect_grad.texture = self.texture_highlight
+        else:
+            self.rect_grad.texture = self.texture_default
         self.resizeEvent()
 
     def resizeEvent(self,*args):
-        super(PlayListNodeWidget, self).resizeEvent(*args)
+        #super(PlayListNodeWidget, self).resizeEvent(*args)
 
-        self.lbl1.pos = self.pos
-        self.lbl1.size = self.size
-        self.lbl1.text_size = self.lbl1.size
+        hpad = self.width/20
+        self.lbl_title.x = self.x + hpad
+        self.lbl_title.y = self.y + self.height // 2
+        self.lbl_title.width = self.width - hpad
+        self.lbl_title.height = self.height // 2
+        self.lbl_title.text_size = self.lbl_title.size
+
+        self.lbl_artist.x = self.x + hpad
+        self.lbl_artist.y = self.y
+        self.lbl_artist.width = self.width - hpad
+        self.lbl_artist.height = self.height // 2
+        self.lbl_artist.text_size = self.lbl_artist.size
+
+        self.lbl_length.x = self.x + self.width - self.width//4
+        self.lbl_length.y = self.y + self.height//4
+        self.lbl_length.width = self.width//4 - hpad
+        self.lbl_length.height = self.height // 2
+        self.lbl_length.text_size = self.lbl_length.size
+
+        self.rect_grad.size = self.size
+        self.rect_grad.pos  = self.pos
 
         self.pad_left = self.x
         self.pad_right = self.x + self.width
