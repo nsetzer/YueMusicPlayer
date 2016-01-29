@@ -266,7 +266,7 @@ class QueryBuilder(Widget):
             # these type keys must be callables
             #   with no arguments return a suitable default value
             #   with one argument convert a string into type.
-            str : [QueryKind.LIKE, QueryKind.EQ, QueryKind.NE],
+            str : [QueryKind.LIKE, QueryKind.NOTLIKE, QueryKind.EQ, QueryKind.NE],
             int : [
                     QueryKind.EQ,
                     QueryKind.NE,
