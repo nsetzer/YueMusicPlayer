@@ -28,7 +28,8 @@ class ClientSoundDevice(SoundDevice):
 
     def load(self, song):
         osc.sendMsg('/audio_action', dataArray=["load",song['path'],], port=self.info.serviceport)
-        self.dispatch('on_load',song)
+        Logger.info("client: send load ")
+        #self.dispatch('on_load',song)
 
     def play(self):
         osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)

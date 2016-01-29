@@ -99,8 +99,11 @@ class NowPlayingScreen(Screen):
     @mainthread
     def update(self, obj, song):
 
+
+        if song is None:
+            return
+
         if song['uid'] != self.current_song['uid']:
-            print(song)
             self.current_song = song
             self.timebar.value = 0
             #self.timebar.duration = SoundManager.instance().duration()
@@ -114,9 +117,10 @@ class NowPlayingScreen(Screen):
 
     @mainthread
     def update_statechange(self, obj, state):
-        print(state, state==MediaState.play,state==MediaState.pause)
 
-        if state==MediaState.play:
+        if state==MediaState.error:
+            self.btn_playpause.text="Error"
+        elif state==MediaState.play:
             self.btn_playpause.text="pause"
         else:
             self.btn_playpause.text="play"
@@ -129,7 +133,6 @@ class NowPlayingScreen(Screen):
             self.img_albumart.source = art_path
 
             Logger.info("nowplaying: found art: %s"%art_path)
-            print("exists",os.path.exists(art_path))
 
         except ArtNotFound as e:
             Logger.warning("nowplaying: no art found for %s"%song['path'])

@@ -16,6 +16,7 @@ class BassSoundDevice(SoundDevice):
     def __init__(self, libpath):
         super(BassSoundDevice, self).__init__()
         self.volume = 0.5
+        self.error_state = False
         #self.media_duration = 100 # updated on load
 
         #self.clock_scheduled = False
@@ -60,11 +61,16 @@ class BassSoundDevice(SoundDevice):
         path = song['path']
         #self.media_duration = song.get('length',100)
         try:
-            #self.device.unload()
+            self.device.unload()
             if self.device.load( path ):
+                self.error_state = False
                 self.dispatch('on_load',song)
+            else:
+                self.error_state = True
+                self.dispatch('on_load',None)
         except UnicodeDecodeError as e:
             Logger.error("bass device: %s"%e)
+            self.error_state = True
 
     def play(self):
         if self.device.play():
@@ -100,6 +106,9 @@ class BassSoundDevice(SoundDevice):
         return self.device.volume()/100
 
     def state(self):
+
+        if self.error_state:
+            return MediaState.error
 
         status = {
             BassPlayer.PLAYING : MediaState.play,

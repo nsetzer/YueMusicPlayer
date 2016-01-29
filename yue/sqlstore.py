@@ -55,7 +55,6 @@ class SQLView(object):
             c = self.store.conn.cursor()
             s = ', '.join('%s=?'%x for x in kwargs.keys())
             fmt = "select * from %s WHERE %s"%(self.name,s)
-            print(fmt)
             res = c.execute(fmt,list(kwargs.values()))
             item = c.fetchone()
             while item is not None:

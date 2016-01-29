@@ -72,7 +72,6 @@ class IngestScreen(Screen):
         #self.thread.start()
         data = [Settings.instance().default_ingest_path,]
         port = Settings.instance().service_info.serviceport
-        print("ingest start",data,port)
         osc.sendMsg('/ingest_start', dataArray=data, port=port)
 
     @mainthread

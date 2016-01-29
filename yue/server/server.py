@@ -78,6 +78,7 @@ class YueServer(object):
         inst = SoundManager.instance()
         if action == 'load':
             inst.load( {'path':message[3],} )
+            self.sendCurrent()
         elif action == 'play':
             inst.play()
         elif action == 'pause':
@@ -112,11 +113,16 @@ class YueServer(object):
         if not sm.next():
             sm.dispatch('on_playlist_end')
         else:
-            pl = PlaylistManager.instance().openPlaylist('current')
-            idx,key = pl.current()
-            sm.dispatch('on_state_changed',idx,key,sm.state())
+            self.sendCurrent()
+
         with self.cv_tick:
             self.cv_tick.notify()
+
+    def sendCurrent(self):
+        sm = SoundManager.instance()
+        pl = PlaylistManager.instance().openPlaylist('current')
+        idx,key = pl.current()
+        osc.sendMsg('/song_state', dataArray=(idx,key,sm.state()), port=activityport)
 
     def on_playlist_end(self,*args):
         """callback for when there are no more songs in the current playlist"""

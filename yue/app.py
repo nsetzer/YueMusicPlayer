@@ -38,9 +38,6 @@ import time
 serviceport = 15123 # Todo select these at run time
 activityport = 15124
 
-def someapi_callback(message, *args):
-   print("got a message! %s" % message)
-
 class BackgroundDataLoad(Thread):
     def __init__(self):
         super(BackgroundDataLoad,self).__init__()
