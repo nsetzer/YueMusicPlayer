@@ -16,11 +16,14 @@ TODO:
         'Dynamic Playlists'
 
 """
+from sqlite3 import OperationalError
+
 from kivy.core.text import Label as CoreLabel
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.logger import Logger
 
 from yue.custom_widgets.view import TreeViewWidget, TreeElem
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
@@ -86,7 +89,8 @@ class ModifyPresetScreen(Screen):
         self.btn_home.size_hint = (1.0,None)
         self.btn_home.height = 2 * self.cached_height
 
-        kind_map = { QueryKind.LIKE : "%%",
+        kind_map = { QueryKind.LIKE : "~",
+                     QueryKind.NOTLIKE : "!~",
                      QueryKind.EQ : "==",
                      QueryKind.NE : "!=",
                      QueryKind.LT : "<",
@@ -133,13 +137,17 @@ class ModifyPresetScreen(Screen):
             rules.append( rule )
 
         rule = AndSearchRule(rules)
-        print(rule.sql())
-        result = sql_search( Library.instance().db, rule )
+        sql,values = rule.sql()
+        try:
+            Logger.info("sql: %s"%sql)
+            Logger.info("sql: %s"%values)
+            result = sql_search( Library.instance().db, rule )
+            tree =  Library.instance().toTreeFromIterable( result )
+            self.treeview.setData( tree)
+        except OperationalError as e:
 
-        result = list(result)
-        print(len(result))
-        tree =  Library.instance().toTreeFromIterable( result )
-        self.treeview.setData( tree)
+            Logger.error("sql: %s"%e)
+
 
 
 def createAllTextRule( string ):
