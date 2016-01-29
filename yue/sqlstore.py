@@ -61,6 +61,17 @@ class SQLView(object):
                 yield dict(zip(self.column_names,item))
                 item = c.fetchone()
 
+    def query(self,query,*values):
+        with self.store.conn:
+            #print("query: `%s` :: %s"%(query,values))
+            c = self.store.conn.cursor()
+            res = c.execute(query,values)
+            item = c.fetchone()
+            while item is not None:
+                yield dict(zip(self.column_names,item))
+                item = c.fetchone()
+
+
     def insert(self,**kwargs):
         with self.store.conn:
             c = self.store.conn.cursor()
