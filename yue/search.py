@@ -21,10 +21,21 @@ class PartialStringSearchRule(ColumnSearchRule):
         return self.value in song[self.column]
 
     def sql(self):
-        return "%s like ?"%(self.column,), ("%%%s%%"%self.value,)
+        return "%s LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
 
     def __repr__(self):
         return "Rule<%s in `%s`>"%(self.value, self.column)
+
+class InvertedPartialStringSearchRule(ColumnSearchRule):
+    """docstring for SearchRule"""
+    def check(self,song):
+        return self.value not in song[self.column]
+
+    def sql(self):
+        return "%s NOT LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
+
+    def __repr__(self):
+        return "Rule<%s not in `%s`>"%(self.value, self.column)
 
 class ExactSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
@@ -36,6 +47,17 @@ class ExactSearchRule(ColumnSearchRule):
 
     def sql(self):
         return "%s = ?"%(self.column,), (self.value,)
+
+class InvertedExactSearchRule(ColumnSearchRule):
+    """docstring for SearchRule"""
+    def check(self,song):
+        return self.value != song[self.column]
+
+    def __repr__(self):
+        return "Rule<%s not equals `%s`>"%(self.value, self.column)
+
+    def sql(self):
+        return "%s != ?"%(self.column,), (self.value,)
 
 class LessThanSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
@@ -132,7 +154,7 @@ class AndSearchRule(MetaSearchRule):
             x = rule.sql()
             sql.append(x[0])
             vals.extend(x[1])
-        sql = '(' + ' and '.join(sql) + ')'
+        sql = '(' + ' AND '.join(sql) + ')'
         return sql,vals
 
 class OrSearchRule(MetaSearchRule):
@@ -150,7 +172,7 @@ class OrSearchRule(MetaSearchRule):
             x = rule.sql()
             sql.append(x[0])
             vals.extend(x[1])
-        sql = '(' + ' or '.join(sql) + ')'
+        sql = '(' + ' OR '.join(sql) + ')'
         return sql,vals
 
 def naive_search( sqldb, rule ):
@@ -159,8 +181,10 @@ def naive_search( sqldb, rule ):
         if rule.check(song):
             yield song
 
-def sql_search( sqlview, rule):
+def sql_search( sqlview, rule, case_insensitive=True):
     """ convert a rule to a sql query and yield matching songs """
     x = rule.sql()
-    query = "select * from %s where "%sqlview.name + x[0]
+    query = "SELECT * FROM %s WHERE "%sqlview.name + x[0]
+    if case_insensitive:
+        query += " COLLATE NOCASE"
     return sqlview.query(query, *x[1])

@@ -139,10 +139,11 @@ class Library(object):
         return m
 
     def toTree(self):
+        return self.toTreeFromIterable( self.db.iter() )
 
+    def toTreeFromIterable(self, data):
         artists = {}
-
-        for song in self.db.iter():
+        for song in data:
 
             if song['artist'] not in artists:
                 artists[ song['artist'] ] = TreeElem(song['artist'])

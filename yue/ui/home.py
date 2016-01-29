@@ -52,7 +52,7 @@ class HomeScreen(Screen):
         self.btn_library.bind(on_press=Settings.instance().go_library)
         self.btn_current.bind(on_press=Settings.instance().go_current_playlist)
         self.btn_nowplaying.bind(on_press=Settings.instance().go_now_playing)
-        self.btn_presets.bind(on_press=Settings.instance().go_presets)
+        self.btn_presets.bind(on_press=Settings.instance().go_modify_preset)
         self.btn_settings.bind(on_press=Settings.instance().go_settings)
         self.btn_ingest.bind(on_press=Settings.instance().go_ingest)
 

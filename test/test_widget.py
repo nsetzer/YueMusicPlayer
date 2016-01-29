@@ -24,6 +24,8 @@ from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.custom_widgets.timebar import TimeBar
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from yue.library import Library
 from yue.settings import Settings
 
@@ -76,7 +78,8 @@ def build_playlistview():
 
 def build_querybuilder():
 
-    kind_map = { QueryKind.LIKE : "%%",
+    kind_map = { QueryKind.LIKE : "~",
+                 QueryKind.NOTLIKE : "!~",
                  QueryKind.EQ : "==",
                  QueryKind.NE : "!=",
                  QueryKind.LT : "<",
@@ -89,9 +92,15 @@ def build_querybuilder():
                  QueryKind.OR : "||", }
     columns = {'all-text':str, 'artist':str, 'album':str, 'title':str,
      'playcount':int, 'year':int, 'last_played':int }
+
+    vbox = BoxLayout(orientation='vertical')
     view = QueryBuilder( columns, kind_map, default_column = 'all-text' )
     view.newTerm()
-    return view
+    btn = Button(text="print query")
+    btn.bind(on_press=lambda *x: sys.stdout.write( "%s\n\n"%view.toQuery()))
+    vbox.add_widget( view )
+    vbox.add_widget( btn )
+    return vbox
 
 
 class TestApp(App):

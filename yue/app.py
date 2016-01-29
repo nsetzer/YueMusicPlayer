@@ -19,7 +19,7 @@ from yue.ui.library import LibraryScreen
 from yue.ui.home import HomeScreen
 from yue.ui.nowplaying import NowPlayingScreen
 from yue.ui.current import CurrentPlaylistScreen
-from yue.ui.preset import PresetScreen
+from yue.ui.preset import PresetScreen, ModifyPresetScreen
 from yue.ui.ingest import IngestScreen
 from yue.ui.settings import SettingsScreen
 
@@ -199,6 +199,7 @@ class YueApp(App):
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
         lb_scr = LibraryScreen(name=Settings.instance().screen_library)
         pr_scr = PresetScreen(name=Settings.instance().screen_presets)
+        mp_scr = ModifyPresetScreen(name=Settings.instance().screen_modify_preset)
         in_scr = IngestScreen(name=Settings.instance().screen_ingest)
         se_scr = SettingsScreen(name=Settings.instance().screen_settings)
 
@@ -212,6 +213,7 @@ class YueApp(App):
         sm.add_widget(np_scr)
         sm.add_widget(lb_scr)
         sm.add_widget(pr_scr)
+        sm.add_widget(mp_scr)
         sm.add_widget(in_scr)
         sm.add_widget(se_scr)
 

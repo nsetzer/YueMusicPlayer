@@ -37,17 +37,18 @@ from datetime import date, timedelta
 from functools import partial
 
 class QueryKind(Enum):
-    LIKE=1 # partial match
-    EQ=2   # exact match
-    NE=3   # not equal
-    LT=4   # less than
-    LE=5   # less than or equal
-    GT=6   # greater than
-    GE=7   # greater than or equal
-    BETWEEN=8
-    NOTBETWEEN=9
-    AND=10
-    OR=11
+    LIKE   =1 # partial match
+    NOTLIKE=2 # partial match
+    EQ=3   # exact match
+    NE=4   # not equal
+    LT=5   # less than
+    LE=6   # less than or equal
+    GT=7   # greater than
+    GE=8   # greater than or equal
+    BETWEEN=9
+    NOTBETWEEN=10
+    AND=11
+    OR=12
 
 class FilterTextInput(TextInput):
 
@@ -258,6 +259,8 @@ class QueryBuilder(Widget):
         self.default_column = default_column
         self.font_size = font_size
 
+        self.cached_height =  CoreLabel().get_extents("_")[1]
+
         # by convention, first value in the kind map is the default for that type
         self.column_kind_map = {
             # these type keys must be callables
@@ -284,10 +287,13 @@ class QueryBuilder(Widget):
 
         self.btn_new = Button(text="new")
         self.btn_new.bind(on_press=lambda *x:self.newTerm())
+        self.btn_new.size_hint = (1.0,None)
+        self.btn_new.height = 2 * self.cached_height
 
         self.vbox.add_widget( self.btn_new )
 
         self.bind(size=self.resize)
+        self.bind(pos=self.resize)
 
 
     def remove(self, child):
@@ -312,6 +318,7 @@ class QueryBuilder(Widget):
 
     def resize(self, *args):
         self.vbox.size = self.size
+        self.vbox.pos = self.pos
 
     def newTerm(self):
         term = QueryTerm(self,self.default_column,font_size=self.font_size)
@@ -322,7 +329,9 @@ class QueryBuilder(Widget):
         """
         return a (potentially nested) list of query parameters
         each will be formatted as a 3-tuple
-            (column, action, values)
+            (column, QueryKind, values)
+        depending on the query kind values will be tuple of either
+            1 or 2 values.
         """
         query = []
         for t in self.terms:

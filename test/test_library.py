@@ -62,8 +62,13 @@ def main():
 
     compare( library.db, PartialStringSearchRule('artist','art1'), 'partial')
 
+    compare( library.db, InvertedPartialStringSearchRule('artist','art1'), 'partial-inv')
+
     compare( library.db, ExactSearchRule('artist','art1'), 'eq-string')
     compare( library.db, ExactSearchRule('playcount',2000), 'eq-numeric')
+
+    compare( library.db, InvertedExactSearchRule('artist','art1'), 'eq-string-inv')
+    compare( library.db, InvertedExactSearchRule('playcount',2000), 'eq-numeric-inv')
 
     compare( library.db, LessThanSearchRule('playcount',2000), 'lt')
     compare( library.db, LessThanEqualSearchRule('playcount',2000), 'le')
