@@ -6,7 +6,7 @@ class SearchRule(object):
         super(SearchRule, self).__init__()
 
     def check(self,song):
-        return True
+        raise NotImplementedError()
 
 class ColumnSearchRule(SearchRule):
     """docstring for SearchRule"""
@@ -34,21 +34,51 @@ class ExactSearchRule(ColumnSearchRule):
     def __repr__(self):
         return "Rule<%s equals `%s`>"%(self.value, self.column)
 
+    def sql(self):
+        return "%s = ?"%(self.column,), (self.value,)
+
 class LessThanSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,song):
-        return self.value < song[self.column]
+        return song[self.column] < self.value
+
+    def sql(self):
+        return "%s < ?"%(self.column,), (self.value,)
 
     def __repr__(self):
         return "Rule<%s less than `%s`>"%(self.value, self.column)
 
+class LessThanEqualSearchRule(ColumnSearchRule):
+    """docstring for SearchRule"""
+    def check(self,song):
+        return song[self.column] <= self.value
+
+    def sql(self):
+        return "%s <= ?"%(self.column,), (self.value,)
+
+    def __repr__(self):
+        return "Rule<%s less than or equal `%s`>"%(self.value, self.column)
+
 class GreaterThanSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,song):
-        return self.value > song[self.column]
+        return song[self.column] > self.value
+
+    def sql(self):
+        return "%s > ?"%(self.column,), (self.value,)
 
     def __repr__(self):
         return "Rule<%s greater than `%s`>"%(self.value, self.column)
+
+class GreaterThanEqualSearchRule(ColumnSearchRule):
+    """docstring for SearchRule"""
+    def check(self,song):
+        return song[self.column] >= self.value
+    def sql(self):
+        return "%s >= ?"%(self.column,), (self.value,)
+
+    def __repr__(self):
+        return "Rule<%s greater than or equal `%s`>"%(self.value, self.column)
 
 class RangeSearchRule(SearchRule):
     """docstring for SearchRule"""
@@ -61,11 +91,26 @@ class RangeSearchRule(SearchRule):
     def check(self,song):
         return self.value_low <= song[self.column] <= self.value_high
 
+    def sql(self):
+        return "%s BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
+
     def __repr__(self):
         return "Rule<`%s` in range (%s,%s)>"%(self.column,self.value_low,self.value_high)
 
+class NotRangeSearchRule(RangeSearchRule):
+    """docstring for SearchRule"""
+
+    def check(self,song):
+        return song[self.column] < self.value_low or self.value_high < song[self.column]
+
+    def sql(self):
+        return "%s NOT BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
+
+    def __repr__(self):
+        return "Rule<`%s` not in range (%s,%s)>"%(self.column,self.value_low,self.value_high)
+
 class MetaSearchRule(SearchRule):
-    """docstring for MetaSearchRule"""
+    """group one or more search rules"""
     def __init__(self, rules):
         super(MetaSearchRule, self).__init__()
         self.rules = rules
@@ -114,8 +159,8 @@ def naive_search( sqldb, rule ):
         if rule.check(song):
             yield song
 
-def sql_search( sqldb, rule):
+def sql_search( sqlview, rule):
     """ convert a rule to a sql query and yield matching songs """
     x = rule.sql()
-    query = "select * from library where " + x[0]
-    return sqldb.query(query, *x[1])
+    query = "select * from %s where "%sqlview.name + x[0]
+    return sqlview.query(query, *x[1])
