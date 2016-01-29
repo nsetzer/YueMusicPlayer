@@ -23,6 +23,7 @@ from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, Li
 from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.custom_widgets.timebar import TimeBar
+from yue.custom_widgets.querybuilder import QueryBuilder
 from yue.library import Library
 from yue.settings import Settings
 
@@ -73,6 +74,17 @@ def build_playlistview():
     view.setHighlight(3)
     return view
 
+def build_querybuilder():
+
+    action_icons = {}
+
+    columns = {'all-text':str, 'artist':str, 'album':str, 'title':str,
+     'playcount':int, 'year':int, 'last_played':int }
+    view = QueryBuilder( columns, default_column = 'all-text' )
+    view.newTerm()
+    view.newTerm()
+    return view
+
 
 class TestApp(App):
 
@@ -92,6 +104,7 @@ class TestApp(App):
                 'expander' : build_expander,
                 'time' : build_timebar,
                 'tristatecheckbox' : build_tristatecheckbox,
+                'querybuilder' : build_querybuilder,
             }
 
             for name,func in widgets.items():

@@ -3,6 +3,10 @@
 """
 
 todo:
+    lazy-row-elements, which are given only a song uid. when they
+    need to be displayed for the first time they query the database
+        bonus points: if it is asynchronous
+
     i want each row to display two lines of text, artist, title
     artist should be bold.
     title may need to be tabbed in a small amount
