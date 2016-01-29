@@ -23,7 +23,7 @@ from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, Li
 from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.custom_widgets.timebar import TimeBar
-from yue.custom_widgets.querybuilder import QueryBuilder
+from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
 from yue.library import Library
 from yue.settings import Settings
 
@@ -76,12 +76,20 @@ def build_playlistview():
 
 def build_querybuilder():
 
-    action_icons = {}
-
+    kind_map = { QueryKind.LIKE : "%%",
+                 QueryKind.EQ : "==",
+                 QueryKind.NE : "!=",
+                 QueryKind.LT : "<",
+                 QueryKind.LE : "<=",
+                 QueryKind.GT : ">",
+                 QueryKind.GE : ">=",
+                 QueryKind.BETWEEN : "<->",
+                 QueryKind.NOTBETWEEN : "-><-",
+                 QueryKind.AND : "&",
+                 QueryKind.OR : "||", }
     columns = {'all-text':str, 'artist':str, 'album':str, 'title':str,
      'playcount':int, 'year':int, 'last_played':int }
-    view = QueryBuilder( columns, default_column = 'all-text' )
-    view.newTerm()
+    view = QueryBuilder( columns, kind_map, default_column = 'all-text' )
     view.newTerm()
     return view
 

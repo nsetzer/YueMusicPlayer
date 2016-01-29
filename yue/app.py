@@ -47,7 +47,7 @@ class BackgroundDataLoad(Thread):
         Logger.info("data: starting background load thread")
 
         settings = Settings.instance()
-        # someqhat annoying, but I need a uique library per thread
+        # somewhat annoying, but I need a unique library per thread
 
         sqlstore = SQLStore(settings.db_path)
         library = Library( sqlstore )
