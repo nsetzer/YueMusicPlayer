@@ -15,6 +15,9 @@ TODO:
     after writing 'preset' everywhere, i want to change it to
         'Dynamic Playlists'
 
+    query with a string field that is empty should be dropped,
+        or throw an error.
+
 """
 from sqlite3 import OperationalError
 
@@ -119,20 +122,33 @@ class ModifyPresetScreen(Screen):
 
         self.vbox.add_widget( self.btn_home )
 
-        self.scrollview = ScrollView(size_hint=(1.0, None), height = self.cached_height)
+        # TODO: determine height of one query editor, show ~2-3 rows depending on height
+        self.scrollview = ScrollView(size_hint=(1.0, None), height = 7 * self.cached_height)
         self.scrollview.add_widget( self.queryview )
+
+        self.hbox_bot = BoxLayout(orientation='horizontal')
+        self.btn_save   = Button(text='save')
+        self.btn_save.size_hint = (1.0,None)
+        self.btn_save.height = 2 * self.cached_height
+        self.btn_create = Button(text='Create Playlist')
+        self.btn_create.size_hint = (1.0,None)
+        self.btn_create.height = 2 * self.cached_height
+        self.hbox_bot.add_widget(self.btn_save)
+        self.hbox_bot.add_widget(self.btn_create)
 
         self.vbox.add_widget( self.btn_new )
         self.vbox.add_widget( self.scrollview )
         self.vbox.add_widget( self.btn_query )
         self.vbox.add_widget( self.treeview )
+        self.vbox.add_widget( self.hbox_bot )
 
         self.bind(size=self.resize)
         self.bind(pos=self.resize)
 
     def resize(self, *args):
 
-        self.scrollview.height = self.height/3
+        #self.scrollview.height = self.height/3
+        pass
 
     def executeQuery(self,*args):
 
@@ -148,6 +164,12 @@ class ModifyPresetScreen(Screen):
             else:
                 rule = rule_type(c,*v)
             rules.append( rule )
+
+        if len(rules) == 0:
+            # execute blank search
+            tree =  Library.instance().toTree( )
+            self.treeview.setData( tree)
+            return
 
         rule = AndSearchRule(rules)
         sql,values = rule.sql()
