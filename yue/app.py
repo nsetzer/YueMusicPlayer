@@ -145,7 +145,7 @@ class YueApp(App):
 
     def on_state_changed(self,idx,uid,state):
 
-        Logger.info(" state changed %d %d %d"%(idx,uid,state))
+        Logger.info("now playing: state changed idx:%d uid:%d state:%d"%(idx,uid,state))
         song = Library.instance().songFromId(uid)
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_now_playing )

@@ -158,7 +158,9 @@ class Library(object):
 
             album.addChild(TrackTreeElem(song['uid'],song['title']))
 
-        return list(artists.values())
+        out = list(artists.values())
+        out.sort(key=lambda e : e.text)
+        return out
 
     def PlayListToViewList(self,playlist):
         out = []

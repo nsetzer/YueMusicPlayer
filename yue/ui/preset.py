@@ -160,7 +160,7 @@ class ModifyPresetScreen(Screen):
             rule_type = kindToRule[a]
 
             if c == 'all-text':
-                rule = createAllTextRule(*v)
+                rule = createAllTextRule(a, *v)
             else:
                 rule = rule_type(c,*v)
             rules.append( rule )
@@ -183,12 +183,23 @@ class ModifyPresetScreen(Screen):
 
             Logger.error("sql: %s"%e)
 
-def createAllTextRule( string ):
-    rule = OrSearchRule( [ PartialStringSearchRule("artist",string),
-                           PartialStringSearchRule("composer",string),
-                           PartialStringSearchRule("album",string),
-                           PartialStringSearchRule("title",string),
-                           PartialStringSearchRule("genre",string),
-                           PartialStringSearchRule("comment",string) ] )
+    def toggleSelection(self,state=None):
+        """ TODO: library implements a toggle select all, which should
+            be moved into the tree view class. """
+        pass
+
+def createAllTextRule( action, string ):
+
+    meta = OrSearchRule
+    if action in (QueryKind.NOTLIKE, QueryKind.NE):
+        meta = AndSearchRule
+    str_rule = kindToRule[ action ]
+
+    rule = meta( [ str_rule("artist",string),
+                   str_rule("composer",string),
+                   str_rule("album",string),
+                   str_rule("title",string),
+                   str_rule("genre",string),
+                   str_rule("comment",string) ] )
     return rule
 
