@@ -8,6 +8,11 @@ TODO:
     spacer widgets in the vbox. use a push/pop stack method for translating
     a linear list into a nested tree.
 
+    remove the 'new button' from the query builder widget
+    change the widget into a scroll view,
+    provide a set height method which sets the height in terms of
+    number of visible rows.
+
 """
 from kivy.app import App
 from kivy.uix.widget import Widget
@@ -232,7 +237,7 @@ class ColumnSelector(ScrollView):
         if self.accept is not None:
             self.accept( btn.text )
 
-class QueryBuilder(Widget):
+class QueryBuilder(GridLayout):
 
     """
     construct with:
@@ -253,7 +258,8 @@ class QueryBuilder(Widget):
 
     """
     def __init__(self, columns , kind_map, default_column=None, font_size=12 ):
-        super(QueryBuilder, self).__init__()
+        super(QueryBuilder, self).__init__(cols=1, spacing=1, size_hint_y=None )
+        self.bind(minimum_height=self.setter('height'))
 
         self.columns = columns
         self.default_column = default_column
@@ -282,15 +288,15 @@ class QueryBuilder(Widget):
         self.terms = []
         self.widget_count = 0
 
-        self.vbox = BoxLayout(orientation='vertical')
-        self.add_widget(self.vbox)
+        #self.vbox = BoxLayout(orientation='vertical')
+        #self.add_widget(self.vbox)
 
         self.btn_new = Button(text="new")
         self.btn_new.bind(on_press=lambda *x:self.newTerm())
         self.btn_new.size_hint = (1.0,None)
         self.btn_new.height = 2 * self.cached_height
 
-        self.vbox.add_widget( self.btn_new )
+        #self.vbox.add_widget( self.btn_new )
 
         self.bind(size=self.resize)
         self.bind(pos=self.resize)
@@ -299,7 +305,7 @@ class QueryBuilder(Widget):
     def remove(self, child):
 
         self.terms.remove(child)
-        self.vbox.remove_widget( child )
+        self.remove_widget( child )
 
     def action_names(self, column):
         col_type = self.columns[ column ]
@@ -317,12 +323,13 @@ class QueryBuilder(Widget):
         return acts[0], self.kind_map[acts[0]]
 
     def resize(self, *args):
-        self.vbox.size = self.size
-        self.vbox.pos = self.pos
+        #self.vbox.size = self.size
+        #self.vbox.pos = self.pos
+        pass
 
     def newTerm(self):
         term = QueryTerm(self,self.default_column,font_size=self.font_size)
-        self.vbox.add_widget( term, index=1)
+        self.add_widget( term ) # , index=1)
         self.terms.append( term )
 
     def toQuery(self):

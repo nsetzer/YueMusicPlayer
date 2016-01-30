@@ -24,6 +24,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.logger import Logger
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
 
 from yue.custom_widgets.view import TreeViewWidget, TreeElem
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
@@ -46,7 +48,6 @@ from yue.search import PartialStringSearchRule, \
                        OrSearchRule, \
                        sql_search
 
-
 kindToRule = {
     QueryKind.LIKE    : PartialStringSearchRule,
     QueryKind.NOTLIKE : InvertedPartialStringSearchRule,
@@ -58,8 +59,6 @@ kindToRule = {
     QueryKind.GE : GreaterThanEqualSearchRule,
     QueryKind.BETWEEN : RangeSearchRule,
     QueryKind.NOTBETWEEN : NotRangeSearchRule,
-    QueryKind.AND : AndSearchRule,
-    QueryKind.OR : OrSearchRule,
 }
 
 class PresetScreen(Screen):
@@ -72,7 +71,6 @@ class PresetScreen(Screen):
         self.btn_home = Button(text="home")
         self.btn_home.bind(on_press=Settings.instance().go_home)
         self.vbox.add_widget( self.btn_home )
-
 
 class ModifyPresetScreen(Screen):
     def __init__(self,**kwargs):
@@ -109,17 +107,32 @@ class ModifyPresetScreen(Screen):
 
         self.treeview = TreeViewWidget(font_size = Settings.instance().font_size)
 
-        self.btn_query = Button(text="execute query")
-        self.btn_query.bind(on_press=self.executeQuery)
+        self.btn_new = Button(text="new")
+        self.btn_new.bind(on_press= lambda *x : self.queryview.newTerm() )
+        self.btn_new.size_hint = (1.0,None)
+        self.btn_new.height = 2 * self.cached_height
 
+        self.btn_query = Button(text="search")
+        self.btn_query.bind(on_press=self.executeQuery)
         self.btn_query.size_hint = (1.0,None)
         self.btn_query.height = 2 * self.cached_height
 
         self.vbox.add_widget( self.btn_home )
-        self.vbox.add_widget( self.queryview )
+
+        self.scrollview = ScrollView(size_hint=(1.0, None), height = self.cached_height)
+        self.scrollview.add_widget( self.queryview )
+
+        self.vbox.add_widget( self.btn_new )
+        self.vbox.add_widget( self.scrollview )
         self.vbox.add_widget( self.btn_query )
         self.vbox.add_widget( self.treeview )
 
+        self.bind(size=self.resize)
+        self.bind(pos=self.resize)
+
+    def resize(self, *args):
+
+        self.scrollview.height = self.height/3
 
     def executeQuery(self,*args):
 
@@ -147,8 +160,6 @@ class ModifyPresetScreen(Screen):
         except OperationalError as e:
 
             Logger.error("sql: %s"%e)
-
-
 
 def createAllTextRule( string ):
     rule = OrSearchRule( [ PartialStringSearchRule("artist",string),

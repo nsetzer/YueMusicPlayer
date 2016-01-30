@@ -1,4 +1,4 @@
-#! python2.7 $this time
+#! python2.7 $this scroll
 import os,sys
 
 """
@@ -18,6 +18,8 @@ sys.path.insert(0,dirpath)
 print(dirpath)
 
 import yue
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
 from yue.custom_widgets.expander import Expander
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.tristate import TriStateCheckBox
@@ -96,11 +98,34 @@ def build_querybuilder():
     vbox = BoxLayout(orientation='vertical')
     view = QueryBuilder( columns, kind_map, default_column = 'all-text' )
     view.newTerm()
+
+    root = ScrollView(size_hint=(1.0, 1.0))
+    root.add_widget( view )
+    vbox.add_widget( root )
+
+
+    btn = Button(text="new term")
+    btn.bind(on_press=lambda *x: view.newTerm())
+    vbox.add_widget( btn )
+
     btn = Button(text="print query")
     btn.bind(on_press=lambda *x: sys.stdout.write( "%s\n\n"%view.toQuery()))
-    vbox.add_widget( view )
     vbox.add_widget( btn )
     return vbox
+
+def build_scroll():
+    layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
+    # Make sure the height is such that there is something to scroll.
+    layout.bind(minimum_height=layout.setter('height'))
+    for i in range(30):
+        btn = Button(text=str(i), size_hint_y=None, height=40)
+        layout.add_widget(btn)
+    root = ScrollView(size_hint=(1.0, 1.0))
+    root.add_widget(layout)
+
+
+    return root
+
 
 
 class TestApp(App):
@@ -122,6 +147,7 @@ class TestApp(App):
                 'time' : build_timebar,
                 'tristatecheckbox' : build_tristatecheckbox,
                 'querybuilder' : build_querybuilder,
+                'scroll' : build_scroll,
             }
 
             for name,func in widgets.items():
