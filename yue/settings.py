@@ -5,6 +5,7 @@ from kivy.logger import Logger
 
 from kivy.storage.dictstore import DictStore
 from yue.sqlstore import SQLStore, SQLView
+from kivy.core.text import Label as CoreLabel
 
 class Settings(object):
     """docstring for Library"""
@@ -13,7 +14,8 @@ class Settings(object):
         super(Settings, self).__init__()
 
         self.font_size = 16
-        self.font_factor = 1.5
+        self.font_height = 0
+        #self.font_factor = 1.5
 
         self.manager = manager
         self.screen_home = 'Home'
@@ -42,6 +44,15 @@ class Settings(object):
 
         self.sqldb = SQLStore(self.db_path)
 
+        self.recompute_dimensions()
+
+    def recompute_dimensions(self):
+
+        lbl = CoreLabel(font_size = self.font_size)
+        self.font_height = lbl.get_extents("_")[1]
+        self.padding_top = self.font_height
+        self.padding_bottom = self.font_height
+
     def init_platform(self):
         self.platform = sys.platform
         self.platform_path = os.getcwd()
@@ -67,13 +78,12 @@ class Settings(object):
         Logger.info("settings: platform path: %s"%self.platform_path)
         Logger.info("settings: platform lib : %s"%self.platform_libpath)
 
-
     def font_height(self, font_size ):
         """ return height in pixels for a given font size """
         return kivy.metrics.sp( font_size )
 
     def row_height(self):
-        return self.font_factor * self.font_height( self.font_size )
+        return self.font_height + self.padding_top + self.padding_bottom
 
     def go_home(self, *args):
         self.manager.current = self.screen_home

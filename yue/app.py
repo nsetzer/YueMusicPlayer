@@ -14,6 +14,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.logger import Logger
 from kivy.lib import osc
 from kivy.clock import Clock
+from kivy.core.text import LabelBase
 
 from yue.ui.library import LibraryScreen
 from yue.ui.home import HomeScreen
@@ -91,7 +92,6 @@ class BackgroundDataLoad(Thread):
         scr_lib.setLibraryTree( tree )
 
         Logger.info("data: background load thread finished")
-
 
 class YueApp(App):
     title = "Yue Music Player"
@@ -193,6 +193,9 @@ class YueApp(App):
         Settings.service_info = info
 
         SoundManager.init( Settings.instance().platform_libpath, info = info )
+
+        LabelBase.register(name="TakaoPMincho",
+                           fn_regular="font/TakaoPMincho.ttf");
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)

@@ -71,7 +71,7 @@ class QueryTerm(Widget):
 
     enables changing parameters of the query.
     """
-    def __init__(self, builder, column, font_size=12):
+    def __init__(self, builder, column, font_size=12, height = 0):
         super(QueryTerm, self).__init__()
 
         self.builder = builder
@@ -83,27 +83,32 @@ class QueryTerm(Widget):
         # when we do_layout() for a layout containing fixed widgets
         # it sometimes draws incorrectly.
         self.size_hint = (1.0,None)
-        self.cached_height =  CoreLabel().get_extents("_")[1]
-        #self.height = 2.5 * kivy.metrics.sp( font_size )
+
+        self.cached_height = height
+        if height == 0:
+            self.cached_height =  3 * CoreLabel().get_extents("_")[1]
+        self.height = self.cached_height
 
         self.hbox = BoxLayout(orientation='horizontal')
         self.add_widget(self.hbox)
 
-        self.btn_remove = Button(text="remove" )
+        self.btn_remove = Button(text="X" )
         self.btn_remove.bind( on_press=self.remove)
+        self.btn_remove.size_hint = (None,None)
+        self.btn_remove.size = (self.height,self.height)
 
         self.btn_select_action = Button(text=actionlabel )
         self.btn_select_action.bind( on_press=self.select_action)
+        self.btn_select_action.size_hint = (None,None)
+        self.btn_select_action.size = (self.height,self.height)
 
         self.btn_select_column = Button(text=column)
         self.btn_select_column.bind( on_press=self.select_column)
+        self.btn_select_column.size_hint = (0.5,1.0)
 
         self.txt_main      = FilterTextInput(multiline=False)
         self.lbl_range     = Label(text="to")
         self.txt_secondary = FilterTextInput(multiline=False)
-
-        _, pt, _, pb = self.txt_main.padding
-        self.height = self.cached_height + 1.5*(pt+pb)
 
         self.hbox.add_widget(self.btn_remove)
         self.hbox.add_widget(self.btn_select_column)
@@ -257,15 +262,18 @@ class QueryBuilder(GridLayout):
     kind_map should map a query kind to either an icon or string.
 
     """
-    def __init__(self, columns , kind_map, default_column=None, font_size=12 ):
-        super(QueryBuilder, self).__init__(cols=1, spacing=1, size_hint_y=None )
+    def __init__(self, columns , kind_map, default_column=None, row_height=0, spacing=1, font_size=12 ):
+        super(QueryBuilder, self).__init__(cols=1, spacing=spacing, size_hint_y=None )
         self.bind(minimum_height=self.setter('height'))
 
         self.columns = columns
         self.default_column = default_column
         self.font_size = font_size
 
-        self.cached_height =  CoreLabel().get_extents("_")[1]
+        lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
+        if row_height < lblheight:
+            row_height = 3 * lblheight
+        self.row_height = row_height
 
         # by convention, first value in the kind map is the default for that type
         self.column_kind_map = {
@@ -285,26 +293,13 @@ class QueryBuilder(GridLayout):
         }
         self.kind_map = kind_map
 
-        self.terms = []
         self.widget_count = 0
-
-        #self.vbox = BoxLayout(orientation='vertical')
-        #self.add_widget(self.vbox)
-
-        self.btn_new = Button(text="new")
-        self.btn_new.bind(on_press=lambda *x:self.newTerm())
-        self.btn_new.size_hint = (1.0,None)
-        self.btn_new.height = 2 * self.cached_height
-
-        #self.vbox.add_widget( self.btn_new )
 
         self.bind(size=self.resize)
         self.bind(pos=self.resize)
 
-
     def remove(self, child):
 
-        self.terms.remove(child)
         self.remove_widget( child )
 
     def action_names(self, column):
@@ -328,9 +323,11 @@ class QueryBuilder(GridLayout):
         pass
 
     def newTerm(self):
-        term = QueryTerm(self,self.default_column,font_size=self.font_size)
-        self.add_widget( term ) # , index=1)
-        self.terms.append( term )
+        col = self.default_column
+        if col is None: # pick one at random
+            col = list(self.columns.keys())[0]
+        term = QueryTerm(self,col,font_size=self.font_size, height=self.row_height)
+        self.add_widget( term )
 
     def toQuery(self):
         """
@@ -341,7 +338,7 @@ class QueryBuilder(GridLayout):
             1 or 2 values.
         """
         query = []
-        for t in self.terms:
+        for t in self.children:
             query.append( t.toQuery() )
         return query
 
