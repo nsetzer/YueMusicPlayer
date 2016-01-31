@@ -284,7 +284,7 @@ class TreeNodeWidget(NodeWidget):
         # e.g. DroidSansJapanese.ttf
         self.lbl1 = Label(text="",
                 font_size = font_size,
-                #font_name ="DroidSansJapanese",
+                #font_name ="TakaoPMincho",
                 halign='left',
                 valign='middle',
                 markup=True,
@@ -394,6 +394,7 @@ class ViewWidget(Widget):
         self.node_factory = NodeFactory
         self.data = []
 
+        self.bind(pos=self.resize)
         self.bind(size=self.resize)
         self.bind(offset=self.on_update_offset)
 
