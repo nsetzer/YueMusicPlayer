@@ -67,6 +67,7 @@ TODO:
 
 
 """
+from kivy.core.text import Label as CoreLabel
 
 from kivy.app import App
 from kivy.uix.widget import Widget
@@ -387,12 +388,17 @@ class ViewWidget(Widget):
     offset_pos = NumericProperty()
     offset_max = NumericProperty(1000)
 
-    def __init__(self, font_size, NodeFactory, **kwargs):
+    def __init__(self, NodeFactory, font_size=12, row_height=0, **kwargs):
         super(ViewWidget, self).__init__(**kwargs)
 
         self.font_size = font_size
         self.node_factory = NodeFactory
         self.data = []
+
+        lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
+        if row_height < lblheight:
+            row_height = 3 * lblheight
+        self.suggested_row_height = row_height
 
         self.bind(pos=self.resize)
         self.bind(size=self.resize)
@@ -432,9 +438,8 @@ class ViewWidget(Widget):
 
     def create_rows(self,n):
         # TODO: must pull row height from element, instead of setting here
-        suggested_height = 1.5 * kivy.metrics.sp( self.font_size )
         for i in range(n):
-            nd = self.node_factory(height=suggested_height,
+            nd = self.node_factory(height=self.suggested_row_height,
                              font_size = self.font_size );
             self.add_widget( nd,canvas=self.canvas )
             self.nodes.append( nd )
@@ -610,8 +615,8 @@ class ViewWidget(Widget):
 
 class ListViewWidget(ViewWidget):
 
-    def __init__(self, font_size = 12, NodeFactory=ListNodeWidget, **kwargs):
-        super(ListViewWidget, self).__init__(font_size, NodeFactory, **kwargs)
+    def __init__(self, font_size = 12, row_height=0, NodeFactory=ListNodeWidget, **kwargs):
+        super(ListViewWidget, self).__init__(NodeFactory, font_size=font_size, row_height=0, **kwargs)
 
     def update_labels(self):
 
@@ -635,8 +640,8 @@ class ListViewWidget(ViewWidget):
 
 class TreeViewWidget(ViewWidget):
 
-    def __init__(self, font_size = 12, **kwargs):
-        super(TreeViewWidget, self).__init__(font_size, TreeNodeWidget, **kwargs)
+    def __init__(self, font_size = 12, row_height=0, **kwargs):
+        super(TreeViewWidget, self).__init__(TreeNodeWidget, font_size=font_size, row_height=0, **kwargs)
 
         self.enable_drag_and_drop = False
         self.enable_swipe = False
