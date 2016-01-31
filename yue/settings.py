@@ -2,6 +2,7 @@
 import os, sys, platform
 import kivy.metrics
 from kivy.logger import Logger
+from kivy.core.text import LabelBase
 
 from kivy.storage.dictstore import DictStore
 from yue.sqlstore import SQLStore, SQLView
@@ -45,6 +46,13 @@ class Settings(object):
         self.sqldb = SQLStore(self.db_path)
 
         self.recompute_dimensions()
+
+        self.load_font("TakaoPMincho")
+
+    def load_font(self,name):
+        font_path = os.path.join(self.platform_path, 'font', name+".ttf")
+        if os.path.exists( font_path ):
+            LabelBase.register(name=name, fn_regular=font_path);
 
     def recompute_dimensions(self):
 
