@@ -35,8 +35,7 @@ class LibraryScreen(Screen):
         self.btn_select.size_hint = (1.0,None)
         self.btn_select.height = row_height
         self.btn_select.bind(on_press=lambda *x:self.toggleSelection())
-        self.hbox.add_widget(self.btn_home)
-        self.hbox.add_widget(self.btn_select)
+
 
         self.lbl_placeholder = Label(text="please wait")
         self.view = TreeViewWidget(font_size = Settings.instance().font_size)
@@ -46,10 +45,13 @@ class LibraryScreen(Screen):
         self.btn_create.height = row_height
         self.btn_create.bind(on_press=self.on_create_playlist)
 
+        self.hbox.add_widget(self.btn_home)
+        self.hbox.add_widget(self.btn_select)
+        self.hbox.add_widget( self.btn_create )
+
         self.add_widget( self.vbox )
-        self.vbox.add_widget( self.hbox )
         self.vbox.add_widget( self.lbl_placeholder )
-        self.vbox.add_widget(self.btn_create)
+        self.vbox.add_widget( self.hbox )
 
     @mainthread
     def setPlaceholderText(self,msg):

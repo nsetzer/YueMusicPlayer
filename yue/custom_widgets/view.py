@@ -300,15 +300,15 @@ class TreeNodeWidget(NodeWidget):
 
     def resizeEvent(self,*args):
 
-        third = self.height//3
+        third = self.height//4
 
         xoff = self.depth * third
 
         if self.expandable :
-            self.btn1.x = xoff + third
+            self.btn1.x = xoff
             self.btn1.y = self.y
 
-        self.btn2.x = xoff + 2*third + self.height
+        self.btn2.x = xoff + third + self.height
         self.btn2.y = self.y
 
         self.chk1.x = self.width - self.chk1.width
@@ -329,8 +329,6 @@ class TreeNodeWidget(NodeWidget):
 
         self.pad_left = self.x + lpad
         self.pad_right = self.chk1.x
-
-
 
     def setExpandable(self,b):
         """ set that this node (TreeElem) should display the expansion btn """
