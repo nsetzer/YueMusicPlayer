@@ -7,12 +7,14 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.clock import mainthread
 
+from yue.custom_widgets.songinfo import SongInfo
 from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.settings import Settings
-from yue.library import Library
+from yue.library import Library, TrackTreeElem
 from yue.playlist import PlaylistManager
 from yue.sound.manager import SoundManager
 
@@ -52,6 +54,8 @@ class LibraryScreen(Screen):
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.lbl_placeholder )
         self.vbox.add_widget( self.hbox )
+
+        self.view.bind(on_tap=self.on_tap_song)
 
     @mainthread
     def setPlaceholderText(self,msg):
@@ -107,3 +111,14 @@ class LibraryScreen(Screen):
         playlist = PlaylistManager.instance().openPlaylist('current')
         playlist.set( lst )
         SoundManager.instance().play_index(0)
+
+    def on_tap_song(self,obj, idx, elem, *args):
+
+        if isinstance(elem,TrackTreeElem):
+            song = Library.instance().songFromId( elem.uid )
+
+            content = SongInfo( song )
+            self.popup = Popup(title='Song Information',
+                      content=content,
+                      size_hint=(.9,.9) )
+            self.popup.open()

@@ -273,8 +273,8 @@ class TreeNodeWidget(NodeWidget):
         self.btn1.bind(on_user=self.on_expand)
 
         # This 'button' is reserved for an icon to differentiate artist, album, song
-        self.btn2 = Button(text="-")
-        self.add_widget(self.btn2,canvas=self.canvas)
+        #self.btn2 = Button(text="-")
+        #self.add_widget(self.btn2,canvas=self.canvas)
 
         # Checkbox to select artists, albums or individual tracks
         self.chk1 = TriStateCheckBox()
@@ -308,16 +308,16 @@ class TreeNodeWidget(NodeWidget):
             self.btn1.x = xoff
             self.btn1.y = self.y
 
-        self.btn2.x = xoff + third + self.height
-        self.btn2.y = self.y
+        #self.btn2.x = xoff + third + self.height
+        #self.btn2.y = self.y
 
         self.chk1.x = self.width - self.chk1.width
         self.chk1.y = self.y
         self.chk1.size = (self.height,self.height)
 
         self.btn1.size = (self.height,self.height)
-        self.btn2.size = (self.height,self.height)
-        lpad = 3*third + xoff + 2*self.height
+        #self.btn2.size = (self.height,self.height)
+        lpad = third + xoff + self.height
         rpad = third + self.height
 
         self.lbl1.pos = (self.x + lpad,self.y)
@@ -432,6 +432,7 @@ class ViewWidget(Widget):
 
     def setData(self, data):
         self.data = data
+        self.offset = 0 # reset scroll position
         self.update_labels()
 
     def create_rows(self,n):
@@ -512,11 +513,13 @@ class ViewWidget(Widget):
                     idx = len(self.data) - 1
                 self.dispatch('on_drop',self._touch_drag_idx,idx)
             # arbitrary time in milliseconds
+            # TODO: kivy has settings for Jitter and tap time, check those
             elif self._touch_dy < self.row_height//3 and t < .2:
+                elem = self.nodes[idx].elem
                 if touch.is_double_tap:
-                    self.dispatch('on_double_tap',idx+self.offset_idx)
+                    self.dispatch('on_double_tap',idx+self.offset_idx, elem)
                 else:
-                    self.dispatch('on_tap',idx+self.offset_idx)
+                    self.dispatch('on_tap',idx+self.offset_idx, elem)
 
             if self._touch_token is not None:
                 self.remove_widget(self._touch_token)
@@ -579,7 +582,7 @@ class ViewWidget(Widget):
     def pos_to_row_index(self,x,y):
         """ convert y-coordinate to index in self.nodes """
         n,pad = self._pad_top()
-        return int( - ((y - pad) // self.row_height) + n - 1 )
+        return int( - ((y - pad - self.y) // self.row_height) + n - 1 )
 
     def resize(self,*args):
         """
