@@ -11,6 +11,8 @@ from yue.library import Library
 from yue.sqlstore import SQLStore
 from yue.sound.manager import SoundManager
 
+ignore_paths = { '/d', '/sys', '/system', '/sbin', '/bin', '/firmware', '/dev', '/proc' }
+
 def android_walk(root, exts, callback=None, t1=.2, t2=.1):
     """
     walk a directory and all sub directories.
@@ -28,25 +30,34 @@ def android_walk(root, exts, callback=None, t1=.2, t2=.1):
     while queue:
         path = queue.pop(0)
 
-        children = os.listdir( path )
+        try:
+            children = os.listdir( path )
+        except OSError:
+            continue # TODO test permissions
 
         # android convention
         if '.nomedia' in children:
-            Logger.info(u"ingest: skipping nomedia: %s"%(path))
+            Logger.info(u"ingest: skipping: %s"%(path))
             continue
 
         Logger.info(u"ingest: %s"%(path))
 
         for name in children:
             child_path = os.path.join( path, name)
-            st = os.stat( child_path )
-            if stat.S_ISDIR( st.st_mode):
-                queue.append( child_path )
-            else:
-                ext = os.path.splitext(name)[1].lower()
-                if ext in exts:
-                    count += 1
-                    yield child_path
+            try:
+                st = os.stat( child_path )
+                if stat.S_ISDIR( st.st_mode ):
+                    if child_path in ignore_paths:
+                        Logger.info(u"ingest: skipping: %s"%(path))
+                        continue
+                    queue.append( child_path )
+                else:
+                    ext = os.path.splitext(name)[1].lower()
+                    if ext in exts:
+                        count += 1
+                        yield child_path
+            except OSError:
+                pass
 
         # ratelimit
         e = time.clock()
@@ -100,8 +111,15 @@ class Ingest(Thread):
 
         for path in android_walk( unicode(dir) ,  self.types, self.update_labels ):
             if path not in self.path_lut:
-                key = self.library.loadPath( path )
-                self.path_lut[path] = key # not strictly necessary here.
+                try:
+                    key = self.library.loadPath( path )
+                    self.path_lut[path] = key # not strictly necessary here.
+                except Exception as e:
+                    # TODO: log traceback
+                    Logger.error("ingest: %s: %s"%(type(e),e))
+
+
+
 
         #count = 0
         #for dirpath,_,filenames in os.walk( unicode(dir) ):
