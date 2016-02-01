@@ -273,8 +273,8 @@ class TreeNodeWidget(NodeWidget):
         self.btn1.bind(on_user=self.on_expand)
 
         # This 'button' is reserved for an icon to differentiate artist, album, song
-        self.btn2 = Button(text="-")
-        self.add_widget(self.btn2,canvas=self.canvas)
+        #self.btn2 = Button(text="-")
+        #self.add_widget(self.btn2,canvas=self.canvas)
 
         # Checkbox to select artists, albums or individual tracks
         self.chk1 = TriStateCheckBox()
@@ -308,16 +308,16 @@ class TreeNodeWidget(NodeWidget):
             self.btn1.x = xoff
             self.btn1.y = self.y
 
-        self.btn2.x = xoff + third + self.height
-        self.btn2.y = self.y
+        #self.btn2.x = xoff + third + self.height
+        #self.btn2.y = self.y
 
         self.chk1.x = self.width - self.chk1.width
         self.chk1.y = self.y
         self.chk1.size = (self.height,self.height)
 
         self.btn1.size = (self.height,self.height)
-        self.btn2.size = (self.height,self.height)
-        lpad = 3*third + xoff + 2*self.height
+        #self.btn2.size = (self.height,self.height)
+        lpad = third + xoff + self.height
         rpad = third + self.height
 
         self.lbl1.pos = (self.x + lpad,self.y)
