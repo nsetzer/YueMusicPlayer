@@ -14,7 +14,7 @@ class Settings(object):
     def __init__(self, manager):
         super(Settings, self).__init__()
 
-        self.font_size = 16
+        self.font_size = 12
         self.font_height = 0
         #self.font_factor = 1.5
 
@@ -27,6 +27,9 @@ class Settings(object):
         self.screen_modify_preset = 'Modify Presets'
         self.screen_ingest = 'Ingest'
         self.screen_settings = 'Settings'
+
+        # history is a stack, indicating previous screens.
+        self.screen_history = []
 
         self.init_platform()
 
@@ -58,8 +61,8 @@ class Settings(object):
 
         lbl = CoreLabel(font_size = self.font_size)
         self.font_height = lbl.get_extents("_")[1]
-        self.padding_top = self.font_height
-        self.padding_bottom = self.font_height
+        self.padding_top = self.font_height//2
+        self.padding_bottom = self.font_height//2
 
     def init_platform(self):
         self.platform = sys.platform
@@ -93,29 +96,44 @@ class Settings(object):
     def row_height(self):
         return self.font_height + self.padding_top + self.padding_bottom
 
+    def go_back(self, *args):
+        if self.screen_history:
+            scr = self.screen_history.pop()
+            self.manager.current = scr
+            return True
+        return False
+
     def go_home(self, *args):
         self.manager.current = self.screen_home
 
     def go_library(self, *args):
         self.manager.current = self.screen_library
+        #TODO: make the back button smarter.
+        self.screen_history = [self.screen_home, ]
 
     def go_now_playing(self, *args):
         self.manager.current = self.screen_now_playing
+        self.screen_history = [self.screen_home, ]
 
     def go_current_playlist(self, *args):
         self.manager.current = self.screen_current_playlist
+        self.screen_history = [self.screen_home, ]
 
     def go_presets(self, *args):
         self.manager.current = self.screen_presets
+        self.screen_history = [self.screen_home, ]
 
     def go_modify_preset(self, *args):
         self.manager.current = self.screen_modify_preset
+        self.screen_history = [self.screen_home, ]
 
     def go_ingest(self, *args):
         self.manager.current = self.screen_ingest
+        self.screen_history = [self.screen_home, ]
 
     def go_settings(self, *args):
         self.manager.current = self.screen_settings
+        self.screen_history = [self.screen_home, ]
 
     @staticmethod
     def init( manager ):

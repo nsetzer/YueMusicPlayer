@@ -14,6 +14,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.logger import Logger
 from kivy.lib import osc
 from kivy.clock import Clock
+from kivy.core.window import Window, Keyboard
 
 from yue.ui.library import LibraryScreen
 from yue.ui.home import HomeScreen
@@ -221,7 +222,23 @@ class YueApp(App):
         self.bg_thread = BackgroundDataLoad()
         self.bg_thread.start()
 
+        self.bind(on_start=self.post_build_init)
+
         return sm
+
+    def post_build_init(self, *args):
+        if Settings.instance().platform == 'android':
+            import android
+            android.map_key(android.KEYCODE_BACK, Keyboard.keycodes['backspace'])
+
+        Window.bind(on_keyboard=self.on_key_event)
+
+    def on_key_event(self, window, keycode1, keycode2, text, modifiers):
+        if keycode1 in [Keyboard.keycodes['escape'],
+                        Keyboard.keycodes['backspace']]:
+            return Settings.instance().go_back()
+        return False
+
 
     def on_pause(self):
         return True # prevent on_stop when in background
