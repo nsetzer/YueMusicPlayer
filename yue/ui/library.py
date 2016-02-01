@@ -117,7 +117,10 @@ class LibraryScreen(Screen):
         if isinstance(elem,TrackTreeElem):
             song = Library.instance().songFromId( elem.uid )
 
-            content = SongInfo( song )
+            content = SongInfo( song, action_label="play next" )
+            content.bind(on_action= lambda *x : self.popup.dismiss() )
+            content.bind(on_accept= lambda *x : self.popup.dismiss() )
+            content.bind(on_reject= lambda *x : self.popup.dismiss() )
             self.popup = Popup(title='Song Information',
                       content=content,
                       size_hint=(.9,.9) )

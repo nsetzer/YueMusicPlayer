@@ -85,10 +85,7 @@ class ModifyPresetScreen(Screen):
         lbl = CoreLabel()
         row_height = Settings.instance().row_height()
 
-        self.btn_home = Button(text="home")
-        self.btn_home.bind(on_press=Settings.instance().go_home)
-        self.btn_home.size_hint = (1.0,None)
-        self.btn_home.height = row_height
+
 
         kind_map = { QueryKind.LIKE : "~",
                      QueryKind.NOTLIKE : "!~",
@@ -120,20 +117,25 @@ class ModifyPresetScreen(Screen):
         self.btn_query.size_hint = (1.0,None)
         self.btn_query.height = row_height
 
-        self.vbox.add_widget( self.btn_home )
-
         qb_row_height = self.queryview.row_height
         # TODO: determine height of one query editor, show ~2-3 rows depending on height
-        self.scrollview = ScrollView(size_hint=(1.0, None), height = 3 * qb_row_height)
+        self.scrollview = ScrollView(size_hint=(1.0, None), height = 3.5 * qb_row_height)
         self.scrollview.add_widget( self.queryview )
 
         self.hbox_bot = BoxLayout(orientation='horizontal')
+        self.hbox_bot.size_hint = (1.0,None)
+        self.hbox_bot.height = row_height
+        self.btn_home = Button(text="home")
+        self.btn_home.bind(on_press=Settings.instance().go_home)
+        #self.btn_home.size_hint = (1.0,None)
+        #self.btn_home.height = row_height
         self.btn_save   = Button(text='save')
-        self.btn_save.size_hint = (1.0,None)
-        self.btn_save.height = row_height
+        #self.btn_save.size_hint = (1.0,None)
+        #self.btn_save.height = row_height
         self.btn_create = Button(text='Create Playlist')
-        self.btn_create.size_hint = (1.0,None)
-        self.btn_create.height = row_height
+        #self.btn_create.size_hint = (1.0,None)
+        #self.btn_create.height = row_height
+        self.hbox_bot.add_widget(self.btn_home)
         self.hbox_bot.add_widget(self.btn_save)
         self.hbox_bot.add_widget(self.btn_create)
 

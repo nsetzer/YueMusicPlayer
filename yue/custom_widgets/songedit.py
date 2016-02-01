@@ -11,25 +11,17 @@ class SongEdit(GridLayout):
 
 
     def __init__(self, song, spacing=1, **kwargs):
-        super(SongEdit, self).__init__(cols=2, spacing=spacing,size_hint_y=None, **kwargs)
+        # size_hint_y=None,
+        super(SongEdit, self).__init__(cols=2, spacing=spacing, **kwargs)
 
         self.song = song
 
-        self.add_widget(Label(text="boo"))
-        self.add_widget(Label(text="boo"))
-        self.add_widget(Label(text="boo"))
+        for k,v in sorted(song.items()):
+            self.add_widget( Label(text=unicode(k)))
+            self.add_widget( Label(text=unicode(v)))
 
         self.bind(pos=self.resize)
         self.bind(size=self.resize)
 
     def resize(self,*args):
-
-        pass
-        #self.vbox.pos = self.pos
-        #self.vbox.size = self.size
-
-    def on_accept(self,*args):
-        pass
-
-    def on_reject(self,*args):
         pass
