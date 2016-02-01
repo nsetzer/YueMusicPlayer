@@ -97,6 +97,7 @@ class Settings(object):
         return self.font_height + self.padding_top + self.padding_bottom
 
     def go_back(self, *args):
+        """ go back to the previous screen. return true on success """
         if self.screen_history:
             scr = self.screen_history.pop()
             self.manager.current = scr
@@ -105,6 +106,7 @@ class Settings(object):
 
     def go_home(self, *args):
         self.manager.current = self.screen_home
+        self.screen_history = []
 
     def go_library(self, *args):
         self.manager.current = self.screen_library
