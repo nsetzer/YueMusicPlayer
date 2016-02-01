@@ -35,7 +35,7 @@ class Settings(object):
 
         self.default_ingest_path = r'D:\Music\Flac'
         if self.platform == 'android':
-            self.default_ingest_path = r'/sdcard'
+            self.default_ingest_path = r'/'
         elif self.platform == 'linux2':
             self.default_ingest_path = r"/mnt/data/music/6ft.Down"
 
