@@ -432,6 +432,7 @@ class ViewWidget(Widget):
 
     def setData(self, data):
         self.data = data
+        self.offset = 0 # reset scroll position
         self.update_labels()
 
     def create_rows(self,n):
@@ -512,11 +513,13 @@ class ViewWidget(Widget):
                     idx = len(self.data) - 1
                 self.dispatch('on_drop',self._touch_drag_idx,idx)
             # arbitrary time in milliseconds
+            # TODO: kivy has settings for Jitter and tap time, check those
             elif self._touch_dy < self.row_height//3 and t < .2:
+                elem = self.nodes[idx].elem
                 if touch.is_double_tap:
-                    self.dispatch('on_double_tap',idx+self.offset_idx)
+                    self.dispatch('on_double_tap',idx+self.offset_idx, elem)
                 else:
-                    self.dispatch('on_tap',idx+self.offset_idx)
+                    self.dispatch('on_tap',idx+self.offset_idx, elem)
 
             if self._touch_token is not None:
                 self.remove_widget(self._touch_token)
@@ -579,7 +582,7 @@ class ViewWidget(Widget):
     def pos_to_row_index(self,x,y):
         """ convert y-coordinate to index in self.nodes """
         n,pad = self._pad_top()
-        return int( - ((y - pad) // self.row_height) + n - 1 )
+        return int( - ((y - pad - self.y) // self.row_height) + n - 1 )
 
     def resize(self,*args):
         """

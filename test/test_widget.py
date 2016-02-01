@@ -28,7 +28,7 @@ from yue.custom_widgets.timebar import TimeBar
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from yue.library import Library
+from yue.library import Library, TrackTreeElem
 from yue.settings import Settings
 
 from kivy.app import App
@@ -45,12 +45,17 @@ def build_timebar():
 
 def build_treeview():
 
-    Settings.init( "./yue.db" )
-    Library.init()
-    data = Library.instance().toTree()
+    tree = []
+    uid = 1
+    tree.append( TreeElem("artist1") )
+
+    album = tree[-1].addChild( TreeElem("album1") )
+    for i in range( 10 ):
+        album.addChild( TrackTreeElem(uid, "title %d"%i) )
+        uid += 1
 
     view = TreeViewWidget( font_size=16 )
-    view.setData(data)
+    view.setData( tree )
     return view
 
 def build_listview():
