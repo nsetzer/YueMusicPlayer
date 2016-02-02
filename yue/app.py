@@ -10,7 +10,7 @@ todo:
 """
 
 from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivy.logger import Logger
 from kivy.lib import osc
 from kivy.clock import Clock
@@ -23,13 +23,14 @@ from yue.ui.current import CurrentPlaylistScreen
 from yue.ui.preset import PresetScreen, ModifyPresetScreen
 from yue.ui.ingest import IngestScreen
 from yue.ui.settings import SettingsScreen
+from yue.ui.util import libraryToTree, PlayListToViewList
 
 from yue.playlist import PlaylistManager
 from yue.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 from yue.sound.clientdevice import ServiceInfo
-from yue.sqlstore import SQLStore, SQLView
+from yue.sqlstore import SQLStore
 
 import os,sys
 from subprocess import Popen
@@ -71,7 +72,7 @@ class BackgroundDataLoad(Thread):
         library.loadTestData( os.path.join( \
             Settings.instance().platform_path,"library.ini") );
 
-        tree = library.toTree()
+        tree = libraryToTree( library )
         # build a dummy playlist until it can be stored in the db
         lst = []
         g = library.db.iter()
@@ -79,10 +80,11 @@ class BackgroundDataLoad(Thread):
             for i in range(20):
                 song = next(g)
                 lst.append(song['uid'])
-        except StopIteration as e:
+        except StopIteration:
             pass
+
         if len(lst):
-            viewlst = library.PlayListToViewList( lst )
+            viewlst = PlayListToViewList( library, lst )
             plcur.set( lst )
             idx,key = plcur.current()
             song = library.songFromId( key )
@@ -166,11 +168,9 @@ class YueApp(App):
         Logger.info("ingest: signal finished received.")
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_library )
-        #scr.setLibraryTree( Library.instance().toTree() )
         sqlstore = SQLStore(settings.db_path)
         library = Library( sqlstore )
-        tree = library.toTree()
-        scr.setLibraryTree( tree )
+        scr.setLibraryTree( libraryToTree( library ) )
 
         Logger.info("ingest: updated tree")
 

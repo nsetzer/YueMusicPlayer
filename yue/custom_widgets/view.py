@@ -24,6 +24,12 @@ TODO:
 
     the number of node widgets is fixed at widget creation
 
+    to prevent stuttering on slower phones, the step size for scrolling
+    should be relative to the height of the row. the default ScrollView
+    uses a minimum step size of ~20. this will prevent a redraw
+    at every pixel of the scroll. this could be implemented as a change to
+    on_update_offset
+
     ListView should support slide-right (to remove elements from the list)
         extend ViewWidget to pass touch.dx to the underlying Node.
         possibly check the directional vector for touch dx,dy to prevent
@@ -69,17 +75,13 @@ TODO:
 """
 from kivy.core.text import Label as CoreLabel
 
-from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.graphics import Color, Ellipse, Rectangle
-from kivy.properties import ObjectProperty, NumericProperty
+from kivy.graphics import Rectangle
+from kivy.properties import NumericProperty
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.graphics.texture import Texture
-try: # older kivy versions do not support this, currently not used.
-    from kivy.graphics.scissor_instructions import ScissorPush,ScissorPop
-except:
-    pass
+
 from kivy.graphics.stencil_instructions import StencilPush,StencilUse, \
     StencilUnUse,StencilPop
 from kivy.animation import Animation

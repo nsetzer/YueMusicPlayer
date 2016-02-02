@@ -5,12 +5,13 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import mainthread
 
-from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 from yue.library import Library
 from yue.playlist import PlaylistManager
+
+from yue.ui.util import PlayListToViewList
 
 class CurrentPlayListViewWidget(PlayListViewWidget):
     """docstring for PlayListViewWidget"""
@@ -98,5 +99,5 @@ class CurrentPlaylistScreen(Screen):
         playlist.shuffle_range(idx+1,size)
 
         lst = list(playlist.iter())
-        viewlst = Library.instance().PlayListToViewList( lst )
+        viewlst = PlayListToViewList(  Library.instance(), lst )
         self.setPlayList( viewlst )

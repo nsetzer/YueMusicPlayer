@@ -12,11 +12,14 @@ from kivy.clock import mainthread
 
 from yue.custom_widgets.songinfo import SongInfo
 from yue.custom_widgets.tristate import TriState
-from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
+from yue.custom_widgets.view import TreeViewWidget
 from yue.settings import Settings
-from yue.library import Library, TrackTreeElem
+from yue.library import Library
 from yue.playlist import PlaylistManager
 from yue.sound.manager import SoundManager
+
+
+from yue.ui.util import PlayListToViewList, PlayListFromTree, TrackTreeElem
 
 class LibraryScreen(Screen):
 
@@ -96,13 +99,13 @@ class LibraryScreen(Screen):
 
         # so for now, this will do everything, but it will change soon
 
-        lst = Library.instance().PlayListFromTree( self.view.data )
+        lst = PlayListFromTree( Library.instance(), self.view.data )
         if len(lst) == 0:
             return
 
         self.toggleSelection(TriState.unchecked)
 
-        viewlst = Library.instance().PlayListToViewList( lst )
+        viewlst = PlayListToViewList( Library.instance(), lst )
 
         settings = Settings.instance()
         scr = settings.manager.get_screen( settings.screen_current_playlist )

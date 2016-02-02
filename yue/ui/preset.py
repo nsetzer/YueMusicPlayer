@@ -21,48 +21,23 @@ TODO:
 """
 from sqlite3 import OperationalError
 
-from kivy.core.text import Label as CoreLabel
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
+#from kivy.uix.label import Label
 from kivy.logger import Logger
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
+#from kivy.uix.gridlayout import GridLayout
 
-from yue.custom_widgets.view import TreeViewWidget, TreeElem
+from yue.custom_widgets.view import TreeViewWidget
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
 
+from yue.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
 
 from yue.settings import Settings
 from yue.library import Library
 
-from yue.search import PartialStringSearchRule, \
-                       InvertedPartialStringSearchRule, \
-                       ExactSearchRule, \
-                       InvertedExactSearchRule, \
-                       LessThanSearchRule, \
-                       LessThanEqualSearchRule, \
-                       GreaterThanSearchRule, \
-                       GreaterThanEqualSearchRule, \
-                       RangeSearchRule, \
-                       NotRangeSearchRule, \
-                       AndSearchRule, \
-                       OrSearchRule, \
-                       sql_search
-
-kindToRule = {
-    QueryKind.LIKE    : PartialStringSearchRule,
-    QueryKind.NOTLIKE : InvertedPartialStringSearchRule,
-    QueryKind.EQ : ExactSearchRule,
-    QueryKind.NE : InvertedExactSearchRule,
-    QueryKind.LT : LessThanSearchRule,
-    QueryKind.LE : LessThanEqualSearchRule,
-    QueryKind.GT : GreaterThanSearchRule,
-    QueryKind.GE : GreaterThanEqualSearchRule,
-    QueryKind.BETWEEN : RangeSearchRule,
-    QueryKind.NOTBETWEEN : NotRangeSearchRule,
-}
+from yue.search import sql_search
 
 class PresetScreen(Screen):
     def __init__(self,**kwargs):
@@ -82,10 +57,7 @@ class ModifyPresetScreen(Screen):
         self.vbox = BoxLayout(orientation='vertical')
         self.add_widget(self.vbox)
 
-        lbl = CoreLabel()
         row_height = Settings.instance().row_height()
-
-
 
         kind_map = { QueryKind.LIKE : "~",
                      QueryKind.NOTLIKE : "!~",
@@ -157,30 +129,19 @@ class ModifyPresetScreen(Screen):
 
         query = self.queryview.toQuery()
 
-        rules = []
-        for c,a,v in query:
-
-            rule_type = kindToRule[a]
-
-            if c == 'all-text':
-                rule = createAllTextRule(a, *v)
-            else:
-                rule = rule_type(c,*v)
-            rules.append( rule )
-
-        if len(rules) == 0:
+        rule = queryParamToRule( Library.instance(), query )
+        if rule is None:
             # execute blank search
-            tree =  Library.instance().toTree( )
+            tree = libraryToTree( Library.instance() )
             self.treeview.setData( tree)
             return
 
-        rule = AndSearchRule(rules)
         sql,values = rule.sql()
         try:
             Logger.info("sql: %s"%sql)
             Logger.info("sql: %s"%values)
             result = sql_search( Library.instance().db, rule )
-            tree =  Library.instance().toTreeFromIterable( result )
+            tree =  libraryToTreeFromIterable( result )
             self.treeview.setData( tree)
         except OperationalError as e:
 
@@ -190,19 +151,4 @@ class ModifyPresetScreen(Screen):
         """ TODO: library implements a toggle select all, which should
             be moved into the tree view class. """
         pass
-
-def createAllTextRule( action, string ):
-
-    meta = OrSearchRule
-    if action in (QueryKind.NOTLIKE, QueryKind.NE):
-        meta = AndSearchRule
-    str_rule = kindToRule[ action ]
-
-    rule = meta( [ str_rule("artist",string),
-                   str_rule("composer",string),
-                   str_rule("album",string),
-                   str_rule("title",string),
-                   str_rule("genre",string),
-                   str_rule("comment",string) ] )
-    return rule
 

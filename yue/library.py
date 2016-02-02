@@ -1,25 +1,15 @@
 
-import os,sys
+import os
 
 from kivy.logger import Logger
-from kivy.storage.dictstore import DictStore
+#from kivy.storage.dictstore import DictStore
 
-from yue.settings import Settings
+#from yue.settings import Settings
 from yue.song import read_tags
-from yue.sqlstore import SQLStore, SQLView
-
-from yue.custom_widgets.tristate import TriState
-from yue.custom_widgets.view import TreeElem
-from yue.custom_widgets.playlist import PlayListElem
+from yue.sqlstore import SQLView
 
 from ConfigParser import ConfigParser
 import codecs
-
-class TrackTreeElem(TreeElem):
-    """ Tree Element with unique id reference to an item in a database """
-    def __init__(self,uid,text):
-        super(TrackTreeElem, self).__init__(text)
-        self.uid = uid
 
 class Library(object):
     """docstring for Library"""
@@ -138,49 +128,8 @@ class Library(object):
             m[song['path']] = song['uid']
         return m
 
-    def toTree(self):
-        return self.toTreeFromIterable( self.db.iter() )
-
-    def toTreeFromIterable(self, data):
-        artists = {}
-        for song in data:
-
-            if song['artist'] not in artists:
-                artists[ song['artist'] ] = TreeElem(song['artist'])
-
-            album = None
-            for child in artists[ song['artist'] ]:
-                if child.text == song['album']:
-                    album = child
-                    break;
-            else:
-                album = artists[ song['artist'] ].addChild(TreeElem(song['album']))
-
-            album.addChild(TrackTreeElem(song['uid'],song['title']))
-
-        out = list(artists.values())
-        out.sort(key=lambda e : e.text)
-        return out
-
-    def PlayListToViewList(self,playlist):
-        out = []
-        for uid in playlist:
-            song = self.songFromId(uid)
-            out.append(PlayListElem( uid, song ))
-        return out
-
-    def PlayListFromTree(self, tree ):
-
-        out = []
-        for art in tree:
-            if art.check_state is not TriState.unchecked:
-                for alb in art.children:
-                    if alb.check_state is not TriState.unchecked:
-                        for ttl in alb.children:
-                            if ttl.check_state is TriState.checked:
-                                out.append(ttl.uid)
-        return out
-
+    def iter(self):
+        return self.db.iter()
 
 
 
