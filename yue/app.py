@@ -229,13 +229,12 @@ class YueApp(App):
     def post_build_init(self, *args):
         if Settings.instance().platform == 'android':
             import android
-            android.map_key(android.KEYCODE_BACK, Keyboard.keycodes['backspace'])
+            android.map_key(android.KEYCODE_BACK, Keyboard.keycodes['escape'])
 
         Window.bind(on_keyboard=self.on_key_event)
 
     def on_key_event(self, window, keycode1, keycode2, text, modifiers):
-        if keycode1 in [Keyboard.keycodes['escape'],
-                        Keyboard.keycodes['backspace']]:
+        if keycode1 in [Keyboard.keycodes['escape'], ]:
             return Settings.instance().go_back()
         return False
 
