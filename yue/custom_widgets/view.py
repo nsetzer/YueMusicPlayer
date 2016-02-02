@@ -393,6 +393,8 @@ class ViewWidget(Widget):
         self.node_factory = NodeFactory
         self.data = []
 
+        self.anim_scroll = None
+
         lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
         if row_height < lblheight:
             row_height = 3 * lblheight
@@ -478,6 +480,10 @@ class ViewWidget(Widget):
 
         if self.collide_point( *touch.pos ):
 
+            if self.anim_scroll is not None:
+                Animation.cancel_all(self)
+            self._touch_begin_x = self.offset
+
             if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
                not self.scroll_disabled:
                 touch.grab(self)
@@ -520,6 +526,13 @@ class ViewWidget(Widget):
                     self.dispatch('on_double_tap',idx+self.offset_idx, elem)
                 else:
                     self.dispatch('on_tap',idx+self.offset_idx, elem)
+            else:
+                # create a momentum effect,
+                # parameters need to be played with.
+                delta = self.offset - self._touch_begin_x
+                target = max(0,min(self.offset_max, self.offset+2*delta))
+                self.anim_scroll = Animation(offset=target, duration=.25, t='out_cubic');
+                self.anim_scroll.start(self)
 
             if self._touch_token is not None:
                 self.remove_widget(self._touch_token)
