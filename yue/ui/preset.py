@@ -74,46 +74,49 @@ class ModifyPresetScreen(Screen):
         columns = {'all-text':str, 'artist':str, 'album':str, 'title':str,
          'playcount':int, 'year':int, 'last_played':int }
 
+        self.scrollview = ScrollView(size_hint=(1.0, None), )
         self.queryview = QueryBuilder( columns, kind_map, default_column = 'all-text' )
+        self.queryview.bind(on_children_change=self.on_terms_change)
         self.queryview.newTerm()
+        self.scrollview.add_widget( self.queryview )
 
         self.treeview = TreeViewWidget(font_size = Settings.instance().font_size)
 
-        self.btn_new = Button(text="new")
+
+        self.btn_new = Button(text="+")
         self.btn_new.bind(on_press= lambda *x : self.queryview.newTerm() )
-        self.btn_new.size_hint = (1.0,None)
-        self.btn_new.height = row_height
+        self.btn_new.size_hint = (None,None)
+        self.btn_new.size = (row_height,row_height)
 
         self.btn_query = Button(text="search")
         self.btn_query.bind(on_press=self.executeQuery)
         self.btn_query.size_hint = (1.0,None)
         self.btn_query.height = row_height
 
+        self.hbox_mid = BoxLayout(orientation='horizontal')
+        self.hbox_mid.size_hint = (1.0,None)
+        self.hbox_mid.height = row_height
+        self.hbox_mid.add_widget( self.btn_new )
+        self.hbox_mid.add_widget( self.btn_query )
+
         qb_row_height = self.queryview.row_height
         # TODO: determine height of one query editor, show ~2-3 rows depending on height
-        self.scrollview = ScrollView(size_hint=(1.0, None), height = 3.5 * qb_row_height)
-        self.scrollview.add_widget( self.queryview )
 
+
+
+        self.btn_home = Button(text="home")
+        self.btn_home.bind(on_press=Settings.instance().go_home)
+        self.btn_save   = Button(text='save')
+        self.btn_create = Button(text='Create Playlist')
         self.hbox_bot = BoxLayout(orientation='horizontal')
         self.hbox_bot.size_hint = (1.0,None)
         self.hbox_bot.height = row_height
-        self.btn_home = Button(text="home")
-        self.btn_home.bind(on_press=Settings.instance().go_home)
-        #self.btn_home.size_hint = (1.0,None)
-        #self.btn_home.height = row_height
-        self.btn_save   = Button(text='save')
-        #self.btn_save.size_hint = (1.0,None)
-        #self.btn_save.height = row_height
-        self.btn_create = Button(text='Create Playlist')
-        #self.btn_create.size_hint = (1.0,None)
-        #self.btn_create.height = row_height
         self.hbox_bot.add_widget(self.btn_home)
         self.hbox_bot.add_widget(self.btn_save)
         self.hbox_bot.add_widget(self.btn_create)
 
-        self.vbox.add_widget( self.btn_new )
         self.vbox.add_widget( self.scrollview )
-        self.vbox.add_widget( self.btn_query )
+        self.vbox.add_widget( self.hbox_mid )
         self.vbox.add_widget( self.treeview )
         self.vbox.add_widget( self.hbox_bot )
 
@@ -122,8 +125,11 @@ class ModifyPresetScreen(Screen):
 
     def resize(self, *args):
 
-        #self.scrollview.height = self.height/3
         pass
+
+    def on_terms_change(self, obj, count, *args):
+        factor = min(3.5,float(count))
+        self.scrollview.height = factor * self.queryview.row_height
 
     def executeQuery(self,*args):
 
@@ -133,7 +139,7 @@ class ModifyPresetScreen(Screen):
         if rule is None:
             # execute blank search
             tree = libraryToTree( Library.instance() )
-            self.treeview.setData( tree)
+            self.setData( tree)
             return
 
         sql,values = rule.sql()
@@ -142,10 +148,13 @@ class ModifyPresetScreen(Screen):
             Logger.info("sql: %s"%values)
             result = sql_search( Library.instance().db, rule )
             tree =  libraryToTreeFromIterable( result )
-            self.treeview.setData( tree)
+            self.setData( tree)
         except OperationalError as e:
 
             Logger.error("sql: %s"%e)
+
+    def setData(self, tree):
+        self.treeview.setData( tree )
 
     def toggleSelection(self,state=None):
         """ TODO: library implements a toggle select all, which should

@@ -14,7 +14,6 @@ TODO:
     number of visible rows.
 
 """
-from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.button import Button
 
@@ -27,19 +26,10 @@ from kivy.logger import Logger
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
-from kivy.uix.scrollview import ScrollView
-from kivy.properties import NumericProperty,BooleanProperty
-from kivy.graphics import Color, Rectangle, Line
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import Image, AsyncImage
 from kivy.uix.gridlayout import GridLayout
-import kivy.metrics
-import random
 import re
 from enum import Enum
-
-from datetime import date, timedelta
-from functools import partial
 
 class QueryKind(Enum):
     LIKE   =1 # partial match
@@ -197,46 +187,40 @@ class QueryTerm(Widget):
         self.hbox.size = self.size
         self.hbox.pos = self.pos
 
-class ActionSelector(ScrollView):
+class ActionSelector(GridLayout):
     """
     display a grid view of possible search actions,
         e.g. exact or partial match, or lt, gt, etc
     """
     def __init__(self, actions, accept = None, **kwargs):
-        super(ActionSelector,self).__init__(**kwargs)
+        super(ActionSelector,self).__init__(cols=4, **kwargs)
 
         self.accept = accept
-
-        self.vbox = GridLayout(cols=4)
-        self.add_widget(self.vbox)
 
         for action, label in actions:
             btn = Button(text=label)
             btn.action_kind = action
             btn.bind(on_press=self.select)
-            self.vbox.add_widget( btn )
+            self.add_widget( btn )
 
     def select( self, btn, *args):
         if self.accept is not None:
             self.accept( btn.action_kind )
 
-class ColumnSelector(ScrollView):
+class ColumnSelector(GridLayout):
 
     """
     display a grid view of possible search fields, columns in the db
     """
     def __init__(self, actions, accept = None, **kwargs):
-        super(ColumnSelector,self).__init__(**kwargs)
+        super(ColumnSelector,self).__init__(cols=3, **kwargs)
 
         self.accept = accept
-
-        self.vbox = GridLayout(cols=2)
-        self.add_widget(self.vbox)
 
         for action in actions:
             btn = Button(text=action)
             btn.bind(on_press=self.select)
-            self.vbox.add_widget( btn )
+            self.add_widget( btn )
 
     def select( self, btn, *args):
         if self.accept is not None:
@@ -263,6 +247,7 @@ class QueryBuilder(GridLayout):
 
     """
     def __init__(self, columns , kind_map, default_column=None, row_height=0, spacing=1, font_size=12 ):
+        self.register_event_type('on_children_change')
         super(QueryBuilder, self).__init__(cols=1, spacing=spacing, size_hint_y=None )
         self.bind(minimum_height=self.setter('height'))
 
@@ -298,9 +283,13 @@ class QueryBuilder(GridLayout):
         self.bind(size=self.resize)
         self.bind(pos=self.resize)
 
+    def on_children_change(self,*args):
+        pass
+
     def remove(self, child):
 
         self.remove_widget( child )
+        self.dispatch('on_children_change', len(self.children))
 
     def action_names(self, column):
         col_type = self.columns[ column ]
@@ -328,6 +317,8 @@ class QueryBuilder(GridLayout):
             col = list(self.columns.keys())[0]
         term = QueryTerm(self,col,font_size=self.font_size, height=self.row_height)
         self.add_widget( term )
+        self.dispatch('on_children_change', len(self.children) )
+
 
     def toQuery(self):
         """
