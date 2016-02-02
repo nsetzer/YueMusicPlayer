@@ -8,8 +8,8 @@ from kivy.clock import mainthread
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
-from yue.library import Library
-from yue.playlist import PlaylistManager
+from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 
 from yue.ui.util import PlayListToViewList
 

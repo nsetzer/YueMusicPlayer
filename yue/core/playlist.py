@@ -1,6 +1,6 @@
 
 
-from yue.sqlstore import SQLView
+from yue.core.sqlstore import SQLView
 
 import random
 

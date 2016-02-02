@@ -14,7 +14,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 
 from yue.settings import Settings
-from yue.library import Library
+from yue.core.library import Library
 
 class SettingsScreen(Screen):
     def __init__(self,**kwargs):

@@ -10,9 +10,9 @@ from kivy.logger import Logger
 from yue.sound.manager import SoundManager
 from yue.sound.device import MediaState
 from yue.sound.pybass import get_platform_path
-from yue.library import Library
-from yue.playlist import PlaylistManager
-from yue.sqlstore import SQLStore
+from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
+from yue.core.sqlstore import SQLStore
 
 from yue.server.ingest import Ingest
 

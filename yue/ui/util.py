@@ -11,7 +11,7 @@ from yue.custom_widgets.playlist import PlayListElem
 from yue.custom_widgets.querybuilder import QueryKind
 from yue.custom_widgets.tristate import TriState
 
-from yue.search import PartialStringSearchRule, \
+from yue.core.search import PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \
                        ExactSearchRule, \
                        InvertedExactSearchRule, \

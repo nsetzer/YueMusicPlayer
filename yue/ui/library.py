@@ -14,8 +14,8 @@ from yue.custom_widgets.songinfo import SongInfo
 from yue.custom_widgets.tristate import TriState
 from yue.custom_widgets.view import TreeViewWidget
 from yue.settings import Settings
-from yue.library import Library
-from yue.playlist import PlaylistManager
+from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 from yue.sound.manager import SoundManager
 
 

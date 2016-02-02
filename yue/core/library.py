@@ -5,8 +5,8 @@ from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
 #from yue.settings import Settings
-from yue.song import read_tags
-from yue.sqlstore import SQLView
+from yue.core.song import read_tags
+from yue.core.sqlstore import SQLView
 
 from ConfigParser import ConfigParser
 import codecs

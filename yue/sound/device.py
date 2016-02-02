@@ -2,8 +2,8 @@
 from kivy.event import EventDispatcher
 from kivy.logger import Logger
 
-from yue.library import Library
-from yue.playlist import PlaylistManager
+from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 
 from enum import Enum
 

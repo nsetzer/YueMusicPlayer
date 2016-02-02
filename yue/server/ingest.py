@@ -7,8 +7,8 @@ import traceback
 import os, stat
 import time
 
-from yue.library import Library
-from yue.sqlstore import SQLStore
+from yue.core.library import Library
+from yue.core.sqlstore import SQLStore
 from yue.sound.manager import SoundManager
 
 ignore_paths = { '/d', '/sys', '/system', '/sbin', '/bin', '/firmware', '/dev', '/proc' }

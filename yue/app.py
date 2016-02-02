@@ -25,12 +25,12 @@ from yue.ui.ingest import IngestScreen
 from yue.ui.settings import SettingsScreen
 from yue.ui.util import libraryToTree, PlayListToViewList
 
-from yue.playlist import PlaylistManager
-from yue.library import Library
+from yue.core.playlist import PlaylistManager
+from yue.core.library import Library
 from yue.settings import Settings
 from yue.sound.manager import SoundManager
 from yue.sound.clientdevice import ServiceInfo
-from yue.sqlstore import SQLStore
+from yue.core.sqlstore import SQLStore
 
 import os,sys
 from subprocess import Popen

@@ -35,9 +35,9 @@ from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
 from yue.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
 
 from yue.settings import Settings
-from yue.library import Library
+from yue.core.library import Library
 
-from yue.search import sql_search
+from yue.core.search import sql_search
 
 class PresetScreen(Screen):
     def __init__(self,**kwargs):

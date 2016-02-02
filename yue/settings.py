@@ -5,7 +5,7 @@ from kivy.logger import Logger
 from kivy.core.text import LabelBase
 
 from kivy.storage.dictstore import DictStore
-from yue.sqlstore import SQLStore, SQLView
+from yue.core.sqlstore import SQLStore, SQLView
 from kivy.core.text import Label as CoreLabel
 
 class Settings(object):

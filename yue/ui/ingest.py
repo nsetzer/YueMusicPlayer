@@ -34,8 +34,8 @@ from kivy.logger import Logger
 from kivy.lib import osc
 
 from yue.settings import Settings
-from yue.library import Library
-from yue.sqlstore import SQLStore
+from yue.core.library import Library
+from yue.core.sqlstore import SQLStore
 
 from threading import Thread
 import traceback
