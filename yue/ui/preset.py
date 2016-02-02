@@ -99,11 +99,6 @@ class ModifyPresetScreen(Screen):
         self.hbox_mid.add_widget( self.btn_new )
         self.hbox_mid.add_widget( self.btn_query )
 
-        qb_row_height = self.queryview.row_height
-        # TODO: determine height of one query editor, show ~2-3 rows depending on height
-
-
-
         self.btn_home = Button(text="home")
         self.btn_home.bind(on_press=Settings.instance().go_home)
         self.btn_save   = Button(text='save')

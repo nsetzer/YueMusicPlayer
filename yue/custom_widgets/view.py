@@ -470,7 +470,7 @@ class ViewWidget(Widget):
         """ index into self.data where a tap occured """
         Logger.info("tap: %d"%index)
 
-    def on_double_tap(self,index,*args):
+    def on_double_tap(self,index, elem, *args):
         """ index into self.data where a tap occured """
         Logger.info("double tap: %d"%index)
 
@@ -532,8 +532,8 @@ class ViewWidget(Widget):
                 # create a momentum effect,
                 # parameters need to be played with.
                 delta = self.offset - self._touch_begin_x
-                target = max(0,min(self.offset_max, self.offset+2*delta))
-                self.anim_scroll = Animation(offset=target, duration=.25, t='out_cubic');
+                target = max(0,min(self.offset_max, self.offset+delta//2))
+                self.anim_scroll = Animation(offset=target, duration=.125);
                 self.anim_scroll.start(self)
 
             if self._touch_token is not None:

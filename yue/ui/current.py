@@ -36,9 +36,13 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
         del self.data[i]
         self.data.insert(j,item)
 
-        self.update_labels()
+        idx,_ = playlist.current()
+        scr = Settings.instance().manager.get_screen( Settings.instance().screen_current_playlist )
+        scr.view.setHighlight(idx)
 
-    def on_double_tap(self,index):
+        #self.update_labels()
+
+    def on_double_tap(self,index, elem):
         SoundManager.instance().play_index( index )
 
 class CurrentPlaylistScreen(Screen):

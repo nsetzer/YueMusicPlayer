@@ -12,7 +12,7 @@ from yue.sound.device import MediaState
 from yue.sound.pybass import get_platform_path
 from yue.library import Library
 from yue.playlist import PlaylistManager
-from yue.sqlstore import SQLStore, SQLView
+from yue.sqlstore import SQLStore
 
 from yue.server.ingest import Ingest
 

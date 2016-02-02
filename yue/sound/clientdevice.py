@@ -1,15 +1,9 @@
 
 # todo: bass syncproc
-import os
-from kivy.core.audio import SoundLoader
-from kivy.clock import Clock, mainthread
-from kivy.event import EventDispatcher
 from kivy.logger import Logger
 from kivy.lib import osc
 
 from .device import SoundDevice, MediaState
-
-from .bassplayer import BassPlayer, BassException
 
 from collections import namedtuple
 

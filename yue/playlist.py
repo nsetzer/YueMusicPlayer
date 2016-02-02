@@ -1,20 +1,7 @@
 
 
-import os,sys
+from yue.sqlstore import SQLView
 
-from kivy.logger import Logger
-from kivy.storage.dictstore import DictStore
-
-from yue.settings import Settings
-from yue.song import read_tags
-from yue.sqlstore import SQLStore, SQLView
-
-from yue.custom_widgets.tristate import TriState
-from yue.custom_widgets.view import TreeElem
-from yue.custom_widgets.playlist import PlayListElem
-
-from ConfigParser import ConfigParser
-import codecs
 import random
 
 class PlaylistManager(object):
@@ -42,7 +29,6 @@ class PlaylistManager(object):
     @staticmethod
     def init( sqlstore ):
         PlaylistManager.__instance = PlaylistManager( sqlstore )
-
 
     @staticmethod
     def instance():
@@ -106,7 +92,8 @@ class PlayListView(object):
             _, _, size, _ = self.db_names._get( c, self.uid );
             if 0 <= idx < size:
                 self.db_names._update( c, self.uid, idx=idx );
-                res = c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
+                print("set_index", idx, size)
+                c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
                 return c.fetchone()[0]
         raise IndexError(idx)
 
@@ -115,7 +102,7 @@ class PlayListView(object):
             c = conn.cursor()
             _, _, size, _ = self.db_names._get( c, self.uid );
             if 0 <= idx < size:
-                res = c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
+                c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
                 return c.fetchone()[0]
         raise IndexError(idx)
 
@@ -147,19 +134,25 @@ class PlayListView(object):
     def clear(self):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
-            c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx))
-            c.execute("UPDATE playlists SET size=size-1 WHERE uid=?",(self.uid,))
+            c.execute("DELETE from playlist_songs where uid=?",(self.uid,))
 
     def reinsert(self,idx1,idx2):
         """ remove an element at idx1, then insert at idx2 """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx1)))
+            _, _, _, cur = self.db_names._get( c, self.uid );
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx1))
             key = c.fetchone()[0]
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx2))
+            print("reinsert",cur,idx1,idx2)
+            if idx1 == cur:
+                self.db_names._update( c, self.uid, idx=idx2)
+            elif idx1 < cur and idx2 > cur:
+                self.db_names._update( c, self.uid, idx=cur-1)
+            elif idx1 > cur and idx2 < cur:
+                self.db_names._update( c, self.uid, idx=cur+1)
             self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
 
     def shuffle_range(self,start,end):
@@ -169,7 +162,7 @@ class PlayListView(object):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             # extract the set of songs in the given range
-            res = c.execute("SELECT song_id from playlist_songs where uid=? and idx BETWEEN ? and ?", (self.uid,start,end))
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx BETWEEN ? and ?", (self.uid,start,end))
             keys = []
             items = c.fetchmany()
             while items:
@@ -198,7 +191,7 @@ class PlayListView(object):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             _, name, size, idx = self.db_names._get( c, self.uid );
-            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
             key = c.fetchone()[0]
             return idx,key
 
@@ -214,7 +207,7 @@ class PlayListView(object):
             if idx >= size:
                 raise StopIteration()
             self.db_names._update( c, self.uid, idx=idx)
-            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
             key = c.fetchone()[0]
             return idx,key
 
@@ -230,7 +223,7 @@ class PlayListView(object):
             if idx < 0:
                 raise StopIteration()
             self.db_names._update( c, self.uid, idx=idx)
-            res = (c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx)))
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
             key = c.fetchone()[0]
             return idx,key
 

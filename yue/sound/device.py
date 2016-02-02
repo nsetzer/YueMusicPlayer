@@ -1,10 +1,7 @@
 
-from kivy.core.audio import SoundLoader
-from kivy.clock import Clock, mainthread
 from kivy.event import EventDispatcher
 from kivy.logger import Logger
 
-from yue.settings import Settings
 from yue.library import Library
 from yue.playlist import PlaylistManager
 
