@@ -55,7 +55,7 @@ fullscreen = 0
 android.permissions = INTERNET
 
 # (int) Android API to use
-#android.api = 14
+android.api = 19
 
 # (int) Minimum API required (8 = Android 2.2 devices)
 #android.minapi = 8
@@ -73,7 +73,7 @@ android.permissions = INTERNET
 #android.ndk_path =
 
 # (str) Android SDK directory (if empty, it will be automatically downloaded.)
-#android.sdk_path = 
+#android.sdk_path =
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.renpy.android.PythonActivity
@@ -100,7 +100,7 @@ android.permissions = INTERNET
 #android.ouya.icon.filename = %(source.dir)s/data/ouya_icon.png
 
 # (str) XML file to include as an intent filters in <activity> tag
-#android.manifest.intent_filters = 
+#android.manifest.intent_filters =
 
 # (list) Android additionnal libraries to copy into libs/armeabi
 #android.add_libs_armeabi = libs/android/*.so
@@ -136,7 +136,7 @@ log_level = 2
 
 # -----------------------------------------------------------------------------
 # List as sections
-# 
+#
 # You can define all the "list" as [section:key].
 # Each line will be considered as a option to the list.
 # Let's take [app] / source.exclude_patterns.

@@ -30,20 +30,20 @@ class NotificationDemo(BoxLayout):
         if PY2:
             title = title.decode('utf8')
             message = message.decode('utf8')
-        kwargs = {'title': title, 'message': message}
+        #kwargs = {'title': title, 'message': message}
 
-        if mode == 'fancy':
-            kwargs['app_name'] = "Plyer Notification Example"
-            if platform == "win":
-                kwargs['app_icon'] = join(dirname(realpath(__file__)),
-                                          'plyer-icon.ico')
-                kwargs['timeout'] = 4
-            else:
-                kwargs['app_icon'] = join(dirname(realpath(__file__)),
-                                          'plyer-icon.png')
-        notification.notify(**kwargs)
+        #if mode == 'fancy':
+        #    kwargs['app_name'] = "Plyer Notification Example"
+        #    if platform == "win":
+        #        kwargs['app_icon'] = join(dirname(realpath(__file__)),
+        #                                  'plyer-icon.ico')
+        #        kwargs['timeout'] = 4
+        #    else:
+        #        kwargs['app_icon'] = join(dirname(realpath(__file__)),
+        #                                  'plyer-icon.png')
+        #notification.notify(**kwargs)
 
-        osc.sendMsg('/update', dataArray=("hello world",), port=serviceport)
+        osc.sendMsg('/update', dataArray=(title,message,), port=serviceport)
 
 
 class NotificationDemoApp(App):

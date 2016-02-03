@@ -9,7 +9,7 @@ from plyer.compat import PY2
 
 if platform == 'android':
     from jnius import autoclass, cast
-
+    from android.broadcast import BroadcastReceiver
 import time
 
 serviceport = 15123
@@ -20,7 +20,7 @@ def update_notification(message, *args):
     Logger.info("service: recieved request: %s",message)
 
     if platform == "android":
-        update_service("","")
+        update_service(*message[2:])
 
 def update_service(ptext, pmessage):
     """
@@ -36,16 +36,20 @@ def update_service(ptext, pmessage):
     PendingIntent = autoclass('android.app.PendingIntent')
     AndroidString = autoclass('java.lang.String')
     NotificationBuilder = autoclass('android.app.Notification$Builder')
-    NotificationAction = autoclass('android.app.Notification$Action')
+    # Action is added in api 19. Action.Builder is added in 20
+    # the current api used below was deprectated in 23.
+    Action = autoclass('android.app.Notification$Action')
 
+    PythonActivity = autoclass('org.renpy.android.PythonActivity')
+    Logger.info("service: PA: %s %s"%(type(PythonActivity),hasattr(PythonActivity,'getClass')))
     PythonService = autoclass('org.renpy.android.PythonService')
     service = PythonService.mService
 
     # this currently fails because no icon is set.
 
     Drawable = autoclass("{}.R$drawable".format(service.getPackageName()))
-    text = AndroidString("Test Text".encode('utf-8'))
-    message = AndroidString("Test Msg".encode('utf-8'))
+    text = AndroidString(ptext.encode('utf-8'))
+    message = AndroidString(pmessage.encode('utf-8'))
 
     # kivy doesnt hace a tray icon by default
     Logger.info("> drawable icon %s"%hasattr(Drawable,'icon'))
@@ -54,6 +58,8 @@ def update_service(ptext, pmessage):
     #small_icon = getattr(Drawable, 'tray_small')
     # kivy puts this here by default
     large_icon_bitmap = get_scaled_icon('icon')
+    Logger.info("> drawable large icon %s"%type(large_icon_bitmap))
+
     #intent = Intent(service, service.getClass())
     intent = Intent(service, service.getClass())
     contentIntent = PendingIntent.getActivity(service, 0, intent, 0)
@@ -66,7 +72,36 @@ def update_service(ptext, pmessage):
     notification_builder.setLargeIcon(large_icon_bitmap)
     Logger.info("service: set intent")
     notification_builder.setContentIntent(contentIntent)
-    # addAction(Notification.Action action)
+
+    # this intent should start the main activity
+    #Logger.info("service: create action intent")
+    #appIntent = Intent(service, PythonActivity.getClass());
+    #Logger.info("service: add flags")
+    #appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    #Logger.info("service: create pending")
+    #appContentIntent = PendingIntent.getActivity(service, 0, appIntent, 0)
+    #Logger.info("service: create action")
+    #action = ActionBuilder(Drawable.icon,actiontext,appContentIntent)
+    actiontext = AndroidString("ACTION_GET_CONTENT".encode('utf-8'))
+    act1msg = AndroidString("Act1".encode('utf-8'))
+    act2msg = AndroidString("Act2".encode('utf-8'))
+    act3msg = AndroidString("Act3".encode('utf-8'))
+
+    intentAct1 = Intent(service, service.getClass())
+    intentAct1.setAction(actiontext)
+    contentIntent = PendingIntent.getBroadcast(service, 12345, intentAct1, PendingIntent.FLAG_UPDATE_CURRENT )
+    notification_builder.addAction(Drawable.icon,act1msg,contentIntent)
+
+    intentAct2 = Intent(service, service.getClass())
+    intentAct2.setAction(actiontext)
+    contentIntent = PendingIntent.getBroadcast(service, 12345, intentAct2, PendingIntent.FLAG_UPDATE_CURRENT )
+    notification_builder.addAction(Drawable.icon,act2msg,contentIntent)
+
+    intentAct3 = Intent(service, service.getClass())
+    intentAct3.setAction(actiontext)
+    contentIntent = PendingIntent.getBroadcast(service, 12345, intentAct3, PendingIntent.FLAG_UPDATE_CURRENT )
+    notification_builder.addAction(Drawable.icon,act3msg,contentIntent)
+
     notification = notification_builder.getNotification()
 
     notification_service = service.getSystemService(Context.NOTIFICATION_SERVICE)
@@ -98,12 +133,22 @@ def get_scaled_icon(icon):
     width = res.getDimension(Dimen.notification_large_icon_width)
     return Bitmap.createScaledBitmap(scaled_icon, width, height, False)
 
+def intent_callback(context, intent, *args):
+    # context, intent
+    Logger.warning("%s"%context)
+    Logger.warning("%s"%intent)
+    Logger.warning("%s"%args)
+
+
 def main():
 
     oscid = osc.listen(ipAddr='127.0.0.1', port=serviceport)
     osc.init()
 
     osc.bind(oscid, update_notification, '/update')
+
+    br = BroadcastReceiver(intent_callback,["GET_CONTENT",])
+    br.start()
 
     while True:
         osc.readQueue(oscid)
