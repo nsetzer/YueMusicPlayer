@@ -49,6 +49,7 @@ def update_service(ptext, pmessage):
 
     # kivy doesnt hace a tray icon by default
     Logger.info("> drawable icon %s"%hasattr(Drawable,'icon'))
+    Logger.info("> drawable icon %s"%type(Drawable.icon))
     Logger.info("> drawable tray_small %s"%hasattr(Drawable,'tray_small'))
     #small_icon = getattr(Drawable, 'tray_small')
     # kivy puts this here by default
@@ -59,8 +60,11 @@ def update_service(ptext, pmessage):
     notification_builder = NotificationBuilder(service)
     notification_builder.setContentTitle(text)
     notification_builder.setContentText(message)
-    #notification_builder.setSmallIcon(large_icon_bitmap)
-    #notification_builder.setLargeIcon(large_icon_bitmap)
+    Logger.info("service: set small icon")
+    notification_builder.setSmallIcon(Drawable.icon)
+    Logger.info("service: set large icon")
+    notification_builder.setLargeIcon(large_icon_bitmap)
+    Logger.info("service: set intent")
     notification_builder.setContentIntent(contentIntent)
     # addAction(Notification.Action action)
     notification = notification_builder.getNotification()
