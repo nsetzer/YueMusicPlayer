@@ -16,7 +16,8 @@ from plyer import notification
 from plyer.utils import platform
 from plyer.compat import PY2
 
-from jnius import autoclass, cast
+if platform == 'android':
+    from jnius import autoclass, cast
 
 import sys
 from subprocess import Popen
@@ -40,10 +41,14 @@ class NotificationDemo(BoxLayout):
                 kwargs['app_icon'] = join(dirname(realpath(__file__)),
                                           'plyer-icon.ico')
                 kwargs['timeout'] = 4
+                print("got here")
             else:
                 kwargs['app_icon'] = join(dirname(realpath(__file__)),
                                           'plyer-icon.png')
         notification.notify(**kwargs)
+
+        if platform == "android":
+            update_service(title,message)
 
 class NotificationDemoApp(App):
     def build(self):
@@ -75,7 +80,6 @@ class NotificationDemoApp(App):
 
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
 
-
     def stop_service(self):
         if self.pid is not None:
             Logger.info("example: stopping popen service")
@@ -94,7 +98,7 @@ class NotificationDemoApp(App):
 
         Logger.critical('example: exit')
 
-def update_service():
+def update_service(ptext, pmessage):
     """
     http://cheparev.com/kivy-recipe-service-customization/
 
