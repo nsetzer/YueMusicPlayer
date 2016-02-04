@@ -26,14 +26,28 @@ class ServiceNotification(object):
         self.Drawable = autoclass("{}.R$drawable".format(service.getPackageName()))
         self.Dimen = autoclass("android.R$dimen")
         self.Bitmap = autoclass("android.graphics.Bitmap")
+        # api 19
+        #self.Action = autoclass('android.app.Notification$Action')
+        # api 20, uncertain on autoclass syntax for double nested class
+        #self.ActionBuilder = autoclass('android.app.Notification$Action$Builder')
 
         self.large_icon = self.get_scaled_icon('icon')
+
+        self.actions = [None,None,None]
 
     def setText(self,ustr):
         self.utext = ustr
 
     def setMessage(self,ustr):
         self.umessage = ustr
+
+    def setAction(self,index,ustr,icon="icon"):
+        """
+        ustr : python unicode string
+        icon : name of Drawable, without extension
+               (unimplemented)
+        """
+        self.actions[index] = (ustr,icon)
 
     def update(self):
         """ update app notification """
@@ -42,16 +56,33 @@ class ServiceNotification(object):
         message = self.AndroidString(self.umessage.encode('utf-8'))
         service = self.PythonService.mService
 
-        contentIntent = self.PendingIntent.getActivity(service, 0, \
-                        self.Intent(service, service.getClass()), 0)
-
+        intent = self.Intent(service, service.getClass())
+        contentIntent = self.PendingIntent.getActivity(service, 0, intent, 0)
 
         notification_builder = self.NotificationBuilder(service)
         notification_builder.setContentTitle(text)
         notification_builder.setContentText(message)
+        # must be a java Icon
         notification_builder.setSmallIcon(self.Drawable.icon)
+        # must be a java Bitmap
         notification_builder.setLargeIcon(self.large_icon)
         notification_builder.setContentIntent(contentIntent)
+
+        for act in self.actions:
+            if act is not None:
+                ptext,icon = act
+                text = self.AndroidString(ptext.encode('utf-8'))
+                intent = self.Intent(service, service.getClass())
+                intent.setAction(text) # TODO not sure what value to use
+                # 12345 is an arbitrary number, need to check documentation
+                # on what that field is
+                contentIntent = self.PendingIntent.getBroadcast( \
+                    service, 12345, intent, \
+                    self.PendingIntent.FLAG_UPDATE_CURRENT )
+                # this method is deprecated in api 23, but the alternative
+                # does not exist until api 20 (using Action.Builder)
+                notification_builder.addAction( \
+                    self.Drawable.icon,text,contentIntent)
 
         notification = notification_builder.getNotification()
 
