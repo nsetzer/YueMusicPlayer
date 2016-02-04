@@ -1,6 +1,6 @@
 #!/usr/bin/python
 __version__ = "1.0"
 
-from yue.app import YueApp
+from yue.app import main
 
-YueApp().run()
+main()

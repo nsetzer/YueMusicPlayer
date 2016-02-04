@@ -260,3 +260,6 @@ class YueApp(App):
             self.bg_thread.join()
 
         Logger.critical('Yue: exit')
+
+def main():
+    YueApp().run()

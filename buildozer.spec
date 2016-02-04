@@ -19,10 +19,11 @@ source.include_exts = py,png,jpg,kv,atlas
 source.exclude_exts = spec, db, md, txt, ini
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = tests, test, bin, util
+source.exclude_dirs = tests, test, bin, util, htmlcov,
 
 # (list) List of exclusions using pattern matching
 #source.exclude_patterns = license,images/*/*.jpg
+source.exclude_patterns = setup.py, src/*/*test.py
 
 # (str) Application versioning (method 1)
 version = 0.1
