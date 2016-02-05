@@ -9,7 +9,12 @@ from kivy.logger import Logger
 from yue.core.song import read_tags
 from yue.core.sqlstore import SQLTable, SQLView
 
-from ConfigParser import ConfigParser
+try:
+    # 3.x name
+    import configparser
+except ImportError:
+    # 2.x name
+    import ConfigParser as configparser
 import codecs
 
 class Library(object):
@@ -58,12 +63,21 @@ class Library(object):
             "FOREIGN KEY(album) REFERENCES albums(uid)",
         ]
 
+        self.sqlstore = sqlstore
         self.artist_db = SQLTable( sqlstore ,"artists", artists)
         self.album_db = SQLTable( sqlstore ,"albums", albums)
         self.song_db = SQLTable( sqlstore ,"songs", songs_columns, songs_foreign_keys)
 
         colnames = [ x[0] for x in songs_columns ]
-        self.song_view = SQLView( sqlstore, "library", colnames)
+
+        viewname = "library"
+        cols = "s.uid, s.path, a.artist, s.composer, b.album, s.title, s.genre, s.year, s.country, s.lang, s.comment, s.album_index, s.length, s.last_played, s.playcount, s.rating"
+        tbls = "songs s, artists a, albums b"
+        where = "s.artist=a.uid AND s.album=b.uid"
+        sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
+
+
+        self.song_view = SQLView( sqlstore, "library", sql, colnames)
 
     @staticmethod
     def init( sqlstore ):
@@ -75,9 +89,11 @@ class Library(object):
 
     def insert(self,**kwargs):
 
-        kwargs['artist'] = self.artist_db.get_id_or_insert(artist=kwargs['artist'])
-        kwargs['album'] = self.album_db.get_id_or_insert(album=kwargs['album'])
-        return self.song_db.insert(**kwargs)
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
+            kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'])
+            return self.song_db._insert(c,**kwargs)
 
     def loadTestData(self,inipath,force=False):
         """
@@ -118,7 +134,7 @@ class Library(object):
 
         Logger.info('loading test library: %s'%inipath)
 
-        config = ConfigParser()
+        config = configparser.ConfigParser()
         config.readfp(codecs.open(inipath,"r","utf-8"))
 
         def get_default(section,option,default):

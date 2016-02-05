@@ -5,7 +5,7 @@ import os
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore, SQLTable
 
-DB_PATH = "./unitteset.db"
+DB_PATH = "./unittest.db"
 PL_NAME = 'demo'
 
 class TestPlaylist(unittest.TestCase):

@@ -126,21 +126,21 @@ class SQLTable(object):
 
 class SQLView(object):
     """docstring for SQLTable"""
-    def __init__(self, store, name, column_names):
+    def __init__(self, store, name, sql, column_names):
+        """
+        name : sql name of the view
+        sql : sql that can create the view if needed
+        column_names : names of each column in the view
+        """
         super(SQLView, self).__init__()
         self.store = store
         self.name = name
         self.column_names = column_names
 
-        self.create()
+        self.create(sql)
 
-    def create(self):
+    def create(self, sql):
         with self.store.conn:
-
-            cols = "s.uid, s.path, a.artist, s.composer, b.album, s.title, s.genre, s.year, s.country, s.lang, s.comment, s.album_index, s.length, s.last_played, s.playcount, s.rating"
-            tbls = "songs s, artists a, albums b"
-            where = "s.artist=a.uid AND s.album=b.uid"
-            sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(self.name,cols,tbls,where)
             self.store.conn.execute(sql)
 
     def get(self,key):
