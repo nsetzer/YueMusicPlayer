@@ -92,7 +92,6 @@ class PlayListView(object):
             _, _, size, _ = self.db_names._get( c, self.uid );
             if 0 <= idx < size:
                 self.db_names._update( c, self.uid, idx=idx );
-                print("set_index", idx, size)
                 c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
                 return c.fetchone()[0]
         raise IndexError(idx)
@@ -124,7 +123,7 @@ class PlayListView(object):
             c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
 
     def delete(self,idx):
-        """ remove an song from the playlist by it's position in the list """
+        """ remove a song from the playlist by it's position in the list """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
@@ -146,7 +145,6 @@ class PlayListView(object):
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx2))
-            print("reinsert",cur,idx1,idx2)
             if idx1 == cur:
                 self.db_names._update( c, self.uid, idx=idx2)
             elif idx1 < cur and idx2 > cur:
@@ -158,6 +156,10 @@ class PlayListView(object):
     def shuffle_range(self,start,end):
         """ shuffle a slice of the list, using python slice semantics
             playlist[start:end]
+
+            TODO: doesnt handle update to current.
+                current use case only ever shuffles [current + 1 : end]
+                so this is not a problem
         """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
