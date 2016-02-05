@@ -1,6 +1,6 @@
 
 
-from yue.core.sqlstore import SQLView
+from yue.core.sqlstore import SQLTable
 
 import random
 
@@ -23,8 +23,8 @@ class PlaylistManager(object):
             ('song_id','integer') # foreign key into 'library'
         ]
 
-        self.db_names = SQLView( sqlstore ,"playlists", playlist_columns)
-        self.db_lists = SQLView( sqlstore ,"playlist_songs", playlist_songs_columns)
+        self.db_names = SQLTable( sqlstore ,"playlists", playlist_columns)
+        self.db_lists = SQLTable( sqlstore ,"playlist_songs", playlist_songs_columns)
 
     @staticmethod
     def init( sqlstore ):

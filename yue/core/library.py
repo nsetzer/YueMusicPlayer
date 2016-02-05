@@ -1,12 +1,13 @@
 
 import os
 
+from .search import sql_search
 from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
 #from yue.settings import Settings
 from yue.core.song import read_tags
-from yue.core.sqlstore import SQLView
+from yue.core.sqlstore import SQLTable, SQLView
 
 from ConfigParser import ConfigParser
 import codecs
@@ -17,12 +18,29 @@ class Library(object):
     def __init__(self, sqlstore):
         super(Library, self).__init__()
 
-        library_columns = [
+        artists = [
+            ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
+            ("artist","text")
+        ]
+
+        albums = [
+            ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
+            ("album","text")
+        ]
+
+        #composers = [
+        #    ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
+        #    ("composer","text")
+        #]
+
+        songs_columns = [
             ('uid','integer PRIMARY KEY AUTOINCREMENT'),
             ('path',"text"),
-            ('artist',"text"),
+            #('artist',"text"),
+            ('artist',"INTEGER"),
             ('composer',"text DEFAULT ''"),
-            ('album','text'),
+            #('album','text'),
+            ('album','INTEGER'),
             ('title','text'),
             ('genre',"text DEFAULT ''"),
             ('year','integer DEFAULT 0'),
@@ -35,8 +53,17 @@ class Library(object):
             ('playcount','integer DEFAULT 0'),
             ('rating','integer DEFAULT 0'),
         ]
+        songs_foreign_keys = [
+            "FOREIGN KEY(artist) REFERENCES artists(uid)",
+            "FOREIGN KEY(album) REFERENCES albums(uid)",
+        ]
 
-        self.db = SQLView( sqlstore ,"library", library_columns)
+        self.artist_db = SQLTable( sqlstore ,"artists", artists)
+        self.album_db = SQLTable( sqlstore ,"albums", albums)
+        self.song_db = SQLTable( sqlstore ,"songs", songs_columns, songs_foreign_keys)
+
+        colnames = [ x[0] for x in songs_columns ]
+        self.song_view = SQLView( sqlstore, "library", colnames)
 
     @staticmethod
     def init( sqlstore ):
@@ -45,6 +72,12 @@ class Library(object):
     @staticmethod
     def instance():
         return Library.__instance
+
+    def insert(self,**kwargs):
+
+        kwargs['artist'] = self.artist_db.get_id_or_insert(artist=kwargs['artist'])
+        kwargs['album'] = self.album_db.get_id_or_insert(album=kwargs['album'])
+        return self.song_db.insert(**kwargs)
 
     def loadTestData(self,inipath,force=False):
         """
@@ -75,7 +108,7 @@ class Library(object):
         #    return
 
         try:
-            self.db.get(1)
+            self.song_view.get(1)
             return
         except:
             pass
@@ -102,7 +135,7 @@ class Library(object):
                 "path"   : get_default(section,"path"  ,""),
 
             }
-            self.db.insert(**song)
+            self.insert(**song)
 
         Logger.info('loading test library: %s'%inipath)
 
@@ -110,10 +143,10 @@ class Library(object):
         """ does not check for duplicates """
         Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
-        return self.db.insert(**song)
+        return self.nsert(**song)
 
     def songFromId(self,uid):
-        return self.db.get(uid)
+        return self.song_view.get(uid)
 
     def toPathMap(self):
         """
@@ -124,12 +157,15 @@ class Library(object):
         a given path exists in the db.
         """
         m = {}
-        for song in self.db.iter():
+        for song in self.song_view.iter():
             m[song['path']] = song['uid']
         return m
 
     def iter(self):
-        return self.db.iter()
+        return self.song_view.iter()
+
+    def search(self, rule , case_insensitive=True):
+        return sql_search( self.song_view, rule, case_insensitive )
 
 
 

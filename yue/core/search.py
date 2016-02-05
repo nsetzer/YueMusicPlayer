@@ -181,10 +181,10 @@ def naive_search( sqldb, rule ):
         if rule.check(song):
             yield song
 
-def sql_search( sqlview, rule, case_insensitive=True):
+def sql_search( db, rule, case_insensitive=True):
     """ convert a rule to a sql query and yield matching songs """
     x = rule.sql()
-    query = "SELECT * FROM %s WHERE "%sqlview.name + x[0]
+    query = "SELECT * FROM %s WHERE "%db.name + x[0]
     if case_insensitive:
         query += " COLLATE NOCASE"
-    return sqlview.query(query, *x[1])
+    return db.query(query, *x[1])

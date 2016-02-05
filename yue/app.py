@@ -75,7 +75,7 @@ class BackgroundDataLoad(Thread):
         tree = libraryToTree( library )
         # build a dummy playlist until it can be stored in the db
         lst = []
-        g = library.db.iter()
+        g = library.iter()
         try:
             for i in range(20):
                 song = next(g)

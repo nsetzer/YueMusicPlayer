@@ -37,8 +37,6 @@ from yue.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRu
 from yue.settings import Settings
 from yue.core.library import Library
 
-from yue.core.search import sql_search
-
 class PresetScreen(Screen):
     def __init__(self,**kwargs):
         super(PresetScreen,self).__init__(**kwargs)
@@ -141,7 +139,7 @@ class ModifyPresetScreen(Screen):
         try:
             Logger.info("sql: %s"%sql)
             Logger.info("sql: %s"%values)
-            result = sql_search( Library.instance().db, rule )
+            result = Library.instance().search( rule )
             tree =  libraryToTreeFromIterable( result )
             self.setData( tree)
         except OperationalError as e:
