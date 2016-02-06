@@ -1,8 +1,8 @@
 #! cd ../.. && python2.7 setup.py cover
 #! cd ../.. && python2.7 setup.py test --test=search
 import unittest
+import os,sys
 
-import os
 from yue.core.library import Library
 from yue.core.search import PartialStringSearchRule, \
         InvertedPartialStringSearchRule, \
@@ -14,12 +14,13 @@ from yue.core.search import PartialStringSearchRule, \
         GreaterThanEqualSearchRule, \
         RangeSearchRule, \
         NotRangeSearchRule, \
+        AndSearchRule, \
+        OrSearchRule, \
         naive_search, \
         sql_search
 from yue.core.sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
-
 
 class TestLibrarySearch(unittest.TestCase):
     """Examples for using the cEBFS library
@@ -44,6 +45,15 @@ class TestLibrarySearch(unittest.TestCase):
         sqlview = library.song_view
         s1 = set( song['uid'] for song in naive_search( sqlview, rule ) )
         s2 = set( song['uid'] for song in sql_search( sqlview, rule ) )
+
+        self.assertEqual(s1,s2,msg)
+
+    def compare_rules( self, library, rule1, rule2, msg=""):
+        """ compare the two search methods, verify they return the same results"""
+
+        sqlview = library.song_view
+        s1 = set( song['uid'] for song in sql_search( sqlview, rule1 ) )
+        s2 = set( song['uid'] for song in sql_search( sqlview, rule2 ) )
 
         self.assertEqual(s1,s2,msg)
 
@@ -82,5 +92,18 @@ class TestLibrarySearch(unittest.TestCase):
         self.compare( library, GreaterThanSearchRule('playcount',2000), 'gt')
         self.compare( library, GreaterThanEqualSearchRule('playcount',2000), 'ge')
 
-        self.compare( library, RangeSearchRule('playcount',1995,2005), 'range')
-        self.compare( library, NotRangeSearchRule('playcount',1995,2005), 'not-range')
+        rng1 = RangeSearchRule('playcount',1995,2005);
+        self.compare( library, rng1, 'range')
+        rng2 = NotRangeSearchRule('playcount',1995,2005)
+        self.compare( library, rng2, 'not-range')
+
+        # show that two rules combined using 'and' produce the expected result
+
+        gt1=GreaterThanEqualSearchRule('playcount',1995)
+        lt1=LessThanEqualSearchRule('playcount',2005)
+        self.compare_rules(library, AndSearchRule([gt1,lt1]), rng1, "and")
+
+        # show that two rules combined using 'or' produce the correct result
+        lt2=LessThanSearchRule('playcount',1995)
+        gt2=GreaterThanSearchRule('playcount',2005)
+        self.compare_rules(library, OrSearchRule([lt2,gt2]), rng2, "or")
