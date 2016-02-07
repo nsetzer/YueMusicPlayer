@@ -27,61 +27,40 @@ from yue.core.sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
 
-sqlstore = None
-sqlview = None
-
-def setUpModule():
-
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-
-    global sqlstore
-    global sqlview
-
-    sqlstore = SQLStore( DB_PATH )
-    library = Library( sqlstore )
-
-    for i in range(20):
-        song = {"artist":"art%d"%i,
-                "album" :"alb%d"%i,
-                "title" :"ttl%d"%i,
-                "path"  :"/path/%d"%i,
-                "playcount":i,
-                "year":i%21+1990}
-        library.insert(**song)
-
-    sqlview = library.song_view
-
-def tearDownModule():
-
-    global sqlstore
-    global sqlview
-
-    sqlstore.close()
+def extract(field, items):
+    return set( item[field] for item in items )
 
 class TestSearchMeta(type):
     """
     Build a Search Test class.
     search test follow a forumla, compare output from two different search
     methods. This class builds a Test Class where each method in the class
-    is a test the same test, with different parameters
+    runs the same test with different parameters
 
     """
     def __new__(cls, name, bases, dict):
 
         def gen_compare_test(rule):
+            """ check that a given rule returns the same results,
+                using the sql expression, or directly applying the rule """
             def test(self):
-                global sqlview
-                s1 = set( song['uid'] for song in naive_search( sqlview, rule ) )
-                s2 = set( song['uid'] for song in sql_search( sqlview, rule ) )
+                s1 = extract( 'uid', naive_search( self.sqlview, rule ) )
+                s2 = extract( 'uid', sql_search( self.sqlview, rule ) )
                 self.assertEqual(s1, s2)
             return test
 
-        def gen_compare_rule_test(rule1,rule2):
+        def gen_compare_count_test(rule,count):
+            """ check that a rule returns the expected number of results"""
             def test(self):
-                global sqlview
-                s1 = set( song['uid'] for song in sql_search( sqlview, rule1 ) )
-                s2 = set( song['uid'] for song in sql_search( sqlview, rule2 ) )
+                s1 = extract( 'uid', sql_search( self.sqlview, rule ) )
+                self.assertEqual(len(s1), count)
+            return test
+
+        def gen_compare_rule_test(rule1,rule2):
+            """ check that two different rules return the same results """
+            def test(self):
+                s1 = extract( 'uid', sql_search( self.sqlview, rule1 ) )
+                s2 = extract( 'uid', sql_search( self.sqlview, rule2 ) )
                 self.assertEqual(s1, s2)
             return test
 
@@ -96,8 +75,10 @@ class TestSearchMeta(type):
         lt2=LessThanSearchRule('playcount',1995)
         gt2=GreaterThanSearchRule('playcount',2005)
 
-        rules = [ PartialStringSearchRule('artist','art1'),
-                  InvertedPartialStringSearchRule('artist','art1'),
+        pl1 = PartialStringSearchRule('artist','art1')
+        pl2 = InvertedPartialStringSearchRule('artist','art1')
+        rules = [ pl1,
+                  pl2,
                   ExactSearchRule('artist','art1'),
                   ExactSearchRule('playcount',2000),
                   InvertedExactSearchRule('artist','art1'),
@@ -111,17 +92,38 @@ class TestSearchMeta(type):
         dict["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
         dict["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
 
+        dict["test_pl1"] = gen_compare_count_test(pl1,11)
+        dict["test_pl2"] = gen_compare_count_test(pl2, 9)
+
         return type.__new__(cls, name, bases, dict)
 
 class TestSearch(unittest.TestCase):
     __metaclass__ = TestSearchMeta
 
-    # python 2.7, 3.2 only, could be a better way to set up the db
+    # python 2.7, >3.2
 
-    #@classmethod
-    #def setUpClass(cls):
-    #    pass
+    @classmethod
+    def setUpClass(cls):
 
-    #@classmethod
-    #def tearDownClass(cls):
-    #    pass
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+
+        cls.sqlstore = SQLStore( DB_PATH )
+        library = Library( cls.sqlstore )
+
+        for i in range(20):
+            song = {"artist":"art%d"%i,
+                    "album" :"alb%d"%i,
+                    "title" :"ttl%d"%i,
+                    "path"  :"/path/%d"%i,
+                    "playcount":i,
+                    "year":i%21+1990}
+            library.insert(**song)
+
+        cls.sqlview = library.song_view
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        cls.sqlstore.close()
