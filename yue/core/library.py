@@ -2,7 +2,7 @@
 import os
 
 from .search import sql_search
-from kivy.logger import Logger
+#from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
 #from yue.settings import Settings
@@ -129,10 +129,10 @@ class Library(object):
         except:
             pass
         if not os.path.exists(inipath):
-            Logger.critical('test library not found: %s'%inipath)
+            #Logger.critical('test library not found: %s'%inipath)
             return
 
-        Logger.info('loading test library: %s'%inipath)
+        #Logger.info('loading test library: %s'%inipath)
 
         config = configparser.ConfigParser()
         config.readfp(codecs.open(inipath,"r","utf-8"))
@@ -153,11 +153,11 @@ class Library(object):
             }
             self.insert(**song)
 
-        Logger.info('loading test library: %s'%inipath)
+        #Logger.info('loading test library: %s'%inipath)
 
     def loadPath(self,songpath):
         """ does not check for duplicates """
-        Logger.info("library: load song path: %s"%songpath)
+        #Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
         return self.nsert(**song)
 

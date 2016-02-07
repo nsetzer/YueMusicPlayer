@@ -6,7 +6,7 @@ from mutagen.id3 import ID3
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 
-from kivy.logger import Logger
+# from kivy.logger import Logger
 
 def read_tags(path):
 
@@ -84,7 +84,7 @@ def get_int(audio,tag,split_on=None):
                 field = field.split(split_on)[0]
             return int(field)
     except Exception as e:
-        Logger.error("mutagen: error reading %s: %s"%(tag,e))
+        print("mutagen: error reading %s: %s"%(tag,e))
     return 0
 
 class ArtNotFound(IOError):
@@ -114,7 +114,7 @@ def get_album_art( song_path, temp_path):
         elif ext == '.flac':
             data = get_album_art_flac( song_path )
     except Exception as e:
-        Logger.error("mutagen: %s"%e)
+        print("mutagen: %s"%e)
 
     if data is not None:
         with open(temp_path,"wb") as wb:

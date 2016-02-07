@@ -14,6 +14,9 @@ class SQLStore(object):
         self.filename = filename
         self.conn = sqlite3.connect(filename)
 
+    def close(self):
+        self.conn.close()
+
 class SQLTable(object):
     """docstring for SQLTable"""
     def __init__(self, store, name, columns, foreign_keys=None):
@@ -58,7 +61,6 @@ class SQLTable(object):
         with self.store.conn:
             c = self.store.conn.cursor()
             return self._get_id_or_insert( c, **kwargs )
-
 
     def _get_id_or_insert(self, cursor, **kwargs):
 
