@@ -3,7 +3,7 @@ import unittest
 
 import os
 from yue.core.playlist import PlaylistManager
-from yue.core.sqlstore import SQLStore, SQLTable
+from yue.core.sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
 PL_NAME = 'demo'

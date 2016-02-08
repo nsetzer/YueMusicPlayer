@@ -1,5 +1,4 @@
 
-import os
 import sqlite3
 
 """
@@ -79,7 +78,7 @@ class SQLTable(object):
             c = self.store.conn.cursor()
             s = ', '.join('%s=?'%x for x in kwargs.keys())
             fmt = "select * from %s WHERE %s"%(self.name,s)
-            res = c.execute(fmt,list(kwargs.values()))
+            c.execute(fmt,list(kwargs.values()))
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.column_names,item))
@@ -88,7 +87,7 @@ class SQLTable(object):
     def query(self,query,*values):
         with self.store.conn:
             c = self.store.conn.cursor()
-            res = c.execute(query,values)
+            c.execute(query,values)
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.column_names,item))
@@ -170,7 +169,7 @@ class SQLView(object):
     def query(self,query,*values):
         with self.store.conn:
             c = self.store.conn.cursor()
-            res = c.execute(query,values)
+            c.execute(query,values)
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.column_names,item))

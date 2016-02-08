@@ -1,4 +1,4 @@
-#! python2.7 $this scroll
+#! python2.7 $this songinfo
 import os,sys
 
 """
@@ -17,7 +17,6 @@ sys.path.insert(0,dirpath)
 
 print(dirpath)
 
-import yue
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from yue.custom_widgets.expander import Expander
@@ -26,10 +25,10 @@ from yue.custom_widgets.tristate import TriStateCheckBox
 from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
 from yue.custom_widgets.timebar import TimeBar
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
+from yue.custom_widgets.songedit import SongEdit
+from yue.custom_widgets.songinfo import SongInfo
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from yue.library import Library, TrackTreeElem
-from yue.settings import Settings
 
 from kivy.app import App
 from kivy.core.text import LabelBase
@@ -131,6 +130,41 @@ def build_scroll():
 
     return root
 
+def build_songedit():
+
+    song = {
+        "artist":"artist1",
+        "composer":"artist1",
+        "album":"artist1",
+        "title":"artist1",
+        "length":"artist1",
+        "genre":"artist1",
+        "playcount":"artist1",
+        "year":"artist1",
+        "country":"artist1",
+        "lang":"artist1",
+        "comment":"artist1",
+    }
+
+    return SongEdit(song)
+
+def build_songinfo():
+
+    song = {
+        "artist":"artist1",
+        "composer":"artist1",
+        "album":"artist1",
+        "title":"artist1",
+        "length":"artist1",
+        "genre":"artist1",
+        "playcount":"artist1",
+        "year":"artist1",
+        "country":"artist1",
+        "lang":"artist1",
+        "comment":"artist1",
+    }
+
+    return SongInfo(song)
 
 
 class TestApp(App):
@@ -153,6 +187,8 @@ class TestApp(App):
                 'tristatecheckbox' : build_tristatecheckbox,
                 'querybuilder' : build_querybuilder,
                 'scroll' : build_scroll,
+                'songedit' : build_songedit,
+                'songinfo' : build_songinfo,
             }
 
             for name,func in widgets.items():

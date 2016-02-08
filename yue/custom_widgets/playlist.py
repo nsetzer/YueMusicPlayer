@@ -25,9 +25,8 @@ todo:
 """
 
 from kivy.uix.label import Label
-from kivy.graphics import Color
 from kivy.graphics.texture import Texture
-from kivy.graphics import Color, Ellipse, Rectangle
+from kivy.graphics import Rectangle
 
 
 from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget

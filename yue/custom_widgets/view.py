@@ -399,7 +399,7 @@ class ViewWidget(Widget):
 
         lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
         if row_height < lblheight:
-            row_height = 3 * lblheight
+            row_height = lblheight
         self.suggested_row_height = row_height
 
         self.bind(pos=self.resize)
@@ -624,6 +624,7 @@ class ViewWidget(Widget):
             if nd.parent is not None:
                 nd.width = self.width
                 nd.y = self.y + (n-i-1)*self.row_height + pad
+                nd.x = self.x
 
     def scrollTo(self,idx):
         """ scroll widget so that idx is displayed """

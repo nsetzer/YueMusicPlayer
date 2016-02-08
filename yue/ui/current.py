@@ -3,7 +3,11 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.clock import mainthread
+
+from yue.custom_widgets.songinfo import SongInfo
+
 
 from yue.custom_widgets.playlist import PlayListViewWidget
 from yue.settings import Settings
@@ -44,6 +48,20 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
 
     def on_double_tap(self,index, elem):
         SoundManager.instance().play_index( index )
+
+    def on_tap(self,idx,elem,*args):
+
+        song = Library.instance().songFromId( elem.uid )
+
+        content = SongInfo( song, action_label="play song" )
+        content.bind(on_action= lambda *x : self.popup.dismiss() )
+        content.bind(on_accept= lambda *x : self.popup.dismiss() )
+        content.bind(on_reject= lambda *x : self.popup.dismiss() )
+        self.popup = Popup(title='Song Information',
+                  content=content,
+                  size_hint=(.9,.9) )
+        self.popup.open()
+
 
 class CurrentPlaylistScreen(Screen):
     def __init__(self,**kwargs):

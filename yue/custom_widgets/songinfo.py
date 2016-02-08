@@ -1,14 +1,12 @@
-from kivy.app import App
+#! python2.7 ../../test/test_widget.py songinfo
+
+
 from kivy.uix.widget import Widget
-from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.properties import NumericProperty,BooleanProperty
-from kivy.graphics import Color, Rectangle, Line
 from kivy.uix.boxlayout import BoxLayout
 from kivy.core.text import Label as CoreLabel
 
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
 
 from yue.custom_widgets.songedit import SongEdit
 
@@ -28,19 +26,16 @@ class SongInfo(Widget):
 
         lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
         if row_height < lblheight:
-            row_height = 3 * lblheight
+            row_height = 3*lblheight
         self.row_height = row_height
 
-        self.songedit = SongEdit( song )
+        self.songedit = SongEdit( song , row_height = lblheight)
 
         self.vbox = BoxLayout(orientation='vertical')
-
-        self.scrollview = ScrollView(size_hint=(1.0, 1.0))
-        self.scrollview.add_widget( self.songedit )
-
-        self.add_widget(self.vbox)
-
         self.hbox = BoxLayout(orientation='horizontal')
+
+        #self.scrollview = ScrollView(size_hint=(1.0, 1.0))
+        #self.scrollview.add_widget( self.songedit )
 
         btn= Button(text='cancel')
         btn.bind(on_press=lambda *x : self.dispatch('on_reject'))
@@ -48,6 +43,7 @@ class SongInfo(Widget):
         btn= Button(text='accept')
         btn.bind(on_press=lambda *x : self.dispatch('on_accept'))
         self.hbox.add_widget(btn)
+
         self.hbox.size_hint = (1.0,None)
         self.hbox.height = self.row_height
 
@@ -58,13 +54,13 @@ class SongInfo(Widget):
             btn.height = self.row_height
             self.vbox.add_widget(btn)
 
-        self.vbox.add_widget(self.scrollview)
+        self.vbox.add_widget(self.songedit)
         self.vbox.add_widget(self.hbox)
+
+        self.add_widget(self.vbox)
 
         self.bind(pos=self.resize)
         self.bind(size=self.resize)
-
-
 
     def resize(self,*args):
 
