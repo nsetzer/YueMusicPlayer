@@ -177,7 +177,6 @@ class YueApp(App):
         scr = settings.manager.get_screen( settings.screen_ingest )
         scr.ingest_finished()
 
-
     def build(self):
 
         # create the screen manager and application screens
@@ -230,6 +229,7 @@ class YueApp(App):
         if Settings.instance().platform == 'android':
             import android
             android.map_key(android.KEYCODE_BACK, Keyboard.keycodes['escape'])
+            android.activity.bind(on_new_intent=self.on_new_intent)
 
         Window.bind(on_keyboard=self.on_key_event)
 
@@ -238,6 +238,8 @@ class YueApp(App):
             return Settings.instance().go_back()
         return False
 
+    def on_new_intent(self,intent):
+        Logger.info("Yue: recieved new intent: %s"%( intent.getAction() ))
 
     def on_pause(self):
         return True # prevent on_stop when in background
