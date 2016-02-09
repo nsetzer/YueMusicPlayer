@@ -2,7 +2,7 @@
 import os
 
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3
+from mutagen.id3 import ID3, ID3NoHeaderError
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 
@@ -38,17 +38,36 @@ def read_mp3_tags(path):
     # album, artist, title, genre
     # tracknumber -> as int, parse 'x/y' and 'x' formats
 
-    audio = EasyID3( path )
-    audio2 = MP3( path )
-    song = {
-        'artist' : get_str(audio,'artist'),
-        'album'  : get_str(audio,'album'),
-        'title'  : get_str(audio,'title'),
-        'genre'  : get_str(audio,'genre'),
-        'year'   : get_int(audio,'date','-'),
-        'album_index'  : get_int(audio,'tracknumber','/'),
-        'length' : int(audio2.info.length)
-    }
+    try:
+        audio = EasyID3( path )
+        audio2 = MP3( path )
+
+        song = {
+            'artist' : get_str(audio,'artist'),
+            'album'  : get_str(audio,'album'),
+            'title'  : get_str(audio,'title'),
+            'genre'  : get_str(audio,'genre'),
+            'year'   : get_int(audio,'date','-'),
+            'album_index'  : get_int(audio,'tracknumber','/'),
+            'length' : int(audio2.info.length)
+        }
+
+    except ID3NoHeaderError:
+        # no tag found
+        # use directory as an album name, to hopefully group all
+        # songs within the album
+        p = os.path.splitext(path)[0]
+        p,t = os.path.split(p)
+        _,a = os.path.split(p)
+        song = {
+            'artist' : 'unknown artist',
+            'album'  : a,
+            'title'  : t,
+            'genre'  : "",
+            'year'   : 0,
+            'album_index' : 0,
+            'length' : 0
+        }
 
     return song
 

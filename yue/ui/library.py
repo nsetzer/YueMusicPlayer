@@ -125,6 +125,12 @@ class LibraryScreen(Screen):
 
     def on_press_aux1(self,obj,elem,*args):
 
+        #TODO: there are options for aux on album, artist
+        # display album art, # of songs, ability to change album name
+        # for artist, display artist, number of albums, number of songs
+        # and ability to change artist name.
+        # changing artist, album is an easy database change
+
         if isinstance(elem,TrackTreeElem):
             song = Library.instance().songFromId( elem.uid )
             content = SongInfo( song, action_label="play next" )
