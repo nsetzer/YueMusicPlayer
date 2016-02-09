@@ -1,5 +1,5 @@
 #! cd .. && python2.7 main.py --size=480x640
-import os
+
 """
 
 todo:

@@ -27,6 +27,7 @@ from yue.custom_widgets.timebar import TimeBar
 from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
 from yue.custom_widgets.songedit import SongEdit
 from yue.custom_widgets.songinfo import SongInfo
+from yue.ui.util import TrackTreeElem
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 

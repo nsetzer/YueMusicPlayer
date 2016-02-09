@@ -274,8 +274,9 @@ class TreeNodeWidget(NodeWidget):
         self.add_widget(self.btn1,canvas=self.canvas)
         self.btn1.bind(on_user=self.on_expand)
 
-        # This 'button' is reserved for an icon to differentiate artist, album, song
-        #self.btn2 = Button(text="-")
+        # info / edit button
+        self.btn2 = Button(text=":")
+        self.btn2.bind(on_press=self.on_press_aux)
         #self.add_widget(self.btn2,canvas=self.canvas)
 
         # Checkbox to select artists, albums or individual tracks
@@ -306,21 +307,27 @@ class TreeNodeWidget(NodeWidget):
 
         xoff = self.depth * third
 
+        lpad = xoff + 2*self.height + 2*third
+        rpad = third + self.height
+
         if self.expandable :
             self.btn1.x = xoff
             self.btn1.y = self.y
+            self.btn1.size = (self.height,self.height)
 
-        #self.btn2.x = xoff + third + self.height
-        #self.btn2.y = self.y
+        else:
 
-        self.chk1.x = self.width - self.chk1.width
+            #self.btn2.x = xoff + third + self.height
+            #self.btn2.y = self.y
+            self.btn2.x = self.width - self.chk1.width
+            self.btn2.y = self.y
+            self.btn2.size = (self.height,self.height)
+
+        #self.chk1.x = self.width - self.chk1.width
+        #self.chk1.y = self.y
+        self.chk1.x = xoff + third + self.height
         self.chk1.y = self.y
         self.chk1.size = (self.height,self.height)
-
-        self.btn1.size = (self.height,self.height)
-        #self.btn2.size = (self.height,self.height)
-        lpad = third + xoff + self.height
-        rpad = third + self.height
 
         self.lbl1.pos = (self.x + lpad,self.y)
         self.lbl1.size = (self.width - lpad - rpad,self.height)
@@ -330,14 +337,18 @@ class TreeNodeWidget(NodeWidget):
         #self.rect_grad.pos  = self.pos
 
         self.pad_left = self.x + lpad
-        self.pad_right = self.chk1.x
+        self.pad_right = self.x + self.width - rpad
 
     def setExpandable(self,b):
         """ set that this node (TreeElem) should display the expansion btn """
         if not b:
             self.remove_widget(self.btn1)
+            if self.btn2.parent is None:
+                self.add_widget(self.btn2,canvas=self.canvas)
         elif self.expandable != b:
             self.add_widget(self.btn1,canvas=self.canvas)
+            if self.btn2.parent is not None:
+                self.remove_widget(self.btn2)
 
         self.expandable = b
 
@@ -382,6 +393,10 @@ class TreeNodeWidget(NodeWidget):
             self.elem.setChecked(state)
             self.parent.update_labels()
 
+    def on_press_aux(self,*args):
+
+        self.parent.dispatch('on_press_aux1',self.elem)
+
 class ViewWidget(Widget):
     offset = NumericProperty()
     offset_idx = NumericProperty()
@@ -399,7 +414,7 @@ class ViewWidget(Widget):
 
         lblheight = CoreLabel(font_size=font_size).get_extents("_")[1]
         if row_height < lblheight:
-            row_height = lblheight
+            row_height = 3*lblheight
         self.suggested_row_height = row_height
 
         self.bind(pos=self.resize)
@@ -414,6 +429,7 @@ class ViewWidget(Widget):
         self.register_event_type('on_tap')
         self.register_event_type('on_double_tap')
         self.register_event_type('on_drop')
+        self.register_event_type('on_press_aux1')
 
         self.tap_max_duration = .2 # cutoff between a tap and press
 
@@ -459,7 +475,7 @@ class ViewWidget(Widget):
     def on_update_offset(self,*args):
         new_idx,self.offset_pos = divmod(self.offset,self.row_height)
 
-        # update nodes to reflow information
+        # update nodes to re-flow information
         if new_idx != self.offset_idx:
             self.offset_idx = int(new_idx)
 
@@ -467,16 +483,20 @@ class ViewWidget(Widget):
         self.resize()
 
     def on_tap(self,index,*args):
-        """ index into self.data where a tap occured """
+        """ index into self.data where a tap occurred """
         Logger.info("tap: %d"%index)
 
     def on_double_tap(self,index, elem, *args):
-        """ index into self.data where a tap occured """
+        """ index into self.data where a tap occurred """
         Logger.info("double tap: %d"%index)
 
     def on_drop(self,idx_from,idx_to,*args):
         """ index into self.data where a drag initiated and ended """
         Logger.info("drop: from %d to %d"%(idx_from,idx_to))
+
+    def on_press_aux1(self,elem,*args):
+        """ auxiliary button press """
+        Logger.info("aux1: %s"%(elem))
 
     def on_touch_down(self,touch):
 

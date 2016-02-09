@@ -41,7 +41,6 @@ class LibraryScreen(Screen):
         self.btn_select.height = row_height
         self.btn_select.bind(on_press=lambda *x:self.toggleSelection())
 
-
         self.lbl_placeholder = Label(text="please wait")
         self.view = TreeViewWidget(font_size = Settings.instance().font_size)
 
@@ -59,6 +58,7 @@ class LibraryScreen(Screen):
         self.vbox.add_widget( self.hbox )
 
         self.view.bind(on_tap=self.on_tap_song)
+        self.view.bind(on_press_aux1=self.on_press_aux1)
 
     @mainthread
     def setPlaceholderText(self,msg):
@@ -117,9 +117,16 @@ class LibraryScreen(Screen):
 
     def on_tap_song(self,obj, idx, elem, *args):
 
+        state = TriState.checked
+        if elem.check_state is not TriState.unchecked:
+            state = TriState.unchecked
+        elem.setChecked( state )
+        self.view.update_labels()
+
+    def on_press_aux1(self,obj,elem,*args):
+
         if isinstance(elem,TrackTreeElem):
             song = Library.instance().songFromId( elem.uid )
-
             content = SongInfo( song, action_label="play next" )
             content.bind(on_action= lambda *x : self.popup.dismiss() )
             content.bind(on_accept= lambda *x : self.popup.dismiss() )
