@@ -159,7 +159,7 @@ class Library(object):
         """ does not check for duplicates """
         #Logger.info("library: load song path: %s"%songpath)
         song = read_tags( songpath )
-        return self.nsert(**song)
+        return self.insert(**song)
 
     def songFromId(self,uid):
         return self.song_view.get(uid)
