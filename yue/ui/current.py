@@ -49,12 +49,17 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
     def on_double_tap(self,index, elem):
         SoundManager.instance().play_index( index )
 
+
+
     def on_tap(self,idx,elem,*args):
+        def on_action(*args):
+            SoundManager.instance().play_index( idx )
+            self.popup.dismiss()
 
         song = Library.instance().songFromId( elem.uid )
 
         content = SongInfo( song, action_label="play song" )
-        content.bind(on_action= lambda *x : self.popup.dismiss() )
+        content.bind(on_action= on_action)
         content.bind(on_accept= lambda *x : self.popup.dismiss() )
         content.bind(on_reject= lambda *x : self.popup.dismiss() )
         self.popup = Popup(title='Song Information',
