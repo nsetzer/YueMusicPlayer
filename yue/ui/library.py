@@ -134,10 +134,24 @@ class LibraryScreen(Screen):
         if isinstance(elem,TrackTreeElem):
             song = Library.instance().songFromId( elem.uid )
             content = SongInfo( song, action_label="play next" )
-            content.bind(on_action= lambda *x : self.popup.dismiss() )
-            content.bind(on_accept= lambda *x : self.popup.dismiss() )
-            content.bind(on_reject= lambda *x : self.popup.dismiss() )
-            self.popup = Popup(title='Song Information',
-                      content=content,
-                      size_hint=(.9,.9) )
-            self.popup.open()
+
+            popup = Popup(title='Song Information',
+                          content=content,
+                          size_hint=(.9,.9) )
+
+            def on_action(*args):
+                playlist = PlaylistManager.instance().openPlaylist('current')
+                playlist.insert_next( elem.uid )
+
+                lst = list(playlist.iter())
+                viewlst = PlayListToViewList( Library.instance(), lst )
+                settings = Settings.instance()
+                scr = settings.manager.get_screen( settings.screen_current_playlist )
+                scr.setPlayList( viewlst )
+
+                popup.dismiss()
+
+            content.bind(on_action= on_action  )
+            content.bind(on_accept= lambda *x : popup.dismiss() )
+            content.bind(on_reject= lambda *x : popup.dismiss() )
+            popup.open()
