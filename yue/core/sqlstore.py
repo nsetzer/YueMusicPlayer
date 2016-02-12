@@ -31,6 +31,18 @@ class SQLTable(object):
         """ return a reference to the db connection """
         return self.store.conn
 
+    def count(self):
+        with self.store.conn:
+            c = self.store.conn.cursor()
+            return self._count(c)
+
+    def _count(self,cursor):
+        cursor.execute("select COUNT(*) from %s"%self.name)
+        item = cursor.fetchone()
+        if item is None:
+            raise ValueError()
+        return item[0]
+
     def create(self, columns):
         with self.store.conn:
             field = ','.join(a+' '+b for a,b in columns)
@@ -65,7 +77,6 @@ class SQLTable(object):
         k,v = zip(*kwargs.items())
         s = ' AND '.join('%s=?'%x for x in k)
         sql = "select uid from %s where (%s)"%(self.name,s)
-        print(sql)
         cursor.execute( sql, v)
         item = cursor.fetchone()
         if item is None:
@@ -85,6 +96,20 @@ class SQLTable(object):
         item = cursor.fetchone()
         while item is not None:
             yield dict(zip(self.column_names,item))
+            item = cursor.fetchone()
+
+    def _select_columns(self, cursor, cols, **kwargs):
+        v = []
+        c = ', '.join( cols )
+        sql = "select %s from %s"%(c, self.name)
+        if kwargs:
+            k,v = zip(*kwargs.items())
+            s = 'AND '.join('%s=?'%x for x in k)
+            sql += " WHERE (%s)"%s
+        cursor.execute(sql,v)
+        item = cursor.fetchone()
+        while item is not None:
+            yield dict(zip(cols,item))
             item = cursor.fetchone()
 
     def query(self,query,*values):

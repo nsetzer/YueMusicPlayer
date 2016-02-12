@@ -1,4 +1,5 @@
 
+import shlex
 
 class SearchRule(object):
     """docstring for SearchRule"""
@@ -188,3 +189,33 @@ def sql_search( db, rule, case_insensitive=True):
     if case_insensitive:
         query += " COLLATE NOCASE"
     return db.query(query, *x[1])
+
+def ruleFromString( string ):
+    """
+
+    convert:
+        '.art foo; .abm bar'
+    to:
+        AndSearchRule([
+            PartialStringSearchRule("artist","foo"),
+            PartialStringSearchRule("album","bar"),
+        ])
+
+    allow for ';' to mean '&&' but also allow for &&, || and
+    parenthetical grouping
+
+    allow for '.' + token to map to a column name.
+        e.g. '.art' and '.artist' means 'artist'
+
+    allow for artist="foo bar" or "art="foo bar" to mean the same.
+
+    allow for '.art foo bar' to mean :
+        AndSearchRule([
+            PartialStringSearchRule("artist","foo"),
+            PartialStringSearchRule("artist","bar"),
+        ])
+
+    """
+    shlex.split( string )
+
+    return None;

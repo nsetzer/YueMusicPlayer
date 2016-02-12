@@ -90,6 +90,9 @@ class Library(object):
     def instance():
         return Library.__instance
 
+    def __len__(self):
+        return self.song_db.count()
+
     def insert(self,**kwargs):
 
         with self.sqlstore.conn:
@@ -186,5 +189,18 @@ class Library(object):
     def search(self, rule , case_insensitive=True):
         return sql_search( self.song_view, rule, case_insensitive )
 
+    def getArtists(self):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            cols = ['uid','artist']
+            return self.artist_db._select_columns(c, cols)
+
+    def getAlbums(self,artistid):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            cols = ['uid','album']
+            return self.album_db._select_columns(c, cols, artist=artistid)
 
 
