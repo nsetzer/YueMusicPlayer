@@ -25,13 +25,15 @@ class Library(object):
 
         artists = [
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
-            ("artist","text")
+            ("artist","text"),
+            ("count","INTEGER DEFAULT 0")
         ]
 
         albums = [
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
             ("artist","INTEGER"),
-            ("album","text")
+            ("album","text"),
+            ("count","INTEGER DEFAULT 0")
         ]
         album_foreign_keys = [
             "FOREIGN KEY(artist) REFERENCES artists(uid)",
@@ -99,6 +101,8 @@ class Library(object):
             c = self.sqlstore.conn.cursor()
             kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
             kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'],artist=kwargs['artist'])
+            c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(kwargs['artist'],))
+            c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(kwargs['album'],))
             return self.song_db._insert(c,**kwargs)
 
     def loadTestData(self,inipath,force=False):
@@ -190,17 +194,17 @@ class Library(object):
         return sql_search( self.song_view, rule, case_insensitive )
 
     def getArtists(self):
-
+        """ get a list of artists within the database."""
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            cols = ['uid','artist']
+            cols = ['uid','artist','count']
             return self.artist_db._select_columns(c, cols)
 
     def getAlbums(self,artistid):
-
+        """ return all albums associated with a given artist id """
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            cols = ['uid','album']
+            cols = ['uid','album','count']
             return self.album_db._select_columns(c, cols, artist=artistid)
 
 
