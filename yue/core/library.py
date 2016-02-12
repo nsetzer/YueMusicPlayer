@@ -30,9 +30,12 @@ class Library(object):
 
         albums = [
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
+            ("artist","INTEGER"),
             ("album","text")
         ]
-
+        album_foreign_keys = [
+            "FOREIGN KEY(artist) REFERENCES artists(uid)",
+        ]
         #composers = [
         #    ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
         #    ("composer","text")
@@ -65,7 +68,7 @@ class Library(object):
 
         self.sqlstore = sqlstore
         self.artist_db = SQLTable( sqlstore ,"artists", artists)
-        self.album_db = SQLTable( sqlstore ,"albums", albums)
+        self.album_db = SQLTable( sqlstore ,"albums", albums, album_foreign_keys)
         self.song_db = SQLTable( sqlstore ,"songs", songs_columns, songs_foreign_keys)
 
         colnames = [ x[0] for x in songs_columns ]
@@ -92,7 +95,7 @@ class Library(object):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
             kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
-            kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'])
+            kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'],artist=kwargs['artist'])
             return self.song_db._insert(c,**kwargs)
 
     def loadTestData(self,inipath,force=False):

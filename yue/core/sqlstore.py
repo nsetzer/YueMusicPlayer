@@ -62,11 +62,10 @@ class SQLTable(object):
             return self._get_id_or_insert( c, **kwargs )
 
     def _get_id_or_insert(self, cursor, **kwargs):
-
-        #f = ','.join(fields)
-        k = ', '.join('%s=?'%x for x in kwargs.keys())
-        v = list(kwargs.values())
-        sql = "select uid from %s where %s"%(self.name,k)
+        k,v = zip(*kwargs.items())
+        s = ' AND '.join('%s=?'%x for x in k)
+        sql = "select uid from %s where (%s)"%(self.name,s)
+        print(sql)
         cursor.execute( sql, v)
         item = cursor.fetchone()
         if item is None:
@@ -76,13 +75,17 @@ class SQLTable(object):
     def select(self,**kwargs):
         with self.store.conn:
             c = self.store.conn.cursor()
-            s = ', '.join('%s=?'%x for x in kwargs.keys())
-            fmt = "select * from %s WHERE %s"%(self.name,s)
-            c.execute(fmt,list(kwargs.values()))
-            item = c.fetchone()
-            while item is not None:
-                yield dict(zip(self.column_names,item))
-                item = c.fetchone()
+            return self._select(c, **kwargs)
+
+    def _select(self, cursor, **kwargs):
+        k,v = zip(*kwargs.items())
+        s = ', '.join('%s=?'%x for x in k)
+        sql = "select * from %s WHERE (%s)"%(self.name,s)
+        cursor.execute(sql,v)
+        item = cursor.fetchone()
+        while item is not None:
+            yield dict(zip(self.column_names,item))
+            item = cursor.fetchone()
 
     def query(self,query,*values):
         with self.store.conn:
