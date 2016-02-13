@@ -4,6 +4,7 @@
 *.flac
 
 .buildozer/
+yue/client/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
