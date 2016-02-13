@@ -50,3 +50,33 @@ class TestLibrary(unittest.TestCase):
         # check default fields
         self.assertEqual(song['playcount'],0)
 
+        # both these values should be 1
+        artists = list(lib.getArtists())
+        self.assertEqual( len(artists), 1 )
+        art = artists[0]['uid']
+        albums = list(lib.getAlbums(art))
+        self.assertEqual( len(albums), 1 )
+
+        lib.update(uid, artist="Artist", album="Album", title="Title")
+
+        song =lib.songFromId(uid)
+
+        self.assertEqual(song['artist'],'Artist')
+        self.assertEqual(song['album'],'Album')
+        self.assertEqual(song['title'],'Title')
+
+        lib.increment(uid,'playcount',5)
+        song =lib.songFromId(uid)
+        self.assertEqual(song['playcount'],5)
+
+        lib.increment(uid,'playcount',-2)
+        song =lib.songFromId(uid)
+        self.assertEqual(song['playcount'],3)
+
+        # both these values should be 1, after updating artist,album
+        artists = list(lib.getArtists())
+        self.assertEqual( len(artists), 1 )
+        art = artists[0]['uid']
+        albums = list(lib.getAlbums(art))
+        self.assertEqual( len(albums), 1 )
+

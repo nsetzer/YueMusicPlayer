@@ -38,6 +38,7 @@ class Library(object):
         album_foreign_keys = [
             "FOREIGN KEY(artist) REFERENCES artists(uid)",
         ]
+
         #composers = [
         #    ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
         #    ("composer","text")
@@ -99,11 +100,71 @@ class Library(object):
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
-            kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'],artist=kwargs['artist'])
-            c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(kwargs['artist'],))
-            c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(kwargs['album'],))
-            return self.song_db._insert(c,**kwargs)
+            return self._insert(c, **kwargs)
+
+    def _insert(self,c, **kwargs):
+        kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
+        kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'],artist=kwargs['artist'])
+        c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(kwargs['artist'],))
+        c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(kwargs['album'],))
+        return self.song_db._insert(c,**kwargs)
+
+    def update(self,uid,**kwargs):
+        """ update song values in the database """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            self._update_one(c, uid, **kwargs)
+            c.execute("DELETE FROM artists WHERE count=0")
+            c.execute("DELETE FROM albums WHERE count=0")
+
+    def update_many(self,songs):
+        """ update song values in the database """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for song in songs:
+                self._update_one(c, song['uid'], **songs)
+            c.execute("DELETE FROM artists WHERE count=0")
+            c.execute("DELETE FROM albums WHERE count=0")
+
+    def _update_one(self,c, uid, **kwargs):
+        info = list(self.song_db._select_columns(c,['artist','album'],uid=uid))[0]
+        old_art_id = info['artist']
+        old_abm_id = info['album']
+
+        # cannot change uid
+        if 'uid' in kwargs:
+            del kwargs['uid']
+
+        # altering artist, album requires updating count of songs
+        # and removing artists that no longer exist.
+        if 'artist' in kwargs:
+            new_art_id = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
+            c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(new_art_id,))
+            c.execute("UPDATE artists SET count=count-1 WHERE uid=?",(old_art_id,))
+            # update field as integer, not string
+            kwargs['artist'] = new_art_id
+            old_art_id = new_art_id
+
+        if 'album' in kwargs:
+            new_abm_id = self.album_db._get_id_or_insert(c,album=kwargs['album'], artist=old_art_id)
+            c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(new_abm_id,))
+            c.execute("UPDATE albums SET count=count-1 WHERE uid=?",(old_abm_id,))
+            # update field as integer, not string
+            kwargs['album'] = new_abm_id
+
+        # update all remaining fields
+        if kwargs:
+            self.song_db._update(c, uid, **kwargs)
+
+    def increment(self,uid,field,value=1):
+        """
+        increment an integer field for a song
+        e.g.
+            self.increment(uid,'playcount')
+        """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            c.execute("UPDATE songs SET %s=%s%+d WHERE uid=?"%(field,field,value),(uid,))
 
     def loadTestData(self,inipath,force=False):
         """
