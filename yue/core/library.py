@@ -1,7 +1,12 @@
 
 import os
 
-from .search import sql_search
+import sys
+isPython3 = sys.version_info[0]==3
+if isPython3:
+    unicode = str
+
+from .search import sql_search, ruleFromString
 #from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
@@ -251,8 +256,11 @@ class Library(object):
     def iter(self):
         return self.song_view.iter()
 
-    def search(self, rule , case_insensitive=True):
-        return sql_search( self.song_view, rule, case_insensitive )
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False):
+
+        if isinstance(rule,(str,unicode)):
+            rule = ruleFromString( rule )
+        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse )
 
     def getArtists(self):
         """ get a list of artists within the database."""

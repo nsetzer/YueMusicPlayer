@@ -16,6 +16,18 @@ class SearchRule(object):
     def __eq__(self,othr):
         return repr(self) == repr(othr)
 
+class BlankSearchRule(SearchRule):
+    """a rule that match all values"""
+
+    def check(self,song):
+        return True
+
+    def sql(self):
+        return "", tuple()
+
+    def __repr__(self):
+        return "<all>"%(self.value, self.column)
+
 class ColumnSearchRule(SearchRule):
     """docstring for SearchRule"""
     def __init__(self, column, value):
@@ -158,12 +170,14 @@ class AndSearchRule(MetaSearchRule):
     def sql(self):
         sql  = []
         vals = []
+        sqlstr= ""
         for rule in self.rules:
             x = rule.sql()
             sql.append(x[0])
             vals.extend(x[1])
-        sql = '(' + ' AND '.join(sql) + ')'
-        return sql,vals
+        if sql:
+            sqlstr = '(' + ' AND '.join(sql) + ')'
+        return sqlstr,vals
 
     def __repr__(self):
         return "<" + ' && '.join([ repr(r) for r in self.rules]) + ">"
@@ -179,12 +193,14 @@ class OrSearchRule(MetaSearchRule):
     def sql(self):
         sql  = []
         vals = []
+        sqlstr= ""
         for rule in self.rules:
             x = rule.sql()
             sql.append(x[0])
             vals.extend(x[1])
-        sql = '(' + ' OR '.join(sql) + ')'
-        return sql,vals
+        if sql:
+            sqlstr = '(' + ' OR '.join(sql) + ')'
+        return sqlstr,vals
 
     def __repr__(self):
         return "<" + ' || '.join([ repr(r) for r in self.rules]) + ">"
@@ -195,13 +211,39 @@ def naive_search( sqldb, rule ):
         if rule.check(song):
             yield song
 
-def sql_search( db, rule, case_insensitive=True):
+def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
     """ convert a rule to a sql query and yield matching songs """
-    x = rule.sql()
-    query = "SELECT * FROM %s WHERE "%db.name + x[0]
-    if case_insensitive:
-        query += " COLLATE NOCASE"
-    return db.query(query, *x[1])
+    sql,vals = rule.sql()
+
+    query = "SELECT * FROM %s"%db.name
+
+    if sql.strip():
+        query += " WHERE %s"%sql
+
+        if case_insensitive:
+            query += " COLLATE NOCASE"
+
+    if isinstance(orderby,(tuple,list)):
+        query += "ORDER BY" + ", ".join(orderby)
+
+        if reverse:
+            query += " DESC"
+    elif orderby is not None:
+        query += "ORDER BY %s"%orderby
+
+        if reverse:
+            query += " DESC"
+
+    try:
+        result = db.query(query, *vals)
+        return list(result)
+    except:
+        print("`%s`"%sql)
+        print(query)
+        print(vals)
+        raise
+
+
 
 def allTextRule( join_rule, string_rule, string ):
     """
@@ -225,7 +267,7 @@ def tokenizeString( input ):
     idx = 0;
 
     output = []
-    special = '!=<>~;|&'
+    special = '~!=<>|&'
     kind = False
     stack = [ output ]
     start = 0;
@@ -253,10 +295,6 @@ def tokenizeString( input ):
             elif c == '(':
                 append()
                 new_level = []
-                #cur_level = stack[-1]
-                #if cur_level:
-                #    if cur_level[-1] not in ['&&','||']:
-                #        cur_level.append("&&")
                 stack[-1].append( new_level )
                 stack.append( new_level )
                 start = idx+1
@@ -300,6 +338,7 @@ class LHSError(ParseError):
 # does not require left token
 operators = {
     "=" :PartialStringSearchRule,
+    "~" :PartialStringSearchRule,
     "==":ExactSearchRule,
     "!=":InvertedPartialStringSearchRule,
     "!==":InvertedExactSearchRule,
@@ -323,6 +362,8 @@ flow = {
     "&&" : AndSearchRule,
     "||" : OrSearchRule
 }
+
+negate = "!"
 
 def parserRule(colid, rule ,value):
 
@@ -353,7 +394,10 @@ def parseTokens( tokens ):
         if isinstance(tok,list):
             tokens[i] = parseTokens(tok)
         elif tok.startswith(sigil):
-            while i < len(tokens) and tokens[i] not in flow:
+            # old style query
+            while i < len(tokens) and \
+                tokens[i] not in flow and \
+                not isinstance(tokens[i],list):
                 i += 1;
             continue
         elif tok in operators:
@@ -410,7 +454,7 @@ def parseTokens( tokens ):
                 current_col = tok[1:]
                 tokens.pop(i)
                 i -= 1
-            elif tok == "!":
+            elif tok == negate:
                 current_opr = operators_invert[current_opr]
                 tokens.pop(i)
                 i -= 1
@@ -454,6 +498,8 @@ def ruleFromString( string ):
         ])
 
     """
+    if not string.strip():
+        return BlankSearchRule()
     tokens = tokenizeString( string )
     return parseTokens( tokens );
 
