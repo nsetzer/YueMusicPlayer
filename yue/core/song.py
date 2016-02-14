@@ -6,6 +6,93 @@ from mutagen.id3 import ID3, ID3NoHeaderError
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 
+class Song(object):
+    # column names
+    uid         = 'uid'
+    path        = 'path'
+    artist      = 'artist'
+    composer    = 'composer'
+    album       = 'album'
+    title       = 'title'
+    genre       = 'genre'
+    year        = 'year'
+    country     = 'country'
+    lang        = 'lang'
+    comment     = 'comment'
+    album_index = 'album_index'
+    length      = 'length'
+    last_played = 'last_played'
+    play_count   = 'playcount'
+    rating      = 'rating'
+
+    # this is not a column, but stands in for all text fields.
+    all_text    = "all_text"
+
+    abbreviations = {
+        "uid"         : uid,
+        "path"        : path,
+        "art"         : artist,
+        "artist"      : artist,
+        "composer"    : composer,
+        "abm"         : album,
+        "alb"         : album,
+        "album"       : album,
+        "ttl"         : title,
+        "tit"         : title,
+        "title"       : title,
+        "gen"         : genre,
+        "genre"       : genre,
+        "year"        : year,
+        "country"     : country,
+        "lang"        : lang,
+        "com"         : comment,
+        "comm"        : comment,
+        "comment"     : comment,
+        "index"       : album_index,
+        "album_index" : album_index,
+        "len"         : length,
+        "length"      : length,
+        "date"        : last_played,
+        "last_played" : last_played,
+        "pcnt"        : play_count,
+        "count"       : play_count,
+        "play_count"  : play_count,
+        "rate"        : rating,
+        "rating"      : rating,
+        "text"        : all_text,
+        "all_text"    : all_text,
+    }
+
+    @staticmethod
+    def column( abrv ):
+        return Song.abbreviations[ abrv ]
+
+    @staticmethod
+    def textFields():
+        return Song.artist, Song.composer, Song.album, Song.title, \
+               Song.genre, Song.country, Song.lang, Song.comment
+
+    @staticmethod
+    def new():
+        return {
+        Song.uid         : 0,
+        Song.path        : "",
+        Song.artist      : "Unknown Artist",
+        Song.composer    : "Unknown Composer",
+        Song.album       : "Unknown Album",
+        Song.title       : "Unknown Title",
+        Song.genre       : "",
+        Song.year        : 0,
+        Song.country     : "",
+        Song.lang        : "",
+        Song.comment     : "",
+        Song.album_index : 0,
+        Song.length      : 0,
+        Song.last_played : 0,
+        Song.play_count  : 0,
+        Song.rating      : 0,
+        }
+
 # from kivy.logger import Logger
 
 def read_tags(path):
