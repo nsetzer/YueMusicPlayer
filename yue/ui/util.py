@@ -22,7 +22,8 @@ from yue.core.search import PartialStringSearchRule, \
                        RangeSearchRule, \
                        NotRangeSearchRule, \
                        AndSearchRule, \
-                       OrSearchRule
+                       OrSearchRule, \
+                       allTextRule,
 
 _kindToRule = {
     QueryKind.LIKE    : PartialStringSearchRule,
@@ -109,18 +110,12 @@ def queryParamToRule( library, query ):
 def kindToSearchRule( k ):
     return _kindToRule[ k ]
 
+
 def createAllTextRule( action, string ):
 
     meta = OrSearchRule
     if action in (QueryKind.NOTLIKE, QueryKind.NE):
         meta = AndSearchRule
-    str_rule = _kindToRule[ action ]
+    rule = _kindToRule[ action ]
 
-    rule = meta( [ str_rule("artist",string),
-                   str_rule("composer",string),
-                   str_rule("album",string),
-                   str_rule("title",string),
-                   str_rule("genre",string),
-                   str_rule("comment",string) ] )
-    return rule
-
+    return allTextRule( meta, rule, string)
