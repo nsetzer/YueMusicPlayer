@@ -11,8 +11,8 @@ from .search import sql_search, ruleFromString
 #from kivy.storage.dictstore import DictStore
 
 #from yue.settings import Settings
-from yue.core.song import read_tags
-from yue.core.sqlstore import SQLTable, SQLView
+from .song import Song
+from .sqlstore import SQLTable, SQLView
 
 try:
     # 3.x name
@@ -128,6 +128,12 @@ class Library(object):
         return self.song_db.count()
 
     def insert(self,**kwargs):
+
+        # prevent assigning a uid of 0 to a song, instead
+        # let the db determine a unique id
+        if Song.uid in kwargs:
+            if not kwargs[Song.uid]:
+                del kwargs[Song.uid]
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
@@ -261,7 +267,7 @@ class Library(object):
     def loadPath(self,songpath):
         """ does not check for duplicates """
         #Logger.info("library: load song path: %s"%songpath)
-        song = read_tags( songpath )
+        song = Song.fromPath( songpath )
         return self.insert(**song)
 
     def songFromId(self,uid):

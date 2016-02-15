@@ -37,6 +37,7 @@ class Song(object):
     all_text    = "all_text"
 
     abbreviations = {
+        "id"          : uid,
         "uid"         : uid,
         "path"        : path,
         "src"         : source_path,
@@ -67,6 +68,9 @@ class Song(object):
         "pcnt"        : play_count,
         "count"       : play_count,
         "play_count"  : play_count,
+        "skip"        : skip_count,
+        "scnt"        : skip_count,
+        "skip_count"  : skip_count,
         "rate"        : rating,
         "rating"      : rating,
         "text"        : all_text,
@@ -95,51 +99,56 @@ class Song(object):
     @staticmethod
     def new():
         return {
-        Song.uid         : 0,
-        Song.path        : "",
-        Song.artist      : "Unknown Artist",
-        Song.composer    : "Unknown Composer",
-        Song.album       : "Unknown Album",
-        Song.title       : "Unknown Title",
-        Song.genre       : "",
-        Song.year        : 0,
-        Song.country     : "",
-        Song.lang        : "",
-        Song.comment     : "",
-        Song.album_index : 0,
-        Song.length      : 0,
-        Song.last_played : 0,
-        Song.play_count  : 0,
-        Song.rating      : 0,
+            Song.uid         : 0,
+            Song.path        : "",
+            Song.source_path : "",
+            Song.artist      : "Unknown Artist",
+            Song.composer    : "",
+            Song.album       : "Unknown Album",
+            Song.title       : "Unknown Title",
+            Song.genre       : "",
+            Song.year        : 0,
+            Song.country     : "",
+            Song.lang        : "",
+            Song.comment     : "",
+            Song.album_index : 0,
+            Song.length      : 0,
+            Song.last_played : 0,
+            Song.date_added  : 0,
+            Song.play_count  : 0,
+            Song.skip_count  : 0,
+            Song.rating      : 0,
+            Song.blocked     : 0,
+            Song.equalizer   : 0,
+            Song.opm         : 0,
+            Song.frequency   : 0,
+            Song.file_size   : 0,
         }
+
+    @ staticmethod
+    def fromPath( path ):
+        return read_tags( path )
 
 # from kivy.logger import Logger
 
-def read_tags(path):
+def read_tags( path):
+
+    song = Song.new()
 
     ext = os.path.splitext(path)[1].lower()
 
-    song = None
     if ext == ".mp3":
-        song = read_mp3_tags( path )
+        read_mp3_tags( song, path )
     elif ext == '.flac':
-        song = read_flac_tags( path )
+        read_flac_tags( song, path )
     else:
         raise ValueError(ext)
 
-    if song is None:
-        raise ValueError("todo")
-
-    song['playcount']=0
-    song['last_played']=0
-    song['rating']=0
-    song['lang']=""
-    song['country']=""
     song['path']=path
 
     return song
 
-def read_mp3_tags(path):
+def read_mp3_tags( song, path):
     pass
 
     # album, artist, title, genre
@@ -149,15 +158,13 @@ def read_mp3_tags(path):
         audio = EasyID3( path )
         audio2 = MP3( path )
 
-        song = {
-            'artist' : get_str(audio,'artist'),
-            'album'  : get_str(audio,'album'),
-            'title'  : get_str(audio,'title'),
-            'genre'  : get_str(audio,'genre'),
-            'year'   : get_int(audio,'date','-'),
-            'album_index'  : get_int(audio,'tracknumber','/'),
-            'length' : int(audio2.info.length)
-        }
+        song[Song.artist] = get_str(audio,'artist')
+        song[Song.album]  = get_str(audio,'album')
+        song[Song.title]  = get_str(audio,'title')
+        song[Song.genre]  = get_str(audio,'genre')
+        song[Song.year]   = get_int(audio,'date','-')
+        song[Song.album_index]  = get_int(audio,'tracknumber','/')
+        song[Song.length]       = int(audio2.info.length)
 
     except ID3NoHeaderError:
         # no tag found
@@ -166,36 +173,23 @@ def read_mp3_tags(path):
         p = os.path.splitext(path)[0]
         p,t = os.path.split(p)
         _,a = os.path.split(p)
-        song = {
-            'artist' : 'unknown artist',
-            'album'  : a,
-            'title'  : t,
-            'genre'  : "",
-            'year'   : 0,
-            'album_index' : 0,
-            'length' : 0
-        }
+        song[Song.album]  = a
+        song[Song.title]  = t
 
-    return song
-
-def read_flac_tags(path):
+def read_flac_tags( song, path):
 
     # album, artist, title, genre
     # tracknumber: '0x'
     # alternative: albumartist
     audio = FLAC( path )
 
-    song = {
-        'artist' : get_str(audio,'artist'),
-        'album'  : get_str(audio,'album'),
-        'title'  : get_str(audio,'title'),
-        'genre'  : get_str(audio,'genre'),
-        'year '  : get_int(audio,'year','-'),
-        'album_index'  : get_int(audio,'tracknumber','/'),
-        'length' : int(audio.info.length)
-    }
-
-    return song
+    song[Song.artist] = get_str(audio,'artist')
+    song[Song.album]  = get_str(audio,'album')
+    song[Song.title]  = get_str(audio,'title')
+    song[Song.genre]  = get_str(audio,'genre')
+    song[Song.year]   = get_int(audio,'year','-')
+    song[Song.album_index]  = get_int(audio,'tracknumber','/')
+    song[Song.length]       = int(audio2.info.length)
 
 def get_str(audio,tag):
     if tag in audio:
