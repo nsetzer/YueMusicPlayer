@@ -415,8 +415,8 @@ def parseTokens( tokens ):
         elif tok.startswith(sigil):
             # old style query
             while i < len(tokens) and \
-                tokens[i] not in flow and \
-                not isinstance(tokens[i],list):
+                not isinstance(tokens[i],list) and \
+                tokens[i] not in flow:
                 i += 1;
             continue
         elif tok in operators:

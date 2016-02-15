@@ -52,6 +52,7 @@ class Library(object):
         songs_columns = [
             ('uid','integer PRIMARY KEY AUTOINCREMENT'),
             ('path',"text"),
+            ('source_path',"text DEFAULT ''"),
             #('artist',"text"),
             ('artist',"INTEGER"),
             ('composer',"text DEFAULT ''"),
@@ -66,8 +67,16 @@ class Library(object):
             ('album_index','integer DEFAULT 0'),
             ('length','integer DEFAULT 0'),
             ('last_played','integer DEFAULT 0'),
+            ('date_added','integer DEFAULT 0'),
             ('playcount','integer DEFAULT 0'),
+            ('skip_count','integer DEFAULT 0'),
             ('rating','integer DEFAULT 0'),
+            ('blocked','integer DEFAULT 0'),
+            ('equalizer','integer DEFAULT 0'),
+            ('opm','integer DEFAULT 0'),
+            ('frequency','integer DEFAULT 0'),
+            ('file_size','integer DEFAULT 0'),
+
         ]
         songs_foreign_keys = [
             "FOREIGN KEY(artist) REFERENCES artists(uid)",
@@ -79,10 +88,27 @@ class Library(object):
         self.album_db = SQLTable( sqlstore ,"albums", albums, album_foreign_keys)
         self.song_db = SQLTable( sqlstore ,"songs", songs_columns, songs_foreign_keys)
 
-        colnames = [ x[0] for x in songs_columns ]
+        colnames = [ 'uid', 'path', 'source_path', 'artist', 'composer',
+                     'album', 'title', 'genre', 'year', 'country', 'lang',
+                     'comment',
+                     'album_index', 'length', 'last_played', 'date_added',
+                     'playcount', 'skip_count', 'rating',
+                     'blocked', 'equalizer', 'opm', 'frequency', 'file_size']
 
+        cols = []
+        for col in colnames:
+            if col == 'artist':
+                cols.append("a."+col)
+            elif col == 'album':
+                cols.append("b."+col)
+            else:
+                cols.append("s."+col)
         viewname = "library"
-        cols = "s.uid, s.path, a.artist, s.composer, b.album, s.title, s.genre, s.year, s.country, s.lang, s.comment, s.album_index, s.length, s.last_played, s.playcount, s.rating"
+        #cols = "s.uid, s.path, a.artist, s.composer, b.album, s.title,
+        # s.genre, s.year, s.country, s.lang, s.comment, s.album_index,
+        #s.length, s.last_played, s.date_added, s.playcount, s.skip_count,
+        # s.rating, s.blocked, s.equalizer, s.opm, s.frequency, s.file_size"
+        cols = ', '.join(cols)
         tbls = "songs s, artists a, albums b"
         where = "s.artist=a.uid AND s.album=b.uid"
         sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
@@ -106,6 +132,7 @@ class Library(object):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
             return self._insert(c, **kwargs)
+
 
     def _insert(self,c, **kwargs):
         kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])

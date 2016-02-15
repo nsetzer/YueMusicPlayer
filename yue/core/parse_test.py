@@ -1,5 +1,5 @@
-#! cd ../.. && python2.7 setup.py cover
 #! cd ../.. && python2.7 setup.py test --test=parse
+#! cd ../.. && python2.7 setup.py cover
 import unittest
 
 from yue.core.song import Song
@@ -18,7 +18,7 @@ from yue.core.search import PartialStringSearchRule, \
                        allTextRule, \
                        tokenizeString, \
                        ruleFromString, \
-                       ParseError, RHSError, LHSError
+                       ParseError, RHSError, LHSError, TokenizeError
 
 DB_PATH = "./unittest.db"
 
@@ -156,6 +156,12 @@ class TestSearchParse(unittest.TestCase):
         actual = ruleFromString("artist=foo && (album=bar || album=baz)")
         self.assertEqual(expected,actual)
 
+        actual = ruleFromString("artist=foo (album=bar || album=baz)")
+        self.assertEqual(expected,actual)
+
+        actual = ruleFromString(".art foo (.abm bar || .abm baz)")
+        self.assertEqual(expected,actual)
+
     def test_parser_errors(self):
 
         # the lhs is optinal for this token
@@ -188,7 +194,16 @@ class TestSearchParse(unittest.TestCase):
         with self.assertRaises(LHSError):
             ruleFromString(" (album = bar) <= value")
 
+        with self.assertRaises(TokenizeError):
+            ruleFromString(" ( album ")
+
+        with self.assertRaises(TokenizeError):
+            ruleFromString(" albumn )")
+
+        with self.assertRaises(TokenizeError):
+            ruleFromString(" \" foo ")
+
         # || = foo
         # foo = ||
-        # unterminated double quote error
-        # unterminated parenthetical error
+        # old syle queries:
+        #     .abm x y (a b c)

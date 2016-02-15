@@ -10,6 +10,7 @@ class Song(object):
     # column names
     uid         = 'uid'
     path        = 'path'
+    source_path = 'source_path'
     artist      = 'artist'
     composer    = 'composer'
     album       = 'album'
@@ -19,11 +20,18 @@ class Song(object):
     country     = 'country'
     lang        = 'lang'
     comment     = 'comment'
-    album_index = 'album_index'
+    album_index = 'album_index' # order of song in album
     length      = 'length'
-    last_played = 'last_played'
-    play_count   = 'playcount'
-    rating      = 'rating'
+    last_played = 'last_played' # as unix time stamp
+    play_count  = 'playcount'
+    skip_count  = 'skip_count'
+    rating      = 'rating'  # from 0 - 10
+    blocked     = 'blocked' # was 'banished', type boolean
+    opm         = 'opm' # used in beat detection
+    equalizer   = 'equalizer' # used in automatic volume leveling
+    date_added  = 'date_added' # as unix time stamp
+    frequency   = 'frequency'  # how often the song is played
+    file_size   = 'file_size'  # in bytes (was kb)
 
     # this is not a column, but stands in for all text fields.
     all_text    = "all_text"
@@ -31,6 +39,8 @@ class Song(object):
     abbreviations = {
         "uid"         : uid,
         "path"        : path,
+        "src"         : source_path,
+        "source_path" : source_path,
         "art"         : artist,
         "artist"      : artist,
         "composer"    : composer,
@@ -61,6 +71,16 @@ class Song(object):
         "rating"      : rating,
         "text"        : all_text,
         "all_text"    : all_text,
+        "ban"         : blocked,
+        "blocked"     : blocked,
+        "opm"         : opm,
+        "eq"          : equalizer,
+        "equalizer"   : equalizer,
+        "added"       : date_added,
+        "freq"        : frequency,
+        "frequency"   : frequency,
+        "size"        : file_size,
+        "file_size"   : file_size,
     }
 
     @staticmethod
