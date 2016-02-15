@@ -212,38 +212,43 @@ def naive_search( sqldb, rule ):
             yield song
 
 def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
-    """ convert a rule to a sql query and yield matching songs """
+    """ convert a rule to a sql query and yield matching songs
+
+    orderby must be given for reverse to have any meaning
+    """
     sql,vals = rule.sql()
 
     query = "SELECT * FROM %s"%db.name
 
-    if sql.strip():
+    sql_valid = len(sql.strip())>0
+    if sql_valid:
         query += " WHERE %s"%sql
-
         if case_insensitive:
             query += " COLLATE NOCASE"
 
-    if isinstance(orderby,(tuple,list)):
-        query += "ORDER BY" + ", ".join(orderby)
+    direction = " ASC"
+    if reverse:
+        direction = " DESC"
+    if case_insensitive:
+        direction = " COLLATE NOCASE" + direction
 
-        if reverse:
-            query += " DESC"
-    elif orderby is not None:
-        query += "ORDER BY %s"%orderby
+    if orderby is not None:
 
-        if reverse:
-            query += " DESC"
+        if isinstance(orderby,(tuple,list)):
+            orderby = [ x+direction for x in orderby]
+            query += " ORDER BY " + ", ".join(orderby)
+
+        else:
+            query += " ORDER BY %s%s"%(orderby,direction)
 
     try:
-        result = db.query(query, *vals)
-        return list(result)
+        result = list(db.query(query, *vals))
+        return result
     except:
         print("`%s`"%sql)
         print(query)
         print(vals)
         raise
-
-
 
 def allTextRule( join_rule, string_rule, string ):
     """
@@ -255,6 +260,26 @@ def allTextRule( join_rule, string_rule, string ):
 
     """
     return join_rule([ string_rule(col,string) for col in Song.textFields() ])
+
+class ParseError(Exception):
+    pass
+
+class TokenizeError(ParseError):
+    pass
+
+class RHSError(ParseError):
+    def __init__(self, tok, value=""):
+        msg = "Invalid Expression on RHS of `%s`"%tok
+        if value:
+            msg += " : %s"%value
+        super(RHSError, self).__init__( msg )
+
+class LHSError(ParseError):
+    def __init__(self, tok, value=""):
+        msg = "Invalid Expression on LHS of `%s`"%tok
+        if value:
+            msg += " : %s"%value
+        super(LHSError, self).__init__( msg )
 
 def tokenizeString( input ):
     """
@@ -278,7 +303,7 @@ def tokenizeString( input ):
         if text:
             stack[-1].append(text)
 
-    while idx < len( input ):
+    while idx < len( input ) and len(stack)>0:
         c = input[idx]
         if c == '"' and not quoted:
             quoted = True
@@ -314,26 +339,17 @@ def tokenizeString( input ):
                 start = idx
                 kind = False
         idx += 1
+    if len(stack) == 0:
+        raise TokenizeError("empty stack (check parenthesis)")
+    if len(stack) > 1:
+        raise TokenizeError("unterminated parenthesis")
+    if quoted:
+        raise TokenizeError("unterminated quote")
     append()
 
     return output
 
-class ParseError(Exception):
-    pass
 
-class RHSError(ParseError):
-    def __init__(self, tok, value=""):
-        msg = "Invalid Expression on RHS of `%s`"%tok
-        if value:
-            msg += " : %s"%value
-        super(RHSError, self).__init__( msg )
-
-class LHSError(ParseError):
-    def __init__(self, tok, value=""):
-        msg = "Invalid Expression on LHS of `%s`"%tok
-        if value:
-            msg += " : %s"%value
-        super(LHSError, self).__init__( msg )
 
 # does not require left token
 operators = {
@@ -367,7 +383,10 @@ negate = "!"
 
 def parserRule(colid, rule ,value):
 
-    col = Song.column( colid );
+    try:
+        col = Song.column( colid );
+    except KeyError:
+        raise ParseError("Invalid column name `%s`"%colid)
 
     is_text = col in Song.textFields()
 
@@ -440,17 +459,7 @@ def parseTokens( tokens ):
 
         if isinstance(tok, (str, unicode)):
             # support old-style queries
-            if tok in flow:
-                if not hasr:
-                    raise RHSError(tok, "expected value")
-                if not hasl:
-                    raise LHSError(tok, "expected value")
-                r = tokens.pop(i+1)
-                i-=1
-                l = tokens.pop(i)
-                tokens[i] = flow[tok]([l,r])
-
-            elif tok.startswith(sigil):
+            if tok.startswith(sigil):
                 current_col = tok[1:]
                 tokens.pop(i)
                 i -= 1
@@ -462,11 +471,26 @@ def parseTokens( tokens ):
                 current_opr = operators[tok]
                 tokens.pop(i)
                 i -= 1
-            else:
+            elif tok not in flow:
                 tokens[i] = parserRule(current_col,current_opr,tok)
-
         i+=1
 
+    i=0
+    while i < len(tokens):
+        tok = tokens[i]
+        hasl = i>0
+        hasr = i<len(tokens)-1
+        if isinstance(tok, (str, unicode)):
+            if tok in flow:
+                if not hasr:
+                    raise RHSError(tok, "expected value")
+                if not hasl:
+                    raise LHSError(tok, "expected value")
+                r = tokens.pop(i+1)
+                i-=1
+                l = tokens.pop(i)
+                tokens[i] = flow[tok]([l,r])
+        i+=1
     if len(tokens) == 1:
         return tokens[0]
 
