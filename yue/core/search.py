@@ -11,6 +11,8 @@ except:
                     return cache[args]
                 result = func(*args);
                 cache[args] = result
+                while len(cache)>maxsize:
+                    del cache[cache.keys()[0]]
                 return result
             return lru_cache_wrapper
         return lru_cache_decorator
@@ -252,13 +254,13 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
 
     if orderby is not None:
 
-        if isinstance(orderby,(tuple,list)):
-            orderby = [ x+direction for x in orderby]
-            query += " ORDER BY " + ", ".join(orderby)
+        if not isinstance(orderby,(tuple,list)):
+            orderby = [ orderby, ]
 
-        else:
-            query += " ORDER BY %s%s"%(orderby,direction)
+        orderby = [ x+direction for x in orderby]
+        query += " ORDER BY " + ", ".join(orderby)
 
+    print(query)
     try:
         result = list(db.query(query, *vals))
         return result

@@ -1,4 +1,44 @@
 
+
+"""
+
+Schema (high level description)
+
+tables:
+    artists
+    albums
+    songs
+
+views:
+    library
+
+The 'artists' and 'albums' tables encode the libraries set of
+artists and albums. They each maintain a count of associated songs
+each album is unique to a given artist (so that there may be multiple
+albums with the same name associated with different artists)
+
+the 'songs' table encodes the remaining information for each song. It
+uses foreign keys to map to an artist / album.
+
+Sort Keys are used for certain text fields (currently artist, album, title)
+A function is used to map an text field to a value to be used in sorting.
+when using ORDER BY in sequal `column`_key may be used in place of `column`
+to sort by the alternate text.
+
+TODO:
+    sort_key introduced significant data duplication on affected fields
+    to fix this create a new table 'text-data' which is a simple
+    table mapping uid -> text value, containing both original text
+    and sort key text.
+
+    The majority of sort keys are the same as the original value
+
+    this could remove unused foreign keys in 'text-data':
+    DELETE FROM B WHERE bid NOT IN ( SELECT A.bid FROM A )
+
+
+"""
+
 import os
 
 import sys
@@ -22,15 +62,24 @@ except ImportError:
     import ConfigParser as configparser
 import codecs
 
+def getSortKey( string ):
+    """
+    normalize text fields for sorting
+    """
+    low = string.lower()
+    if low.startswith("the "):
+        string = string[4:]
+    return string
+
 class Library(object):
     """docstring for Library"""
     __instance = None
     def __init__(self, sqlstore):
         super(Library, self).__init__()
-
         artists = [
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
             ("artist","text"),
+            ("sortkey","text"),
             ("count","INTEGER DEFAULT 0")
         ]
 
@@ -38,6 +87,7 @@ class Library(object):
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
             ("artist","INTEGER"),
             ("album","text"),
+            ("sortkey","text"),
             ("count","INTEGER DEFAULT 0")
         ]
         album_foreign_keys = [
@@ -59,6 +109,7 @@ class Library(object):
             #('album','text'),
             ('album','INTEGER'),
             ('title','text'),
+            #('title_key','text'), #TODO: look into data duplication
             ('genre',"text DEFAULT ''"),
             ('year','integer DEFAULT 0'),
             ('country',"text DEFAULT ''"),
@@ -88,9 +139,12 @@ class Library(object):
         self.album_db = SQLTable( sqlstore ,"albums", albums, album_foreign_keys)
         self.song_db = SQLTable( sqlstore ,"songs", songs_columns, songs_foreign_keys)
 
-        colnames = [ 'uid', 'path', 'source_path', 'artist', 'composer',
-                     'album', 'title', 'genre', 'year', 'country', 'lang',
-                     'comment',
+        colnames = [ 'uid', 'path', 'source_path',
+                     'artist', 'artist_key',
+                     'composer',
+                     'album', #'album_key',
+                     'title', #'title_key',
+                     'genre', 'year', 'country', 'lang', 'comment',
                      'album_index', 'length', 'last_played', 'date_added',
                      'playcount', 'skip_count', 'rating',
                      'blocked', 'equalizer', 'opm', 'frequency', 'file_size']
@@ -99,8 +153,12 @@ class Library(object):
         for col in colnames:
             if col == 'artist':
                 cols.append("a."+col)
+            elif col == 'artist_key':
+                cols.append("a.sortkey as artist_key")
             elif col == 'album':
                 cols.append("b."+col)
+            #elif col == 'album_key':
+            #    cols.append("b.sortkey as album_key")
             else:
                 cols.append("s."+col)
         viewname = "library"
@@ -108,11 +166,12 @@ class Library(object):
         # s.genre, s.year, s.country, s.lang, s.comment, s.album_index,
         #s.length, s.last_played, s.date_added, s.playcount, s.skip_count,
         # s.rating, s.blocked, s.equalizer, s.opm, s.frequency, s.file_size"
+        print(colnames)
         cols = ', '.join(cols)
         tbls = "songs s, artists a, albums b"
         where = "s.artist=a.uid AND s.album=b.uid"
         sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
-
+        print(sql)
 
         self.song_view = SQLView( sqlstore, "library", sql, colnames)
 
@@ -139,10 +198,16 @@ class Library(object):
             c = self.sqlstore.conn.cursor()
             return self._insert(c, **kwargs)
 
-
     def _insert(self,c, **kwargs):
-        kwargs['artist'] = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
-        kwargs['album'] = self.album_db._get_id_or_insert(c,album=kwargs['album'],artist=kwargs['artist'])
+        kwargs['artist'] = self.artist_db._get_id_or_insert(c,
+                artist=kwargs['artist'],
+                sortkey=getSortKey(kwargs['artist']))
+        kwargs['album'] = self.album_db._get_id_or_insert(c, \
+            album=kwargs['album'], \
+            sortkey=getSortKey(kwargs['album']),
+            artist=kwargs['artist'])
+        #if 'title_key' not in kwargs:
+        #    kwargs['title_key'] = getSortKey( kwargs['title'] )
         c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(kwargs['artist'],))
         c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(kwargs['album'],))
         return self.song_db._insert(c,**kwargs)
@@ -176,7 +241,9 @@ class Library(object):
         # altering artist, album requires updating count of songs
         # and removing artists that no longer exist.
         if 'artist' in kwargs:
-            new_art_id = self.artist_db._get_id_or_insert(c,artist=kwargs['artist'])
+            new_art_id = self.artist_db._get_id_or_insert(c,
+                artist=kwargs['artist'],
+                sortkey=getSortKey(kwargs['artist']))
             c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(new_art_id,))
             c.execute("UPDATE artists SET count=count-1 WHERE uid=?",(old_art_id,))
             # update field as integer, not string
@@ -184,11 +251,17 @@ class Library(object):
             old_art_id = new_art_id
 
         if 'album' in kwargs:
-            new_abm_id = self.album_db._get_id_or_insert(c,album=kwargs['album'], artist=old_art_id)
+            new_abm_id = self.album_db._get_id_or_insert(c,
+                album=kwargs['album'],
+                #sortkey=getSortKey(kwargs['album']),
+                artist=old_art_id)
             c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(new_abm_id,))
             c.execute("UPDATE albums SET count=count-1 WHERE uid=?",(old_abm_id,))
             # update field as integer, not string
             kwargs['album'] = new_abm_id
+
+        #if 'title' in kwargs and 'title_key' not in kwargs:
+        #    kwargs['title_key'] = getSortKey( kwargs['title'] )
 
         # update all remaining fields
         if kwargs:
@@ -292,6 +365,13 @@ class Library(object):
 
         if isinstance(rule,(str,unicode)):
             rule = ruleFromString( rule )
+        if orderby is not None and not isinstance( orderby, (list,tuple)):
+            orderby = [ orderby, ]
+            # these three columns have special columns used in sorting songs.
+            for i,v in enumerate(orderby):
+                if v in [Song.artist,]:
+                    orderby[i]+="_key"
+
         return sql_search( self.song_view, rule, case_insensitive, orderby, reverse )
 
     def getArtists(self):

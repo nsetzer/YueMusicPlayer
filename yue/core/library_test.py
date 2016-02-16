@@ -57,11 +57,11 @@ class TestLibrary(unittest.TestCase):
         albums = list(lib.getAlbums(art))
         self.assertEqual( len(albums), 1 )
 
-        lib.update(uid, artist="Artist", album="Album", title="Title")
+        lib.update(uid, artist="The Artist", album="Album", title="Title")
 
         song =lib.songFromId(uid)
 
-        self.assertEqual(song['artist'],'Artist')
+        self.assertEqual(song['artist'],'The Artist')
         self.assertEqual(song['album'],'Album')
         self.assertEqual(song['title'],'Title')
 
@@ -71,6 +71,7 @@ class TestLibrary(unittest.TestCase):
 
         lib.increment(uid,'playcount',-2)
         song =lib.songFromId(uid)
+        print(song)
         self.assertEqual(song['playcount'],3)
 
         # both these values should be 1, after updating artist,album

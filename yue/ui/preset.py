@@ -36,6 +36,7 @@ from yue.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRu
 
 from yue.settings import Settings
 from yue.core.library import Library
+from yue.core.song import Song
 
 class PresetScreen(Screen):
     def __init__(self,**kwargs):
@@ -139,7 +140,7 @@ class ModifyPresetScreen(Screen):
         try:
             Logger.info("sql: %s"%sql)
             Logger.info("sql: %s"%values)
-            result = Library.instance().search( rule )
+            result = Library.instance().search( rule, orderby=[Song.artist,Song.album,Song.title] )
             tree =  libraryToTreeFromIterable( result )
             self.setData( tree)
         except OperationalError as e:

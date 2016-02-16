@@ -188,7 +188,8 @@ class SQLView(object):
     def iter(self):
         with self.store.conn:
             c = self.store.conn.cursor()
-            c.execute("select * from %s"%self.name)
+            cols = ', '.join(self.column_names)
+            c.execute("select %s from %s"%(cols,self.name))
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.column_names,item))
