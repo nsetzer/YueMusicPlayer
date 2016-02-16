@@ -23,7 +23,7 @@ from yue.core.search import PartialStringSearchRule, \
                        NotRangeSearchRule, \
                        AndSearchRule, \
                        OrSearchRule, \
-                       allTextRule,
+                       allTextRule
 
 _kindToRule = {
     QueryKind.LIKE    : PartialStringSearchRule,

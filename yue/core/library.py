@@ -252,7 +252,6 @@ class Library(object):
             return default
 
         for section in config.sections():
-            print(section)
             song = {
                 "artist" : get_default(section,"artist","Unkown Artist"),
                 "album"  : get_default(section,"album" ,"Unkown Album"),

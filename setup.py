@@ -1,4 +1,4 @@
-#! python34 setup.py test
+#! python2.7 setup.py test
 
 import imp,os,sys
 from setuptools import setup, Command

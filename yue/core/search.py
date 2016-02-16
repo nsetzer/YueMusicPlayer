@@ -1,6 +1,20 @@
 from .song import Song
 
-from functools import lru_cache
+try:
+    from functools import lru_cache
+except:
+    def lru_cache(maxsize=128):
+        def lru_cache_decorator(func):
+            cache = dict()
+            def lru_cache_wrapper(*args):
+                if args in cache:
+                    return cache[args]
+                result = func(*args);
+                cache[args] = result
+                return result
+            return lru_cache_wrapper
+        return lru_cache_decorator
+
 import calendar
 from datetime import datetime, timedelta
 
@@ -245,7 +259,6 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         else:
             query += " ORDER BY %s%s"%(orderby,direction)
 
-    print(query, vals)
     try:
         result = list(db.query(query, *vals))
         return result
