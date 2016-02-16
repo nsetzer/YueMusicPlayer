@@ -97,6 +97,10 @@ class Song(object):
                Song.genre, Song.country, Song.lang, Song.comment
 
     @staticmethod
+    def dateFields():
+        return Song.last_played, Song.date_added;
+
+    @staticmethod
     def new():
         return {
             Song.uid         : 0,

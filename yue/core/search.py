@@ -1,5 +1,9 @@
 from .song import Song
 
+from functools import lru_cache
+import calendar
+from datetime import datetime, timedelta
+
 import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -241,6 +245,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         else:
             query += " ORDER BY %s%s"%(orderby,direction)
 
+    print(query, vals)
     try:
         result = list(db.query(query, *vals))
         return result
@@ -288,6 +293,15 @@ def tokenizeString( input ):
     'column = this'
     'column = this || column = that'
     '(column = this || column=that) && column > 0'
+
+    supports old style queries:
+    defaults to partial string matching, an operator
+    changes the current operator used, negate flips the
+    current operator. multiple tokens can be specified in a row
+    '.col x y z'       is equal to 'col=x col=y col=z'
+    '.col = x < y ! z' is equal to 'col=x col<y col>z'
+
+
     """
     idx = 0;
 
@@ -349,8 +363,6 @@ def tokenizeString( input ):
 
     return output
 
-
-
 # does not require left token
 operators = {
     "=" :PartialStringSearchRule,
@@ -374,12 +386,51 @@ special = {
     ">=" : GreaterThanEqualSearchRule,
 }
 
+special_invert = {
+    GreaterThanSearchRule      : LessThanSearchRule,
+    LessThanSearchRule         : GreaterThanSearchRule,
+    GreaterThanEqualSearchRule : LessThanEqualSearchRule,
+    LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
+}
+
+old_style_operators = operators.copy()
+old_style_operators.update(special)
+
+old_style_operators_invert = operators_invert.copy()
+old_style_operators_invert.update(special_invert)
+
+
 flow = {
     "&&" : AndSearchRule,
     "||" : OrSearchRule
 }
 
 negate = "!"
+
+@lru_cache(maxsize=16)
+def parserFormatDays( days ):
+
+    now = datetime.now()
+    dt1 = datetime(now.year,now.month,now.day) - timedelta( days )
+    dt2 = dt1 + timedelta( 1 )
+    return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+
+@lru_cache(maxsize=16)
+def parserFormatDate( value ):
+
+    sy,sm,sd = value.split('/')
+
+    y = int(sy)
+    m = int(sm)
+    d = int(sd)
+
+    if y < 100:
+        y += 2000
+
+    dt1 = datetime(y,m,d)
+    dt2 = dt1 + timedelta( 1 )
+
+    return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
 def parserRule(colid, rule ,value):
 
@@ -388,17 +439,67 @@ def parserRule(colid, rule ,value):
     except KeyError:
         raise ParseError("Invalid column name `%s`"%colid)
 
-    is_text = col in Song.textFields()
-
     if colid == Song.all_text:
         meta = OrSearchRule
         if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
             meta = AndSearchRule
         return allTextRule(meta, rule, value)
-    elif is_text:
+    elif col in Song.textFields():
         return rule( col, value )
-    else: # is number (or date, todo)
+    elif col in Song.dateFields(): # is number (or date, todo)
+        return parserDateRule(rule, col, value)
+    else:
+        # numeric fields do not require any special conversion at this time
         return rule( col, value )
+
+def parserDateRule(rule , col, value):
+    """
+    There are two date fields, 'last_played' and 'date_added'
+
+    queries can be run in two modes.
+
+    providing an integer (e.g. date < N) performs a relative search
+    from the current date, in this examples songs played since N days ago.
+
+    providing a date string will run an exact search. (e.g. date < 15/3/12)
+    the string is parsed y/m/d but otherwise behaves exactly the same way.
+
+    < : closer to present day, including the date given
+    > : farther into the past, excluding the given date
+    = : exactly that day, from 00:00:00 to 23:59:59
+    """
+    c = value.count('/')
+
+    try:
+        if c == 2:
+            epochtime,epochtime2 = parserFormatDate( value )
+        elif c > 0:
+            raise ParseError("Invalid Date format. Expected YY/MM/DD.")
+        else:
+            ivalue = int( value )
+            epochtime,epochtime2 = parserFormatDays( ivalue )
+            #epochtime2 = parserFormatDays( ivalue - 1 )
+    except ValueError:
+        # failed to convert istr -> int
+        raise ParseError("Expected Integer or Date, found `%s`"%value)
+
+    # flip the context of '<' and '>'
+    # for dates, '<' means closer to present day
+    # date < 5 is anything in the last 5 days
+    if rule in special_invert:
+        rule = special_invert[rule]
+
+    # token '=' is partial string matching, in the context of dates
+    # it will return any song played exactly n days ago
+    # a value of '1' is yesterday
+    if rule is PartialStringSearchRule:
+        return RangeSearchRule(col, epochtime, epochtime2)
+
+    # inverted range matching
+    if rule is InvertedPartialStringSearchRule:
+        return NotRangeSearchRule(col, epochtime, epochtime2)
+
+    return rule( col, epochtime )
 
 def parseTokens( tokens ):
 
@@ -464,11 +565,11 @@ def parseTokens( tokens ):
                 tokens.pop(i)
                 i -= 1
             elif tok == negate:
-                current_opr = operators_invert[current_opr]
+                current_opr = old_style_operators_invert[current_opr]
                 tokens.pop(i)
                 i -= 1
-            elif tok in operators:
-                current_opr = operators[tok]
+            elif tok in old_style_operators:
+                current_opr = old_style_operators[tok]
                 tokens.pop(i)
                 i -= 1
             elif tok not in flow:
