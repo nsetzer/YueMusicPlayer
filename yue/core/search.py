@@ -231,10 +231,16 @@ def naive_search( sqldb, rule ):
         if rule.check(song):
             yield song
 
+import time
+
 def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
     """ convert a rule to a sql query and yield matching songs
 
     orderby must be given for reverse to have any meaning
+
+    add support for 'LIMIT N'
+    orderby can be "RANDOM()"
+    ORDERBY RANDOM() LIMIT N
     """
     sql,vals = rule.sql()
 
@@ -245,6 +251,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         query += " WHERE %s"%sql
         if case_insensitive:
             query += " COLLATE NOCASE"
+
 
     direction = " ASC"
     if reverse:
@@ -260,9 +267,11 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         orderby = [ x+direction for x in orderby]
         query += " ORDER BY " + ", ".join(orderby)
 
-    print(query)
     try:
+        s = time.clock()
         result = list(db.query(query, *vals))
+        e = time.clock()
+        print(e-s,sql)
         return result
     except:
         print("`%s`"%sql)
@@ -334,7 +343,10 @@ def tokenizeString( input ):
 
     while idx < len( input ) and len(stack)>0:
         c = input[idx]
-        if c == '"' and not quoted:
+
+        if c == '\\':
+                input = input[:idx] + input[idx+1:]
+        elif c == '"' and not quoted:
             quoted = True
             append()
             start = idx+1
@@ -344,9 +356,9 @@ def tokenizeString( input ):
             quoted = False
         elif not quoted:
             s = c in special
-            if c == '\\':
-                input = input[:idx] + input[idx+1:]
-            elif c == '(':
+            #if c == '\\':
+            #    input = input[:idx] + input[idx+1:]
+            if c == '(':
                 append()
                 new_level = []
                 stack[-1].append( new_level )

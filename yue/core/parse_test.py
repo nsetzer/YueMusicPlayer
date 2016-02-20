@@ -54,6 +54,8 @@ class TestSearchParse(unittest.TestCase):
         self.parse(" artist = foo ", ['artist','=','foo'])
         self.parse(" artist =\"foo\"", ['artist','=','foo'])
 
+        self.parse(" artist =\"foo \\\" bar \\\"\"", ['artist','=','foo " bar "'])
+
 
     def test_parse_generic(self):
 
@@ -161,6 +163,7 @@ class TestSearchParse(unittest.TestCase):
 
         actual = ruleFromString(".art foo (.abm bar || .abm baz)")
         self.assertEqual(expected,actual)
+
 
     def test_parser_errors(self):
 
