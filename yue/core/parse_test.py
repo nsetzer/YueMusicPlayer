@@ -53,7 +53,6 @@ class TestSearchParse(unittest.TestCase):
         self.parse("artist=foo", ['artist','=','foo'])
         self.parse(" artist = foo ", ['artist','=','foo'])
         self.parse(" artist =\"foo\"", ['artist','=','foo'])
-
         self.parse(" artist =\"foo \\\" bar \\\"\"", ['artist','=','foo " bar "'])
 
 
@@ -118,6 +117,10 @@ class TestSearchParse(unittest.TestCase):
 
         expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
         actual = ruleFromString(" = foo")
+        self.assertEqual(expected,actual)
+
+        expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
+        actual = ruleFromString("text = foo")
         self.assertEqual(expected,actual)
 
         expected = allTextRule(AndSearchRule,InvertedPartialStringSearchRule, "foo")
