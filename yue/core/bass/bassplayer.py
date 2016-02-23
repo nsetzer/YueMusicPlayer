@@ -1,5 +1,6 @@
 
 from . import pybass
+#from . import pybassdsp
 
 import os
 import sys
@@ -24,9 +25,11 @@ class StreamPlayer(object):
         provide a buffer with data...
     """
 
-    def __init__(self,Fs,chan=1):
+    def __init__(self,Fs,use_float=True, chan=1):
 
-        flags = 0 # pybass.BASS_SAMPLE_FLOAT
+		flags = 0;
+		if use_float:
+	        flags = pybass.BASS_SAMPLE_FLOAT
         proc = pybass.STREAMPROC_PUSH
 
         channel = pybass.BASS_StreamCreate(int(Fs),chan,flags,proc,None);
@@ -47,22 +50,26 @@ class BassPlayer(object):
     isINIT = False
 
     @staticmethod
-    def init(sampleRate=44100,platform=None):
+    def init(sampleRate=44100):
 
         if BassPlayer.isINIT:
             return
 
         # float dsp is needed for my custom dsp blocks
-        #pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
+        pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
         # enable automatic switching to the default device
         # used when someone plugs in / unplugs headphones, etc.
         pybass.BASS_SetConfig(pybass.BASS_CONFIG_DEV_DEFAULT,True);
 
-
         if not pybass.BASS_Init(-1, sampleRate, 0, 0, 0):
             print('BASS_Init error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
-        #if not BassPlayer.supportsFloat() :
-        #    raise FloatingPointError("BASS does not support Floating Point DSP.")
+			
+		self.default_flags = 0
+        if not BassPlayer.supportsFloat() :
+			raise FloatingPointError("BASS does not support Floating Point DSP.")
+			print('BASS_Init error Floating Point DSP unsupported')
+			self.default_flags = pybass.BASS_SAMPLE_FLOAT
+            
         BassPlayer.isINIT = True
 
         BassPlayer.fft_n = {
@@ -147,8 +154,7 @@ class BassPlayer(object):
 
     def load(self,filepath):
 
-        # pybass.BASS_SAMPLE_FLOAT |
-        lFlags = pybass.BASS_STREAM_AUTOFREE
+        lFlags = self.default_flags|pybass.BASS_STREAM_AUTOFREE
         if isPosix:
             #lFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath).encode("utf-8")
@@ -194,18 +200,15 @@ class BassPlayer(object):
         return True
 
     def decode(self,filepath):
-        #print("decode: %s"%filepath)
 
         self.unload()
-
-        # pybass.BASS_SAMPLE_FLOAT
-        dFlags = pybass.BASS_STREAM_DECODE
-
+        
+        dFlags = self.default_flags|pybass.BASS_STREAM_DECODE
+ 
         if isPosix:
-            #dFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath).encode("utf-8")
         else:
-            dFlags |= pybass.BASS_UNICODE
+            dFlags |= pybass.BASS_UNICODE   
             filepath = unicode(filepath)#.encode("utf-16")
 
 
@@ -228,7 +231,7 @@ class BassPlayer(object):
 
         self.unload()
 
-        #dFlags = pybass.BASS_SAMPLE_FLOAT
+        dFlags = self.default_flags
         dProc  = pybass.STREAMPROC_PUSH
         print("create stream %d %d"%(rate,chans))
         channel = pybass.BASS_StreamCreate(rate,chans,dFlags,dProc,0)
@@ -332,7 +335,7 @@ class BassPlayer(object):
                 break;
             idx += 1
         return idx
-        #print "spin",idx
+    
     def volume(self,vol=None):
         """
             set the volume to 'vol'.
