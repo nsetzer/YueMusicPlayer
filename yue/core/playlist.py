@@ -85,6 +85,9 @@ class PlayListView(object):
             _, name, size, index = self.db_names._get( c, self.uid );
             return size
 
+    def __len__(self):
+        return self.size()
+
     def set_index(self,idx):
         """ set the current playlist index, return key at that position """
         with self.db_lists.conn() as conn:
@@ -98,37 +101,71 @@ class PlayListView(object):
 
     def get(self, idx):
         with self.db_lists.conn() as conn:
-            c = conn.cursor()
-            _, _, size, _ = self.db_names._get( c, self.uid );
-            if 0 <= idx < size:
-                c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
-                return c.fetchone()[0]
+            return self._get( conn.cursor(), idx)
+
+    def __getitem__(self,idx):
+
+        if isinstance( idx, slice):
+            raise ValueError(idx);
+
+        with self.db_lists.conn() as conn:
+            return self._get( conn.cursor(), idx)
+
+    def _get(self,c, idx):
+        _, _, size, _ = self.db_names._get( c, self.uid );
+        assert size is not None
+        if 0 <= idx < size:
+            c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
+            return c.fetchone()[0]
         raise IndexError(idx)
 
-    def insert(self,idx,key):
+    def insert(self,idx,key_or_lst):
+
+        lst = key_or_lst
+        if isinstance(key_or_lst, int):
+            lst = [key_or_lst,]
+
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
-            self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
-            c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
+            _, _, _, current = self.db_names._get( c, self.uid );
+            for key in reversed(lst):
+                self._insert_one( c, idx, key)
+                if idx <= current:
+                    current += 1
+                    self.db_names._update( c, self.uid, idx=current)
 
     def insert_next(self,key):
         """ insert a song id after the current song id """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            _, name, size, idx = self.db_names._get( c, self.uid );
-            idx += 1
-            c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
-            self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
-            c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
+            _, name, size, current = self.db_names._get( c, self.uid );
+            self._insert_one( c, current+1, key)
 
-    def delete(self,idx):
+    def _insert_one(self, c, idx, key):
+        c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
+        self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+        c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
+
+    def delete(self,idx_or_lst):
         """ remove a song from the playlist by it's position in the list """
+
+        lst = idx_or_lst
+        if isinstance(idx_or_lst, int):
+            lst = [idx_or_lst,]
+
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
-            c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx))
-            c.execute("UPDATE playlists SET size=size-1 WHERE uid=?",(self.uid,))
+            _, _, _, current = self.db_names._get( c, self.uid );
+            for item in sorted(lst,reverse=True):
+                self._delete_one(c, item)
+                if item < current:
+                    current -= 1
+                    self.db_names._update( c, self.uid, idx=current)
+
+    def _delete_one(self,c,idx):
+        c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx))
+        c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx))
+        c.execute("UPDATE playlists SET size=size-1 WHERE uid=?",(self.uid,))
 
     def clear(self):
         with self.db_lists.conn() as conn:
@@ -152,6 +189,41 @@ class PlayListView(object):
             elif idx1 > cur and idx2 < cur:
                 self.db_names._update( c, self.uid, idx=cur+1)
             self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
+
+    def reinsertList(self, lst, row):
+        """
+        given a list of row indices, remove each row from the table
+        then, in the order given, reinsert each element at the given row.
+        """
+        keys = []
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, _, _, current = self.db_names._get( c, self.uid );
+
+            # delete and keep track of selected items
+            for item in sorted(lst,reverse=True):
+                key = self._get(c, item)
+                self._delete_one(c, item)
+                if item <= current:
+                    current -= 1
+                    self.db_names._update( c, self.uid, idx=current)
+                if item < row:
+                    row -= 1
+                keys.append( key )
+
+            # reinsert the keys
+            for key in keys:
+                self._insert_one( c, row, key)
+
+            # update the current index
+
+            if row <= current:
+                current += len(keys)
+                self.db_names._update( c, self.uid, idx=current)
+
+            _, _, _, cur = self.db_names._get( c, self.uid );
+
+            return row,row+len(keys);
 
     def shuffle_range(self,start,end):
         """ shuffle a slice of the list, using python slice semantics
@@ -229,8 +301,30 @@ class PlayListView(object):
             key = c.fetchone()[0]
             return idx,key
 
+    def getDataView( self, library ):
+        return PlayListDataView( library, self.db_names, self.db_lists, self.uid )
+
+class PlayListDataView(PlayListView):
+    """A PlayListView backed by a library
+
+    get returns a song instead of a
+    """
+    def __init__(self, library, db_names, db_lists, uid):
+        super(PlayListDataView, self).__init__(db_names, db_lists, uid)
+        self.library = library
 
 
+    def get(self, idx):
+        return self.__getitem__(idx)
 
+    def __getitem__(self,idx):
 
+        if isinstance( idx, slice):
+            raise ValueError(idx);
 
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            uid = self._get( c, idx);
+            view = self.library.song_view
+            item = view._get( c, uid)
+            return dict(zip(view.column_names,item))

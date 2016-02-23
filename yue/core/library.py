@@ -20,22 +20,10 @@ albums with the same name associated with different artists)
 the 'songs' table encodes the remaining information for each song. It
 uses foreign keys to map to an artist / album.
 
-Sort Keys are used for certain text fields (currently artist, album, title)
+Sort Keys are used for certain text fields (currently artist name only)
 A function is used to map an text field to a value to be used in sorting.
 when using ORDER BY in sequal `column`_key may be used in place of `column`
 to sort by the alternate text.
-
-TODO:
-    sort_key introduced significant data duplication on affected fields
-    to fix this create a new table 'text-data' which is a simple
-    table mapping uid -> text value, containing both original text
-    and sort key text.
-
-    The majority of sort keys are the same as the original value
-
-    this could remove unused foreign keys in 'text-data':
-    DELETE FROM B WHERE bid NOT IN ( SELECT A.bid FROM A )
-
 
 """
 
