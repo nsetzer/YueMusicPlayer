@@ -95,7 +95,12 @@ def LoadLibrary(libname):
         specific func type. (windows/Linux)
     """
     if platform.system().lower() == 'windows':
-        bass_module = ctypes.WinDLL( LookPath(libname) )
+        path = LookPath(libname)
+        try:
+          bass_module = ctypes.WinDLL( path )
+        except OSError:
+          raise OSError( path )
+
         func_type = ctypes.WINFUNCTYPE
         return bass_module, func_type
     # correct by Wasylews (sabov.97@mail.ru), thank him
