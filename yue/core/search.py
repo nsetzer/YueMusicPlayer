@@ -233,7 +233,7 @@ def naive_search( sqldb, rule ):
 
 import time
 
-def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
+def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None):
     """ convert a rule to a sql query and yield matching songs
 
     orderby must be given for reverse to have any meaning
@@ -242,6 +242,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
     orderby can be "RANDOM()"
     ORDERBY RANDOM() LIMIT N
     """
+
     sql,vals = rule.sql()
 
     query = "SELECT * FROM %s"%db.name
@@ -251,7 +252,6 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         query += " WHERE %s"%sql
         if case_insensitive:
             query += " COLLATE NOCASE"
-
 
     direction = " ASC"
     if reverse:
@@ -264,8 +264,14 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False):
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
 
-        orderby = [ x+direction for x in orderby]
-        query += " ORDER BY " + ", ".join(orderby)
+        if orderby[0] == "RANDOM()":
+            query += " ORDER BY RANDOM()"
+        else:
+            orderby = [ x+direction for x in orderby]
+            query += " ORDER BY " + ", ".join(orderby)
+
+    if limit is not None:
+        query += " LIMIT %d"%limit
 
     try:
         s = time.clock()

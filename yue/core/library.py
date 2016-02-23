@@ -34,7 +34,7 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-from .search import sql_search, ruleFromString
+from .search import sql_search, ruleFromString, BlankSearchRule
 #from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
@@ -154,12 +154,10 @@ class Library(object):
         # s.genre, s.year, s.country, s.lang, s.comment, s.album_index,
         #s.length, s.last_played, s.date_added, s.playcount, s.skip_count,
         # s.rating, s.blocked, s.equalizer, s.opm, s.frequency, s.file_size"
-        print(colnames)
         cols = ', '.join(cols)
         tbls = "songs s, artists a, albums b"
         where = "s.artist=a.uid AND s.album=b.uid"
         sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
-        print(sql)
 
         self.song_view = SQLView( sqlstore, "library", sql, colnames)
 
@@ -349,10 +347,13 @@ class Library(object):
     def iter(self):
         return self.song_view.iter()
 
-    def search(self, rule , case_insensitive=True, orderby=None, reverse = False):
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None):
 
-        if isinstance(rule,(str,unicode)):
+        if rule is None:
+            rule = BlankSearchRule();
+        elif isinstance(rule,(str,unicode)):
             rule = ruleFromString( rule )
+
         if orderby is not None and not isinstance( orderby, (list,tuple)):
             orderby = [ orderby, ]
             # these three columns have special columns used in sorting songs.
@@ -360,7 +361,7 @@ class Library(object):
                 if v in [Song.artist,]:
                     orderby[i]+="_key"
 
-        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse )
+        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit )
 
     def getArtists(self):
         """ get a list of artists within the database."""
