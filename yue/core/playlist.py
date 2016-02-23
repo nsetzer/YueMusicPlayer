@@ -194,8 +194,14 @@ class PlayListView(object):
         """
         given a list of row indices, remove each row from the table
         then, in the order given, reinsert each element at the given row.
+
         """
+        # the set of keys to insert
         keys = []
+
+        # if need, store the index of the current song in keys
+        set_current = -1;
+
         with self.db_lists.conn() as conn:
             c = conn.cursor()
             _, _, _, current = self.db_names._get( c, self.uid );
@@ -204,20 +210,23 @@ class PlayListView(object):
             for item in sorted(lst,reverse=True):
                 key = self._get(c, item)
                 self._delete_one(c, item)
-                if item <= current:
+                keys.append( key )
+                if item == current:
+                    set_current = len(keys);
+                elif item <= current:
                     current -= 1
                     self.db_names._update( c, self.uid, idx=current)
                 if item < row:
                     row -= 1
-                keys.append( key )
 
             # reinsert the keys
             for key in keys:
                 self._insert_one( c, row, key)
 
             # update the current index
-
-            if row <= current:
+            if set_current>=0:
+                self.db_names._update( c, self.uid, idx=row+set_current-1)
+            elif row <= current:
                 current += len(keys)
                 self.db_names._update( c, self.uid, idx=current)
 
@@ -225,7 +234,7 @@ class PlayListView(object):
 
             return row,row+len(keys);
 
-    def shuffle_range(self,start,end):
+    def shuffle_range(self,start=None,end=None):
         """ shuffle a slice of the list, using python slice semantics
             playlist[start:end]
 
@@ -235,6 +244,14 @@ class PlayListView(object):
         """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
+
+            _, _, size, current = self.db_names._get( c, self.uid );
+
+            if end is None:
+                end = size
+
+            if start is None:
+                start = current + 1;
             # extract the set of songs in the given range
             c.execute("SELECT song_id from playlist_songs where uid=? and idx BETWEEN ? and ?", (self.uid,start,end))
             keys = []
@@ -249,6 +266,34 @@ class PlayListView(object):
             # write the new order back to the list
             for i,k in enumerate(keys):
                 c.execute("UPDATE playlist_songs SET song_id=? WHERE uid=? and idx=?",(k,self.uid,start+i))
+
+    def shuffle_selection(self, lst):
+        """
+        given a list of row indices, swap the position of each
+        element randomly
+        """
+        # the set of keys to insert
+        keys = []
+
+        current_key = -1;
+
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            _, _, _, current = self.db_names._get( c, self.uid );
+
+            for item in lst:
+                key = self._get(c, item)
+                keys.append( key )
+
+                if item == current:
+                    current_key = key
+
+            random.shuffle( keys )
+
+            for i,k in zip(lst, keys):
+                c.execute("UPDATE playlist_songs SET song_id=? WHERE uid=? and idx=?",(k,self.uid,i))
+                if k == current_key:
+                    self.db_names._update( c, self.uid, idx=i)
 
     def iter(self):
         with self.db_lists.conn() as conn:
