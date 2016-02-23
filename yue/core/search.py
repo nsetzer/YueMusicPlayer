@@ -331,7 +331,9 @@ def tokenizeString( input ):
 
     output = []
     special = '~!=<>|&'
-    kind = False
+    # cause 'special' symbols to join together, separately
+    # from all other character classes.
+    join_special = False
     stack = [ output ]
     start = 0;
     quoted = False
@@ -345,8 +347,12 @@ def tokenizeString( input ):
         c = input[idx]
 
         if c == '\\':
-                input = input[:idx] + input[idx+1:]
+            # skip the next character, by erasing the
+            # current character from the input
+            input = input[:idx] + input[idx+1:]
         elif c == '"' and not quoted:
+            # quote detected, ignore all characters until
+            # the next matching quote is found
             quoted = True
             append()
             start = idx+1
@@ -356,9 +362,9 @@ def tokenizeString( input ):
             quoted = False
         elif not quoted:
             s = c in special
-            #if c == '\\':
-            #    input = input[:idx] + input[idx+1:]
             if c == '(':
+                # start of parenthetical grouping,
+                # push a new level on the stack.
                 append()
                 new_level = []
                 stack[-1].append( new_level )
@@ -371,14 +377,14 @@ def tokenizeString( input ):
             elif c == ' ':
                 append()
                 start = idx
-            elif s and not kind:
+            elif s and not join_special:
                 append()
                 start = idx
-                kind = True
-            elif not s and kind:
+                join_special = True
+            elif not s and join_special:
                 append()
                 start = idx
-                kind = False
+                join_special = False
         idx += 1
     if len(stack) == 0:
         raise TokenizeError("empty stack (check parenthesis)")
@@ -426,7 +432,6 @@ old_style_operators.update(special)
 old_style_operators_invert = operators_invert.copy()
 old_style_operators_invert.update(special_invert)
 
-
 flow = {
     "&&" : AndSearchRule,
     "||" : OrSearchRule
@@ -466,7 +471,7 @@ def parserRule(colid, rule ,value):
     except KeyError:
         raise ParseError("Invalid column name `%s`"%colid)
 
-    if colid == Song.all_text:
+    if col == Song.all_text:
         meta = OrSearchRule
         if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
             meta = AndSearchRule
@@ -528,6 +533,39 @@ def parserDateRule(rule , col, value):
 
     return rule( col, epochtime )
 
+def parseTokensOldStyle( sigil, tokens ):
+
+    sigil = '.'
+
+    current_col = Song.all_text
+    current_opr = PartialStringSearchRule
+
+    i=0
+    while i < len(tokens):
+        tok = tokens[i]
+
+        if isinstance(tokens[i],(str,unicode)):
+            if tok.startswith(sigil):
+                current_col = tok[1:]
+                tokens.pop(i)
+                i -= 1
+            elif tok == negate:
+                current_opr = old_style_operators_invert[current_opr]
+                tokens.pop(i)
+                i -= 1
+            elif tok in old_style_operators:
+                current_opr = old_style_operators[tok]
+                tokens.pop(i)
+                i -= 1
+            elif tok not in flow:
+                tokens[i] = parserRule(current_col,current_opr,tok)
+        i+=1
+
+    if len(tokens) == 1:
+        return tokens[0]
+
+    return AndSearchRule( tokens )
+
 def parseTokens( tokens ):
 
     sigil = '.'
@@ -542,10 +580,16 @@ def parseTokens( tokens ):
             tokens[i] = parseTokens(tok)
         elif tok.startswith(sigil):
             # old style query
+            s = i
             while i < len(tokens) and \
                 not isinstance(tokens[i],list) and \
                 tokens[i] not in flow:
                 i += 1;
+            toks = tokens[:s]
+            toks.append( parseTokensOldStyle( sigil, tokens[s:i] )  )
+            toks += tokens[i:]
+            tokens = toks
+            i = s + 1
             continue
         elif tok in operators:
             if not hasr:
@@ -553,6 +597,7 @@ def parseTokens( tokens ):
             r = tokens.pop(i+1)
             if not isinstance(r,(str,unicode)):
                 raise RHSError(tok, "expected string")
+            # left side is optional, defaults to all text
             if not hasl:
                 tokens[i] = parserRule(Song.all_text,operators[tok],r)
             else:
@@ -576,32 +621,8 @@ def parseTokens( tokens ):
             tokens[i] = parserRule(l,special[tok],r)
         i += 1
 
-    current_col = Song.all_text
-    current_opr = PartialStringSearchRule
-
-    i=0
-    while i < len(tokens):
-        tok = tokens[i]
-        hasl = i>0
-        hasr = i<len(tokens)-1
-
-        if isinstance(tok, (str, unicode)):
-            # support old-style queries
-            if tok.startswith(sigil):
-                current_col = tok[1:]
-                tokens.pop(i)
-                i -= 1
-            elif tok == negate:
-                current_opr = old_style_operators_invert[current_opr]
-                tokens.pop(i)
-                i -= 1
-            elif tok in old_style_operators:
-                current_opr = old_style_operators[tok]
-                tokens.pop(i)
-                i -= 1
-            elif tok not in flow:
-                tokens[i] = parserRule(current_col,current_opr,tok)
-        i+=1
+    # collect any old style tokens, which did not use a sigil
+    parseTokensOldStyle( sigil, tokens )
 
     i=0
     while i < len(tokens):
@@ -619,9 +640,9 @@ def parseTokens( tokens ):
                 l = tokens.pop(i)
                 tokens[i] = flow[tok]([l,r])
         i+=1
+
     if len(tokens) == 1:
         return tokens[0]
-
     return AndSearchRule( tokens )
 
 def ruleFromString( string ):
