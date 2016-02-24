@@ -264,7 +264,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
 
-        if orderby[0] == "RANDOM()":
+        if orderby[0].upper() == "RANDOM":
             query += " ORDER BY RANDOM()"
         else:
             orderby = [ x+direction for x in orderby]
