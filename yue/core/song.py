@@ -35,6 +35,9 @@ class Song(object):
 
     # this is not a column, but stands in for all text fields.
     all_text    = "all_text"
+    # this is not a column, but is used by the orderby option
+    # when search / sorting a song list, causing a random ordering
+    random = "RANDOM"
 
     abbreviations = {
         "id"          : uid,
@@ -76,6 +79,7 @@ class Song(object):
         "text"        : all_text,
         "all_text"    : all_text,
         "ban"         : blocked,
+        "banned"      : blocked,
         "blocked"     : blocked,
         "opm"         : opm,
         "eq"          : equalizer,
