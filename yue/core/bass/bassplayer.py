@@ -27,9 +27,9 @@ class StreamPlayer(object):
 
     def __init__(self,Fs,use_float=True, chan=1):
 
-		flags = 0;
-		if use_float:
-	        flags = pybass.BASS_SAMPLE_FLOAT
+        flags = 0;
+        if use_float:
+            flags = pybass.BASS_SAMPLE_FLOAT
         proc = pybass.STREAMPROC_PUSH
 
         channel = pybass.BASS_StreamCreate(int(Fs),chan,flags,proc,None);
@@ -49,12 +49,13 @@ class BassPlayer(object):
     ERROR   = 6
     isINIT = False
 
+    default_flags = 0
+
     @staticmethod
     def init(sampleRate=44100):
 
         if BassPlayer.isINIT:
             return
-
         # float dsp is needed for my custom dsp blocks
         pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
         # enable automatic switching to the default device
@@ -63,13 +64,12 @@ class BassPlayer(object):
 
         if not pybass.BASS_Init(-1, sampleRate, 0, 0, 0):
             print('BASS_Init error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
-			
-		self.default_flags = 0
+
         if not BassPlayer.supportsFloat() :
-			raise FloatingPointError("BASS does not support Floating Point DSP.")
-			print('BASS_Init error Floating Point DSP unsupported')
-			self.default_flags = pybass.BASS_SAMPLE_FLOAT
-            
+            raise FloatingPointError("BASS does not support Floating Point DSP.")
+            print('BASS_Init error Floating Point DSP unsupported')
+            BassPlayer.default_flags = pybass.BASS_SAMPLE_FLOAT
+
         BassPlayer.isINIT = True
 
         BassPlayer.fft_n = {
@@ -135,7 +135,10 @@ class BassPlayer(object):
             return "Stalled";
         return "Unknown"
 
-    def __init__(self):
+    def __init__(self, use_capi=False):
+        self.use_capi = use_capi # use stream callbacks
+
+
         self.channel = 0;
         self.dsp_blocks = {}
         # on error set this flag.
@@ -151,6 +154,20 @@ class BassPlayer(object):
     def setStreamEndCallback(self,cbk):
         """ def cbk( player ) """
         self.sync_callbacks['stream_end'] = cbk
+
+    def setStreamSetPosCallback(self,cbk):
+        """ def cbk( player ) """
+        self.sync_callbacks['stream_setpos'] = cbk
+
+    def setStreamPosCallback(self,cbk):
+        """
+        this callback is not strictly useful,
+
+        it is called when the stream reaches a specific position, in bytes
+        currently I do not support setting what position for the callback
+        to trigger on.
+        """
+        self.sync_callbacks['stream_pos'] = cbk
 
     def load(self,filepath):
 
@@ -192,23 +209,25 @@ class BassPlayer(object):
         if bytes!=0:
             print("BASS LOAD: position in bytes %d."%bytes)
 
-
-        #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_SETPOS,0,syncStreamSetPos, self.cptr_self )
+        #
         # this causes a segfault on android :(
-        #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_END,0,syncStreamEnd, self.cptr_self )
+        if self.use_capi:
+            pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_END,0,syncStreamEnd, self.cptr_self )
+            #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_SETPOS,0,syncStreamSetPos, self.cptr_self )
+            #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_POS,0,syncStreamPos, self.cptr_self )
 
         return True
 
     def decode(self,filepath):
 
         self.unload()
-        
+
         dFlags = self.default_flags|pybass.BASS_STREAM_DECODE
- 
+
         if isPosix:
             filepath = unicode(filepath).encode("utf-8")
         else:
-            dFlags |= pybass.BASS_UNICODE   
+            dFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath)#.encode("utf-16")
 
 
@@ -335,7 +354,7 @@ class BassPlayer(object):
                 break;
             idx += 1
         return idx
-    
+
     def volume(self,vol=None):
         """
             set the volume to 'vol'.
@@ -446,7 +465,7 @@ P_PY_OBJECT = ctypes.POINTER(ctypes.py_object)
 @pybass.SYNCPROC
 def syncStreamEnd( handle, buffer, length, user):
     player =  ctypes.cast(user,P_PY_OBJECT)[0]
-    print(" *** stream end event : calling callback\n")
+    #print(" *** stream end event : calling callback\n")
     cbk = player.sync_callbacks.get("stream_end",None)
     if cbk is not None:
         cbk( player )
@@ -458,7 +477,12 @@ def syncStreamSetPos( handle, buffer, length, user):
     if cbk is not None:
         cbk( player )
 
-
+@pybass.SYNCPROC
+def syncStreamPos( handle, buffer, length, user):
+    player =  ctypes.cast(user,P_PY_OBJECT)[0]
+    cbk = player.sync_callbacks.get("stream_pos",None)
+    if cbk is not None:
+        cbk( player )
 
 
 
