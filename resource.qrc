@@ -1,5 +1,15 @@
  <!DOCTYPE RCC><RCC version="1.0">
  <qresource>
      <file>img/icon.png</file>
+     <file>img/app_file.png</file>
+     <file>img/app_folder.png</file>
+     <file>img/app_list.png</file>
+     <file>img/app_note.png</file>
+     <file>img/app_song.png</file>
+     <file>img/app_open.png</file>
+     <file>img/app_save.png</file>
+     <file>img/app_volume.png</file>
+     <file>img/icon.png</file>
+     <file>img/icon.png</file>
  </qresource>
  </RCC>

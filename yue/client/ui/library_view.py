@@ -26,7 +26,6 @@ class LineEdit_Search(LineEdit):
 
     def __init__(self,parent,table, placeholder="Search Library"):
         super(LineEdit_Search,self).__init__(parent)
-        self.parent = parent
         self.table = table
 
         self.setPlaceholderText(placeholder)
@@ -69,8 +68,6 @@ class LibraryView(QWidget):
         self.vbox.addWidget( self.tbl_song.container )
 
         self.lbl_error.hide()
-
-
 
         self.run_search("")
 

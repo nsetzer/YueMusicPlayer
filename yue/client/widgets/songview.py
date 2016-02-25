@@ -48,6 +48,14 @@ class SongPositionView(QScrollBar):
             self.device.play()
         self.device.seek( self.value() )
 
+def fmt_seconds( t ):
+    m,s = divmod( t, 60)
+    if m > 60:
+        h,m = divmod(m,60)
+        return "%d:%02d:%02d"%(h,m,s)
+    else:
+        return "%d:%02d"%(m,s)
+
 class CurrentSongView(QWidget):
     def __init__(self, parent=None):
         super(CurrentSongView,self).__init__(parent);
@@ -62,23 +70,26 @@ class CurrentSongView(QWidget):
 
         self.text_time = ""
 
-        self.position = 0;
-
-        painter = QPainter(self)
-        fh = painter.fontMetrics().height()
-
+        fh = QFontMetrics(self.font()).height()
         self.padt = 2
         self.padb = 2
         self.padtb = self.padt+self.padb
         self.setFixedHeight( (fh+self.padtb) * 4)
 
-    def setPosition(self, pos ):
-        self.position = pos
+    def setPosition(self, position ):
+        length = self.song[Song.length]
+        remaining = length - position
+
+        self.text_time = "%s/%s - %s"%(
+                fmt_seconds(position),
+                fmt_seconds(length),
+                fmt_seconds(remaining) )
+
+        self.update()
 
     def setCurrentSong(self, song):
         self.song = song
-        self.text_time = "%d/%d - %d"%(0,0,0)
-        self.update()
+        self.setPosition( 0 )
 
     def paintEvent(self, event):
         w = self.width()
@@ -86,6 +97,8 @@ class CurrentSongView(QWidget):
 
         painter = QPainter(self)
         fh = painter.fontMetrics().height()
+        fw1 = painter.fontMetrics().width('000')
+        fw2 = painter.fontMetrics().width(self.text_time)
 
         rh = fh + self.padtb
         padl = 2;
@@ -101,5 +114,9 @@ class CurrentSongView(QWidget):
         painter.drawText(padl,row2h,self.song[Song.title])
         painter.drawText(padl,row3h,self.song[Song.album])
 
-        painter.drawText(padl,row3h+self.padtb+2,w-padlr,fh,Qt.AlignRight,"00")
+        painter.drawText(padl,row4h-fh,w-padlr-fw1,fh,Qt.AlignRight,"00")
         painter.drawText(padl,row4h,self.text_time)
+
+        rw = w - padl - padr - fw2 - 2*fw1
+        painter.drawRect(2*padl+fw2,row4h-fh,rw,fh)
+        painter.drawRect(w-fw1,self.padt,fw1-padr,4*rh-self.padtb)

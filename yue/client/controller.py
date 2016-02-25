@@ -98,6 +98,8 @@ class PlaybackController(object):
         device.on_song_end.connect( self.on_song_end )
         device.on_playlist_end.connect( self.on_playlist_end )
 
+        self.stop_index = - 1;
+
         self.thread = PlaybackThread(device)
         self.thread.start()
 
@@ -114,9 +116,18 @@ class PlaybackController(object):
         # this can be used to start/stop a thread which updates
         # the current position of the song
         self.thread.notify(state == MediaState.play)
+        self.root.btn_playpause.setPlayState( state )
 
     def on_song_end(self, song):
+        idx,_ = self.device.current()
+
+
         self.device.next()
+
+        if idx == self.stop_index:
+            self.device.pause()
+            self.stop_index = -1;
+
         self.root.plview.update()
 
     def on_playlist_end(self):
@@ -126,3 +137,21 @@ class PlaybackController(object):
         pl.set( lst )
         self.device.play_index( 0 )
         self.root.plview.update()
+
+    def play_index(self,row):
+        self.device.play_index( row )
+
+    def playpause(self, state):
+        if state == MediaState.play:
+            self.device.play()
+        else:
+            self.device.pause();
+
+    def setStop(self, state):
+        # if true, stop playback after this song
+
+        if state:
+            self.stop_index,_ = self.device.current()
+        else:
+            self.stop_index = -1;
+        print(state)

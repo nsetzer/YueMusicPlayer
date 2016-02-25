@@ -46,9 +46,6 @@ class LineEditHistory(LineEdit):
     # text edit which maintains a history of previous input
     history = []
     hindex = 0;
-    #def __init__(self,parent=None):
-    #    super(LineEditHistory,self).__init__(parent)
-        #self.setMinimumWidth(MpGlobal.SplitterWidthMin)
     def __init__(self,parent=None):
         super(LineEditHistory,self).__init__(parent)
 

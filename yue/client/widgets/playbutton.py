@@ -14,6 +14,9 @@ except:
 
 isPosix = os.name == 'posix'
 
+
+from yue.core.sound.device import MediaState
+
 class PlayButton(QWidget):
     state_btn1 = True      # play / pause
     state_btn2 = False      # stop playback / continue playback on song end
@@ -22,7 +25,7 @@ class PlayButton(QWidget):
     state_mouseDown = False # mouse held down
     location = 0 # which button the mouse is over
 
-    on_play = pyqtSignal(bool)
+    on_play = pyqtSignal(MediaState)
     on_stop = pyqtSignal(bool)
 
     def __init__(self, parent=None):
@@ -229,10 +232,18 @@ class PlayButton(QWidget):
     def clickEvent(self):
         if self.location == 0 :
             self.state_btn1 = not self.state_btn1
-            self.on_play.emit( self.state_btn1 )
+            self.on_play.emit( MediaState.pause if self.state_btn1 else MediaState.play )
         else:
             self.state_btn2 = not self.state_btn2
-            self.on_stop.emit( self.state_btn1 )
+            self.on_stop.emit( self.state_btn2 )
+
+    def setPlayState(self, state):
+        self.state_btn1 = state != MediaState.play
+        self.update()
+
+    def setStopState(self, state):
+        self.state_btn2 = state
+        self.update()
 
 
 #class ButtonPlay(PlayButtonBase):

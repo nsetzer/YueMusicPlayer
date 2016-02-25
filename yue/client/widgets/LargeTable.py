@@ -1182,15 +1182,15 @@ class LargeTableBase(LargeTableCore):
         self.text_padding_left   = l; # distance from left border of a cell
         self.text_padding_right  = r; # distance from right border of a cell
 
-    def showColumnHeader(self,bool):
-        if bool:
+    def showColumnHeader(self,b):
+        if b is True:
             self.col_header_height = self.row_height
         else:
             self.col_header_height = 0
         self.update()
 
-    def showRowHeader(self,bool):
-        if bool:
+    def showRowHeader(self,b):
+        if b is True:
             self.row_header_width = 32 # will be modified again in paint event
         else:
             self.row_header_width = 0
@@ -2155,7 +2155,7 @@ class TableColumnImage(TableColumn):
 
     def paintItem(self,col,painter,row,item,x,y,w,h):
 
-        item = self.text_transform( row, item )
+        item = self.text_transform( self.parent.data[row], item )
 
         if isinstance(item,unicode):
             print(item)

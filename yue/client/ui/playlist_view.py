@@ -92,8 +92,16 @@ class PlaylistTable(LargeTable):
             self.data.shuffle_selection( sel )
         self.parent().update()
 
+    def mouseDoubleClick(self,row,col,event):
+
+        if event.button() == Qt.LeftButton:
+            self.parent().play_index.emit( row )
+
 class PlayListViewWidget(QWidget):
     """docstring for MainWindow"""
+
+    play_index = pyqtSignal( int )
+
     def __init__(self):
 
         super(PlayListViewWidget, self).__init__()
