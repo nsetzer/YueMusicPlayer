@@ -225,11 +225,16 @@ class YueApp(App):
 
         return sm
 
+    def stop(self,*args):
+        Logger.error("Yue: stop application")
+        return super(YueApp,self).stop(*args)
+
     def post_build_init(self, *args):
         if Settings.instance().platform == 'android':
             import android
+            from android import activity
             android.map_key(android.KEYCODE_BACK, Keyboard.keycodes['escape'])
-            android.activity.bind(on_new_intent=self.on_new_intent)
+            activity.bind(on_new_intent=self.on_new_intent)
 
         Window.bind(on_keyboard=self.on_key_event)
 
@@ -265,3 +270,4 @@ class YueApp(App):
 
 def main():
     YueApp().run()
+    Logger.error("Yue Main: App Exit.")

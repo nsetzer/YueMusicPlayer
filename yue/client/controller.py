@@ -4,13 +4,10 @@ import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
-try:
-    from PyQt4.QtCore import *
-    from PyQt4.QtGui import *
-except:
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-    from PyQt5.QtGui import *
+
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
 from yue.core.song import Song

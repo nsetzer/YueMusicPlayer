@@ -62,6 +62,9 @@ def get_platform_path():
     fixed.
     """
     platform_name = sys.platform
+    # TODO: not sure why there is a '2' in the old version
+    if platform_name == 'linux':
+      platform_name += '2'
     platform_path = os.getcwd()
     arch = 'x86_64'
     if platform.architecture()[0] != '64bit':

@@ -52,7 +52,10 @@ def convert():
     }
 
     if len(library) == 0:
-        xml = r"D:\Dropbox\ConsolePlayer\user\music.xml"
+
+        xml = r"/home/nsetzer/Dropbox/ConsolePlayer/user/music.xml"
+        if not os.path.exists(xml):
+            xml = r
         lib = SongXML().read(xml)
 
         with library.sqlstore.conn:
