@@ -1,4 +1,5 @@
 
+import re
 
 """
 
@@ -168,6 +169,11 @@ class Library(object):
     @staticmethod
     def instance():
         return Library.__instance
+
+    def reopen(self):
+        # return a copy of the library,
+        # use to access from another thread
+        return Library( self.sqlstore.reopen() )
 
     def __len__(self):
         return self.song_db.count()
@@ -368,6 +374,7 @@ class Library(object):
         query the database for all songs that exist in a directory.
 
         path must be an absolute path (e.g. C:\Music or /path/to/file)
+            it cannot be a path to a file.
 
         recursive:
             True : return files in subdirectories of the given directory
@@ -375,14 +382,22 @@ class Library(object):
         """
 
         # TODO: windows only, must be able to match both types of slashes
+
+        # replace toothpicks, and ensure path ends with a final slash
         path = path.replace("\\","/")
-        path = path.replace("/","[\\\\/]")
+        if not path.endswith("/"):
+            path += "/"
+        # escape all special characters .... including forward slash
+        path = re.escape( path )
+        # replace forward slash with a pattern that matches both slashes
+        path = path.replace("\\/","[\\\\/]")
 
         if recursive:
             # match any file that starts with
             q = "^%s.*$"%path
         else:
             # match only in this directory
+            # todo linux: use "^%s[^/]*$"
             q = "^%s[^\\\\/]*$"%path
 
         rule = RegExpSearchRule(Song.path,q)

@@ -73,7 +73,7 @@ class LineEdit_Path(LineEdit):
             self.table.setFocus()
 
     def keyReleaseEnter(self,text):
-        self.parent().chdir( self.text() )
+        self.parent().chdir( self.text(), True )
 
 class ResourceManager(object):
     """docstring for ResourceManager"""
@@ -111,6 +111,8 @@ class FileTable(LargeTable):
 
         self.view = view
 
+        self.position_stack = []
+
     def initColumns(self):
 
         self.columns.append( TableColumnImage(self,'isDir') )
@@ -119,7 +121,6 @@ class FileTable(LargeTable):
 
         self.columns.append( TableDualColumn(self,'name',"File Name") )
         self.columns[-1].setSecondaryTextTransform(lambda r,item : str(r['size']))
-
 
     def mouseReleaseRight(self,event):
 
@@ -164,7 +165,14 @@ class FileTable(LargeTable):
 
             if item['name'] == '..':
                 self.parent().chdir( self.view.parent(self.view.pwd()) )
+                if self.position_stack:
+                    idx = self.position_stack.pop()
+                    self.scrollTo( idx )
+                    self.setSelection([idx,])
             elif item['isDir']:
+
+                self.position_stack.append(row)
+                self.scrollTo( 0 )
                 self.parent().chdir( item['name'] )
 
     def sortColumn(self,*args):
@@ -191,6 +199,7 @@ class ExplorerView(QWidget):
         self.view = SourceListView(self.source,self.source.root())
 
         self.tbl_file = FileTable( self.view, self )
+        self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
@@ -205,8 +214,28 @@ class ExplorerView(QWidget):
         self.cut_items = None
         self.cut_root = ""
 
-    def chdir(self,path):
-        self.view.chdir(path)
+        self.list_library_files = set()
+
+    def indexInLibrary(self,idx):
+        return self.view[idx]['name'] in self.list_library_files
+
+    def chdir(self,path, clear_stack=False):
+        pwd = self.view.pwd()
+
+        try:
+            if clear_stack:
+                self.tbl_file.position_stack=[]
+            self.view.chdir(path)
+        except OSError as e:
+            sys.stderr.write(str(e))
+            QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
+            # reopen the original current directory.
+            self.view.chdir( pwd )
+
+        songs = Library.instance().searchDirectory(self.view.pwd(),False)
+        self.list_library_files = set( os.path.split(song[Song.path])[1] \
+                                       for song in songs )
+
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
 

@@ -25,6 +25,11 @@ class SQLStore(object):
     def close(self):
         self.conn.close()
 
+    def reopen(self):
+        # return a copy of the sqlstore,
+        # use to access from another thread
+        return SQLStore( self.filename )
+
 class SQLTable(object):
     """docstring for SQLTable"""
     def __init__(self, store, name, columns, foreign_keys=None):
