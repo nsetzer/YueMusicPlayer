@@ -1,5 +1,5 @@
 from .song import Song
-
+from .sqlstore import regexp
 try:
     from functools import lru_cache
 except:
@@ -54,6 +54,17 @@ class ColumnSearchRule(SearchRule):
         super(SearchRule, self).__init__()
         self.column = column
         self.value = value
+
+class RegExpSearchRule(ColumnSearchRule):
+    """docstring for SearchRule"""
+    def check(self,song):
+        return regexp(self.value,song[self.column])
+
+    def sql(self):
+        return "%s REGEXP ?"%(self.column,), (self.value,)
+
+    def __repr__(self):
+        return "<%s in `%s`>"%(self.value, self.column)
 
 class PartialStringSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
@@ -277,7 +288,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
         s = time.clock()
         result = list(db.query(query, *vals))
         e = time.clock()
-        print(e-s,sql)
+        #print(e-s,sql)
         return result
     except:
         print("`%s`"%sql)

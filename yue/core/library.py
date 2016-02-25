@@ -34,7 +34,7 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-from .search import sql_search, ruleFromString, BlankSearchRule
+from .search import sql_search, ruleFromString, BlankSearchRule, RegExpSearchRule
 #from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
@@ -363,6 +363,32 @@ class Library(object):
 
         return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit )
 
+    def searchDirectory(self, path, recursive=False):
+        """
+        query the database for all songs that exist in a directory.
+
+        path must be an absolute path (e.g. C:\Music or /path/to/file)
+
+        recursive:
+            True : return files in subdirectories of the given directory
+            False: returns files only in the given directory.
+        """
+
+        # TODO: windows only, must be able to match both types of slashes
+        path = path.replace("\\","/")
+        path = path.replace("/","[\\\\/]")
+
+        if recursive:
+            # match any file that starts with
+            q = "^%s.*$"%path
+        else:
+            # match only in this directory
+            q = "^%s[^\\\\/]*$"%path
+
+        rule = RegExpSearchRule(Song.path,q)
+
+        return self.search(rule)
+
     def getArtists(self):
         """ get a list of artists within the database."""
         with self.sqlstore.conn:
@@ -371,7 +397,7 @@ class Library(object):
             return self.artist_db._select_columns(c, cols)
 
     def getAlbums(self,artistid):
-        """ return all albums associated with a given artist id """
+        """ return all albums associated with a given artist id"""
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
             cols = ['uid','album','count']

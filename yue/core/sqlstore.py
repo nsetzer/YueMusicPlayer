@@ -5,6 +5,13 @@ import sqlite3
 todo: read sqlalchemy
 http://docs.sqlalchemy.org/en/rel_1_0/core/tutorial.html
 """
+import re
+
+def regexp(expr, item):
+    # TODO: memoize expr
+    # TODO: IGNORECASE only on windows
+    reg = re.compile(expr,re.IGNORECASE)
+    return reg.search(item) is not None
 
 class SQLStore(object):
     """docstring for SQLStore"""
@@ -12,6 +19,8 @@ class SQLStore(object):
         super(SQLStore, self).__init__()
         self.filename = filename
         self.conn = sqlite3.connect(filename)
+
+        self.conn.create_function("REGEXP", 2, regexp)
 
     def close(self):
         self.conn.close()

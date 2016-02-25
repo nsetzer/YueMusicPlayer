@@ -27,9 +27,6 @@ class TestLibrary(unittest.TestCase):
 
     def test_library_create(self):
 
-        # removing / creating db is slow
-        # therefore it is only done for this test
-
         if os.path.exists(DB_PATH):
             os.remove(DB_PATH)
 
@@ -71,7 +68,6 @@ class TestLibrary(unittest.TestCase):
 
         lib.increment(uid,'playcount',-2)
         song =lib.songFromId(uid)
-        print(song)
         self.assertEqual(song['playcount'],3)
 
         # both these values should be 1, after updating artist,album
@@ -81,3 +77,35 @@ class TestLibrary(unittest.TestCase):
         albums = list(lib.getAlbums(art))
         self.assertEqual( len(albums), 1 )
 
+
+    def test_library_findpath(self):
+
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+
+        sqlstore = SQLStore( DB_PATH )
+        lib = Library( sqlstore )
+
+        lib.insert(artist="artist1",
+                   album='album1',
+                   title='title1',
+                   path='C:\\path\\to\\file.mp3')
+        lib.insert(artist="artist2",
+                   album='album2',
+                   title='title2',
+                   path='C:/path/to/file.mp3')
+        lib.insert(artist="artist3",
+                   album='album3',
+                   title='title3',
+                   path='C:/file.mp3')
+
+        # return the one file which is at the root directory
+        res = list(lib.searchDirectory("C:\\",False))
+        self.assertEqual(len(res), 1)
+
+        # show that the search result is a song dictionary
+        self.assertEqual( res[0]['artist'], 'artist3')
+
+        # return all songs, regardless of directory or toothpicks
+        res = list(lib.searchDirectory("C:\\",True))
+        self.assertEqual(len(res), 3)
