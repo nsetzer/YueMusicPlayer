@@ -104,7 +104,6 @@ class YueRepl(object):
     def registerAction( self, actname, actfunc):
         self.actions[actname] = actfunc
 
-
     def registerTopic( self, helpname, helpstring):
         self.helptopics[helpname] = helpstring
 

@@ -146,6 +146,40 @@ class PlayListView(object):
         self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
         c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
 
+
+    def insert_fast(self, key_or_lst):
+        """ fast insert
+            this intentionally does not update index
+        """
+
+        lst = key_or_lst
+        if isinstance(key_or_lst, int):
+            lst = [key_or_lst,]
+
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            for item in lst:
+                self.db_lists._insert(c, uid=self.uid, idx=0, song_id=item)
+            size = self.db_lists._count(c)
+            c.execute("UPDATE playlists SET size=? WHERE uid=?",(size, self.uid,))
+
+    def remove_fast(self,key_or_lst):
+        """ remove a song by id from the list
+            TODO: this does not maintain the index in any way
+            because it is difficult (if there are duplicates)
+            and it is not required for any playlist other than current
+        """
+        lst = key_or_lst
+        if isinstance(key_or_lst, int):
+            lst = [key_or_lst,]
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+            for item in lst:
+                c.execute("DELETE from playlist_songs where uid=? and song_id=?",(self.uid, item))
+            size = self.db_lists._count(c)
+            c.execute("UPDATE playlists SET size=? WHERE uid=?",(size, self.uid,))
+
+
     def delete(self,idx_or_lst):
         """ remove a song from the playlist by it's position in the list """
 

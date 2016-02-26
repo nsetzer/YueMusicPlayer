@@ -423,6 +423,7 @@ class Library(object):
         if case_insensitive:
             direction = " COLLATE NOCASE" + direction
 
+        # TODO: ORDERBY=INDEX : keep the order given by the playlist
         if orderby is not None:
             if not isinstance(orderby,(tuple,list)):
                 orderby = [ orderby, ]

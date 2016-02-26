@@ -25,6 +25,50 @@ from yue.core.playlist import PlaylistManager
 
 from .library_view import LineEdit_Search
 
+class PlayListEditTable(SongTable):
+    """docstring for SongTable"""
+    def __init__(self, parent = None):
+        super(PlayListEditTable, self).__init__(parent)
+
+        self.showColumnHeader( True )
+        self.showRowHeader( False )
+
+        self.sibling = None
+
+    def setSibling(self, sib):
+        self.sibling = sib
+
+    def processDropEvent(self,source,row,data):
+
+        if source is self.sibling:
+            if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
+                return
+            ids = [ song[Song.uid] for song in data ]
+            self.parent().playlist.insert_fast( ids )
+            self.parent().refresh()
+
+class LibraryEditTable(SongTable):
+    """docstring for SongTable"""
+    def __init__(self, parent = None):
+        super(LibraryEditTable, self).__init__(parent)
+        self.showColumnHeader( True )
+        self.showRowHeader( False )
+
+        self.sibling = None
+
+    def setSibling(self, sib):
+        self.sibling = sib
+
+    def processDropEvent(self,source,row,data):
+
+        if source is self.sibling:
+            if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
+                return
+            ids = [ song[Song.uid] for song in data ]
+            self.parent().playlist.remove_fast( ids )
+            self.parent().refresh()
+
+
 class PlaylistEditView(QWidget):
     """docstring for MainWindow"""
     def __init__(self, playlist_name):
@@ -34,13 +78,18 @@ class PlaylistEditView(QWidget):
         self.hbox1 = QHBoxLayout()
         self.hbox2 = QHBoxLayout()
 
-        self.tbl_lib = SongTable( self )
-        self.tbl_lib.showColumnHeader( True )
-        self.tbl_lib.showRowHeader( False )
+        self.toolbar = QToolBar(self)
+        # don't need to save since database
+        #self.toolbar.addAction(QIcon(':/img/app_save.png'),"save")
+        self.toolbar.addAction(QIcon(':/img/app_open.png'),"load")
+        self.toolbar.addAction("Export")
+        self.toolbar.addAction("Play")
 
-        self.tbl_pl = SongTable( self )
-        self.tbl_pl.showColumnHeader( True )
-        self.tbl_pl.showRowHeader( False )
+        self.tbl_lib = LibraryEditTable( self )
+        self.tbl_pl = PlayListEditTable( self )
+
+        self.tbl_lib.setSibling(self.tbl_pl)
+        self.tbl_pl.setSibling(self.tbl_lib)
 
         self.tbl_pl.update_data.connect(self.onUpdate)
 
@@ -55,6 +104,7 @@ class PlaylistEditView(QWidget):
         self.hbox2.addWidget( self.tbl_lib.container )
         self.hbox2.addWidget( self.tbl_pl.container )
 
+        self.vbox.addWidget( self.toolbar )
         self.vbox.addLayout( self.hbox1 )
         self.vbox.addWidget( self.lbl_error )
         self.vbox.addLayout( self.hbox2 )
@@ -65,12 +115,19 @@ class PlaylistEditView(QWidget):
 
         self.playlist_name = playlist_name
 
+        self.refresh()
+
     def onUpdate(self):
         text = self.txt_search.text()
         self.run_search(text)
 
     def onTextChanged(self,text,update=0):
         self.run_search(text)
+
+    def refresh(self):
+        # todo: ability to scroll to the index of a recently dropped song
+
+        self.run_search(self.txt_search.text())
 
     def run_search(self, text, setText=False):
         """
