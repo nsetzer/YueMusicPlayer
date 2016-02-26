@@ -54,7 +54,6 @@ class ReplArgumentParser(object):
         if len(self.args) < n :
             raise ArgumentError("Expected at least %d args"%n)
 
-
     def __contains__(self,x):
         return x in self.kwargs
 

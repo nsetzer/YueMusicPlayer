@@ -239,7 +239,6 @@ class Library(object):
             c = self.sqlstore.conn.cursor()
             c.execute("UPDATE songs SET skip_count=skip_count+1 WHERE uid=?", (uid,))
 
-
     def _update_one(self,c, uid, **kwargs):
         info = list(self.song_db._select_columns(c,['artist','album'],uid=uid))[0]
         old_art_id = info['artist']

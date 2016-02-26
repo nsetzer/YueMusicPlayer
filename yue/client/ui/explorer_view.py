@@ -166,7 +166,7 @@ class FileTable(LargeTable):
 
     def mouseDoubleClick(self,row,col,event):
 
-        if event.button() == Qt.LeftButton:
+        if event is None or event.button() == Qt.LeftButton:
             item = self.view[row]
 
             if item['name'] == '..':
@@ -180,6 +180,7 @@ class FileTable(LargeTable):
                 self.position_stack.append(row)
                 self.scrollTo( 0 )
                 self.parent().chdir( item['name'] )
+                self.setSelection([])
 
     def sortColumn(self,*args):
         pass
@@ -249,9 +250,19 @@ class ExplorerView(QWidget):
         return ext == ".mp3"
 
     def action_rename(self, item):
-        diag = RenameDialog(item['name'],parent=self)
+        name=item['name']
+        diag = RenameDialog(name,parent=self)
         if diag.exec_():
-            print(diag.text())
+            new_name=diag.text()
+            if new_name == name:
+                return
+            src = self.view.join( self.view.pwd(), name)
+            tgt = self.view.join( self.view.pwd(), new_name)
+            self.dialog = MoveFileProgressDialog(self.view, tgt, src, self)
+            self.dialog.setOnCloseCallback(self.onDialogExit)
+            self.dialog.start()
+            self.dialog.show()
+        return
 
     def action_newfolder(self):
 
@@ -285,10 +296,11 @@ class ExplorerView(QWidget):
     def action_paste(self):
         # TODO: create a progress dialog to initiate the move
 
-        self.dialog = MoveFileProgressDialog(self.view.pwd(), self.cut_items, self)
-        self.dialog.setOnCloseCallback(self.onDialogExit)
-        self.dialog.start()
-        self.dialog.show()
+        if self.canPaste():
+            self.dialog = MoveFileProgressDialog(self.view, self.view.pwd(), self.cut_items, self)
+            self.dialog.setOnCloseCallback(self.onDialogExit)
+            self.dialog.start()
+            self.dialog.show()
 
     def canPaste( self ):
         return self.cut_items is not None and self.cut_root != self.view.pwd()
