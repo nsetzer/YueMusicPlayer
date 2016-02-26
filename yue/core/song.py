@@ -3,6 +3,7 @@ import os
 
 from calendar import timegm
 import time
+import datetime
 
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, ID3NoHeaderError
@@ -135,6 +136,33 @@ class Song(object):
             Song.frequency   : 0,
             Song.file_size   : 0,
         }
+
+    @staticmethod
+    def calculateFrequency(playcount, frequency, last_played):
+        """ return the new frequency given the current freuquency and the
+            last time the song was played
+
+            return the current time (used to calculate days elapsed)
+            with the new frequency value
+        """
+        N=4 # rough average over this many plays
+
+        t1 = time.localtime(time.time())
+        t2 = time.localtime( last_played )
+
+        d1 = datetime.datetime(*t1[:6])
+        d2 = datetime.datetime(*t2[:6])
+        delta = d1-d2
+
+        days = round(delta.days + delta.seconds/(60*60*24))
+
+        if playcount == 0:
+            return timegm(t1), int(days)
+
+        if playcount < N:
+            N = playcount
+
+        return timegm(t1), int(((N-1)*frequency + days)/N)
 
     @ staticmethod
     def fromPath( path ):

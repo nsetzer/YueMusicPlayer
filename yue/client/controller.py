@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
 from yue.core.song import Song
+from yue.core.library import Library
 
 from ..core.sound.bassdevice import BassSoundDevice
 
@@ -126,6 +127,11 @@ class PlaybackController(object):
             self.device.pause();
             self.one_shot = False
         else:
+
+            # TODO: the library view should be refreshed, without
+            # moving the scroll bar in some way to reflect this change
+            Library.instance().incrementPlaycount(song['uid'])
+
             self.device.next()
 
         if idx == self.stop_index:

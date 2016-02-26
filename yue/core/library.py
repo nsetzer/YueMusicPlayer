@@ -221,6 +221,25 @@ class Library(object):
             c.execute("DELETE FROM artists WHERE count=0")
             c.execute("DELETE FROM albums WHERE count=0")
 
+    def incrementPlaycount(self, uid):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            c.execute("SELECT playcount, frequency, last_played FROM songs WHERE uid=?",(uid,))
+            item = c.fetchone()
+            if item is None:
+                raise ValueError( uid )
+            last_played, freq = Song.calculateFrequency(*item);
+            c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?", \
+                      (freq, last_played, uid))
+
+    def incrementSkipcount(self, uid):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            c.execute("UPDATE songs SET skip_count=skip_count+1 WHERE uid=?", (uid,))
+
+
     def _update_one(self,c, uid, **kwargs):
         info = list(self.song_db._select_columns(c,['artist','album'],uid=uid))[0]
         old_art_id = info['artist']
