@@ -8,13 +8,9 @@ import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
-try:
-    from PyQt4.QtCore import *
-    from PyQt4.QtGui import *
-except:
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-    from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
 # http://wiki.python.org/moin/TimeComplexity not sure if i should use set,dict,or list for selection, using set for now
 
