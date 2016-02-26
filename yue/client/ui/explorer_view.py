@@ -256,6 +256,9 @@ class ExplorerView(QWidget):
     def action_ingest(self, items):
 
         paths = [ self.view.realpath(item['name']) for item in items ]
+        # TODO: remove reference to controller,
+        # somehow, emit a signal 'ingest these paths'
+        # let someone else decide how
         self.dialog = IngestProgressDialog(self.controller, paths, self)
         self.dialog.setOnCloseCallback(self.onDialogExit)
         self.dialog.start()
