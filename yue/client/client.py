@@ -30,6 +30,8 @@ from .controller import newDevice, PlaybackController
 
 from .ui.ingest_dialog import IngestProgressDialog
 
+from .DSP.peqwidget import WidgetOctaveEqualizer
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -49,6 +51,7 @@ class MainWindow(QMainWindow):
         self.libview = LibraryView();
         self.expview = ExplorerView(self.controller);
         self.plview = PlayListViewWidget();
+        self.peqview = WidgetOctaveEqualizer();
         self.posview = SongPositionView( self.device, self );
 
         self.songview = CurrentSongView( self );
@@ -85,6 +88,7 @@ class MainWindow(QMainWindow):
         self.tabview = QTabWidget( self )
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
+        self.tabview.addTab( self.peqview, "Equalizer")
 
         self.bar_menu = QMenuBar( self )
         self.bar_menu.addMenu("&File")
