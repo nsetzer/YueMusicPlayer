@@ -109,3 +109,7 @@ class TestLibrary(unittest.TestCase):
         # return all songs, regardless of directory or toothpicks
         res = list(lib.searchDirectory("C:\\",True))
         self.assertEqual(len(res), 3)
+
+        # find a file that matches exactly
+        res = list(lib.searchPath("C:\\file.mp3"))
+        self.assertEqual(len(res), 1)

@@ -78,7 +78,10 @@ class LibraryView(QWidget):
     def onTextChanged(self,text,update=0):
         self.run_search(text)
 
-    def run_search(self, text):
+    def run_search(self, text, setText=False):
+        """
+        setText: if true set the text box to contain text
+        """
         try:
             lib = Library.instance()
             data = lib.search( text, \
@@ -87,9 +90,14 @@ class LibraryView(QWidget):
             self.tbl_song.setData(data)
             self.lbl_search.setText("%d/%d"%(len(data), len(lib)))
 
-            self.txt_search.setStyleSheet("")
-            self.lbl_error.hide()
+            if not self.lbl_error.isHidden():
+                self.txt_search.setStyleSheet("")
+                self.lbl_error.hide()
 
+            if setText:
+                self.txt_search.setText( text )
+
+            self.tbl_song.scrollTo( 0 )
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)

@@ -1,6 +1,9 @@
 
 import os
 
+from calendar import timegm
+import time
+
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, ID3NoHeaderError
 from mutagen.flac import FLAC
@@ -122,7 +125,7 @@ class Song(object):
             Song.album_index : 0,
             Song.length      : 0,
             Song.last_played : 0,
-            Song.date_added  : 0,
+            Song.date_added  : timegm(time.localtime(time.time())),
             Song.play_count  : 0,
             Song.skip_count  : 0,
             Song.rating      : 0,

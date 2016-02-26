@@ -23,7 +23,6 @@ from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 
-
 from ...core.playlist import PlaylistManager, PlayListView
 from ...core.library import Library
 

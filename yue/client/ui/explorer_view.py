@@ -156,6 +156,12 @@ class FileTable(LargeTable):
             act.setDisabled( not is_files or not self.parent().canIngest())
 
 
+        if len(items) == 1:
+            act = contextMenu.addAction("Play Song", lambda : self.parent().action_play( items[0] ))
+            ext = os.path.splitext(items[0]['name'])[1].lower()
+            if not self.parent().supportedExtension( ext ):
+                act.setDisabled( True )
+
         action = contextMenu.exec_( event.globalPos() )
 
     def mouseDoubleClick(self,row,col,event):
@@ -181,7 +187,7 @@ class FileTable(LargeTable):
     def item2img(self,item,isDir):
         if isDir:
             return self.rm.get(ResourceManager.DIRECTORY)
-        ext = os.path.splitext(item['name'])[1]
+        ext = os.path.splitext(item['name'])[1].lower()
         if self.parent().supportedExtension( ext ):
             return self.rm.get(ResourceManager.SONG)
         return self.rm.get(ResourceManager.FILE)
@@ -256,17 +262,18 @@ class ExplorerView(QWidget):
     def action_ingest(self, items):
 
         paths = [ self.view.realpath(item['name']) for item in items ]
-        # TODO: remove reference to controller,
-        # somehow, emit a signal 'ingest these paths'
-        # let someone else decide how
-        self.dialog = IngestProgressDialog(self.controller, paths, self)
+        self.dialog = IngestProgressDialog(paths, self)
         self.dialog.setOnCloseCallback(self.onDialogExit)
         self.dialog.start()
         self.dialog.show()
 
+    def action_play(self, item):
+        self.controller.playOneShot( self.view.realpath(item['name']) )
+
     def onDialogExit(self):
         self.dialog = None
-        print("complete")
+        # reload current directory
+        self.chdir( self.view.pwd() )
 
     def canIngest( self ):
         return self.dialog is None

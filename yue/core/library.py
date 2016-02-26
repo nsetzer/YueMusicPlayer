@@ -369,6 +369,24 @@ class Library(object):
 
         return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit )
 
+    def searchPath(self, path):
+        """
+        return a list of songs that match a given path
+        """
+
+        # TODO: windows only, must be able to match both types of slashes
+
+        # replace toothpicks
+        path = path.replace("\\","/")
+        # escape all special characters .... including forward slash
+        path = re.escape( path )
+        # replace forward slash with a pattern that matches both slashes
+        path = path.replace("\\/","[\\\\/]")
+
+        rule = RegExpSearchRule(Song.path,"^%s$"%path)
+
+        return self.search(rule)
+
     def searchDirectory(self, path, recursive=False):
         """
         query the database for all songs that exist in a directory.

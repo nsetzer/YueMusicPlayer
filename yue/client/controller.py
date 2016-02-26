@@ -100,6 +100,8 @@ class PlaybackController(object):
         self.thread = PlaybackThread(device)
         self.thread.start()
 
+        self.one_shot = False
+
     def on_song_load(self, song):
         self.root.plview.update()
         self.root.songview.setCurrentSong( song )
@@ -118,8 +120,13 @@ class PlaybackController(object):
     def on_song_end(self, song):
         idx,_ = self.device.current()
 
-
-        self.device.next()
+        if self.one_shot:
+            idx, _ = self.device.current()
+            self.device.play_index( idx )
+            self.device.pause();
+            self.one_shot = False
+        else:
+            self.device.next()
 
         if idx == self.stop_index:
             self.device.pause()
@@ -134,6 +141,13 @@ class PlaybackController(object):
         pl.set( lst )
         self.device.play_index( 0 )
         self.root.plview.update()
+
+    def playOneShot(self, path):
+        """ play a song, then return to the current playlist """
+        self.one_shot = True
+        song = Song.fromPath( path )
+        self.device.load( song )
+        self.device.play()
 
     def play_index(self,row):
         self.device.play_index( row )

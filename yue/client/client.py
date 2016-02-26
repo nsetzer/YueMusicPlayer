@@ -111,19 +111,21 @@ class MainWindow(QMainWindow):
             if mdata.hasUrls() :
                 # accept before processing or explorer will hang
                 event.accept()
-                qurls = mdata.urls()
-                paths = []
-                for url in qurls:
-                    if url.isLocalFile():
-                        url = url.toLocalFile()
-                        paths.append( url )
-                self.dialog_ingest = IngestProgressDialog(self.controller, paths, self)
-                self.dialog_ingest.setOnCloseCallback(self.onIngestExit)
-                self.dialog_ingest.start()
-                self.dialog_ingest.show()
+                paths = [ url.toLocalFile() for url in mdata.urls() if url.isLocalFile() ]
+                self.ingestPaths( paths )
+
+    def ingestPaths(self,paths):
+        """
+        paths: list of files or directories.
+        """
+        self.dialog_ingest = IngestProgressDialog( paths, self)
+        self.dialog_ingest.setOnCloseCallback(self.onIngestExit)
+        self.dialog_ingest.start()
+        self.dialog_ingest.show()
 
     def onIngestExit(self):
         self.dialog_ingest = None
+        self.libview.run_search("added = today",True)
         print("ingest complete")
 
 def main():
