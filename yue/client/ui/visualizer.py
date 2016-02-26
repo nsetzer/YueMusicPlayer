@@ -9,12 +9,9 @@ class BassVisualizer(Visualizer):
         self.controller = controller
 
     def getData(self):
-
-        #return [ i/10.0 for i in range(11) ]
         data = self.controller.device.getDspData("zbvis");
         if data == None:
             data = [ i/10.0 for i in range(11) ]
-        #print(data)
         return data
 
     def isActive(self):

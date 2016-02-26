@@ -49,12 +49,12 @@ class BassSoundDevice(SoundDevice):
             self.zbvis.setEnabled(True)
             self.device.addDsp("zbvis",self.zbvis);
 
-            sys.stdout.write("successfully enabled DSP processes.")
+            sys.stdout.write("successfully enabled DSP processes.\n")
         else:
             self.zbpeq = None
             self.voleq = None
             self.zbvis = None
-            sys.stderr.write("error enabling DSP processes.")
+            sys.stderr.write("error enabling DSP processes.\n")
 
         # this feature causes a segfault on android.
         if use_capi:

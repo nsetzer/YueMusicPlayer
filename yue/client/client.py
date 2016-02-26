@@ -21,6 +21,7 @@ from ..core.repl import YueRepl
 from .ui.library_view import LibraryView
 from .ui.explorer_view import ExplorerView
 from .ui.playlist_view import PlayListViewWidget
+from .ui.playlistedit_view import PlaylistEditView
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -97,6 +98,8 @@ class MainWindow(QMainWindow):
         self.tabview = QTabWidget( self )
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
+        self.pledit = PlaylistEditView("current")
+        self.tabview.addTab( self.pledit, "Playlist Edit")
 
         if self.controller.dspSupported():
             self.tabview.addTab( self.peqview, "Equalizer")
@@ -153,6 +156,8 @@ def main():
 
     with LogView(trace=False,echo=True) as diag:
 
+
+        sys.stdout.write("Loading database\n")
         db_path = "./libimport.db"
         sqlstore = SQLStore(db_path)
         Library.init( sqlstore )
@@ -164,10 +169,11 @@ def main():
             lst = [ s['uid'] for s in songs ]
             pl.set( lst )
 
+        sys.stdout.write("Create Sound Device\n")
         device = newDevice(pl,"./lib/win32/x86_64")
 
+        sys.stdout.write("Initializing application\n")
         window = MainWindow( diag, device )
-
         window.plview.setPlaylist( Library.instance(), pl)
 
         window.show()
@@ -177,3 +183,4 @@ def main():
         device.load_current( )
 
     sys.exit(app.exec_())
+

@@ -171,7 +171,6 @@ class PlaybackController(object):
             self.stop_index,_ = self.device.current()
         else:
             self.stop_index = -1;
-        print(state)
 
     def setEQGain(self, gdb_list):
 
