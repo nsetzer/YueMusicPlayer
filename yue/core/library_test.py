@@ -5,6 +5,7 @@ import unittest
 import os
 from yue.core.library import Library
 from yue.core.sqlstore import SQLStore
+from yue.core.playlist import PlaylistManager
 
 DB_PATH = "./unittest.db"
 
@@ -113,3 +114,20 @@ class TestLibrary(unittest.TestCase):
         # find a file that matches exactly
         res = list(lib.searchPath("C:\\file.mp3"))
         self.assertEqual(len(res), 1)
+
+
+        pl = PlaylistManager(sqlstore).openPlaylist("current")
+        pl.set([1,2])
+
+        result = list(lib.searchPlaylist('current'))
+        self.assertEqual( len(result) , 2)
+
+        result = list(lib.searchPlaylist('current',"art = art",invert=False,orderby="artist",reverse=True, limit=1))
+        self.assertEqual(result[0]['artist'] , 'artist2')
+
+        result = list(lib.searchPlaylist('current', invert=True))
+        self.assertEqual(result[0]['artist'] , 'artist3')
+
+        result = list(lib.searchPlaylist('current',"art = art", invert=True))
+        self.assertEqual(result[0]['artist'] , 'artist3')
+

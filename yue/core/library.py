@@ -388,6 +388,71 @@ class Library(object):
 
         return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit )
 
+    def searchPlaylist(self, playlist_name, rule=None, case_insensitive=True, invert=False, orderby=None, reverse = False, limit=None):
+
+        if rule is None:
+            rule = BlankSearchRule();
+        elif isinstance(rule,(str,unicode)):
+            rule = ruleFromString( rule )
+
+        where,where_vals = rule.sql()
+
+        if where:
+
+            if invert:
+                # select songs not in a named playlist (filtered)
+                sql = "SELECT sv.* FROM library as sv where (sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?) AND %s)"%where
+            else:
+                # select songs in a named playlist, (filtered)
+                sql = "SELECT sv.* FROM library as sv JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid AND %s)"%where
+        else:
+
+            if invert:
+                # select songs not in a named playlist, (blank search)
+                sql = "SELECT sv.* FROM library as sv where sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?)"
+            else:
+                # select songs in a named playlist (blank search)
+                sql = "SELECT sv.* FROM library as sv JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid)"
+
+        if case_insensitive:
+            sql += " COLLATE NOCASE"
+
+        direction = " ASC"
+        if reverse:
+            direction = " DESC"
+        if case_insensitive:
+            direction = " COLLATE NOCASE" + direction
+
+        if orderby is not None:
+            if not isinstance(orderby,(tuple,list)):
+                orderby = [ orderby, ]
+            if orderby[0].upper() == "RANDOM":
+                sql += " ORDER BY RANDOM()"
+            else:
+                orderby = [ x+direction for x in orderby]
+                sql += " ORDER BY " + ", ".join(orderby)
+
+        if limit is not None:
+            sql += " LIMIT %d"%limit
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+
+            c.execute("SELECT uid from playlists where name=?", (playlist_name,))
+            item = c.fetchone()
+            if item is None:
+                raise ValueError( playlist_name )
+            pluid = item[0]
+
+            c.execute(sql,(pluid,) + tuple(where_vals))
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    yield {k:v for k,v in zip(self.song_view.column_names,item)}
+                items = c.fetchmany()
+
+        return
+
     def searchPath(self, path):
         """
         return a list of songs that match a given path
