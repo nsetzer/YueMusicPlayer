@@ -20,6 +20,8 @@ except:
 import calendar
 from datetime import datetime, timedelta
 
+from .nlpdatesearch import NLPDateRange
+
 import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -467,6 +469,7 @@ def parserFormatDays( days ):
 @lru_cache(maxsize=16)
 def parserFormatDate( value ):
 
+
     sy,sm,sd = value.split('/')
 
     y = int(sy)
@@ -480,6 +483,17 @@ def parserFormatDate( value ):
     dt2 = dt1 + timedelta( 1 )
 
     return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+
+@lru_cache(maxsize=16)
+def parserNLPDate( value ):
+    dt = NLPDateRange().parse( value )
+    if dt:
+        cf = calendar.timegm(dt[0].utctimetuple())
+        if cf < 0:
+            cf = 0
+        rf = calendar.timegm(dt[1].utctimetuple())
+        return cf,rf
+    return None
 
 def parserRule(colid, rule ,value):
 
@@ -529,8 +543,13 @@ def parserDateRule(rule , col, value):
             epochtime,epochtime2 = parserFormatDays( ivalue )
             #epochtime2 = parserFormatDays( ivalue - 1 )
     except ValueError:
-        # failed to convert istr -> int
-        raise ParseError("Expected Integer or Date, found `%s`"%value)
+
+        result = parserNLPDate( value )
+
+        if result is None:
+            # failed to convert istr -> int
+            raise ParseError("Expected Integer or Date, found `%s`"%value)
+        epochtime,epochtime2 = result
 
     # flip the context of '<' and '>'
     # for dates, '<' means closer to present day
