@@ -172,3 +172,15 @@ class PlaybackController(object):
         else:
             self.stop_index = -1;
         print(state)
+
+    def setEQGain(self, gdb_list):
+
+        if isinstance(self.device,BassSoundDevice):
+            sys.stdout.write("User Updated EQ : %s\n"%' '.join(["%.2f"%f for f in gdb_list]))
+            self.device.updateDSP( {"ZBPEQ": gdb_list} )
+
+    def dspSupported(self):
+
+        if isinstance(self.device,BassSoundDevice):
+            return self.device.zbpeq is not None
+        return False

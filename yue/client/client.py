@@ -14,6 +14,7 @@ import yue.client.resource
 from ..core.sqlstore import SQLStore
 from ..core.library import Library
 from ..core.playlist import PlaylistManager
+from ..core.sound.device import MediaState
 from ..core.song import Song
 from ..core.repl import YueRepl
 
@@ -31,6 +32,8 @@ from .controller import newDevice, PlaybackController
 from .ui.ingest_dialog import IngestProgressDialog
 
 from .DSP.peqwidget import WidgetOctaveEqualizer
+
+from .ui.visualizer import BassVisualizer
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
@@ -50,11 +53,16 @@ class MainWindow(QMainWindow):
     def _init_ui(self, diag):
         self.libview = LibraryView();
         self.expview = ExplorerView(self.controller);
-        self.plview = PlayListViewWidget();
-        self.peqview = WidgetOctaveEqualizer();
-        self.posview = SongPositionView( self.device, self );
-
+        self.plview = PlayListViewWidget(); # TODO parents
         self.songview = CurrentSongView( self );
+
+        if self.controller.dspSupported():
+            self.peqview = WidgetOctaveEqualizer();
+            self.posview = SongPositionView( self.device, self );
+            self.audioview = BassVisualizer(self.controller, self)
+            self.audioview.setFixedHeight( 48 )
+            self.audioview.start()
+            self.peqview.gain_updated.connect( self.controller.setEQGain )
 
         self.btn_playpause = PlayButton( self )
         h = self.songview.height()
@@ -70,6 +78,7 @@ class MainWindow(QMainWindow):
         self.edit_cmd.setFocus()
         self.edit_cmd.setPlaceholderText("Command Input")
 
+        self.plview.vbox.insertWidget(0, self.audioview)
         self.plview.vbox.insertLayout(0, self.hbox)
         self.plview.vbox.insertWidget(0, self.posview)
         self.plview.vbox.insertWidget(0, self.edit_cmd)
@@ -88,7 +97,9 @@ class MainWindow(QMainWindow):
         self.tabview = QTabWidget( self )
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
-        self.tabview.addTab( self.peqview, "Equalizer")
+
+        if self.controller.dspSupported():
+            self.tabview.addTab( self.peqview, "Equalizer")
 
         self.bar_menu = QMenuBar( self )
         self.bar_menu.addMenu("&File")

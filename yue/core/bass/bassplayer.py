@@ -203,7 +203,8 @@ class BassPlayer(object):
         self.volume(self._volume)
         # each dsp keeps track of whether or not it is enabled.
         for _,dsp in self.dsp_blocks.items():
-            dsp.Register(channel);
+            print(self.channel)
+            dsp.Register(self.channel);
 
         bytes = pybass.BASS_ChannelGetPosition(self.channel,pybass.BASS_POS_BYTE);
         if bytes!=0:

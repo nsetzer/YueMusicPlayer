@@ -98,7 +98,8 @@ def LoadLibrary(libname):
         path = LookPath(libname)
         try:
           bass_module = ctypes.WinDLL( path )
-        except OSError:
+        except OSError as e:
+          sys.stderr.write("%s\n"%str(e))
           raise OSError( path )
 
         func_type = ctypes.WINFUNCTYPE

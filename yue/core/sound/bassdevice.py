@@ -4,6 +4,14 @@ import os,sys
 from .device import SoundDevice, MediaState
 from ..bass.bassplayer import BassPlayer, BassException
 
+try:
+
+    from ..bass.pybassdsp import ZBPEQ, ZBVIS, VOLEQ
+except ImportError:
+    ZBPEQ = None
+    ZBVIS = None
+    VOLEQ = None
+
 bass_states = {
     BassPlayer.PLAYING : MediaState.play,
     BassPlayer.PAUSED  : MediaState.pause,
@@ -26,6 +34,27 @@ class BassSoundDevice(SoundDevice):
         self.load_plugin(libpath, "bassflac")
 
         self.device = BassPlayer(use_capi=use_capi)
+
+
+        if ZBPEQ is not None:
+            self.zbpeq = ZBPEQ(priority=250)
+            self.zbpeq.setEnabled(False)
+            self.device.addDsp("zbpeq",self.zbpeq);
+
+            self.voleq = VOLEQ(priority=500)
+            self.voleq.setEnabled(False)
+            self.device.addDsp("voleq",self.voleq);
+
+            self.zbvis = ZBVIS(priority=1000)
+            self.zbvis.setEnabled(True)
+            self.device.addDsp("zbvis",self.zbvis);
+
+            sys.stdout.write("successfully enabled DSP processes.")
+        else:
+            self.zbpeq = None
+            self.voleq = None
+            self.zbvis = None
+            sys.stderr.write("error enabling DSP processes.")
 
         # this feature causes a segfault on android.
         if use_capi:
@@ -105,3 +134,16 @@ class BassSoundDevice(SoundDevice):
         bass_state = self.device.status()
         return bass_states.get(bass_state,MediaState.not_ready)
 
+    def getDspData(self, dspproc):
+        if dspproc == 'zbvis' and self.zbvis is not None:
+            return self.zbvis.getData()
+
+    def updateDSP(self, proc):
+        if "ZBPEQ" in proc and self.zbpeq is not None:
+            seq = proc["ZBPEQ"]
+            if all( map(lambda x:x==0.0,seq) ):
+                self.zbpeq.setEnabled(False);
+                sys.stdout.write("ZBPEQ disabled");
+            else:
+                self.zbpeq.setEnabled(True);
+            self.device.setDspData("zbpeq",seq)
