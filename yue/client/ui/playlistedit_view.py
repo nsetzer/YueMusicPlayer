@@ -40,7 +40,8 @@ class PlayListEditTable(SongTable):
 
     def processDropEvent(self,source,row,data):
 
-        if source is self.sibling:
+        # allow drops from the current playlist because why not
+        if source is not None:
             if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
                 return
             ids = [ song[Song.uid] for song in data ]

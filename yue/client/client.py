@@ -30,6 +30,7 @@ from .widgets.songview import CurrentSongView, SongPositionView
 from .widgets.closebutton import  CloseTabButton
 
 from .controller import newDevice, PlaybackController
+from .hook import KeyHook
 
 from .ui.ingest_dialog import IngestProgressDialog
 
@@ -102,6 +103,7 @@ class MainWindow(QMainWindow):
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
+        self.keyhook = KeyHook(self.controller,False)
 
         self.dialog_ingest = None
         self._init_ui( diag)
@@ -125,7 +127,7 @@ class MainWindow(QMainWindow):
         self.btn_playpause.setFixedHeight( h )
         self.btn_playpause.setFixedWidth( h )
         self.btn_playpause.on_play.connect(self.controller.playpause)
-        self.btn_playpause.on_stop.connect(self.controller.setStop)
+        self.btn_playpause.on_stop.connect(self.controller._setStop)
         self.hbox = QHBoxLayout();
         self.hbox.addWidget( self.btn_playpause )
         self.hbox.addWidget( self.songview )
@@ -152,12 +154,13 @@ class MainWindow(QMainWindow):
 
         self.tabview = QTabWidget( self )
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
+        self.tabview.addTab( QWidget(), QIcon(':/img/app_fav.png'), "Quick Select")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
-
-        self.openPlaylistEditor( "testlist" )
 
         if self.controller.dspSupported():
             self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
+
+        self.openPlaylistEditor( "testlist" )
 
         self.bar_menu = QMenuBar( self )
         self.bar_menu.addMenu("&File")

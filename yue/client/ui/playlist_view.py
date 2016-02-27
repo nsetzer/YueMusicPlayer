@@ -93,7 +93,7 @@ class PlaylistTable(LargeTable):
 
     def mouseDoubleClick(self,row,col,event):
 
-        if event.button() == Qt.LeftButton:
+        if event is None or event.button() == Qt.LeftButton:
             self.parent().play_index.emit( row )
 
 class PlayListViewWidget(QWidget):
@@ -129,6 +129,12 @@ class PlayListViewWidget(QWidget):
 
         self.tbl.setData( pl )
 
+        self.update()
+
+    def scrollToCurrent(self):
+        if self.playlist is not None:
+            idx,_ = self.playlist.current()
+            self.tbl.scrollTo( idx )
         self.update()
 
     def update(self):

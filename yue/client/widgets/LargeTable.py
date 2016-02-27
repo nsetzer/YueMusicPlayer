@@ -1,6 +1,6 @@
 #! python34 $this
 
-from SystemDateTime import DateTime
+#@from SystemDateTime import DateTime
 #from Qt_CustomStyle import *
 
 from math import ceil,floor
@@ -1151,7 +1151,7 @@ class LargeTableBase(LargeTableCore):
 
         super(LargeTableBase,self).__init__(parent)
         self.setAutoFillBackground(True)
-        self.dt = DateTime()
+        #self.dt = DateTime()
 
     def setData(self,data):
         """

@@ -126,6 +126,7 @@ class EditColumn(TableColumn):
         self.text_edit_offset = 0
 
         self.transform_insert = None
+
     @property
     def cell_modified(self):
         return self.sigmng.cell_modified

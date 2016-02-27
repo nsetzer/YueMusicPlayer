@@ -102,7 +102,7 @@ class SoundDevice(object):
     # current playlist management
 
     def load_index(self,idx):
-        if 0 < idx < len(self.playlist):
+        if 0 <= idx < len(self.playlist):
             key = self.playlist.set_index( idx )
             song = Library.instance().songFromId( key )
             self.load( song )

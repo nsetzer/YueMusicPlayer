@@ -11,10 +11,10 @@ from PyQt5.QtGui import *
 
 from functools import lru_cache
 
+from ...core.library import Library
 from ...core.song import Song
 from .LargeTable import LargeTable, TableColumn
 from .TableEditColumn import EditColumn
-from SystemDateTime import DateTime # TODO remove
 
 from yue.client.SymTr import SymTr
 
@@ -23,6 +23,15 @@ import time
 @lru_cache(maxsize=512)
 def format_date( unixTime ):
     return time.strftime("%Y/%m/%d %H:%M", time.gmtime(unixTime))
+
+@lru_cache(maxsize=512)
+def format_time( t ):
+    m,s = divmod(t,60)
+    if m > 60:
+        h,m = divmod(m,60)
+        return "%d:%02d:%02d"%(h,m,s)
+    else:
+        return "%d:%02d"%(m,s)
 
 class SongTable(LargeTable):
     """
@@ -60,7 +69,7 @@ class SongTable(LargeTable):
     def __init__(self,parent=None):
         super(SongTable,self).__init__(parent)
 
-        self.sort_orderby = [Song.artist,Song.album]
+        self.sort_orderby = [Song.artist, Song.album, Song.title]
         self.sort_reverse = False
         self.sort_limit = 3 # this limit controls maximum number of fields passed to ORDER BY
 
@@ -74,12 +83,7 @@ class SongTable(LargeTable):
         # change text color for banished songs
         #self.addRowTextColorComplexRule(self.rule_banish,self.color_text_banish)
 
-
-        # the main appolication updates these values every time
-        # a new playlist is generated, I wish i did this better.
-        dt = DateTime()
-        date = dt.currentDate();
-        self.date_mark_1 = dt.getEpochTime(date+" 00:00") # return seconds at start of this day
+        self.date_mark_1 = 0
         self.date_mark_2= self.date_mark_1 - (14*24*60*60) # date of two weeks ago
 
     def setRuleColors(self,rc_recent,rc_not_recent,rc_banish,rc_selected):
@@ -97,7 +101,6 @@ class SongTable(LargeTable):
 
     def initColumns(self):
         self.columns.append( SongEditColumn(self,Song.play_count     ,"Play Count",int) )
-        #self.columns.append( TableColumn(self,EnumSong.PLAYCOUNT,"Play Count") )
         self.columns[-1].setShortName("#")
         self.columns[-1].setWidthByCharCount(3)
         self.columns[-1].setMinWidthByCharCount(2)
@@ -105,17 +108,17 @@ class SongTable(LargeTable):
         self.columns[-1].setDefaultSortReversed(True)
         self.columns.append( SongEditColumn(self,Song.artist   ,"Artist") )
         self.columns[-1].setWidthByCharCount(30)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.artist,v))
         self.columns.append( SongEditColumn(self,Song.title    ,"Title") )
         self.columns[-1].setWidthByCharCount(30)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.title,v))
         self.columns.append( SongEditColumn(self,Song.album    ,"Album") )
         self.columns[-1].setWidthByCharCount(20)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.album,v))
         self.columns.append( TableColumn(self,Song.length   ,"Length") )
         self.columns[-1].setWidthByCharCount(7)
         self.columns[-1].setTextAlign(Qt.AlignRight)
-        self.columns[-1].text_transform = lambda row_data,cell_item: DateTime.formatTimeDelta(cell_item);
+        self.columns[-1].text_transform = lambda row_data,cell_item: format_time(cell_item);
         self.columns.append( TableColumn_Rating(self,Song.rating   ,"Rating") )
         self.columns[-1].setWidthByCharCount(11)
         self.columns[-1].setMinWidthByCharCount(7)
@@ -123,12 +126,12 @@ class SongTable(LargeTable):
         self.columns[-1].setDefaultSortReversed(True)
         self.columns.append( SongEditColumn(self,Song.genre    ,"Genre") )
         self.columns[-1].setWidthByCharCount(15)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.genre,v))
         self.columns.append( TableColumn(self,Song.frequency,"Frequency") )
         self.columns[-1].setShortName("Freq")
         self.columns[-1].setWidthByCharCount(4)
         self.columns[-1].setTextAlign(Qt.AlignRight)
-        self.columns.append( TableColumn_DateStamp(self,Song.last_played,"Last Played") )
+        self.columns.append( SongDateColumn(self,Song.last_played,"Last Played") )
         self.columns[-1].setWidthByCharCount(16)
         self.columns[-1].setDefaultSortReversed(True)
         self.columns[-1].setTextAlign(Qt.AlignRight)
@@ -137,13 +140,13 @@ class SongTable(LargeTable):
         self.columns[-1].setWidthByCharCount(9)
         self.columns[-1].setTextAlign(Qt.AlignRight)
         self.columns[-1].setDefaultSortReversed(True)
-        self.columns.append( TableColumn(self,Song.skip_count,"Skip Count") )
+        self.columns.append( SongEditColumn(self,Song.skip_count,"Skip Count") )
         self.columns[-1].setWidthByCharCount(10)
         self.columns[-1].setDefaultSortReversed(True)
         self.columns[-1].setTextAlign(Qt.AlignCenter)
         self.columns.append( SongEditColumn(self,Song.comment  ,"Comment") )
         self.columns[-1].setWidthByCharCount(20)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.comment,v))
         self.columns.append( TableColumn(self,Song.date_added,"Date Added") )
         self.columns[-1].setWidthByCharCount(16)
         self.columns[-1].setDefaultSortReversed(True)
@@ -152,19 +155,19 @@ class SongTable(LargeTable):
         self.columns.append( SongEditColumn(self,Song.year     ,"Year",int) )
         self.columns[-1].setWidthByCharCount(5)
         self.columns[-1].setDefaultSortReversed(True)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified_int(r,Self.year,v))
         self.columns[-1].setTextAlign(Qt.AlignRight)
         self.columns.append( SongEditColumn(self,Song.album_index,"Album Index",int) )
         self.columns[-1].setShortName("Idx")
         self.columns[-1].setWidthByCharCount(11)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified_int(r,Self.album_index,v))
         self.columns[-1].setTextAlign(Qt.AlignRight)
         self.columns.append( TableColumn(self,Song.uid   ,"ID") )
         #self.columns[-1].text_transform = lambda song,index: unicode(song.id)
         self.columns[-1].setWidthByCharCount(22)
         self.columns.append( PathEditColumn(self,Song.path     ,"Path") )
         self.columns[-1].setWidthByCharCount(30)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(lambda r,v: self.song_modified(r,Self.path,v))
         self.columns.append( TableColumn(self,Song.path     ,"Extension") )
         self.columns[-1].setShortName("Ext")
         self.columns[-1].setWidthByCharCount(6)
@@ -187,14 +190,14 @@ class SongTable(LargeTable):
         self.columns.append( SongEditColumn(self,Song.lang    ,"Language") )
         self.columns[-1].setShortName("LANG")
         self.columns[-1].setWidthByCharCount(15)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(self.song_modified)
         self.columns.append( SongEditColumn(self,Song.country    ,"Country") )
         self.columns[-1].setShortName("ctry")
         self.columns[-1].setWidthByCharCount(15)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(self.song_modified)
         self.columns.append( SongEditColumn(self,Song.composer    ,"Composer") )
         self.columns[-1].setWidthByCharCount(15)
-        self.columns[-1].cell_modified.connect(self.text_cell_modified)
+        #self.columns[-1].cell_modified.connect(self.song_modified)
         #self.columns.append( TableColumn(self,EnumSong.SOURCELIB,"Source Library") )
         #self.columns[-1].setShortName("Src")
         #self.columns[-1].setWidthByCharCount(15)
@@ -224,31 +227,12 @@ class SongTable(LargeTable):
                     return col
         return None
 
-    ###def sortColumn(self,col_index):
-    ###    """
-    ###        TODO: move MpSort to Song_Sort and
-    ###        sortLibrary to MpScripting
-    ###    """
-    ###    column = self.columns[col_index]
-    ###    index  =  column.index
-    ###    if self.sort_orderby:
-    ###        if self.sort_orderby[0] != index:
-    ###            self.sort_orderby = ([index,] + self.sort_orderby)[:self.sort_limit]
-    ###    self.sort_reverse = self.setSortColumn(col_index) == -1
-    ###    self.update_data.emit()
-    ###    #if self.columns[col_index].sortUseTextTransform():
-    ###    #    g = lambda song : column.text_transform(song,index)
-    ###    #else:
-    ###    #    g = lambda x : x[index]
-    ###    #if index < EnumSong.NUMTERM:
-    ###    #    self.data.sort(key = g, reverse=rev)
-    ###    #self.update()
+    #def song_modified(self,rows,column,value):
+    #    #print rows,text
+    #    # value could be an integer or unicode value
+    #    for row in rows:
+    #        self.modify_song.emit(self.data[row])
 
-    def text_cell_modified(self,rows,value):
-        #print rows,text
-        # value could be an integer or unicode value
-        for row in rows:
-            self.modify_song.emit(self.data[row])
 
 class TableColumn_Rating(TableColumn):
     """
@@ -360,19 +344,16 @@ class TableColumn_Rating(TableColumn):
             path.translate(_w+_step,0)
         #painter.setRenderHint(0) # QPainter.Antialiasing
 
-    #def mouseClick(self,row_index,posx,posy):
-    #    if not self.parent.rating_mouse_tracking:
-    #        return False
-    #    self.parent.data[row_index][EnumSong.RATING] = self.suggested_rating
-    #    self.parent.modify_song.emit(self.parent.data[row_index])
-    #    return True#blocking return
-
     def mouseDoubleClick(self,row_index,posx,posy):
         if not self.parent.rating_mouse_tracking:
             return False
-        self.parent.data[row_index][Song.rating] = self.suggested_rating
-        self.parent.modify_song.emit(self.parent.data[row_index])
-        self.parent.modify_song_rating.emit(self.parent.data[row_index])
+        song = self.parent.data[row_index]
+        song[Song.rating] = self.suggested_rating
+
+        Library.instance().update(song[Song.uid],**{self.index:self.suggested_rating})
+
+        #self.parent.modify_song.emit(self.parent.data[row_index])
+        #self.parent.modify_song_rating.emit(self.parent.data[row_index])
         return True#blocking return
 
     def mouseHover(self,row_index,posx,posy):
@@ -400,55 +381,7 @@ class TableColumn_Rating(TableColumn):
         self.suggested_rating = -1
         self.suggested_rating_row = -1
 
-class TableColumn_DateBase(TableColumn):
-    """
-        Base class for displaying date information.
-
-        the format for input/output of a date can be set
-
-        the 'input' date is the cell item from the index
-        of the parent tables' data.
-
-        the 'output' can use any of the symbols found in input
-        in a different order.
-
-        the allowed symbols are:
-            %Y - year   %H - hour
-            %m - month  %M - minute
-            %d - day
-            %y - 2 digit year
-            if %Y is defined, then %y will be autofilled
-
-    """
-
-    def __init__(self,parent,index,name=""):
-        super(TableColumn_DateBase,self).__init__(parent,index,name)
-
-        self.datefmt_in  = ""
-        self.datefmt_out = ""
-
-        self.text_transform = self.format
-
-        self.setDateInputFormat("%Y/%m/%d %H:%M")
-        #self.setDateOutputFormat("%m/%d/%y %H:%M")
-
-    def setDateInputFormat(self,fmt):
-        """ expected string input format for the date/time display of this cell"""
-        self.datefmt_in = fmt
-
-    def setDateOutputFormat(self,fmt):
-        """ if set, input date/time data will be transformed by output defined here
-            set the output format to an empty string to disable date transforms.
-        """
-        self.datefmt_out = fmt
-
-    def format(self,row_data,cell_item):
-       if self.datefmt_out != "" and cell_item != "":
-           return DateTime.reformatDateTime(self.datefmt_in,self.datefmt_out,cell_item)
-       else:
-            return cell_item
-
-class TableColumn_DateStamp(TableColumn_DateBase):
+class SongDateColumn(TableColumn):
     """
         A custom table column for changing the color of the
         text used when drawing the date for the last
@@ -466,22 +399,8 @@ class TableColumn_DateStamp(TableColumn_DateBase):
         #    elif song[Song.last_played] < self.parent.date_mark_2:
         #        new_pen = self.parent.color_text_played_not_recent
         #painter.setPen(new_pen)
-
         self.paintItem_text(col,painter,row,item,x,y,w,h)
-
         #painter.setPen(default_pen)
-
-class TableColumn_Score(TableColumn):
-    """
-        A custom table column for changing the color of the
-        text used when drawing the date for the last
-        time the song was played
-    """
-
-    def paintItem(self,col,painter,row,item,x,y,w,h):
-
-
-        self.paintItem_text(col,painter,row,"%6.3f"%(item/100.0 ),x,y,w,h)
 
 class SongEditColumn(EditColumn):
     # register a signal to update exif data when editing is done,.
@@ -491,23 +410,17 @@ class SongEditColumn(EditColumn):
         self.cell_modified.connect(self.editing_finished)
 
     def editing_finished(self,rows,new_value):
-        """
-            row entries have already been updated, i only need
-            to modify the EXIF value
 
-        """
-        #for row in rows:
-        #    song = self.parent.data[row]
-        #    song[EnumSong.EXIF] =  song.__format_exif__()
-        pass
+        for row in rows:
+            song = self.parent.data[row]
+            #print(song[Song.uid], new_value)
+            Library.instance().update(song[Song.uid],**{self.index:new_value})
 
     def editor_insert(self,chara):
-
+        # enable japanese character input
         self.editor.insert(chara)
         o = SymTr.SymTr(self.editor.buffer)
-        #temp = Translate.transform2(self.editor.buffer)
         if o.nstring != self.editor.buffer:
-            #a = Translate.align(self.editor.buffer,temp)
             self.editor.buffer = o.nstring
             self.editor.insert_index=o.position
 

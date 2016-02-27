@@ -12,6 +12,7 @@ from PyQt5.QtGui import *
 from ..core.sound.device import MediaState
 from yue.core.song import Song
 from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 
 from ..core.sound.bassdevice import BassSoundDevice
 
@@ -103,6 +104,8 @@ class PlaybackController(object):
 
         self.one_shot = False
 
+        self.playlist = PlaylistManager.instance().openPlaylist("current")
+
     def on_song_load(self, song):
         self.root.plview.update()
         self.root.songview.setCurrentSong( song )
@@ -127,26 +130,34 @@ class PlaybackController(object):
             self.device.pause();
             self.one_shot = False
         else:
-
             # TODO: the library view should be refreshed, without
             # moving the scroll bar in some way to reflect this change
-            Library.instance().incrementPlaycount(song['uid'])
 
-            self.device.next()
+            Library.instance().incrementPlaycount(song[Song.uid])
+            # return to the first song in the playlist if the current
+            # song does not match the song that just finished.
+            # for example, when the user makes a new playlist
+            _, uid = self.playlist.current()
+            if uid != song[Song.uid]:
+                self.device.play_index( 0 )
+            else:
+                self.device.next()
 
         if idx == self.stop_index:
             self.device.pause()
             self.stop_index = -1;
 
-        self.root.plview.update()
+        # i have wanted this *forever*.
+        # it could be annoying, so i should make it optional
+        # when turned off, update() must be called instead.
+        self.root.plview.scrollToCurrent()
 
     def on_playlist_end(self):
-        pl = PlaylistManager.instance().openPlaylist("current")
-        songs = Library.instance().search(None, orderby=Song.random, limit=20)
-        lst = [ s['uid'] for s in songs ]
-        pl.set( lst )
+        songs = Library.instance().search("date > 14", orderby=Song.random, limit=50)
+        lst = [ s[Song.uid] for s in songs ]
+        self.playlist.set( lst )
         self.device.play_index( 0 )
-        self.root.plview.update()
+        self.root.plview.scrollToCurrent()
 
     def playOneShot(self, path):
         """ play a song, then return to the current playlist """
@@ -164,9 +175,15 @@ class PlaybackController(object):
         else:
             self.device.pause();
 
-    def setStop(self, state):
-        # if true, stop playback after this song
+    def toggleStop(self):
+        # toggle stop state and update ui
 
+        self._setStop( self.stop_index == -1 )
+        self.root.plview.update()
+        self.root.btn_playpause.setStopState( self.stop_index != -1 )
+
+    def _setStop(self, state):
+        # if true, stop playback after this song
         if state:
             self.stop_index,_ = self.device.current()
         else:
