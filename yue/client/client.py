@@ -119,6 +119,7 @@ class MainWindow(QMainWindow):
         self.expview = ExplorerView(self.controller);
         self.plview = PlayListViewWidget(self);
         self.songview = CurrentSongView( self );
+        self.songview.setMenuCallback( self.addSongActions )
 
         if self.controller.dspSupported():
             self.peqview = WidgetOctaveEqualizer();

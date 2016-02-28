@@ -41,6 +41,15 @@ class LineEdit_Search(LineEdit):
 
 class LibraryTable(SongTable):
 
+    def __init__(self,parent):
+        super(LibraryTable,self).__init__(parent)
+
+        self.current_uid = -1
+        self.addRowTextColorComplexRule(self.currentSongRule,self.color_text_played_recent)
+
+    def currentSongRule(self,row):
+        return self.data[row][Song.uid] == self.current_uid
+
     def mouseReleaseRight(self,event):
 
         items = self.getSelection()
@@ -140,4 +149,8 @@ class LibraryView(QWidget):
             self.lbl_error.show()
         except Exception as e:
             raise e
+
+    def setCurrentSongId( self, uid ):
+        self.tbl_song.current_uid = uid
+        self.tbl_song.update()
 

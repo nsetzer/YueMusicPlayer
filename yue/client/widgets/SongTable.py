@@ -53,7 +53,6 @@ class SongTable(LargeTable):
     color_text_played_not_recent = QColor(200,0,0)
     color_text_banish = QColor(128,128,128)
 
-
     date_mark_1 = 0 # time corresponding to the start of the day as integer time stamp
     date_mark_2 = 0 # time corresponding to 14 days ago or (whatever needs to be defined.
 
@@ -75,15 +74,15 @@ class SongTable(LargeTable):
 
         # enable highlighting of the current song
         #self.rule_selected = lambda row: self.data[row][EnumSong.SELECTED]
-        #self.rule_banish = lambda row: self.data[row].banish
+        self.rule_banish = lambda row: self.data[row][Song.blocked]
 
         # highlight songs that are selected
         #self.addRowHighlightComplexRule(self.rule_selected,self.color_text_played_recent)
 
         # change text color for banished songs
-        #self.addRowTextColorComplexRule(self.rule_banish,self.color_text_banish)
+        self.addRowTextColorComplexRule(self.rule_banish,self.color_text_banish)
 
-        self.date_mark_1 = 0
+        self.date_mark_1 = time.time()
         self.date_mark_2= self.date_mark_1 - (14*24*60*60) # date of two weeks ago
 
     def setRuleColors(self,rc_recent,rc_not_recent,rc_banish,rc_selected):
@@ -218,6 +217,7 @@ class SongTable(LargeTable):
                 self.sort_orderby = ([index,] + self.sort_orderby)[:self.sort_limit]
         self.sort_reverse = self.setSortColumn(col_index) == -1
         self.update_data.emit()
+
     def getColumn(self,song_enum,check_hidden=False):
         """
             return the associated column for a song enum, EnumSong.Artist. EnumSong.Title, etc
@@ -234,6 +234,12 @@ class SongTable(LargeTable):
                 if col.index == song_enum:
                     return col
         return None
+
+    def setData(self,data):
+        super(SongTable,self).setData(data)
+        # update time colors when the table is updated
+        self.date_mark_1 = time.time()
+        self.date_mark_2= self.date_mark_1 - (14*24*60*60) # date of two weeks ago
 
     #def song_modified(self,rows,column,value):
     #    #print rows,text
@@ -401,14 +407,14 @@ class SongDateColumn(TableColumn):
 
         song = self.parent.data[row]
         new_pen = default_pen
-        #if self.parent.date_mark_1 != 0 and self.parent.date_mark_2 !=0 and not song[Song.blocked]:
-        #    if song[Song.last_played] > self.parent.date_mark_1:
-        #        new_pen = self.parent.color_text_played_recent
-        #    elif song[Song.last_played] < self.parent.date_mark_2:
-        #        new_pen = self.parent.color_text_played_not_recent
-        #painter.setPen(new_pen)
+        if self.parent.date_mark_1 != 0 and self.parent.date_mark_2 !=0 and not song[Song.blocked]:
+            if song[Song.last_played] > self.parent.date_mark_1:
+                new_pen = self.parent.color_text_played_recent
+            elif song[Song.last_played] < self.parent.date_mark_2:
+                new_pen = self.parent.color_text_played_not_recent
+        painter.setPen(new_pen)
         self.paintItem_text(col,painter,row,item,x,y,w,h)
-        #painter.setPen(default_pen)
+        painter.setPen(default_pen)
 
 class SongEditColumn(EditColumn):
     # register a signal to update exif data when editing is done,.

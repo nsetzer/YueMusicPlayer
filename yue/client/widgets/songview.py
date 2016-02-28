@@ -56,13 +56,7 @@ class CurrentSongView(QWidget):
     def __init__(self, parent=None):
         super(CurrentSongView,self).__init__(parent);
 
-        self.song = {
-            Song.artist : "None",
-            Song.title  : "None",
-            Song.album  : "None",
-            Song.length : 0,
-            Song.play_count : 0,
-        }
+        self.song = Song.new()
 
         self.text_time = ""
 
@@ -71,6 +65,8 @@ class CurrentSongView(QWidget):
         self.padb = 2
         self.padtb = self.padt+self.padb
         self.setFixedHeight( (fh+self.padtb) * 4)
+
+        self.menu_callback = None;
 
     def setPosition(self, position ):
         length = self.song[Song.length]
@@ -116,3 +112,17 @@ class CurrentSongView(QWidget):
         rw = w - padl - padr - fw2 - 2*fw1
         painter.drawRect(2*padl+fw2,row4h-fh,rw,fh)
         painter.drawRect(w-fw1,self.padt,fw1-padr,4*rh-self.padtb)
+
+    def setMenuCallback(self,cbk):
+        """
+        callback as a function which accepts a menu and a song
+        and returns nothing. the function should add actions to
+        the given song
+        """
+        self.menu_callback = cbk
+    def mouseReleaseEvent(self, event):
+
+        if event.button() == Qt.RightButton and self.menu_callback is not None:
+            menu = QMenu(self)
+            self.menu_callback(menu,self.song)
+            menu.exec_( event.globalPos() )

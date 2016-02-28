@@ -228,7 +228,7 @@ def read_flac_tags( song, path):
     song[Song.genre]  = get_str(audio,'genre')
     song[Song.year]   = get_int(audio,'year','-')
     song[Song.album_index]  = get_int(audio,'tracknumber','/')
-    song[Song.length]       = int(audio2.info.length)
+    song[Song.length]       = int(audio.info.length)
 
 def get_str(audio,tag):
     if tag in audio:

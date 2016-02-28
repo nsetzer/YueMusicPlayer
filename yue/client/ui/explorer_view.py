@@ -259,7 +259,7 @@ class ExplorerView(QWidget):
         self.tbl_file.update()
 
     def supportedExtension(self,ext):
-        return ext == ".mp3"
+        return ext in [".mp3", ".flac"]
 
     def action_open(self):
 

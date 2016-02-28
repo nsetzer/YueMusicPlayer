@@ -110,6 +110,7 @@ class PlaybackController(object):
         self.root.plview.update()
         self.root.songview.setCurrentSong( song )
         self.root.posview.setMaximum( song[Song.length] )
+        self.root.libview.setCurrentSongId(song[Song.uid])
 
     def on_song_tick(self, pos):
         self.root.posview.setValue(pos)
