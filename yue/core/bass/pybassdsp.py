@@ -314,7 +314,6 @@ class ZBLOG(DualDSP):
 
         c_fc = None
         c_bw = None
-        num = 0
         self.size = 0;
         if isinstance(fc,list) and isinstance(bw,list):
             assert len(fc)==len(bw), "List of center frequencies must match th bandwidth list"
@@ -333,6 +332,8 @@ class ZBLOG(DualDSP):
         else:
             self.lograte = sampleRate//4
         #print self.filter_size, self.lograte
+        #c_int,c_int,double_p,double_p,c_int,c_int
+        print(sampleRate,self.size,c_fc,c_bw,self.filter_size,self.lograte)
         self.data = DSP_ZBLOG_New(sampleRate,self.size,c_fc,c_bw,self.filter_size,self.lograte);
 
     def GetMean(self):

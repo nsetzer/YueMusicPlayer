@@ -1,6 +1,7 @@
 
 import os,sys
 
+from yue.core.song import Song
 from .device import SoundDevice, MediaState
 from ..bass.bassplayer import BassPlayer, BassException
 
@@ -27,6 +28,7 @@ class BassSoundDevice(SoundDevice):
         self.volume = 0.5
         self.error_state = False
         self.current_song = None
+        self.enable_equalizer = False
 
         BassPlayer.init()
 
@@ -34,7 +36,6 @@ class BassSoundDevice(SoundDevice):
         self.load_plugin(libpath, "bassflac")
 
         self.device = BassPlayer(use_capi=use_capi)
-
 
         if ZBPEQ is not None:
             self.zbpeq = ZBPEQ(priority=250)
@@ -86,18 +87,47 @@ class BassSoundDevice(SoundDevice):
         self.device.unload()
 
     def load(self, song):
-        path = song['path']
+        path = song[Song.path]
         self.current_song = song
         try:
             self.device.unload()
             if self.device.load( path ):
                 self.error_state = False
+
+                self.setEQ( song[Song.equalizer] )
+
                 self.on_load.emit(song)
             else:
                 self.error_state = True
+
         except UnicodeDecodeError as e:
             print(e)
             self.error_state = True
+
+    def equalizerEnabled(self):
+        return self.enable_equalizer
+
+    def toggleEQ(self):
+        self.setEQEnabled( not self.enable_equalizer )
+
+    def setEQEnabled(self,b):
+        if b and not self.enable_equalizer:
+            self.enable_equalizer = True
+            self.voleq.setEnabled(True);
+        elif not b and self.enable_equalizer:
+            self.enable_equalizer = False
+            self.voleq.setEnabled(False);
+        sys.stdout.write("EQ: %s\n"%(self.enable_equalizer))
+
+    def setEQ(self,value):
+        if self.voleq != None:
+            ivalue = min(500,value);
+            fvalue = ivalue/250.0;
+            self.voleq.setScale(fvalue);
+            if value > 0 and self.enable_equalizer:
+                self.voleq.setEnabled(True);
+            else:
+                self.voleq.setEnabled(False);
 
     def play(self):
         #self.device.channelIsValid():

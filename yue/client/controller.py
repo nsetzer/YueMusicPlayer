@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
 from yue.core.song import Song
+from ..core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
@@ -53,6 +54,8 @@ class PlaybackThread(QThread):
 
         self.updates_enabled = False
         self.alive = True
+
+
 
     def run(self):
 
@@ -105,6 +108,11 @@ class PlaybackController(object):
         self.one_shot = False
 
         self.playlist = PlaylistManager.instance().openPlaylist("current")
+
+        if self.dspSupported():
+            s = Settings.instance()
+            if s["volume_equalizer"]:
+                self.device.setEQEnabled( True )
 
     def on_song_load(self, song):
         self.root.plview.update()
@@ -197,7 +205,20 @@ class PlaybackController(object):
             self.device.updateDSP( {"ZBPEQ": gdb_list} )
 
     def dspSupported(self):
-
         if isinstance(self.device,BassSoundDevice):
             return self.device.zbpeq is not None
         return False
+
+    def toggleEQ(self):
+        """ toggle the state on/off for equalizer """
+        if isinstance(self.device,BassSoundDevice):
+            self.device.toggleEQ()
+        else:
+            sys.stderr.write("Equalizer not supported.\n")
+    def getEQ(self):
+        """ return true if equalizer is enabled """
+        if isinstance(self.device,BassSoundDevice):
+            return self.device.equalizerEnabled()
+        else:
+            sys.stderr.write("Equalizer not supported.\n")
+        return False;

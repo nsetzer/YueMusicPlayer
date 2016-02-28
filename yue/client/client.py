@@ -39,6 +39,7 @@ from .hook import KeyHook
 from .ui.ingest_dialog import IngestProgressDialog
 
 from .DSP.peqwidget import WidgetOctaveEqualizer
+from .DSP.equalizer import DialogVolEqLearn
 
 from .ui.visualizer import BassVisualizer
 
@@ -93,8 +94,6 @@ class ClientRepl(object):
 
         self.client.openPlaylistEditor( args[0] )
 
-
-
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -113,8 +112,11 @@ class MainWindow(QMainWindow):
         self.dialog_ingest = None
         self._init_ui( diag)
         self._init_values()
+        self._init_menubar()
 
     def _init_ui(self, diag):
+        s = Settings.instance()
+
         self.libview = LibraryView(self);
         self.expview = ExplorerView(self.controller);
         self.plview = PlayListViewWidget(self);
@@ -142,6 +144,8 @@ class MainWindow(QMainWindow):
         self.edit_cmd = LineEditRepl( self.repl, self );
         self.edit_cmd.setFocus()
         self.edit_cmd.setPlaceholderText("Command Input")
+        if not s['ui_show_console']:
+            self.edit_cmd.hide()
 
         self.plview.vbox.insertWidget(0, self.audioview)
         self.plview.vbox.insertLayout(0, self.hbox)
@@ -151,10 +155,16 @@ class MainWindow(QMainWindow):
 
         self.dock_list = QDockWidget()
         self.dock_list.setWidget( self.plview )
-        self.dock_list.resize(300,0)
+        #self.dock_list.resize(300,0)
+        self.dock_list.visibilityChanged.connect(self.showhide_list)
 
         self.dock_diag = QDockWidget()
         self.dock_diag.setWidget( diag )
+        print("hide dialog %s"%s['ui_show_error_log'])
+        if not s['ui_show_error_log']:
+            self.dock_diag.hide()
+        self.dock_diag.visibilityChanged.connect(self.showhide_diag)
+
 
         self.addDockWidget (Qt.RightDockWidgetArea, self.dock_list)
         self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
@@ -173,11 +183,6 @@ class MainWindow(QMainWindow):
         self.openPlaylistEditor( "testlist" )
 
         self.bar_menu = QMenuBar( self )
-        self.bar_menu.addMenu("&File")
-        self.bar_menu.addMenu("&Music")
-        self.bar_menu.addMenu("&View")
-        self.bar_menu.addMenu("&Settings")
-        self.bar_menu.addMenu("&?")
         self.bar_status = QStatusBar( self )
 
         self.setMenuBar( self.bar_menu )
@@ -190,6 +195,49 @@ class MainWindow(QMainWindow):
         vol = s['volume']
         self.volcontroller.volume_slider.setValue( vol )
         self.controller.device.setVolume( vol/100.0 )
+
+    def _init_menubar(self):
+        s = Settings.instance()
+        menu = self.bar_menu.addMenu("&File")
+        self.action_undo_delete = menu.addAction("Undo Delete")
+        menu.addAction("Exit")
+
+        menu = self.bar_menu.addMenu("&Music")
+        menu.addAction("New Playlist")
+        menu.addSeparator()
+        menu.addAction("New Editable Playlist")
+        menu.addAction("Open Editable Playlist")
+        if self.controller.dspSupported():
+            menu.addSeparator()
+            menu.addAction("Run Equalizer",self.runEqualizer)
+            self.action_equalizer = menu.addAction("", self.toggleEQ)
+            self.action_equalizer.setIcon( QIcon(":/img/app_check.png"))
+            if s['volume_equalizer']:
+                self.action_equalizer.setIconVisibleInMenu ( True )
+                self.action_equalizer.setText("Disable Equalizer")
+            else:
+                self.action_equalizer.setIconVisibleInMenu ( False )
+                self.action_equalizer.setText("Enable Equalizer")
+
+        menu = self.bar_menu.addMenu("&View")
+        self.action_view_console = menu.addAction("",self.toggleConsoleVisible)
+        if s['ui_show_console']:
+            self.action_view_console.setText("Hide Console")
+        else:
+            self.action_view_console.setText("Show Console")
+
+        self.action_view_list = menu.addAction("Show Play List",lambda : self.toggleDialogVisible(self.dock_list))
+        self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
+        if s['ui_show_error_log']:
+            self.action_view_logger.setText("Hide Error Log")
+        else:
+            self.action_view_logger.setText("Show Error Log")
+        self.action_view_tree    = menu.addAction("Show Tree View")
+        self.action_view_tree.setDisabled(True)
+
+
+        menu = self.bar_menu.addMenu("&?")
+        menu.addAction("About")
 
     def closeEvent(self, event):
 
@@ -207,6 +255,9 @@ class MainWindow(QMainWindow):
         s["window_height"] = self.height()
         s["window_x"] = self.x()
         s["window_y"] = self.y()
+
+        s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
+        s['ui_show_console'] = int(not self.edit_cmd.isHidden())
 
         super(MainWindow,self).closeEvent( event )
 
@@ -277,6 +328,22 @@ class MainWindow(QMainWindow):
         self.expview.chdir(path, True)
         self.tabview.setCurrentWidget(self.expview)
 
+    def toggleEQ(self):
+        self.controller.toggleEQ()
+        s = Settings.instance()
+        if self.controller.getEQ():
+            s["volume_equalizer"] = True
+            self.action_equalizer.setIconVisibleInMenu ( True )
+            self.action_equalizer.setText("Disable Equalizer")
+        else:
+            s["volume_equalizer"] = False
+            self.action_equalizer.setIconVisibleInMenu ( False )
+            self.action_equalizer.setText("Enable Equalizer")
+    def runEqualizer(self):
+        # todo: pass in the controller
+        self.dialog_eq = DialogVolEqLearn( )
+        self.dialog_eq.show()
+
     def addSongActions(self, menu, song ):
         """ common actions for context menus dealing with a song """
 
@@ -294,12 +361,41 @@ class MainWindow(QMainWindow):
         q5 = os.path.split(song[Song.path])[0]
         menu.addAction("Explore Containing Folder", lambda: self.exploreDirectory(q5))
 
+    def toggleConsoleVisible(self):
+        if self.edit_cmd.isHidden():
+            self.action_view_console.setText("Hide Console")
+            self.edit_cmd.show()
+        else:
+            self.action_view_console.setText("Show Console")
+            self.edit_cmd.hide()
+
+    def toggleDialogVisible(self, widget):
+        if widget.isHidden():
+            widget.show()
+        else:
+            widget.hide()
+
+    def showhide_list(self,b):
+        if b:
+            self.action_view_list.setText("Hide Play List")
+        else:
+            self.action_view_list.setText("Show Play List")
+
+    def showhide_diag(self,b):
+        if b:
+            self.action_view_logger.setText("Hide Error Log")
+        else:
+            self.action_view_logger.setText("Show Error Log")
+
+
 def setSettingsDefaults():
 
     s = Settings.instance()
     s.setDefault("volume",50)
 
-
+    s.setDefault("volume_equalizer",0) # off
+    s.setDefault("ui_show_console",0) # off
+    s.setDefault("ui_show_error_log",0) # off
 
 def main():
 

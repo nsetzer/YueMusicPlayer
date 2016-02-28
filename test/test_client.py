@@ -15,6 +15,8 @@ from yue.core.library import Library
 
 from yue.client.client import main as client_main
 
+from yue.client.DSP.equalizer import main as eq_main
+
 def convert():
     """ convert from old style library to new style library """
     from Song_XMLFormat import SongXML
@@ -72,4 +74,5 @@ def convert():
 
 if __name__ == '__main__':
     convert()
+    #eq_main()
     client_main();
