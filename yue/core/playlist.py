@@ -134,18 +134,23 @@ class PlayListView(object):
                     current += 1
                     self.db_names._update( c, self.uid, idx=current)
 
-    def insert_next(self,key):
+    def insert_next(self,key_or_lst):
         """ insert a song id after the current song id """
         with self.db_lists.conn() as conn:
             c = conn.cursor()
+            if isinstance(key_or_lst,int):
+                lst = [key_or_lst,]
+            else:
+                lst = key_or_lst
+
             _, name, size, current = self.db_names._get( c, self.uid );
-            self._insert_one( c, current+1, key)
+            for key in reversed(lst):
+                self._insert_one( c, current+1, key)
 
     def _insert_one(self, c, idx, key):
         c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx))
         self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
         c.execute("UPDATE playlists SET size=size+1 WHERE uid=?",(self.uid,))
-
 
     def insert_fast(self, key_or_lst):
         """ fast insert
@@ -178,7 +183,6 @@ class PlayListView(object):
                 c.execute("DELETE from playlist_songs where uid=? and song_id=?",(self.uid, item))
             size = self.db_lists._count(c)
             c.execute("UPDATE playlists SET size=? WHERE uid=?",(size, self.uid,))
-
 
     def delete(self,idx_or_lst):
         """ remove a song from the playlist by it's position in the list """

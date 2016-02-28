@@ -83,37 +83,55 @@ class PlaylistTable(LargeTable):
 
         self.parent().update()
 
+    def shuffleList(self):
+        self.data.shuffle_range()
+
     def shuffleSelection(self):
-        sel = self.getSelectionIndex()
-        if len(sel)<=1:
-            self.data.shuffle_range()
-        else:
-            self.data.shuffle_selection( sel )
-        self.parent().update()
+        self.data.shuffle_selection( self.getSelectionIndex() )
 
     def mouseDoubleClick(self,row,col,event):
 
         if event is None or event.button() == Qt.LeftButton:
             self.parent().play_index.emit( row )
 
+    def mouseReleaseRight(self,event):
+
+        items = self.getSelection()
+
+        menu = QMenu(self)
+
+        if len(items) == 1:
+            self.parent().root.addSongActions(menu,items[0])
+
+        menu.addSeparator()
+
+        if len(items) <= 1:
+            menu.addAction( "Shuffle Playlist", self.shuffleList )
+        else:
+            menu.addAction( "Shuffle Selection", self.shuffleSelection)
+
+        action = menu.exec_( event.globalPos() )
+
+
 class PlayListViewWidget(QWidget):
     """docstring for MainWindow"""
 
     play_index = pyqtSignal( int )
 
-    def __init__(self):
+    def __init__(self, root, parent=None):
+        super(PlayListViewWidget, self).__init__(parent)
 
-        super(PlayListViewWidget, self).__init__()
+        # root is needed here so that i can add actions to the qmenu
+        # .... until i can think of a better way to do that
+        self.root = root
+
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.tbl = PlaylistTable(self)
         self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , QColor(255,0,0))
 
-        self.btn_shuffle = QPushButton("Shuffle",self)
-        self.btn_shuffle.clicked.connect( self.tbl.shuffleSelection )
-
         self.vbox.addWidget( self.tbl.container )
-        self.vbox.addWidget( self.btn_shuffle )
 
         self.playlist = None
         self.current_index = -1
@@ -155,3 +173,4 @@ class PlayListViewWidget(QWidget):
     def sizeHint(self):
         # the first number width, is the default initial size for this widget
         return QSize(300,400)
+

@@ -210,6 +210,14 @@ class SongTable(LargeTable):
 
         self.columns_setDefaultOrder( self.columns_getOrder() )
 
+    def sortColumn(self,col_index):
+        column = self.columns[col_index]
+        index  =  column.index
+        if self.sort_orderby:
+            if self.sort_orderby[0] != index:
+                self.sort_orderby = ([index,] + self.sort_orderby)[:self.sort_limit]
+        self.sort_reverse = self.setSortColumn(col_index) == -1
+        self.update_data.emit()
     def getColumn(self,song_enum,check_hidden=False):
         """
             return the associated column for a song enum, EnumSong.Artist. EnumSong.Title, etc

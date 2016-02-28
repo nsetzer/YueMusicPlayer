@@ -90,6 +90,8 @@ class YueRepl(object):
             self.actions["current"] = self.excurrent
             self.actions["pos"] = self.exposition
             self.actions["position"] = self.exposition
+            self.actions["vol"] = self.exvolume
+            self.actions["volume"] = self.exvolume
             self.actions["playpause"] = self.explaypause
 
         self.actions["stat"]    = self.exstat
@@ -226,6 +228,19 @@ class YueRepl(object):
         text = "%d / %d\n"%(self.device.position(), self.device.duration())
         sys.stdout.write( text)
 
+    def exvolume(self,args):
+        """ set the current volume
+        $0 [ value ]
+
+        value: 0..100
+        """
+        args = ReplArgumentParser(args)
+
+        if len(args) > 0:
+            self.device.setVolume( int(args[0])/100.0 )
+
+        text = "volume: %d\n"%(int(self.device.getVolume()*100))
+        sys.stdout.write(text)
 
     def excurrent(self,args):
         """ play / pause current song

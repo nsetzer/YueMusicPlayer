@@ -246,7 +246,7 @@ def naive_search( sqldb, rule ):
 
 import time
 
-def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None):
+def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, echo=False):
     """ convert a rule to a sql query and yield matching songs
 
     orderby must be given for reverse to have any meaning
@@ -285,6 +285,9 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
 
     if limit is not None:
         query += " LIMIT %d"%limit
+
+    if echo:
+        print(query)
 
     try:
         s = time.clock()

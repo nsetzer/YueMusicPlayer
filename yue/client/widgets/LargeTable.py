@@ -2138,6 +2138,7 @@ class TableColumn(object):
 
     def setSortUseTextTransform(self, bUse=False):
         self.b_sortUseTextTransform = bUse;
+
     def sortUseTextTransform(self):
         return self.b_sortUseTextTransform
 

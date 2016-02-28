@@ -21,6 +21,7 @@ from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 
 class LineEdit_Search(LineEdit):
 
@@ -38,18 +39,53 @@ class LineEdit_Search(LineEdit):
             self.table.updateTable(0)
             self.table.setFocus()
 
+class LibraryTable(SongTable):
+
+    def mouseReleaseRight(self,event):
+
+        items = self.getSelection()
+
+        menu = QMenu(self)
+
+        act = menu.addAction("Play",lambda:self.action_play_next(items,True))
+        act.setDisabled( len(items) != 1 )
+
+        menu.addAction("Play next",lambda:self.action_play_next(items))
+        menu.addSeparator()
+        menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library")
+        menu.addAction(QIcon(":/img/app_x.png"),"Bannish")
+
+        if len(items) == 1:
+            menu.addSeparator()
+            self.parent().root.addSongActions(menu,items[0])
+
+        action = menu.exec_( event.globalPos() )
+
+    def action_play_next(self, songs, play=False):
+
+        uids = [ song[Song.uid] for song in songs ]
+
+        pl = PlaylistManager.instance().openPlaylist("current")
+        pl.insert_next( uids )
+        #todo: i really need to find a better way to do this
+        self.parent().root.plview.update()
+
+        if play:
+            self.parent().root.controller.device.next()
+
 class LibraryView(QWidget):
     """docstring for MainWindow"""
-    def __init__(self):
+    def __init__(self,root, parent=None):
+        super(LibraryView, self).__init__(parent)
+        self.root = root# see comment for root in playlist view
 
-        super(LibraryView, self).__init__()
         #self.cwidget = QWidget()
         #self.setCentralWidget(self.cwidget);
         self.vbox = QVBoxLayout(self)
 
         self.hbox = QHBoxLayout()
 
-        self.tbl_song = SongTable( self )
+        self.tbl_song = LibraryTable( self )
         self.tbl_song.showColumnHeader( True )
         self.tbl_song.showRowHeader( False )
 

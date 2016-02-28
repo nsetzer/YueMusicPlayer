@@ -57,6 +57,15 @@ TODO:
 
 """
 
+def explorerOpen( url ):
+
+    if os.name == "nt":
+        os.startfile(url);
+    else:
+        # could also use kde-open, gnome-open etc
+        # TODO: implement code that tries each one until one works
+        #subprocess.call(["xdg-open",filepath])
+        sys.stderr.write("open unsupported on %s"%os.name)
 
 class LineEdit_Path(LineEdit):
 
@@ -149,10 +158,10 @@ class FileTable(LargeTable):
         # library options
 
         if len(items) == 1 and not is_files:
-            act = contextMenu.addAction("Import Directory", lambda : self.parent().action_ingest( items ))
+            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import Directory", lambda : self.parent().action_ingest( items ))
             act.setDisabled( not self.parent().canIngest() )
         else:
-            act = contextMenu.addAction("Import", lambda : self.parent().action_ingest( items ))
+            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import", lambda : self.parent().action_ingest( items ))
             act.setDisabled( not is_files or not self.parent().canIngest())
 
 
@@ -161,6 +170,9 @@ class FileTable(LargeTable):
             ext = os.path.splitext(items[0]['name'])[1].lower()
             if not self.parent().supportedExtension( ext ):
                 act.setDisabled( True )
+
+        contextMenu.addSeparator()
+        contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",self.parent().action_open)
 
         action = contextMenu.exec_( event.globalPos() )
 
@@ -248,6 +260,10 @@ class ExplorerView(QWidget):
 
     def supportedExtension(self,ext):
         return ext == ".mp3"
+
+    def action_open(self):
+
+        explorerOpen( self.view.pwd() )
 
     def action_rename(self, item):
         name=item['name']

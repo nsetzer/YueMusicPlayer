@@ -251,6 +251,7 @@ class Library(object):
         # altering artist, album requires updating count of songs
         # and removing artists that no longer exist.
         if 'artist' in kwargs:
+            print(kwargs['artist'], getSortKey(kwargs['artist']))
             new_art_id = self.artist_db._get_id_or_insert(c,
                 artist=kwargs['artist'],
                 sortkey=getSortKey(kwargs['artist']))
@@ -378,14 +379,16 @@ class Library(object):
         elif isinstance(rule,(str,unicode)):
             rule = ruleFromString( rule )
 
-        if orderby is not None and not isinstance( orderby, (list,tuple)):
-            orderby = [ orderby, ]
+        if orderby is not None:
+            if not isinstance( orderby, (list,tuple)):
+                orderby = [ orderby, ]
             # these three columns have special columns used in sorting songs.
             for i,v in enumerate(orderby):
                 if v in [Song.artist,]:
                     orderby[i]+="_key"
 
-        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit )
+        echo = False
+        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit, echo )
 
     def searchPlaylist(self, playlist_name, rule=None, case_insensitive=True, invert=False, orderby=None, reverse = False, limit=None):
 

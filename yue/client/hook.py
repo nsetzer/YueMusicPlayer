@@ -26,9 +26,10 @@ class KeyHook(object):
         if os.name == 'nt' and pyHook is not None:
             self.hm = pyHook.HookManager();
             self.hm.KeyDown = self.keyPressEvent
-            self.hm.HookKeyboard()
+            if enabled:
+                self.hm.HookKeyboard()
             self.enabled = enabled
-            sys.stdout.write("Keyboard Hook enabled\n")
+            sys.stdout.write("Keyboard Hook enabled (enabled=%s)\n"%enabled)
         else:
             sys.stdout.write("Unable to initialize Keyboard Hook\n")
             self.hm = None
@@ -60,7 +61,11 @@ class KeyHook(object):
 
     def setEnabled(self,b):
         if os.name == 'nt':
-            self.enabled = b
+            if not self.enabled and b:
+                self.hm.HookKeyboard()
+                self.enabled = b
+            elif self.enabled and not b:
+                self.hm.UnhookKeyboard()
 
     def setDiagEnabled(self,b):
         self.diag = b
