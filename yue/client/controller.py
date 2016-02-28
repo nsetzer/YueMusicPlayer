@@ -162,8 +162,18 @@ class PlaybackController(object):
         self.root.plview.scrollToCurrent()
 
     def on_playlist_end(self):
-        songs = Library.instance().search("date > 14", orderby=Song.random, limit=50)
-        lst = [ s[Song.uid] for s in songs ]
+        """
+        create a new playlist using the default query, or a preset
+        """
+        s = Settings.instance()
+        query = "ban=0"
+        presets = s['playlist_presets']
+        if len(presets) > 0:
+            query = presets[0]
+        size =s['playlist_size']
+
+        songs = Library.instance().search(query, orderby=Song.random, limit=size)
+        lst = [ song[Song.uid] for song in songs ]
         self.playlist.set( lst )
         self.device.play_index( 0 )
         self.root.plview.scrollToCurrent()

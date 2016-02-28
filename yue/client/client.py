@@ -153,6 +153,8 @@ class MainWindow(QMainWindow):
         self.plview.vbox.insertWidget(0, self.edit_cmd)
         self.plview.play_index.connect( self.controller.play_index )
 
+        # note: visible state is not stored for the playlist,
+        # it should always be displayed at startup
         self.dock_list = QDockWidget()
         self.dock_list.setWidget( self.plview )
         #self.dock_list.resize(300,0)
@@ -396,6 +398,11 @@ def setSettingsDefaults():
     s.setDefault("volume_equalizer",0) # off
     s.setDefault("ui_show_console",0) # off
     s.setDefault("ui_show_error_log",0) # off
+
+    s.setDefault("playlist_size",50)
+    s.setDefault("playlist_presets",[
+        "ban=0 && date>14",
+        ]) # off
 
 def main():
 
