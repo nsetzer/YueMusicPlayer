@@ -78,10 +78,11 @@ class LibraryTable(SongTable):
         pl = PlaylistManager.instance().openCurrent()
         pl.insert_next( uids )
         #todo: i really need to find a better way to do this
-        self.parent().root.plview.update()
 
         if play:
             self.parent().root.controller.device.next()
+
+        self.parent().root.plview.update()
 
 class LibraryView(QWidget):
     """docstring for MainWindow"""

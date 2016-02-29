@@ -96,8 +96,10 @@ class SoundDevice(object):
 
     def load_current( self ):
         idx, key = self.playlist.current()
+        print(idx,key)
         song = Library.instance().songFromId( key )
         self.load( song )
+
 
     # current playlist management
 

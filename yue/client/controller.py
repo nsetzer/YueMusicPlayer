@@ -131,10 +131,14 @@ class PlaybackController(object):
         self.root.btn_playpause.setPlayState( state )
 
     def on_song_end(self, song):
-        idx,_ = self.device.current()
+
+        try:
+            idx,_ = self.device.current()
+        except IndexError:
+            sys.stderr.write("error: No Current Song\n")
+            return
 
         if self.one_shot:
-            idx, _ = self.device.current()
             self.device.play_index( idx )
             self.device.pause();
             self.one_shot = False
@@ -204,7 +208,10 @@ class PlaybackController(object):
     def _setStop(self, state):
         # if true, stop playback after this song
         if state:
-            self.stop_index,_ = self.device.current()
+            try:
+                self.stop_index,_ = self.device.current()
+            except IndexError:
+                sys.stderr.write("error: No Current Song\n")
         else:
             self.stop_index = -1;
 

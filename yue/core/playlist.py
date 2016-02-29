@@ -36,7 +36,7 @@ class PlaylistManager(object):
 
     def newPlaylist(self, name):
 
-        uid = self.db_names.insert(name=name,size=0,idx=0)
+        uid = self.db_names.insert(name=name,size=0,idx=-1)
 
         view = PlayListView( self.db_names, self.db_lists, uid)
 
@@ -55,7 +55,7 @@ class PlaylistManager(object):
             if item is not None:
                 return PlayListView( self.db_names, self.db_lists, item[0])
             # playlist does not exist, create a new empty one
-            uid = self.db_names._insert(c,name=name,size=0,idx=0)
+            uid = self.db_names._insert(c,name=name,size=0,idx=-1)
             view = PlayListView( self.db_names, self.db_lists, uid)
             return view
 
@@ -130,8 +130,12 @@ class PlayListView(object):
         assert size is not None
         if 0 <= idx < size:
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
-            return c.fetchone()[0]
-        raise IndexError(idx)
+            result = c.fetchone()
+            if not result:
+                raise IndexError("%d/%d"%(idx,size))
+            key = result[0]
+            return key
+        raise IndexError("%d/%d"%(idx,size))
 
     def insert(self,idx,key_or_lst):
 
@@ -158,6 +162,8 @@ class PlayListView(object):
                 lst = key_or_lst
 
             _, name, size, current = self.db_names._get( c, self.uid );
+            if size == 0:
+                current = -1;
             for key in reversed(lst):
                 self._insert_one( c, current+1, key)
 
@@ -230,7 +236,10 @@ class PlayListView(object):
             c = conn.cursor()
             _, _, _, cur = self.db_names._get( c, self.uid );
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx1))
-            key = c.fetchone()[0]
+            result = c.fetchone()
+            if not result:
+                raise IndexError(idx1)
+            key = result[0]
             c.execute("DELETE from playlist_songs where uid=? and idx=?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx-1 WHERE uid=? and idx>?",(self.uid,idx1))
             c.execute("UPDATE playlist_songs SET idx=idx+1 WHERE uid=? and idx>=?",(self.uid,idx2))
@@ -363,7 +372,10 @@ class PlayListView(object):
             c = conn.cursor()
             _, name, size, idx = self.db_names._get( c, self.uid );
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
-            key = c.fetchone()[0]
+            result = c.fetchone()
+            if not result:
+                raise IndexError(idx)
+            key = result[0]
             return idx,key
 
     def next(self):
@@ -379,7 +391,10 @@ class PlayListView(object):
                 raise StopIteration()
             self.db_names._update( c, self.uid, idx=idx)
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
-            key = c.fetchone()[0]
+            result = c.fetchone()
+            if not result:
+                raise IndexError(idx)
+            key = result[0]
             return idx,key
 
     def prev(self):
@@ -395,7 +410,10 @@ class PlayListView(object):
                 raise StopIteration()
             self.db_names._update( c, self.uid, idx=idx)
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
-            key = c.fetchone()[0]
+            result = c.fetchone()
+            if not result:
+                raise IndexError(idx)
+            key = result[0]
             return idx,key
 
     def getDataView( self, library ):

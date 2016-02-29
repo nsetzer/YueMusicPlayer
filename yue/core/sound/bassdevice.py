@@ -132,13 +132,19 @@ class BassSoundDevice(SoundDevice):
     def play(self):
         #self.device.channelIsValid():
         if self.device.play():
-            idx,key = self.playlist.current()
-            self.on_state_changed.emit(idx,key,self.state())
+            try:
+                idx,key = self.playlist.current()
+                self.on_state_changed.emit(idx,key,self.state())
+            except IndexError:
+                sys.stderr.write("error: No Current Song\n")
 
     def pause(self):
         if self.device.pause():
-            idx,key = self.playlist.current()
-            self.on_state_changed.emit(idx,key,self.state())
+            try:
+                idx,key = self.playlist.current()
+                self.on_state_changed.emit(idx,key,self.state())
+            except IndexError:
+                sys.stderr.write("error: No Current Song\n")
 
     def seek(self,seconds):
         self.device.position( seconds )

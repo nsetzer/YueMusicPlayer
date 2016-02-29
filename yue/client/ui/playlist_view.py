@@ -150,9 +150,12 @@ class PlayListViewWidget(QWidget):
         self.update()
 
     def scrollToCurrent(self):
-        if self.playlist is not None:
-            idx,_ = self.playlist.current()
-            self.tbl.scrollTo( idx )
+        try:
+            if self.playlist is not None:
+                idx,_ = self.playlist.current()
+                self.tbl.scrollTo( idx )
+        except IndexError:
+            pass
         self.update()
 
     def update(self):
@@ -160,10 +163,13 @@ class PlayListViewWidget(QWidget):
         this must be called after making any changes to the playlist
         """
 
-        if self.playlist is not None:
-            self.current_index,_ = self.playlist.current()
-        else:
-            self.current_index = -1;
+        self.current_index = -1;
+
+        try:
+            if self.playlist is not None:
+                self.current_index,_ = self.playlist.current()
+        except IndexError:
+            pass
 
         super(PlayListViewWidget,self).update()
 

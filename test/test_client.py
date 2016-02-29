@@ -91,7 +91,7 @@ def convert():
     return library
 
 if __name__ == '__main__':
-    convert()
+    #convert()
     #eq_main()
     #pl_main();
     client_main();

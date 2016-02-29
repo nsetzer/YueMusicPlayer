@@ -524,7 +524,10 @@ def main():
         window.move(cx,cy)
         window.show()
 
-        device.load_current( )
+        try:
+            device.load_current( )
+        except IndexError:
+            sys.stderr.write("error: No Current Song\n")
 
     sys.exit(app.exec_())
 
