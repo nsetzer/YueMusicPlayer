@@ -419,6 +419,8 @@ class PlayListView(object):
     def getDataView( self, library ):
         return PlayListDataView( library, self.db_names, self.db_lists, self.uid )
 
+
+
 class PlayListDataView(PlayListView):
     """A PlayListView backed by a library
 
@@ -443,3 +445,4 @@ class PlayListDataView(PlayListView):
             view = self.library.song_view
             item = view._get( c, uid)
             return dict(zip(view.column_names,item))
+

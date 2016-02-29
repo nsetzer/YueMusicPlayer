@@ -82,7 +82,7 @@ class LibraryTable(SongTable):
         if play:
             self.parent().root.controller.device.next()
 
-        self.parent().root.plview.update()
+        self.parent().root.plview.updateData()
 
 class LibraryView(QWidget):
     """docstring for MainWindow"""

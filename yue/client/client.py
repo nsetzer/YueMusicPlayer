@@ -87,8 +87,7 @@ class ClientRepl(object):
         pl = PlaylistManager.instance().openCurrent()
         lst = [ s['uid'] for s in songs ]
         pl.set( lst )
-
-        self.client.plview.update()
+        self.client.plview.updateData()
 
     def exopen(self, args):
         """
@@ -446,6 +445,7 @@ class MainWindow(QMainWindow):
         lst = [ song[Song.uid] for song in songs ]
         pl.set( lst )
         self.device.play_index( 0 )
+        self.plview.updateData()
 
 
 

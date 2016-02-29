@@ -57,17 +57,16 @@ class PlaylistTable(LargeTable):
 
     def keyPressDelete(self,event):
         sel = self.getSelectionIndex()
-        self.data.delete( sel )
+        self.parent().playlist.delete( sel )
         self.setSelection([min(sel),])
-
-        self.parent().update()
+        self.parent().updateData()
 
     def processDropEvent(self,source,row,data):
 
         if source is self:
             sel = self.getSelectionIndex()
 
-            s,e = self.data.reinsertList(sel, row)
+            s,e = self.parent().playlist.reinsertList(sel, row)
 
             self.setSelection( list(range(s,e)) )
         else:
@@ -77,17 +76,18 @@ class PlaylistTable(LargeTable):
 
             row = min(row, len(self.data))
             ids = [ song[Song.uid] for song in data ]
-            self.data.insert( row, ids)
-
+            self.parent().playlist.insert( row, ids)
             self.setSelection( list(range(row,row+len(ids))) )
 
-        self.parent().update()
+        self.parent().updateData()
 
     def shuffleList(self):
-        self.data.shuffle_range()
+        self.parent().playlist.shuffle_range()
+        self.parent().updateData()
 
     def shuffleSelection(self):
-        self.data.shuffle_selection( self.getSelectionIndex() )
+        self.parent().playlist.shuffle_selection( self.getSelectionIndex() )
+        self.parent().updateData()
 
     def mouseDoubleClick(self,row,col,event):
 
@@ -141,13 +141,10 @@ class PlayListViewWidget(QWidget):
 
     def setPlaylist(self,library,playlist):
 
+        self.library  = library
         self.playlist = playlist
 
-        pl = playlist.getDataView( library )
-
-        self.tbl.setData( pl )
-
-        self.update()
+        self.updateData()
 
     def scrollToCurrent(self):
         try:
@@ -156,6 +153,15 @@ class PlayListViewWidget(QWidget):
                 self.tbl.scrollTo( idx )
         except IndexError:
             pass
+        self.update()
+
+    def updateData(self):
+        # this code actually makes me angry
+        # trying to combine these two steps into a single function call
+        # using a sql cursor fails for no reason
+        data = list(self.playlist.iter())
+        songs = [ self.library.songFromId(uid) for uid in data ]
+        self.tbl.setData( songs )
         self.update()
 
     def update(self):
@@ -173,7 +179,7 @@ class PlayListViewWidget(QWidget):
 
         super(PlayListViewWidget,self).update()
 
-        #self.tbl.update()
+        self.tbl.update()
 
     def sizeHint(self):
         # the first number width, is the default initial size for this widget

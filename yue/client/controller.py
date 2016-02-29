@@ -180,6 +180,7 @@ class PlaybackController(object):
         lst = [ song[Song.uid] for song in songs ]
         self.playlist.set( lst )
         self.device.play_index( 0 )
+        self.root.plview.updateData()
         self.root.plview.scrollToCurrent()
 
     def playOneShot(self, path):
