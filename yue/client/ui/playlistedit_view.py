@@ -120,7 +120,8 @@ class PlaylistEditView(QWidget):
 
     def onUpdate(self):
         text = self.txt_search.text()
-        self.run_search(text)
+        print(text)
+        #self.run_search(text)
 
     def onTextChanged(self,text,update=0):
         self.run_search(text)

@@ -82,8 +82,8 @@ class SongTable(LargeTable):
         # change text color for banished songs
         self.addRowTextColorComplexRule(self.rule_banish,self.color_text_banish)
 
-        self.date_mark_1 = time.time()
-        self.date_mark_2= self.date_mark_1 - (14*24*60*60) # date of two weeks ago
+        self.date_mark_1 = time.time() - (24*60*60)
+        self.date_mark_2= self.date_mark_1 - (13*24*60*60) # date of two weeks ago
 
     def setRuleColors(self,rc_recent,rc_not_recent,rc_banish,rc_selected):
         self.color_text_played_recent     = rc_recent
@@ -238,8 +238,8 @@ class SongTable(LargeTable):
     def setData(self,data):
         super(SongTable,self).setData(data)
         # update time colors when the table is updated
-        self.date_mark_1 = time.time()
-        self.date_mark_2= self.date_mark_1 - (14*24*60*60) # date of two weeks ago
+        self.date_mark_1 = time.time() - (24*60*60)
+        self.date_mark_2= self.date_mark_1 - (13*24*60*60) # date of two weeks ago
 
     #def song_modified(self,rows,column,value):
     #    #print rows,text

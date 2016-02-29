@@ -20,6 +20,7 @@ from yue.client.widgets.LineEdit import LineEdit
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
+from yue.core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
@@ -74,7 +75,7 @@ class LibraryTable(SongTable):
 
         uids = [ song[Song.uid] for song in songs ]
 
-        pl = PlaylistManager.instance().openPlaylist("current")
+        pl = PlaylistManager.instance().openCurrent()
         pl.insert_next( uids )
         #todo: i really need to find a better way to do this
         self.parent().root.plview.update()
@@ -114,7 +115,13 @@ class LibraryView(QWidget):
 
         self.lbl_error.hide()
 
+        order = Settings.instance()["ui_library_column_order"]
+        if len(order):
+            self.tbl_song.columns_setOrder(order)
         self.run_search("")
+
+    def getColumnState(self):
+        return self.tbl_song.columns_getOrder( )
 
     def onUpdate(self):
         text = self.txt_search.text()

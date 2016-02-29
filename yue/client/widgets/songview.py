@@ -9,37 +9,66 @@ from PyQt5.QtGui import *
 from yue.core.song import Song
 
 
-class SongPositionView(QScrollBar):
+class SongPositionView(QWidget):
 
     def __init__(self, device, parent=None):
-        super(SongPositionView,self).__init__(Qt.Horizontal,parent);
+        super(SongPositionView,self).__init__(parent);
 
+        self.hbox = QHBoxLayout(self)
+        self.hbox.setContentsMargins(0,0,0,0)
+
+        self.slider = SongPositionSlider( device, self );
+        self.slider.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+        #self.slider.setTickInterval(15)
+        #self.slider.setTickPosition(QSlider.TicksBelow)
+
+        self.btn_prev = QPushButton("<")
+        self.btn_prev.setMinimumWidth(16)
+        self.btn_prev.setMaximumWidth(32)
+        self.btn_prev.clicked.connect(device.prev)
+        self.btn_prev.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
+
+        self.btn_next = QPushButton(">")
+        self.btn_next.setMinimumWidth(16)
+        self.btn_next.setMaximumWidth(32)
+        self.btn_next.clicked.connect(device.next)
+        self.btn_next.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
+
+        self.hbox.addWidget(self.btn_prev)
+        self.hbox.addWidget(self.slider)
+        self.hbox.addWidget(self.btn_next)
+
+    def setValue(self, v):
+        if not self.slider.user_control:
+            self.slider.setValue( v )
+
+    def setMaximum(self, v):
+        self.slider.setMaximum(v)
+
+class SongPositionSlider(QSlider):
+
+    def __init__(self, device, parent=None):
+        super(SongPositionSlider,self).__init__(Qt.Horizontal,parent);
+
+        self.user_control = False
         self.device = device;
 
-        self.actionTriggered.connect(self.actionEvent)
+        #self.actionTriggered.connect(self.actionEvent)
         self.sliderReleased.connect(self.on_release)
+        self.sliderPressed.connect(self.on_press)
 
-    def actionEvent(self,action):
-        #QAbstractSlider.SliderMove
+    def mouseReleaseEvent(self,event):
+        super().mouseReleaseEvent(event)
+        pos = int(self.maximum()*(event.x()/self.width()))
+        self.device.seek( pos )
+        if self.device.isPaused():
+            self.device.play()
 
-        # button is pressed
-        if action == QAbstractSlider.SliderSingleStepAdd:
-            self.device.next()
-        elif action == QAbstractSlider.SliderSingleStepSub:
-            self.device.prev()
-
-        # gutter is pressed.
-        elif action == QAbstractSlider.SliderPageStepAdd:
-            if self.device.isPaused():
-                self.device.play()
-            self.device.seek( self.value()+5 )
-        elif action == QAbstractSlider.SliderPageStepSub:
-            if self.device.isPaused():
-                self.device.play()
-            self.device.seek( self.value()-5 )
+    def on_press(self):
+        self.user_control = True
 
     def on_release(self):
-
+        self.user_control = False
         if self.device.isPaused():
             self.device.play()
         self.device.seek( self.value() )

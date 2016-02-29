@@ -4,16 +4,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-import os, sys
-dirpath = os.path.dirname(os.path.abspath(__file__))
-dirpath = os.path.dirname(dirpath)
-sys.path.insert(0,dirpath)
-
-isPython3 = sys.version_info[0]==3
-if isPython3:
-    unicode = str
-
-import yue
 from yue.client.widgets.LineEdit import LineEdit
 
 class RenameDialog(QDialog):
@@ -34,11 +24,10 @@ class RenameDialog(QDialog):
         hbox.addWidget(self.btnc)
         hbox.addWidget(self.btna)
 
-        vbox.addWidget(self.edit)
-
-
         if len(prompt) > 0:
             vbox.addWidget(QLabel(prompt))
+
+        vbox.addWidget(self.edit)
 
         vbox.addLayout(hbox)
 

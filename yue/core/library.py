@@ -28,7 +28,7 @@ to sort by the alternate text.
 
 """
 
-import os
+import os, time
 
 import sys
 isPython3 = sys.version_info[0]==3
@@ -441,6 +441,7 @@ class Library(object):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
 
+            s = time.time()
             c.execute("SELECT uid from playlists where name=?", (playlist_name,))
             item = c.fetchone()
             if item is None:
@@ -453,6 +454,8 @@ class Library(object):
                 for item in items:
                     yield {k:v for k,v in zip(self.song_view.column_names,item)}
                 items = c.fetchmany()
+            e =  time.time()
+            print("pl search",e-s,sql)
 
         return
 

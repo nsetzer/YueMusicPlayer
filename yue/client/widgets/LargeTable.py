@@ -2328,7 +2328,7 @@ class LargeTable(LargeTableBase):
 
         super(LargeTable,self).update();
 
-    def setAlwaysHideScrollbar(self,scrollbar_vertical,scrollbar_horizontal):
+    def setAlwaysHideScrollbar(self,scrollbar_horizontal,scrollbar_vertical):
         """
             set whether the vertical or horizontal scrollbars should always
             be hidden, even if they would be needed to scroll through data
@@ -2338,8 +2338,8 @@ class LargeTable(LargeTableBase):
             the default is False, and stacks with setAutoHideScrollbar
                 they will be shown only when needed or all of the time
         """
-        self.sbar_alwayshide_hor = scrollbar_vertical
-        self.sbar_alwayshide_ver = scrollbar_horizontal
+        self.sbar_alwayshide_hor = scrollbar_horizontal
+        self.sbar_alwayshide_ver = scrollbar_vertical
 
         if self.sbar_alwayshide_ver:
             self.sbar_ver.hide();

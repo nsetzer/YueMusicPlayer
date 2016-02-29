@@ -42,6 +42,9 @@ class PlaylistManager(object):
 
         return view
 
+    def openCurrent(self):
+        return self.openPlaylist("current")
+
     def openPlaylist(self, name):
         """ create if it does not exist """
 
@@ -55,6 +58,17 @@ class PlaylistManager(object):
             uid = self.db_names._insert(c,name=name,size=0,idx=0)
             view = PlayListView( self.db_names, self.db_lists, uid)
             return view
+
+    def names(self):
+        """ return all playlist names """
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            c.execute("SELECT name from playlists ORDER BY name")
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    yield item[0] # song_id
+                items = c.fetchmany()
 
 class PlayListView(object):
     def __init__(self, db_names, db_lists, uid):

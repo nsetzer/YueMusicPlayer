@@ -12,19 +12,23 @@ if isPython3:
 from yue.core.song import Song
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 
 from yue.client.client import main as client_main
 
 from yue.client.DSP.equalizer import main as eq_main
+from yue.client.ui.openpl_dialog import main as pl_main
 
 def convert():
     """ convert from old style library to new style library """
     from Song_XMLFormat import SongXML
     from Song_Object import EnumSong
+    from Song_PlaylistFormat import playList_Load_M3U
 
-    db_path = "./libimport.db"
+    db_path = "./yue.db"
     sqlstore = SQLStore(db_path)
     Library.init( sqlstore )
+    PlaylistManager.init( sqlstore )
 
     library = Library.instance()
 
@@ -53,6 +57,8 @@ def convert():
         EnumSong.FILESIZE   : "file_size",
     }
 
+
+
     if len(library) == 0:
 
         xml = r"D:/Dropbox/ConsolePlayer/user/music.xml"
@@ -70,9 +76,22 @@ def convert():
                 new_song["blocked"] = old_song.banish
                 library._insert(c, **new_song)
 
+        #m3udir=r"D:\Dropbox\ConsolePlayer\user\playlist"
+        #for name in os.listdir(m3udir):
+        #    shortname,ext = os.path.splitext(name)
+        #    if ext == ".m3u":
+        #        print(name)
+        #        songs = playList_Load_M3U(os.path.join(m3udir,name),lib)
+        #        print("len",len(songs),len(lib))
+        #        lst = [ song[EnumSong.UID] for song in songs]
+        #        pl = PlaylistManager.instance().openPlaylist( shortname )
+        #        pl.set( lst )
+        #        print("done")
+
     return library
 
 if __name__ == '__main__':
     convert()
     #eq_main()
+    #pl_main();
     client_main();

@@ -293,7 +293,7 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
         s = time.clock()
         result = list(db.query(query, *vals))
         e = time.clock()
-        #print(e-s,sql)
+        print(e-s,sql)
         return result
     except:
         print("`%s`"%sql)

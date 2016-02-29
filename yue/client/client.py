@@ -8,6 +8,9 @@ if isPython3:
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from sip import SIP_VERSION_STR
+
+import time
 
 import yue.client.resource
 
@@ -22,9 +25,12 @@ from ..core.song import Song
 from ..core.repl import YueRepl, ReplArgumentParser
 
 from .ui.library_view import LibraryView
+from .ui.quickselect_view import QuickSelectView
 from .ui.explorer_view import ExplorerView, explorerOpen
 from .ui.playlist_view import PlayListViewWidget
 from .ui.playlistedit_view import PlaylistEditView
+from .ui.rename_dialog import RenameDialog
+from .ui.openpl_dialog import OpenPlaylistDialog
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -78,7 +84,7 @@ class ClientRepl(object):
             query = str(args['search'])
 
         songs = Library.instance().search(query, orderby=Song.random, limit=limit)
-        pl = PlaylistManager.instance().openPlaylist("current")
+        pl = PlaylistManager.instance().openCurrent()
         lst = [ s['uid'] for s in songs ]
         pl.set( lst )
 
@@ -118,6 +124,8 @@ class MainWindow(QMainWindow):
         s = Settings.instance()
 
         self.libview = LibraryView(self);
+        self.quickview = QuickSelectView(self);
+        self.quickview.create_playlist.connect(self.createQuickPlaylist)
         self.expview = ExplorerView(self.controller);
         self.plview = PlayListViewWidget(self);
         self.songview = CurrentSongView( self );
@@ -167,13 +175,12 @@ class MainWindow(QMainWindow):
             self.dock_diag.hide()
         self.dock_diag.visibilityChanged.connect(self.showhide_diag)
 
-
         self.addDockWidget (Qt.RightDockWidgetArea, self.dock_list)
         self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
 
         self.tabview = QTabWidget( self )
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
-        self.tabview.addTab( QWidget(), QIcon(':/img/app_fav.png'), "Quick Select")
+        self.tabview.addTab( self.quickview, QIcon(':/img/app_fav.png'), "Quick Select")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
         self.volcontroller = VolumeController(self)
         self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
@@ -181,8 +188,6 @@ class MainWindow(QMainWindow):
 
         if self.controller.dspSupported():
             self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
-
-        self.openPlaylistEditor( "testlist" )
 
         self.bar_menu = QMenuBar( self )
         self.bar_status = QStatusBar( self )
@@ -207,8 +212,8 @@ class MainWindow(QMainWindow):
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction("New Playlist")
         menu.addSeparator()
-        menu.addAction("New Editable Playlist")
-        menu.addAction("Open Editable Playlist")
+        menu.addAction("New Editable Playlist", self.newEditablePlaylist)
+        menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
         if self.controller.dspSupported():
             menu.addSeparator()
             menu.addAction("Run Equalizer",self.runEqualizer)
@@ -239,11 +244,26 @@ class MainWindow(QMainWindow):
 
 
         menu = self.bar_menu.addMenu("&?")
-        menu.addAction("About")
+        # sip version, qt version, python version, application version
+        about_text = ""
+        v = sys.version_info
+        about_text += "Version: 1.0\n"
+        about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
+        about_text += "Qt Version: %s\n"%QT_VERSION_STR
+        about_text += "sip Version: %s\n"%SIP_VERSION_STR
+        about_text += "PyQt Version: %s\n"%PYQT_VERSION_STR
+        menu.addAction("About",lambda:QMessageBox.about(self,"Yue Music Player",about_text))
 
     def closeEvent(self, event):
 
         s = Settings.instance()
+
+        start = time.time()
+
+        s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
+        s['ui_show_console'] = int(not self.edit_cmd.isHidden())
+        # hide now, to make it look like the application closed faster
+        self.hide()
 
         # record the current volume, but prevent the application
         # from starting muted
@@ -258,10 +278,14 @@ class MainWindow(QMainWindow):
         s["window_x"] = self.x()
         s["window_y"] = self.y()
 
-        s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
-        s['ui_show_console'] = int(not self.edit_cmd.isHidden())
+        s['ui_library_column_order'] = self.libview.getColumnState();
+
+        s['ui_quickselect_favorite_artists'] = self.quickview.getFavoriteArtists()
+        s['ui_quickselect_favorite_genres'] = self.quickview.getFavoriteGenres()
 
         super(MainWindow,self).closeEvent( event )
+
+        sys.stdout.write("finished saving state (%d)\n"%(time.time()-start))
 
     def tabIndex(self, widget):
         idx = -1
@@ -269,12 +293,16 @@ class MainWindow(QMainWindow):
             w = self.tabview.widget( i )
             if w is widget:
                 idx = i
-    def openPlaylistEditor(self, playlist_name):
+        return idx
+
+    def openPlaylistEditor(self, playlist_name, switchto=False):
 
         widget = PlaylistEditView(playlist_name)
         index = self.tabview.addTab( widget, QIcon(':/img/app_list.png'), playlist_name)
         widget.btn = CloseTabButton( lambda : self.closePlaylistEditorTab( widget ), self)
         self.tabview.tabBar().setTabButton(index,QTabBar.RightSide,widget.btn)
+        if switchto:
+            self.tabview.setCurrentWidget( widget )
 
     def closePlaylistEditorTab(self,widget):
 
@@ -341,10 +369,28 @@ class MainWindow(QMainWindow):
             s["volume_equalizer"] = False
             self.action_equalizer.setIconVisibleInMenu ( False )
             self.action_equalizer.setText("Enable Equalizer")
+
     def runEqualizer(self):
         # todo: pass in the controller
         self.dialog_eq = DialogVolEqLearn( )
         self.dialog_eq.show()
+
+
+    def newEditablePlaylist(self):
+
+        diag = RenameDialog("New Playlist", "New Editable Playlist","Enter a Playlist name:", self)
+
+        if diag.exec_():
+            name = diag.text()
+            self.openPlaylistEditor( name, True )
+
+    def openEditablePlaylist(self):
+        diag = OpenPlaylistDialog(self)
+
+        if diag.exec_():
+            name = diag.text()
+            self.openPlaylistEditor( name, True )
+
 
     def addSongActions(self, menu, song ):
         """ common actions for context menus dealing with a song """
@@ -390,6 +436,16 @@ class MainWindow(QMainWindow):
             self.action_view_logger.setText("Show Error Log")
 
 
+    def createQuickPlaylist(self, query):
+        s = Settings.instance()
+        size =s['playlist_size']
+        songs = Library.instance().search(query,orderby=Song.random,limit=size)
+        pl = PlaylistManager.instance().openCurrent()
+        lst = [ song[Song.uid] for song in songs ]
+        pl.set( lst )
+        self.device.play_index( 0 )
+
+
 def setSettingsDefaults():
 
     s = Settings.instance()
@@ -398,6 +454,11 @@ def setSettingsDefaults():
     s.setDefault("volume_equalizer",0) # off
     s.setDefault("ui_show_console",0) # off
     s.setDefault("ui_show_error_log",0) # off
+
+    # when empty, default order is used
+    s.setDefault("ui_library_column_order",[])
+    s.setDefault("ui_quickselect_favorite_artists",[])
+    s.setDefault("ui_quickselect_favorite_genres",[])
 
     s.setDefault("playlist_size",50)
     s.setDefault("playlist_presets",[
@@ -414,9 +475,10 @@ def main():
 
     with LogView(trace=False,echo=True) as diag:
 
+        plugin_path = "./lib/win32/x86_64"
+        db_path = "./yue.db"
 
         sys.stdout.write("Loading database\n")
-        db_path = "./libimport.db"
         sqlstore = SQLStore(db_path)
         Settings.init( sqlstore )
         Library.init( sqlstore )
@@ -424,14 +486,14 @@ def main():
 
         setSettingsDefaults()
 
-        pl = PlaylistManager.instance().openPlaylist("current")
+        pl = PlaylistManager.instance().openCurrent()
         if len(pl)==0:
             songs = Library.instance().search(None, orderby=Song.random, limit=5)
             lst = [ s['uid'] for s in songs ]
             pl.set( lst )
 
         sys.stdout.write("Create Sound Device\n")
-        device = newDevice(pl,"./lib/win32/x86_64")
+        device = newDevice(pl,plugin_path)
 
         sys.stdout.write("Initializing application\n")
         window = MainWindow( diag, device )

@@ -109,7 +109,7 @@ class Settings(object):
             self._set("setstr",K_STR,key,value)
         elif isinstance(value,int):
             self._set("setint",K_INT,key,value)
-        elif isinstance(value,(list,tuple)):
+        elif isinstance(value,(list,tuple,set)):
             self._set_list(key,value)
         else:
             raise TypeError(key)

@@ -107,7 +107,7 @@ class PlaybackController(object):
 
         self.one_shot = False
 
-        self.playlist = PlaylistManager.instance().openPlaylist("current")
+        self.playlist = PlaylistManager.instance().openCurrent()
 
         if self.dspSupported():
             s = Settings.instance()
