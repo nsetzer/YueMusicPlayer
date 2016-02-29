@@ -17,6 +17,9 @@ import yue
 from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LineEdit import LineEdit
 
+from yue.client.ui.rename_dialog import RenameDialog
+from yue.client.ui.openpl_dialog import OpenPlaylistDialog
+
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
@@ -69,6 +72,9 @@ class LibraryEditTable(SongTable):
 
 class PlaylistEditView(QWidget):
     """docstring for MainWindow"""
+
+    on_rename = pyqtSignal(QWidget,str)
+
     def __init__(self, playlist_name):
         super(PlaylistEditView, self).__init__()
         self.vbox = QVBoxLayout(self)
@@ -110,7 +116,8 @@ class PlaylistEditView(QWidget):
 
         self.playlist_name = playlist_name
         self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
-        self.load()
+        self.playlist_data = set(self.playlist.iter())
+        self.refresh()
 
 
     def onUpdate(self):
@@ -168,8 +175,24 @@ class PlaylistEditView(QWidget):
             raise e
 
     def save(self):
-        self.playlist.set( list(self.playlist_data) )
+        dialog = RenameDialog(self.playlist_name,"Save As")
+
+        if dialog.exec_():
+            name = dialog.text().strip()
+            if name:
+                self.playlist_name = dialog.text()
+                self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
+                self.playlist.set( list(self.playlist_data) )
+                self.on_rename.emit(self,self.playlist_name)
 
     def load(self):
-        self.playlist_data = set(self.playlist.iter())
-        self.refresh()
+        dialog = OpenPlaylistDialog(self)
+        if dialog.exec_():
+            self.playlist_name = dialog.text()
+            self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
+            self.playlist_data = set(self.playlist.iter())
+            self.on_rename.emit(self,self.playlist_name)
+            self.refresh()
+
+    def export(self):
+            pass

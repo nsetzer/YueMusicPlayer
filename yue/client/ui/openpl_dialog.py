@@ -19,6 +19,7 @@ class SelectTable(LargeTable):
         super(SelectTable, self).__init__(parent)
 
         self.setSelectionRule(LargeTable.SELECT_ONE)
+        self.setLastColumnExpanding( True )
         self.setAlwaysHideScrollbar(True,False)
         self.showColumnHeader( False )
         self.showRowHeader( True )
@@ -26,11 +27,23 @@ class SelectTable(LargeTable):
     def mouseDoubleClick(self,row,col,event):
 
         if event is None or event.button() == Qt.LeftButton:
-            self.parent().accept()
+            if 0<= row < len(self.data):
+                self.parent().accept()
+
+    def mouseReleaseRight(self,event):
+
+        items = self.getSelection()
+        print(items)
+        menu = QMenu(self)
+
+        act = menu.addAction(QIcon(":/img/app_trash.png"),"Delete",lambda:self.delete(items[0]))
+        act.setDisabled( len(items) != 1 )
+
+        menu.exec_( event.globalPos() )
 
 class OpenPlaylistDialog(QDialog):
 
-    def __init__(self,text='',title='Rename', prompt='', parent=None):
+    def __init__(self,text='',title='Open Playlist', prompt='', parent=None):
 
         super(OpenPlaylistDialog,self).__init__(parent)
         self.setWindowTitle(title)
@@ -48,11 +61,12 @@ class OpenPlaylistDialog(QDialog):
 
         if len(prompt) > 0:
             vbox.addWidget(QLabel(prompt))
+
         vbox.addWidget(self.table.container)
         vbox.addLayout(hbox)
 
         # cant edit the current playlist because reasons
-        data = [ [x,] for x in PlaylistManager.instance().names() if x != "current" ]
+        data = [ [x,] for x in sorted(PlaylistManager.instance().names()) if x != "current" ]
         self.table.setData( data )
 
         self.btna.clicked.connect(self.accept)

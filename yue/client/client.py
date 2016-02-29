@@ -295,9 +295,15 @@ class MainWindow(QMainWindow):
                 idx = i
         return idx
 
+    def renameTab(self,widget,name):
+        idx = self.tabIndex( widget )
+        if idx >= 0:
+            self.tabview.setTabText(idx,name)
+
     def openPlaylistEditor(self, playlist_name, switchto=False):
 
         widget = PlaylistEditView(playlist_name)
+        widget.on_rename.connect( self.renameTab )
         index = self.tabview.addTab( widget, QIcon(':/img/app_list.png'), playlist_name)
         widget.btn = CloseTabButton( lambda : self.closePlaylistEditorTab( widget ), self)
         self.tabview.tabBar().setTabButton(index,QTabBar.RightSide,widget.btn)
@@ -378,11 +384,9 @@ class MainWindow(QMainWindow):
 
     def newEditablePlaylist(self):
 
-        diag = RenameDialog("New Playlist", "New Editable Playlist","Enter a Playlist name:", self)
-
-        if diag.exec_():
-            name = diag.text()
-            self.openPlaylistEditor( name, True )
+        #diag = RenameDialog("New Playlist", \
+        # "New Editable Playlist","Enter a Playlist name:", self)
+        self.openPlaylistEditor( "New Playlist", True )
 
     def openEditablePlaylist(self):
         diag = OpenPlaylistDialog(self)
@@ -390,7 +394,6 @@ class MainWindow(QMainWindow):
         if diag.exec_():
             name = diag.text()
             self.openPlaylistEditor( name, True )
-
 
     def addSongActions(self, menu, song ):
         """ common actions for context menus dealing with a song """
@@ -435,7 +438,6 @@ class MainWindow(QMainWindow):
         else:
             self.action_view_logger.setText("Show Error Log")
 
-
     def createQuickPlaylist(self, query):
         s = Settings.instance()
         size =s['playlist_size']
@@ -444,6 +446,8 @@ class MainWindow(QMainWindow):
         lst = [ song[Song.uid] for song in songs ]
         pl.set( lst )
         self.device.play_index( 0 )
+
+
 
 
 def setSettingsDefaults():

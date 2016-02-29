@@ -173,8 +173,7 @@ class PlayListViewWidget(QWidget):
 
         super(PlayListViewWidget,self).update()
 
-
-        self.tbl.update()
+        #self.tbl.update()
 
     def sizeHint(self):
         # the first number width, is the default initial size for this widget
