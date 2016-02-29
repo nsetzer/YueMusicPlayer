@@ -441,7 +441,7 @@ class Library(object):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
 
-            s = time.time()
+            #s = time.time()
             c.execute("SELECT uid from playlists where name=?", (playlist_name,))
             item = c.fetchone()
             if item is None:
@@ -454,8 +454,8 @@ class Library(object):
                 for item in items:
                     yield {k:v for k,v in zip(self.song_view.column_names,item)}
                 items = c.fetchmany()
-            e =  time.time()
-            print("pl search",e-s,sql)
+            #e =  time.time()
+            #print("pl search",e-s,sql)
 
         return
 

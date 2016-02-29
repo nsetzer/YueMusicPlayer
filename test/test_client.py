@@ -76,22 +76,22 @@ def convert():
                 new_song["blocked"] = old_song.banish
                 library._insert(c, **new_song)
 
-        #m3udir=r"D:\Dropbox\ConsolePlayer\user\playlist"
-        #for name in os.listdir(m3udir):
-        #    shortname,ext = os.path.splitext(name)
-        #    if ext == ".m3u":
-        #        print(name)
-        #        songs = playList_Load_M3U(os.path.join(m3udir,name),lib)
-        #        print("len",len(songs),len(lib))
-        #        lst = [ song[EnumSong.UID] for song in songs]
-        #        pl = PlaylistManager.instance().openPlaylist( shortname )
-        #        pl.set( lst )
-        #        print("done")
+        m3udir=r"D:\Dropbox\ConsolePlayer\user\playlist"
+        for name in os.listdir(m3udir):
+            shortname,ext = os.path.splitext(name)
+            if ext == ".m3u":
+                print(name)
+                songs = playList_Load_M3U(os.path.join(m3udir,name),lib)
+                print("len",len(songs),len(lib))
+                lst = [ song[EnumSong.UID] for song in songs]
+                pl = PlaylistManager.instance().openPlaylist( shortname )
+                pl.set( lst )
+                print("done")
 
     return library
 
 if __name__ == '__main__':
-    #convert()
+    convert()
     #eq_main()
     #pl_main();
     client_main();

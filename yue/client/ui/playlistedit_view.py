@@ -42,10 +42,9 @@ class PlayListEditTable(SongTable):
 
         # allow drops from the current playlist because why not
         if source is not None:
-            if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
-                return
-            ids = [ song[Song.uid] for song in data ]
-            self.parent().playlist.insert_fast( ids )
+            for song in data:
+                if isinstance(song,dict):
+                    self.parent().playlist_data.add( song[Song.uid] )
             self.parent().refresh()
 
 class LibraryEditTable(SongTable):
@@ -63,12 +62,10 @@ class LibraryEditTable(SongTable):
     def processDropEvent(self,source,row,data):
 
         if source is self.sibling:
-            if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
-                return
-            ids = [ song[Song.uid] for song in data ]
-            self.parent().playlist.remove_fast( ids )
+            for song in data:
+                if isinstance(song,dict):
+                    self.parent().playlist_data.remove( song[Song.uid] )
             self.parent().refresh()
-
 
 class PlaylistEditView(QWidget):
     """docstring for MainWindow"""
@@ -80,11 +77,10 @@ class PlaylistEditView(QWidget):
         self.hbox2 = QHBoxLayout()
 
         self.toolbar = QToolBar(self)
-        # don't need to save since database
-        #self.toolbar.addAction(QIcon(':/img/app_save.png'),"save")
-        self.toolbar.addAction(QIcon(':/img/app_open.png'),"load")
-        self.toolbar.addAction("Export")
-        self.toolbar.addAction("Play")
+        self.toolbar.addAction(QIcon(':/img/app_save.png'),"save", self.save)
+        self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
+        self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export")
+        self.toolbar.addAction(QIcon(':/img/app_play.png'),"Play")
 
         self.tbl_lib = LibraryEditTable( self )
         self.tbl_pl = PlayListEditTable( self )
@@ -112,11 +108,10 @@ class PlaylistEditView(QWidget):
 
         self.lbl_error.hide()
 
-        self.playlist = PlaylistManager.instance().openPlaylist(playlist_name)
-
         self.playlist_name = playlist_name
+        self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
+        self.load()
 
-        self.refresh()
 
     def onUpdate(self):
         text = self.txt_search.text()
@@ -136,19 +131,25 @@ class PlaylistEditView(QWidget):
         setText: if true set the text box to contain text
         """
         try:
+            # search the entire library for songs that match the query
             lib = Library.instance()
-            data = list(lib.searchPlaylist( self.playlist_name, text, \
+            songs = lib.search( text, \
                 orderby=self.tbl_pl.sort_orderby,
-                reverse = self.tbl_pl.sort_reverse ))
-            self.tbl_pl.setData(data)
+                reverse=self.tbl_pl.sort_reverse )
 
-            self.lbl_search.setText("%d/%d"%(len(data), len(lib)))
+            # filter results into two sets, in the playlist and not
+            ldata = []
+            rdata = []
+            for song in songs:
+                if song[Song.uid] in self.playlist_data:
+                    rdata.append( song )
+                else:
+                    ldata.append( song )
 
-            data = list(lib.searchPlaylist( self.playlist_name, text, \
-                invert = True,
-                orderby=self.tbl_pl.sort_orderby,
-                reverse = self.tbl_pl.sort_reverse ))
-            self.tbl_lib.setData(data)
+
+            self.tbl_lib.setData(ldata)
+            self.tbl_pl.setData(rdata)
+            self.lbl_search.setText("%d/%d"%(len(rdata), len(lib)))
 
             if not self.lbl_error.isHidden():
                 self.txt_search.setStyleSheet("")
@@ -157,8 +158,8 @@ class PlaylistEditView(QWidget):
             if setText:
                 self.txt_search.setText( text )
 
-            self.tbl_lib.scrollTo( 0 )
-            self.tbl_pl.scrollTo( 0 )
+                self.tbl_lib.scrollTo( 0 )
+                self.tbl_pl.scrollTo( 0 )
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
@@ -166,3 +167,9 @@ class PlaylistEditView(QWidget):
         except Exception as e:
             raise e
 
+    def save(self):
+        self.playlist.set( list(self.playlist_data) )
+
+    def load(self):
+        self.playlist_data = set(self.playlist.iter())
+        self.refresh()

@@ -4,11 +4,13 @@
      <file>img/app_file.png</file>
      <file>img/app_folder.png</file>
      <file>img/app_list.png</file>
+     <file>img/app_export.png</file>
      <file>img/app_import.png</file>
      <file>img/app_note.png</file>
      <file>img/app_song.png</file>
      <file>img/app_open.png</file>
      <file>img/app_save.png</file>
+     <file>img/app_play.png</file>
      <file>img/app_fav.png</file>
      <file>img/app_check.png</file>
      <file>img/app_trash.png</file>
