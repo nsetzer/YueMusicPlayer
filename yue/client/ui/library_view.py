@@ -14,6 +14,7 @@ if isPython3:
     unicode = str
 
 import yue
+from yue.client.widgets.TableEditColumn import EditColumn
 from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LineEdit import LineEdit
 
@@ -42,6 +43,7 @@ class LineEdit_Search(LineEdit):
 
 class LibraryTable(SongTable):
 
+
     def __init__(self,parent):
         super(LibraryTable,self).__init__(parent)
 
@@ -51,7 +53,13 @@ class LibraryTable(SongTable):
     def currentSongRule(self,row):
         return self.data[row][Song.uid] == self.current_uid
 
+
     def mouseReleaseRight(self,event):
+
+        mx = event.x()
+        my = event.y()
+        cx,cy = self._mousePosToCellPos(mx,my)
+        row,cur_c = self.positionToRowCol(mx,my)
 
         items = self.getSelection()
 
@@ -61,34 +69,53 @@ class LibraryTable(SongTable):
         act.setDisabled( len(items) != 1 )
 
         menu.addAction("Play next",lambda:self.action_play_next(items))
+
+        if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
+            menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
+                lambda:self.action_edit_column(row,cur_c))
+
         menu.addSeparator()
         menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library")
         menu.addAction(QIcon(":/img/app_x.png"),"Bannish")
 
-        if len(items) == 1:
+        if len(items) == 1 and self.menu_callback is not None:
             menu.addSeparator()
-            self.parent().root.addSongActions(menu,items[0])
+            menu_callback(menu,items[0])
 
         action = menu.exec_( event.globalPos() )
 
+
+    def mouseDoubleClick(self,row,col,event):
+
+        cx,cy = (0,0)
+        if event:
+            cx,cy = self._mousePosToCellPos(event.x(),event.y())
+        if 0<=col<len(self.columns) and self.columns[col].index == Song.rating:
+            self.columns[col].mouseDoubleClick(row,cx,cy)
+        else:
+            items = self.getSelection()
+            self.action_play_next(items)
+
     def action_play_next(self, songs, play=False):
-
         uids = [ song[Song.uid] for song in songs ]
+        self.parent().set_playlist.emit(uids,play)
 
-        pl = PlaylistManager.instance().openCurrent()
-        pl.insert_next( uids )
-        #todo: i really need to find a better way to do this
-
-        if play:
-            self.parent().root.controller.device.next()
-
-        self.parent().root.plview.updateData()
+    def action_edit_column(self, row, col):
+        opts = self.columns[col].get_default_opts(row)
+        if opts:
+            self.columns[col].editor_start(*opts)
 
 class LibraryView(QWidget):
     """docstring for MainWindow"""
-    def __init__(self,root, parent=None):
+
+    # emit this signal to create a new playlist from a given query string
+    create_playlist = pyqtSignal(str)
+
+
+    set_playlist = pyqtSignal(list,bool)
+
+    def __init__(self, parent=None):
         super(LibraryView, self).__init__(parent)
-        self.root = root# see comment for root in playlist view
 
         #self.cwidget = QWidget()
         #self.setCentralWidget(self.cwidget);
@@ -106,9 +133,18 @@ class LibraryView(QWidget):
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
+        #self.btn_newlist = QToolButton(self)
+        self.btn_newlist = QPushButton(self)
+        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
+        self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
+        self.btn_newlist.setFlat(True)
+        #act = QAction(QIcon(":/img/app_newlist.png"),"Create Playlist",self)
+        #act.triggered.connect(lambda:sys.stdout.write("create\n"))
+        #self.btn_newlist.setDefaultAction(act)
 
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )
+        self.hbox.addWidget( self.btn_newlist )
 
         self.vbox.addLayout( self.hbox )
         self.vbox.addWidget( self.lbl_error )
@@ -116,10 +152,13 @@ class LibraryView(QWidget):
 
         self.lbl_error.hide()
 
+        self.menu_callback = None
+
         order = Settings.instance()["ui_library_column_order"]
         if len(order):
             self.tbl_song.columns_setOrder(order)
         self.run_search("")
+
 
     def getColumnState(self):
         return self.tbl_song.columns_getOrder( )
@@ -162,3 +201,11 @@ class LibraryView(QWidget):
         self.tbl_song.current_uid = uid
         self.tbl_song.update()
 
+
+    def setMenuCallback(self,cbk):
+        """
+        callback as a function which accepts a menu and a song
+        and returns nothing. the function should add actions to
+        the given song
+        """
+        self.menu_callback = cbk

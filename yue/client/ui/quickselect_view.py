@@ -246,6 +246,9 @@ class QuickSelectView(QWidget):
         self.sort_reverse = not self.sort_reverse
         self.formatData()
 
+    def clearSelection(self):
+        self.selected = set()
+
     def createPlaylist(self):
 
         terms = []
@@ -393,6 +396,10 @@ class QuickTable(LargeTable):
 
         act = contextMenu.addAction("Create Playlist from Selection", self.parent().createPlaylist)
         act.setDisabled( len(self.parent().selected)==0 )
+
+        act = contextMenu.addAction("Clear Selection", self.parent().clearSelection)
+        act.setDisabled( len(self.parent().selected)==0 )
+
 
         contextMenu.addSeparator()
 

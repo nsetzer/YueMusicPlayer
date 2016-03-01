@@ -116,7 +116,16 @@ class PlaybackController(object):
 
     def on_song_load(self, song):
         self.root.plview.update()
+
+        index = -1
+        try:
+            if self.playlist is not None and not self.one_shot:
+                index,_ = self.playlist.current()
+        except IndexError:
+            pass
+
         self.root.songview.setCurrentSong( song )
+        self.root.songview.setPlaylistInfo( index, len(self.playlist) )
         self.root.posview.setMaximum( song[Song.length] )
         self.root.libview.setCurrentSongId(song[Song.uid])
 

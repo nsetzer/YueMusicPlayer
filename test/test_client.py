@@ -18,6 +18,7 @@ from yue.client.client import main as client_main
 
 from yue.client.DSP.equalizer import main as eq_main
 from yue.client.ui.openpl_dialog import main as pl_main
+from yue.client.ui.newpl_dialog import main as npl_main
 
 def convert():
     """ convert from old style library to new style library """
@@ -94,4 +95,5 @@ if __name__ == '__main__':
     convert()
     #eq_main()
     #pl_main();
+    #npl_main();
     client_main();

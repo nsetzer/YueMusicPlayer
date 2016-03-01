@@ -31,6 +31,7 @@ from .ui.playlist_view import PlayListViewWidget
 from .ui.playlistedit_view import PlaylistEditView
 from .ui.rename_dialog import RenameDialog
 from .ui.openpl_dialog import OpenPlaylistDialog
+from .ui.newpl_dialog import NewPlaylistDialog
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -123,6 +124,10 @@ class MainWindow(QMainWindow):
         s = Settings.instance()
 
         self.libview = LibraryView(self);
+        self.libview.create_playlist.connect(self.createNewPlaylist)
+        self.libview.set_playlist.connect(self.setCurrentPlaylist)
+        self.libview.setMenuCallback( self.addSongActions )
+
         self.quickview = QuickSelectView(self);
         self.quickview.create_playlist.connect(self.createQuickPlaylist)
         self.expview = ExplorerView(self.controller);
@@ -209,7 +214,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Exit")
 
         menu = self.bar_menu.addMenu("&Music")
-        menu.addAction("New Playlist")
+        menu.addAction("New Playlist",self.createNewPlaylist)
         menu.addSeparator()
         menu.addAction("New Editable Playlist", self.newEditablePlaylist)
         menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
@@ -221,9 +226,11 @@ class MainWindow(QMainWindow):
             if s['volume_equalizer']:
                 self.action_equalizer.setIconVisibleInMenu ( True )
                 self.action_equalizer.setText("Disable Equalizer")
+                self.songview.setEQEnabled(True)
             else:
                 self.action_equalizer.setIconVisibleInMenu ( False )
                 self.action_equalizer.setText("Enable Equalizer")
+                self.songview.setEQEnabled(False)
 
         menu = self.bar_menu.addMenu("&View")
         self.action_view_console = menu.addAction("",self.toggleConsoleVisible)
@@ -370,11 +377,12 @@ class MainWindow(QMainWindow):
             s["volume_equalizer"] = True
             self.action_equalizer.setIconVisibleInMenu ( True )
             self.action_equalizer.setText("Disable Equalizer")
+            self.songview.setEQEnabled(True)
         else:
             s["volume_equalizer"] = False
             self.action_equalizer.setIconVisibleInMenu ( False )
             self.action_equalizer.setText("Enable Equalizer")
-
+            self.songview.setEQEnabled(False)
     def runEqualizer(self):
         # todo: pass in the controller
         self.dialog_eq = DialogVolEqLearn( )
@@ -447,7 +455,34 @@ class MainWindow(QMainWindow):
         self.device.play_index( 0 )
         self.plview.updateData()
 
+    def createNewPlaylist(self,query=""):
 
+        s = Settings.instance();
+        limit = s['playlist_size']
+        presets = s['playlist_presets']
+        dialog = NewPlaylistDialog(query,limit=limit,parent=self)
+        dialog.setPresets(presets)
+
+        if dialog.exec():
+
+            params = dialog.getQueryParams()
+            songs = Library.instance().search( \
+                        params['query'],
+                        orderby=Song.random,
+                        limit=params['limit'])
+            lst = [ song[Song.uid] for song in songs ]
+            pl = PlaylistManager.instance().openCurrent()
+            pl.set( lst )
+            self.device.play_index( 0 )
+            self.plview.updateData()
+
+
+    def setCurrentPlaylist(self, uids,play=False):
+        pl = PlaylistManager.instance().openCurrent()
+        pl.insert_next( uids )
+        if play:
+            self.controller.device.next()
+        self.plview.updateData()
 
 
 def setSettingsDefaults():

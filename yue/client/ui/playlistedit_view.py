@@ -86,6 +86,7 @@ class PlaylistEditView(QWidget):
         self.toolbar.addAction(QIcon(':/img/app_save.png'),"save", self.save)
         self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
         self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export")
+        self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import")
         self.toolbar.addAction(QIcon(':/img/app_play.png'),"Play")
 
         self.tbl_lib = LibraryEditTable( self )
