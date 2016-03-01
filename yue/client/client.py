@@ -113,7 +113,9 @@ class MainWindow(QMainWindow):
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
-        self.keyhook = KeyHook(self.controller,False)
+
+        s = Settings.instance()
+        self.keyhook = KeyHook(self.controller, s['enable_keyboard_hook'])
 
         self.dialog_ingest = None
         self._init_ui( diag)
@@ -134,16 +136,23 @@ class MainWindow(QMainWindow):
 
         self.expview = ExplorerView(self);
         self.expview.play_file.connect(self.controller.playOneShot)
+        self.expview.execute_search.connect(self.executeSearch)
 
         self.plview = PlayListViewWidget(self);
         self.plview.setMenuCallback( self.addSongActions )
+        self.plview.play_index.connect( self.controller.play_index )
 
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
 
+        self.posview = SongPositionView( self );
+        self.posview.seek.connect(self.on_seek)
+        self.posview.next.connect(self.controller.play_next)
+        self.posview.prev.connect(self.controller.play_prev)
+
         if self.controller.dspSupported():
             self.peqview = WidgetOctaveEqualizer();
-            self.posview = SongPositionView( self.device, self );
+            # TODO: we should not be passing controller into these widgets
             self.audioview = BassVisualizer(self.controller, self)
             self.audioview.setFixedHeight( 48 )
             self.audioview.start()
@@ -171,7 +180,6 @@ class MainWindow(QMainWindow):
         self.plview.vbox.insertLayout(0, self.hbox)
         self.plview.vbox.insertWidget(0, self.posview)
         self.plview.vbox.insertWidget(0, self.edit_cmd)
-        self.plview.play_index.connect( self.controller.play_index )
 
         # note: visible state is not stored for the playlist,
         # it should always be displayed at startup
@@ -370,10 +378,11 @@ class MainWindow(QMainWindow):
         #Settings.instance()["volume"] = vol
         self.controller.device.setVolume( vol/100.0 )
 
-    def executeSearch(self,query):
+    def executeSearch(self,query,switch=True):
         #idx = self.tabIndex( self.libview )
         self.libview.run_search(query,setText=True)
-        self.tabview.setCurrentWidget(self.libview)
+        if switch:
+            self.tabview.setCurrentWidget(self.libview)
 
     def exploreDirectory(self, path):
         self.expview.chdir(path, True)
@@ -461,7 +470,7 @@ class MainWindow(QMainWindow):
         pl = PlaylistManager.instance().openCurrent()
         lst = [ song[Song.uid] for song in songs ]
         pl.set( lst )
-        self.device.play_index( 0 )
+        self.controller.play_index( 0 )
         self.plview.updateData()
 
     def createNewPlaylist(self,query=""):
@@ -482,15 +491,21 @@ class MainWindow(QMainWindow):
             lst = [ song[Song.uid] for song in songs ]
             pl = PlaylistManager.instance().openCurrent()
             pl.set( lst )
-            self.device.play_index( 0 )
+            self.controller.play_index( 0 )
             self.plview.updateData()
 
     def setCurrentPlaylist(self, uids,play=False):
         pl = PlaylistManager.instance().openCurrent()
         pl.insert_next( uids )
         if play:
-            self.controller.device.next()
+            self.controller.play_next()
         self.plview.updateData()
+
+    def on_seek(self,position):
+
+        self.controller.device.seek( position )
+        if self.controller.device.isPaused():
+            self.controller.device.play()
 
 
 def setSettingsDefaults():
@@ -501,6 +516,8 @@ def setSettingsDefaults():
     s.setDefault("volume_equalizer",0) # off
     s.setDefault("ui_show_console",0) # off
     s.setDefault("ui_show_error_log",0) # off
+
+    s.setDefault("enable_keyboard_hook",1) # on by default
 
     # when empty, default order is used
     s.setDefault("ui_library_column_order",[])

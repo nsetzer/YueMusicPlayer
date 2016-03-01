@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.song import Song
 from yue.core.library import Library
 from ..widgets.ProgressDialog import ProgressDialog
 
@@ -16,7 +17,7 @@ class IngestProgressDialog(ProgressDialog):
 
         self.media_files = []
 
-        self.supported_exts = [".mp3", ".flac"]
+        self.supported_exts = Song.supportedExtensions()
 
         self.ingest_count = 0
 

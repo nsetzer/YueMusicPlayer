@@ -1,5 +1,5 @@
 
-import os
+import os,sys
 
 from calendar import timegm
 import time
@@ -9,6 +9,18 @@ from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, ID3NoHeaderError
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4
+from mutagen.asf import ASF # *.wma
+
+ext_mp3  = (".mp3",)
+ext_mp4  = ('.m4a', '.m4b', '.m4p', '.mpeg4', '.aac')
+ext_asf  = ('.asf','.wma')
+ext_flac = ('.flac',)
+
+isPython3 = sys.version_info[0]==3
+if isPython3:
+    unicode = str
+
 
 class Song(object):
     # column names
@@ -168,6 +180,10 @@ class Song(object):
     def fromPath( path ):
         return read_tags( path )
 
+    @staticmethod
+    def supportedExtensions():
+        return ext_mp3+ext_mp4+ext_asf+ext_flac
+
 # from kivy.logger import Logger
 
 def read_tags( path):
@@ -176,10 +192,14 @@ def read_tags( path):
 
     ext = os.path.splitext(path)[1].lower()
 
-    if ext == ".mp3":
+    if ext in ext_mp3:
         read_mp3_tags( song, path )
-    elif ext == '.flac':
+    elif ext in ext_flac:
         read_flac_tags( song, path )
+    elif ext in ext_mp4:
+        read_mp4_tags( song, path )
+    elif ext in ext_asf:
+        read_asf_tags( song, path )
     else:
         raise ValueError(ext)
 
@@ -230,10 +250,36 @@ def read_flac_tags( song, path):
     song[Song.album_index]  = get_int(audio,'tracknumber','/')
     song[Song.length]       = int(audio.info.length)
 
-def get_str(audio,tag):
+def read_mp4_tags( song, path):
+
+    audio = MP4( path )
+
+    song[Song.artist] = get_str(audio,"\xA9ART","unkown artist")
+    song[Song.album]  = get_str(audio,"\xA9alb","unkown album")
+    song[Song.title]  = get_str(audio,"\xA9nam","unkown title")
+    song[Song.genre]  = get_str(audio,"\xA9gen","unkown genre")
+    try:
+        song[Song.album_index]  = int(audio["trkn"][0][0])
+    except:
+        pass
+    song[Song.length]       = int(audio.info.length)
+
+def read_asf_tags( song, path):
+
+    audio = ASF( path )
+
+    song[Song.artist] = get_str(audio,"WM/AlbumArtist","unkown artist")
+    song[Song.album]  = get_str(audio,"WM/AlbumTitle","unkown album")
+    song[Song.title]  = get_str(audio,"Title","unkown title")
+    song[Song.genre]  = get_str(audio,"WM/Genre","unkown genre")
+    song[Song.album_index]  = get_int(audio,'WM/TrackNumber')
+    song[Song.year]   = get_int(audio,"WM/Year",'-')
+    song[Song.length] = int(audio.info.length)
+
+def get_str(audio,tag,unkown=None):
     if tag in audio:
-        return audio[tag][0]
-    return 'unknown ' + tag
+        return unicode(audio[tag][0])
+    return unkown or ('unknown ' + tag)
 
 def get_int(audio,tag,split_on=None):
     try:

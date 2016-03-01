@@ -114,8 +114,19 @@ class PlaybackController(object):
             if s["volume_equalizer"]:
                 self.device.setEQEnabled( True )
 
+    def play_index(self,idx):
+        self.one_shot = False
+        self.device.play_index( idx )
+
+    def play_next(self):
+        self.one_shot = False
+        self.device.next()
+
+    def play_prev(self):
+        self.one_shot = False
+        self.device.prev()
+
     def on_song_load(self, song):
-        self.root.plview.update()
 
         index = -1
         try:
@@ -123,11 +134,11 @@ class PlaybackController(object):
                 index,_ = self.playlist.current()
         except IndexError:
             pass
-
         self.root.songview.setCurrentSong( song )
         self.root.songview.setPlaylistInfo( index, len(self.playlist) )
         self.root.posview.setMaximum( song[Song.length] )
         self.root.libview.setCurrentSongId(song[Song.uid])
+        self.root.plview.update()
 
     def on_song_tick(self, pos):
         self.root.posview.setValue(pos)
@@ -198,9 +209,6 @@ class PlaybackController(object):
         song = Song.fromPath( path )
         self.device.load( song )
         self.device.play()
-
-    def play_index(self,row):
-        self.device.play_index( row )
 
     def playpause(self, state):
         if state == MediaState.play:

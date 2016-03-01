@@ -209,6 +209,7 @@ class ExplorerView(QWidget):
     """docstring for MainWindow"""
 
     play_file = pyqtSignal(str)
+    execute_search = pyqtSignal(str,bool)
 
     def __init__(self, parent=None):
 
@@ -260,7 +261,7 @@ class ExplorerView(QWidget):
         self.tbl_file.update()
 
     def supportedExtension(self,ext):
-        return ext in [".mp3", ".flac"]
+        return ext in Song.supportedExtensions()
 
     def action_open(self):
 
@@ -299,6 +300,8 @@ class ExplorerView(QWidget):
         self.play_file.emit( self.view.realpath(item['name']) )
 
     def onDialogExit(self):
+        if isinstance(self.dialog,IngestProgressDialog):
+            self.execute_search.emit("added = today",False)
         self.dialog = None
         # reload current directory
         self.chdir( self.view.pwd() )

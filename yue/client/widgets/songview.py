@@ -10,13 +10,17 @@ from yue.core.song import Song
 
 class SongPositionView(QWidget):
 
-    def __init__(self, device, parent=None):
+    seek = pyqtSignal( int )
+    next = pyqtSignal()
+    prev = pyqtSignal()
+
+    def __init__(self, parent=None):
         super(SongPositionView,self).__init__(parent);
 
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
 
-        self.slider = SongPositionSlider( device, self );
+        self.slider = SongPositionSlider( self );
         self.slider.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         #self.slider.setTickInterval(15)
         #self.slider.setTickPosition(QSlider.TicksBelow)
@@ -24,13 +28,13 @@ class SongPositionView(QWidget):
         self.btn_prev = QPushButton("<")
         self.btn_prev.setMinimumWidth(16)
         self.btn_prev.setMaximumWidth(32)
-        self.btn_prev.clicked.connect(device.prev)
+        self.btn_prev.clicked.connect(lambda:self.prev.emit())
         self.btn_prev.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
 
         self.btn_next = QPushButton(">")
         self.btn_next.setMinimumWidth(16)
         self.btn_next.setMaximumWidth(32)
-        self.btn_next.clicked.connect(device.next)
+        self.btn_next.clicked.connect(lambda:self.next.emit())
         self.btn_next.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
 
         self.hbox.addWidget(self.btn_prev)
@@ -46,11 +50,11 @@ class SongPositionView(QWidget):
 
 class SongPositionSlider(QSlider):
 
-    def __init__(self, device, parent=None):
+    def __init__(self, view, parent=None):
         super(SongPositionSlider,self).__init__(Qt.Horizontal,parent);
 
         self.user_control = False
-        self.device = device;
+        self.view = view;
 
         #self.actionTriggered.connect(self.actionEvent)
         self.sliderReleased.connect(self.on_release)
@@ -59,18 +63,14 @@ class SongPositionSlider(QSlider):
     def mouseReleaseEvent(self,event):
         super().mouseReleaseEvent(event)
         pos = int(self.maximum()*(event.x()/self.width()))
-        self.device.seek( pos )
-        if self.device.isPaused():
-            self.device.play()
+        self.view.seek.emit( pos )
 
     def on_press(self):
         self.user_control = True
 
     def on_release(self):
         self.user_control = False
-        if self.device.isPaused():
-            self.device.play()
-        self.device.seek( self.value() )
+        self.view.seek.emit( self.value() )
 
 def fmt_seconds( t ):
     m,s = divmod( t, 60)
