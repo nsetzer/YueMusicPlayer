@@ -516,8 +516,9 @@ class MainWindow(QMainWindow):
     def backup_database(self):
 
         s = Settings.instance();
-
-        backupDatabase( Library.instance().sqlstore, s['backup_directory'] )
+        if s['backup_enabled']:
+            dir = s['backup_directory']
+            backupDatabase( Library.instance().sqlstore, dir)
 
 def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
     """
@@ -531,7 +532,7 @@ def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
 
     if not os.path.exists(backupdir):
         os.mkdir(backupdir)
-        print("backup directory created")
+        sys.stdout.write("backup directory created: `%s`\n"%backupdir)
 
     date = datetime.now().strftime("%Y-%m-%d")
 
@@ -556,7 +557,7 @@ def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
         # and one has not been saved today
         while len(existing_backups) > maxsave and existing_backups[0] != fullname:
             delfile = existing_backups.pop()
-            print ("Deleting %s"%delfile)
+            sys.stdout.write("Deleting %s\n"%delfile)
             os.remove(os.path.join(backupdir,delfile))
         # record name of most recent backup, one backup per day unless forced
         newestbu = existing_backups[0]
@@ -567,6 +568,8 @@ def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
 def setSettingsDefaults():
 
     s = Settings.instance()
+
+    s.setDefault("backup_enabled",1)
     s.setDefault("backup_directory","./backup")
 
     s.setDefault("volume",50)
@@ -598,6 +601,8 @@ def main():
     with LogView(trace=False,echo=True) as diag:
 
         plugin_path = "./lib/win32/x86_64"
+        if hasattr(sys,"_MEIPASS"):
+            plugin_path = sys._MEIPASS
         db_path = "./yue.db"
 
         sys.stdout.write("Loading database\n")

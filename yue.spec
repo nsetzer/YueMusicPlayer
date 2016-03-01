@@ -9,7 +9,7 @@ if isPosix:
     EXT = '';
     ICOEXT='.png'
 
-FULL_NAME = 'ConsolePlayer-%s.%s'%(os.name,EXT)
+FULL_NAME = 'YueMusicPlayer-%s%s'%(os.name,EXT)
 
 #build a debug version and look for import errors,
 # add those import libraries to hidden imports list
@@ -25,9 +25,17 @@ libpath = os.path.join(ROOT_PATH,"lib", "win32", "x86_64")
 #a.datas += [(os.path.join(libpath,"bassdsp.dll"),   "bassdsp.dll",'DATA'),]
 #a.datas += [(os.path.join(libpath,"libfftw3-3.dll"),"libfftw3-3.dll",'DATA'),]
 
-a.datas += [("bass.dll",      os.path.join(libpath,"bass.dll"),      'DATA'),]
-a.datas += [("bassdsp.dll",   os.path.join(libpath,"bassdsp.dll"),   'DATA'),]
-a.datas += [("libfftw3-3.dll",os.path.join(libpath,"libfftw3-3.dll"),'DATA'),]
+libdata = lambda name : [(name,      os.path.join(libpath,name),      'DATA'),]
+a.datas += libdata("bass.dll")
+a.datas += libdata("bass_aac.dll")
+a.datas += libdata("bass_alac.dll")
+a.datas += libdata("bassdsp.dll")
+a.datas += libdata("bassflac.dll")
+a.datas += libdata("bassmidi.dll")
+a.datas += libdata("bassopus.dll")
+a.datas += libdata("basswma.dll")
+a.datas += libdata("basswv.dll")
+a.datas += libdata("libfftw3-3.dll")
 
 # workaround remove extra copies of pyconfig under --onefile
 # if yopu still see an error, there may be more than 2 copies in the data.

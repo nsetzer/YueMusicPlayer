@@ -32,8 +32,13 @@ class BassSoundDevice(SoundDevice):
 
         BassPlayer.init()
 
-        #TODO: support other plugins
+        self.load_plugin(libpath, "bass_aac")
+        self.load_plugin(libpath, "bass_alac")
         self.load_plugin(libpath, "bassflac")
+        self.load_plugin(libpath, "bassmidi")
+        self.load_plugin(libpath, "bassopus")
+        self.load_plugin(libpath, "basswma")
+        self.load_plugin(libpath, "basswv")
 
         self.device = BassPlayer(use_capi=use_capi)
 
