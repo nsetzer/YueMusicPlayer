@@ -78,9 +78,9 @@ class LibraryTable(SongTable):
         menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library")
         menu.addAction(QIcon(":/img/app_x.png"),"Bannish")
 
-        if len(items) == 1 and self.menu_callback is not None:
+        if len(items) == 1 and self.parent().menu_callback is not None:
             menu.addSeparator()
-            menu_callback(menu,items[0])
+            self.parent().menu_callback(menu,items[0])
 
         action = menu.exec_( event.globalPos() )
 

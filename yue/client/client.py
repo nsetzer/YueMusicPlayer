@@ -123,6 +123,7 @@ class MainWindow(QMainWindow):
     def _init_ui(self, diag):
         s = Settings.instance()
 
+        # init primary views
         self.libview = LibraryView(self);
         self.libview.create_playlist.connect(self.createNewPlaylist)
         self.libview.set_playlist.connect(self.setCurrentPlaylist)
@@ -130,8 +131,13 @@ class MainWindow(QMainWindow):
 
         self.quickview = QuickSelectView(self);
         self.quickview.create_playlist.connect(self.createQuickPlaylist)
-        self.expview = ExplorerView(self.controller);
+
+        self.expview = ExplorerView(self);
+        self.expview.play_file.connect(self.controller.playOneShot)
+
         self.plview = PlayListViewWidget(self);
+        self.plview.setMenuCallback( self.addSongActions )
+
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
 
@@ -142,6 +148,8 @@ class MainWindow(QMainWindow):
             self.audioview.setFixedHeight( 48 )
             self.audioview.start()
             self.peqview.gain_updated.connect( self.controller.setEQGain )
+
+        # initialize layout
 
         self.btn_playpause = PlayButton( self )
         h = self.songview.height()
@@ -169,12 +177,13 @@ class MainWindow(QMainWindow):
         # it should always be displayed at startup
         self.dock_list = QDockWidget()
         self.dock_list.setWidget( self.plview )
+        self.dock_list.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
         #self.dock_list.resize(300,0)
         self.dock_list.visibilityChanged.connect(self.showhide_list)
 
         self.dock_diag = QDockWidget()
         self.dock_diag.setWidget( diag )
-        print("hide dialog %s"%s['ui_show_error_log'])
+        self.dock_diag.setAllowedAreas(Qt.BottomDockWidgetArea)
         if not s['ui_show_error_log']:
             self.dock_diag.hide()
         self.dock_diag.visibilityChanged.connect(self.showhide_diag)
@@ -475,7 +484,6 @@ class MainWindow(QMainWindow):
             pl.set( lst )
             self.device.play_index( 0 )
             self.plview.updateData()
-
 
     def setCurrentPlaylist(self, uids,play=False):
         pl = PlaylistManager.instance().openCurrent()

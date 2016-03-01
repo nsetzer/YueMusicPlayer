@@ -207,12 +207,13 @@ class FileTable(LargeTable):
 
 class ExplorerView(QWidget):
     """docstring for MainWindow"""
-    def __init__(self, controller):
 
-        super(ExplorerView, self).__init__()
+    play_file = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+
+        super(ExplorerView, self).__init__(parent)
         self.vbox = QVBoxLayout(self)
-
-        self.controller = controller
 
         self.source = DirectorySource()
         self.view = SourceListView(self.source,self.source.root())
@@ -295,7 +296,7 @@ class ExplorerView(QWidget):
         self.dialog.show()
 
     def action_play(self, item):
-        self.controller.playOneShot( self.view.realpath(item['name']) )
+        self.play_file.emit( self.view.realpath(item['name']) )
 
     def onDialogExit(self):
         self.dialog = None

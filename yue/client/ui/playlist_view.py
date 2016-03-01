@@ -100,8 +100,8 @@ class PlaylistTable(LargeTable):
 
         menu = QMenu(self)
 
-        if len(items) == 1:
-            self.parent().root.addSongActions(menu,items[0])
+        if len(items) == 1 and self.parent().menu_callback is not None:
+            self.parent().menu_callback(menu,items[0])
 
         menu.addSeparator()
 
@@ -118,12 +118,8 @@ class PlayListViewWidget(QWidget):
 
     play_index = pyqtSignal( int )
 
-    def __init__(self, root, parent=None):
+    def __init__(self, parent=None):
         super(PlayListViewWidget, self).__init__(parent)
-
-        # root is needed here so that i can add actions to the qmenu
-        # .... until i can think of a better way to do that
-        self.root = root
 
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
@@ -135,6 +131,8 @@ class PlayListViewWidget(QWidget):
 
         self.playlist = None
         self.current_index = -1
+        self.menu_callback = None
+
 
     def rowIsCurrentSong(self,idx):
         return idx == self.current_index
@@ -185,3 +183,10 @@ class PlayListViewWidget(QWidget):
         # the first number width, is the default initial size for this widget
         return QSize(300,400)
 
+    def setMenuCallback(self,cbk):
+        """
+        callback as a function which accepts a menu and a song
+        and returns nothing. the function should add actions to
+        the given song
+        """
+        self.menu_callback = cbk
