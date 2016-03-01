@@ -5,9 +5,10 @@ import os,sys
 if os.name == 'nt':
     # pyHook-1.5.1
     try:
-        import pyHook
-    except ImportError:
-        pyHook = None
+        from pyHook import HookManager
+    except ImportError as e:
+        print(e)
+        HookManager = None
 
 class KeyHook(object):
 
@@ -23,8 +24,8 @@ class KeyHook(object):
         self.k_PREV=178
         self.k_STOP=177
 
-        if os.name == 'nt' and pyHook is not None:
-            self.hm = pyHook.HookManager();
+        if os.name == 'nt' and HookManager is not None:
+            self.hm = HookManager();
             self.hm.KeyDown = self.keyPressEvent
             if enabled:
                 self.hm.HookKeyboard()

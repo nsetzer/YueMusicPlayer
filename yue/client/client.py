@@ -43,6 +43,7 @@ from .widgets.volume import VolumeController
 
 from .controller import newDevice, PlaybackController
 from .hook import KeyHook
+from .remote import SocketListen
 
 from .ui.ingest_dialog import IngestProgressDialog
 
@@ -120,8 +121,15 @@ class MainWindow(QMainWindow):
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
 
-        s = Settings.instance()
-        self.keyhook = KeyHook(self.controller, s['enable_keyboard_hook'])
+        #s = Settings.instance()
+        #self.keyhook = KeyHook(self.controller, s['enable_keyboard_hook'])
+        port = 15123
+        if hasattr(sys,"_MEIPASS"):
+            # use a different port when frozen
+            port = 15124
+        self.remotethread = SocketListen(port=port,parent=self)
+        self.remotethread.message_recieved.connect(self.executeCommand)
+        self.remotethread.start()
 
         self.dialog_ingest = None
         self._init_ui( diag)
@@ -294,6 +302,8 @@ class MainWindow(QMainWindow):
         # hide now, to make it look like the application closed faster
         self.hide()
 
+        self.remotethread.join()
+
         # record the current volume, but prevent the application
         # from starting muted
         v = self.volcontroller.volume_slider.value()
@@ -389,6 +399,13 @@ class MainWindow(QMainWindow):
         self.libview.run_search(query,setText=True)
         if switch:
             self.tabview.setCurrentWidget(self.libview)
+
+    def executeCommand(self,text):
+
+        try:
+            result = self.repl.exec_( text )
+        except ValueError as e:
+            print(e)
 
     def exploreDirectory(self, path):
         self.expview.chdir(path, True)

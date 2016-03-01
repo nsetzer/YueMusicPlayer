@@ -3,6 +3,6 @@
 
 @echo off
 
-cd %~dp0/src
+cd %~dp0
 
 C:\Python34\Scripts\pyinstaller yue.spec --debug

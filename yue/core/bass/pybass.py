@@ -63,6 +63,10 @@ def get_platform_path():
     """
     platform_name = sys.platform
     platform_path = os.getcwd()
+
+    if hasattr(sys,"_MEIPASS"):
+      return sys._MEIPASS
+
     arch = 'x86_64'
     if platform.architecture()[0] != '64bit':
             arch = 'x86'
@@ -85,6 +89,7 @@ def LookPath(relname):
     else:
         bname = "lib%s.so"%relname
     path= os.path.join(libpath,bname)
+    sys.stdout.write("%s\n"%path)
     return path
 
 def LoadLibrary(libname):
