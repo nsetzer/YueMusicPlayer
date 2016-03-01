@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR
 
 import time
+from datetime import datetime
 
 import yue.client.resource
 
@@ -61,6 +62,7 @@ class ClientRepl(object):
 
         self.actions["new"] = self.exnew
         self.actions["open"] = self.exopen
+        self.actions["backup"] = self.exbackup
 
     def register(self, repl):
         for name,func in self.actions.items():
@@ -99,6 +101,10 @@ class ClientRepl(object):
         args.assertMinArgs( 1 )
 
         self.client.openPlaylistEditor( args[0] )
+
+    def exbackup(self, args):
+        self.client.backup_database()
+
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
@@ -507,13 +513,65 @@ class MainWindow(QMainWindow):
         if self.controller.device.isPaused():
             self.controller.device.play()
 
+    def backup_database(self):
+
+        s = Settings.instance();
+
+        backupDatabase( Library.instance().sqlstore, s['backup_directory'] )
+
+def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
+    """
+        note this has been hacked to suport xml formats
+        save a copy of the current library to ./backup/
+        only save if one has not been made today,
+        delete old backups
+
+        adding new music, deleting music, are good reasons to force backup
+    """
+
+    if not os.path.exists(backupdir):
+        os.mkdir(backupdir)
+        print("backup directory created")
+
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    name = 'yue-backup-'
+    fullname = name+date+'.db'
+    fullpath = os.path.join(backupdir,fullname)
+
+    if not force and os.path.exists(fullpath):
+        return
+
+    existing_backups = []
+    dir = os.listdir(backupdir)
+    for file in dir:
+        if file.startswith(name) and file.endswith(".db"):
+            existing_backups.append(file);
+
+    newestbu = ""
+    existing_backups.sort(reverse=True)
+    if len(existing_backups) > 0:
+        #remove old backups
+        # while there are more than 6,
+        # and one has not been saved today
+        while len(existing_backups) > maxsave and existing_backups[0] != fullname:
+            delfile = existing_backups.pop()
+            print ("Deleting %s"%delfile)
+            os.remove(os.path.join(backupdir,delfile))
+        # record name of most recent backup, one backup per day unless forced
+        newestbu = existing_backups[0]
+
+    # save a new backup
+    sqlstore.backup( fullpath )
 
 def setSettingsDefaults():
 
     s = Settings.instance()
-    s.setDefault("volume",50)
+    s.setDefault("backup_directory","./backup")
 
+    s.setDefault("volume",50)
     s.setDefault("volume_equalizer",0) # off
+
     s.setDefault("ui_show_console",0) # off
     s.setDefault("ui_show_error_log",0) # off
 
@@ -527,12 +585,12 @@ def setSettingsDefaults():
     s.setDefault("playlist_size",50)
     s.setDefault("playlist_presets",[
         "ban=0 && date>14",
-        ]) # off
+        ])
 
 def main():
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Yue Music Player")
+    app.setApplicationName("Yue Music Player - v1.0.0")
     app.setQuitOnLastWindowClosed(True)
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)

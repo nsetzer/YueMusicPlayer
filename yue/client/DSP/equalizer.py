@@ -65,8 +65,6 @@ except ImportError:
     BassPlayer = None
     ZBLOG = None
 
-
-
 def pputf(s):
     g = lambda c : c if ord(c) < 128 else '?'
     return ''.join( g(c) for c in s )
@@ -157,6 +155,8 @@ class LearnThread(QThread):
 
         self.start_time = time.time()
 
+        library = Library.instance().reopen()
+
         self.idx = 0;
         for song in self.songList:
             path = song[Song.path]
@@ -175,6 +175,7 @@ class LearnThread(QThread):
                     #avgs = .35/avg;
                     #print "iscale is %d; avg=%.3f midpoint=%d"%(iscale,avg,int(avgs*100))
                     song[Song.equalizer]=iscale
+                    library.update(song[Song.uid],**{Song.equalizer:iscale})
                     #print iscale
                 else:
                     self.errors += 1
@@ -387,6 +388,7 @@ class DialogVolEqLearn(QDialog):
         print("thread done")
         self.btn_start.hide();
         self.btn_stop.hide();
+
     def done(self,nil):
         if self.cbk_close !=None:
             self.cbk_close();

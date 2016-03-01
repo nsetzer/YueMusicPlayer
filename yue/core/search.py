@@ -515,7 +515,12 @@ def parserRule(colid, rule ,value):
     elif col in Song.dateFields(): # is number (or date, todo)
         return parserDateRule(rule, col, value)
     else:
-        # numeric fields do not require any special conversion at this time
+        # numeric field
+        # partial rules don't make sense, convert to exact rules
+        if rule is PartialStringSearchRule:
+            return ExactSearchRule(col, value)
+        if rule is InvertedPartialStringSearchRule:
+            return InvertedExactSearchRule(col, value)
         return rule( col, value )
 
 def parserDateRule(rule , col, value):

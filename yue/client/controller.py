@@ -203,6 +203,8 @@ class PlaybackController(object):
         self.root.plview.updateData()
         self.root.plview.scrollToCurrent()
 
+        self.root.backup_database()
+
     def playOneShot(self, path):
         """ play a song, then return to the current playlist """
         self.one_shot = True

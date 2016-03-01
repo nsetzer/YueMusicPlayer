@@ -1,11 +1,12 @@
 
 import sqlite3
-
+import sys
 """
 todo: read sqlalchemy
 http://docs.sqlalchemy.org/en/rel_1_0/core/tutorial.html
 """
 import re
+import shutil
 
 def regexp(expr, item):
     # TODO: memoize expr
@@ -15,10 +16,10 @@ def regexp(expr, item):
 
 class SQLStore(object):
     """docstring for SQLStore"""
-    def __init__(self, filename):
+    def __init__(self, filepath):
         super(SQLStore, self).__init__()
-        self.filename = filename
-        self.conn = sqlite3.connect(filename)
+        self.filepath = filepath
+        self.conn = sqlite3.connect(filepath)
 
         self.conn.create_function("REGEXP", 2, regexp)
 
@@ -28,7 +29,17 @@ class SQLStore(object):
     def reopen(self):
         # return a copy of the sqlstore,
         # use to access from another thread
-        return SQLStore( self.filename )
+        return SQLStore( self.filepath )
+
+    def backup(self, backup_path):
+
+        with self.conn:
+            cursor = self.conn.cursor()
+            cursor.execute('begin immediate')
+            sys.stdout.write("saving database to `%s`\n"%backup_path)
+            shutil.copyfile(self.filepath, backup_path)
+            cursor.execute('begin')
+            #cursor.execute('rollback')
 
 class SQLTable(object):
     """docstring for SQLTable"""
