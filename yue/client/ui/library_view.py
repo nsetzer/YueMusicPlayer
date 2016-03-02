@@ -74,8 +74,12 @@ class LibraryTable(SongTable):
                 lambda:self.action_edit_column(row,cur_c))
 
         menu.addSeparator()
-        menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library")
-        menu.addAction(QIcon(":/img/app_x.png"),"Bannish")
+        menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
+
+        if any(not song[Song.blocked] for song in items):
+            menu.addAction(QIcon(":/img/app_x.png"),"Bannish", lambda:self.action_bannish(items,True))
+        else:
+            menu.addAction("Restore", lambda:self.action_bannish(items,False))
 
         if len(items) == 1 and self.parent().menu_callback is not None:
             menu.addSeparator()
@@ -94,6 +98,21 @@ class LibraryTable(SongTable):
         else:
             items = self.getSelection()
             self.action_play_next(items)
+
+    def action_delete(self, songs):
+        # emit a signal, with a set of songs to delete
+        # these songs must be addded to a set so that undo delete
+        # can be implemented.
+        # display a warning message before emiting any signal
+        sys.stderr.write("delete not implemented\n");
+
+    def action_bannish(self, songs, state):
+        """ bannish or restore a set of songs """
+        lib = Library.instance()
+        for song in songs:
+            lib.update(song[Song.uid],**{Song.blocked:state})
+            song[Song.blocked] = state # for ui, prevent rerunning search
+        self.update()
 
     def action_play_next(self, songs, play=False):
         uids = [ song[Song.uid] for song in songs ]

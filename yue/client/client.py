@@ -268,8 +268,7 @@ class MainWindow(QMainWindow):
     def _init_menubar(self):
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
-        self.action_undo_delete = menu.addAction("Undo Delete")
-        menu.addAction("Exit")
+        menu.addAction("Exit",QApplication.quit)
 
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
@@ -289,6 +288,9 @@ class MainWindow(QMainWindow):
                 self.action_equalizer.setIconVisibleInMenu ( False )
                 self.action_equalizer.setText("Enable Equalizer")
                 self.songview.setEQEnabled(False)
+        menu.addSeparator()
+        self.action_undo_delete = menu.addAction("Undo Delete")
+        self.action_undo_delete.setDisabled( True )
 
         menu = self.bar_menu.addMenu("&View")
         self.action_view_console = menu.addAction("",self.toggleConsoleVisible)
