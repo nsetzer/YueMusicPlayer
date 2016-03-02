@@ -1,21 +1,14 @@
 #! cd ../.. && python34 test/test_client.py
 
 import os,sys
-isPython3 = sys.version_info[0]==3
-if isPython3:
-    unicode = str
+import time
+from datetime import datetime
+import urllib
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR
-
-import time
-from datetime import datetime
-
-import yue.client.resource
-
-import urllib
 
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
@@ -29,6 +22,7 @@ from ..core.repl import YueRepl, ReplArgumentParser
 from .controller import newDevice, PlaybackController
 from .hook import KeyHook
 from .remote import SocketListen
+from . import resource
 
 from .ui.library_view import LibraryView
 from .ui.quickselect_view import QuickSelectView

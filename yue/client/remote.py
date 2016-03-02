@@ -34,13 +34,20 @@ class SocketListen(QThread):
 
         self.host = host or 'localhost'#socket.gethostname()
         self.port = 0 if port <= 0 else port
-        print(self.host,self.port)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind( (self.host,self.port) ) # bind a new socket, to a random unused port.
-        self.sock.listen(5)
-        self.sock.settimeout(.5)
-        print(self.sock.getsockname())
+
         self.alive = True
+
+        self._connect()
+
+    def _connect(self):
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.bind( (self.host,self.port) ) # bind a new socket, to a random unused port.
+            self.sock.listen(5)
+            self.sock.settimeout(.5)
+        except OSError:
+            sys.stderr.write("unable to bind socket %s:%d\n"%(self.host,self.port))
+            self.alive = False
 
     def run(self):
         while self.alive:
@@ -53,6 +60,8 @@ class SocketListen(QThread):
                 pass
             except Exception as e:
                 print(type(e),e)
+                break
+        sys.stderr.write("Remote Socket Thread has ended.\n")
 
 
     def join(self):
