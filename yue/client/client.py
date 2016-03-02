@@ -20,7 +20,8 @@ from ..core.util import string_quote, backupDatabase
 from ..core.repl import YueRepl, ReplArgumentParser
 
 from .controller import newDevice, PlaybackController
-from .hook import KeyHook
+#from .hook import KeyHook
+from .hook2 import HookThread
 from .remote import SocketListen
 from . import resource
 
@@ -113,11 +114,16 @@ class MainWindow(QMainWindow):
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
         #self.keyhook = KeyHook(self.controller, False)
+        self.keyhook = HookThread()
+        self.keyhook.start()
+        self.keyhook.playpause.connect(self.device.playpause)
+        self.keyhook.play_next.connect(self.controller.play_next)
+        self.keyhook.play_prev.connect(self.controller.play_prev)
 
         port = 15123
         if hasattr(sys,"_MEIPASS"):
-            # use a different port when frozen
-            port = 15124
+            port = 15124 # use a different port when frozen
+
         self.remotethread = SocketListen(port=port,parent=self)
         self.remotethread.message_recieved.connect(self.executeCommand)
         self.remotethread.start()
@@ -300,6 +306,8 @@ class MainWindow(QMainWindow):
 
         s = Settings.instance()
 
+        self.controller.device.pause()
+
         start = time.time()
 
         s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
@@ -308,6 +316,7 @@ class MainWindow(QMainWindow):
         self.hide()
 
         self.remotethread.join()
+        #self.keyhook.join()
 
         # record the current volume, but prevent the application
         # from starting muted

@@ -70,3 +70,6 @@ libmp3lame-0.dll
 lib/win32/x86_64/libfftw3-3.dll
 lib/win32/x86_64/bassdsp.dll
 libfftw3-3.dll
+lib/win32/x86_64/hook.dll
+*.o
+hookdll/libhook.a

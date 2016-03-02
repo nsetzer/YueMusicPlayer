@@ -36,6 +36,7 @@ a.datas += libdata("bassopus.dll")
 a.datas += libdata("basswma.dll")
 a.datas += libdata("basswv.dll")
 a.datas += libdata("libfftw3-3.dll")
+a.datas += libdata("hook.dll")
 
 # workaround remove extra copies of pyconfig under --onefile
 # if yopu still see an error, there may be more than 2 copies in the data.
