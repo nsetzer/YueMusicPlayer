@@ -23,7 +23,12 @@ from ..core.library import Library
 from ..core.playlist import PlaylistManager
 from ..core.sound.device import MediaState
 from ..core.song import Song
+from ..core.util import string_quote, backupDatabase
 from ..core.repl import YueRepl, ReplArgumentParser
+
+from .controller import newDevice, PlaybackController
+from .hook import KeyHook
+from .remote import SocketListen
 
 from .ui.library_view import LibraryView
 from .ui.quickselect_view import QuickSelectView
@@ -33,6 +38,8 @@ from .ui.playlistedit_view import PlaylistEditView
 from .ui.rename_dialog import RenameDialog
 from .ui.openpl_dialog import OpenPlaylistDialog
 from .ui.newpl_dialog import NewPlaylistDialog
+from .ui.visualizer import BassVisualizer
+from .ui.ingest_dialog import IngestProgressDialog
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -41,16 +48,8 @@ from .widgets.songview import CurrentSongView, SongPositionView
 from .widgets.closebutton import  CloseTabButton
 from .widgets.volume import VolumeController
 
-from .controller import newDevice, PlaybackController
-from .hook import KeyHook
-from .remote import SocketListen
-
-from .ui.ingest_dialog import IngestProgressDialog
-
 from .DSP.peqwidget import WidgetOctaveEqualizer
 from .DSP.equalizer import DialogVolEqLearn
-
-from .ui.visualizer import BassVisualizer
 
 class ClientRepl(object):
     """ augments the basic repl given in yue.core """
@@ -89,7 +88,7 @@ class ClientRepl(object):
 
         songs = Library.instance().search(query, orderby=Song.random, limit=limit)
         pl = PlaylistManager.instance().openCurrent()
-        lst = [ s['uid'] for s in songs ]
+        lst = [ song['uid'] for song in songs ]
         pl.set( lst )
         self.client.plview.updateData()
 
@@ -106,7 +105,6 @@ class ClientRepl(object):
     def exbackup(self, args):
         self.client.backup_database()
 
-
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -120,9 +118,8 @@ class MainWindow(QMainWindow):
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
+        #self.keyhook = KeyHook(self.controller, False)
 
-        #s = Settings.instance()
-        #self.keyhook = KeyHook(self.controller, s['enable_keyboard_hook'])
         port = 15123
         if hasattr(sys,"_MEIPASS"):
             # use a different port when frozen
@@ -137,7 +134,15 @@ class MainWindow(QMainWindow):
         self._init_menubar()
 
     def _init_ui(self, diag):
-        s = Settings.instance()
+
+        self.bar_menu = QMenuBar( self )
+        self.setMenuBar( self.bar_menu )
+
+        self.bar_status = QStatusBar( self )
+        self.setStatusBar( self.bar_status )
+
+        self.tabview = QTabWidget( self )
+        self.setCentralWidget(self.tabview)
 
         # init primary views
         self.libview = LibraryView(self);
@@ -164,6 +169,40 @@ class MainWindow(QMainWindow):
         self.posview.next.connect(self.controller.play_next)
         self.posview.prev.connect(self.controller.play_prev)
 
+        h = self.songview.height()
+        self.btn_playpause = PlayButton( self )
+        self.btn_playpause.setFixedHeight( h )
+        self.btn_playpause.setFixedWidth( h )
+        self.btn_playpause.on_play.connect(self.controller.playpause)
+        self.btn_playpause.on_stop.connect(self.controller._setStop)
+
+        self.edit_cmd = LineEditRepl( self.repl, self );
+        self.edit_cmd.setFocus()
+        self.edit_cmd.setPlaceholderText("Command Input")
+
+        self.volcontroller = VolumeController(self)
+        self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
+
+        # note: visible state is not stored for the playlist,
+        # it should always be displayed at startup
+        self.dock_list = QDockWidget()
+        self.dock_list.setWidget( self.plview )
+        self.dock_list.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
+        self.dock_list.visibilityChanged.connect(self.showhide_list)
+
+        self.dock_diag = QDockWidget()
+        self.dock_diag.setWidget( diag )
+        self.dock_diag.setAllowedAreas(Qt.BottomDockWidgetArea)
+        self.dock_diag.visibilityChanged.connect(self.showhide_diag)
+
+        # add widgets to layout
+
+        self.addDockWidget (Qt.RightDockWidgetArea, self.dock_list)
+        self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
+
+        self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
+        self.tabview.addTab( self.quickview, QIcon(':/img/app_fav.png'), "Quick Select")
+        self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
         if self.controller.dspSupported():
             self.peqview = WidgetOctaveEqualizer();
             # TODO: we should not be passing controller into these widgets
@@ -171,65 +210,18 @@ class MainWindow(QMainWindow):
             self.audioview.setFixedHeight( 48 )
             self.audioview.start()
             self.peqview.gain_updated.connect( self.controller.setEQGain )
+            self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
+            self.plview.vbox.insertWidget(0, self.audioview)
+        self.tabview.setCornerWidget( self.volcontroller )
 
-        # initialize layout
-
-        self.btn_playpause = PlayButton( self )
-        h = self.songview.height()
-        self.btn_playpause.setFixedHeight( h )
-        self.btn_playpause.setFixedWidth( h )
-        self.btn_playpause.on_play.connect(self.controller.playpause)
-        self.btn_playpause.on_stop.connect(self.controller._setStop)
         self.hbox = QHBoxLayout();
         self.hbox.addWidget( self.btn_playpause )
         self.hbox.addWidget( self.songview )
 
-        self.edit_cmd = LineEditRepl( self.repl, self );
-        self.edit_cmd.setFocus()
-        self.edit_cmd.setPlaceholderText("Command Input")
-        if not s['ui_show_console']:
-            self.edit_cmd.hide()
-
-        self.plview.vbox.insertWidget(0, self.audioview)
+        # TODO: this is currently the biggest hack here
         self.plview.vbox.insertLayout(0, self.hbox)
         self.plview.vbox.insertWidget(0, self.posview)
         self.plview.vbox.insertWidget(0, self.edit_cmd)
-
-        # note: visible state is not stored for the playlist,
-        # it should always be displayed at startup
-        self.dock_list = QDockWidget()
-        self.dock_list.setWidget( self.plview )
-        self.dock_list.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
-        #self.dock_list.resize(300,0)
-        self.dock_list.visibilityChanged.connect(self.showhide_list)
-
-        self.dock_diag = QDockWidget()
-        self.dock_diag.setWidget( diag )
-        self.dock_diag.setAllowedAreas(Qt.BottomDockWidgetArea)
-        if not s['ui_show_error_log']:
-            self.dock_diag.hide()
-        self.dock_diag.visibilityChanged.connect(self.showhide_diag)
-
-        self.addDockWidget (Qt.RightDockWidgetArea, self.dock_list)
-        self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
-
-        self.tabview = QTabWidget( self )
-        self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
-        self.tabview.addTab( self.quickview, QIcon(':/img/app_fav.png'), "Quick Select")
-        self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
-        self.volcontroller = VolumeController(self)
-        self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
-        self.tabview.setCornerWidget( self.volcontroller )
-
-        if self.controller.dspSupported():
-            self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
-
-        self.bar_menu = QMenuBar( self )
-        self.bar_status = QStatusBar( self )
-
-        self.setMenuBar( self.bar_menu )
-        self.setStatusBar( self.bar_status )
-        self.setCentralWidget(self.tabview)
 
     def _init_values(self):
 
@@ -238,6 +230,26 @@ class MainWindow(QMainWindow):
         self.volcontroller.volume_slider.setValue( vol )
         self.controller.device.setVolume( vol/100.0 )
 
+        if not s['ui_show_console']:
+            self.edit_cmd.hide()
+
+        if not s['ui_show_error_log']:
+            self.dock_diag.hide()
+
+        #if s['enable_keyboard_hook']:
+        #    pass # TODO enable keyhook here
+
+        self.quickview.setFavorites(Song.artist,s["ui_quickselect_favorite_artists"])
+        self.quickview.setFavorites(Song.genre,s["ui_quickselect_favorite_genres"])
+        self.libview.setColumnState(s["ui_library_column_order"])
+
+        pl = PlaylistManager.instance().openCurrent()
+        if len(pl)==0:
+            songs = Library.instance().search(None, orderby=Song.random, limit=5)
+            lst = [ s['uid'] for s in songs ]
+            pl.set( lst )
+        self.plview.setPlaylist( Library.instance(), pl)
+
     def _init_menubar(self):
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
@@ -245,7 +257,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Exit")
 
         menu = self.bar_menu.addMenu("&Music")
-        menu.addAction("New Playlist",self.createNewPlaylist)
+        menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
         menu.addSeparator()
         menu.addAction("New Editable Playlist", self.newEditablePlaylist)
         menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
@@ -278,7 +290,6 @@ class MainWindow(QMainWindow):
             self.action_view_logger.setText("Show Error Log")
         self.action_view_tree    = menu.addAction("Show Tree View")
         self.action_view_tree.setDisabled(True)
-
 
         menu = self.bar_menu.addMenu("&?")
         # sip version, qt version, python version, application version
@@ -424,11 +435,11 @@ class MainWindow(QMainWindow):
             self.action_equalizer.setIconVisibleInMenu ( False )
             self.action_equalizer.setText("Enable Equalizer")
             self.songview.setEQEnabled(False)
+
     def runEqualizer(self):
         # todo: pass in the controller
         self.dialog_eq = DialogVolEqLearn( )
         self.dialog_eq.show()
-
 
     def newEditablePlaylist(self):
 
@@ -446,9 +457,9 @@ class MainWindow(QMainWindow):
     def addSongActions(self, menu, song ):
         """ common actions for context menus dealing with a song """
 
-        q1 = "artist = \"%s\""%(song[Song.artist].replace("\\","\\\\").replace("\"","\\\""))
+        q1 = "artist = %s"%(string_quote(song[Song.artist]))
         menu.addAction("Search for Artist", lambda : self.executeSearch(q1))
-        q2 = q1 + " && album = \"%s\""%(song[Song.album].replace("\\","\\\\").replace("\"","\\\""))
+        q2 = q1 + " && album = %s"%(string_quote(song[Song.album]))
         menu.addAction("Search for Album", lambda : self.executeSearch(q2))
         menu.addSeparator()
         art = urllib.parse.quote(song[Song.artist])
@@ -537,50 +548,33 @@ class MainWindow(QMainWindow):
             dir = s['backup_directory']
             backupDatabase( Library.instance().sqlstore, dir)
 
-def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
-    """
-        note this has been hacked to suport xml formats
-        save a copy of the current library to ./backup/
-        only save if one has not been made today,
-        delete old backups
+    def showWindow(self):
 
-        adding new music, deleting music, are good reasons to force backup
-    """
-
-    if not os.path.exists(backupdir):
-        os.mkdir(backupdir)
-        sys.stdout.write("backup directory created: `%s`\n"%backupdir)
-
-    date = datetime.now().strftime("%Y-%m-%d")
-
-    name = 'yue-backup-'
-    fullname = name+date+'.db'
-    fullpath = os.path.join(backupdir,fullname)
-
-    if not force and os.path.exists(fullpath):
-        return
-
-    existing_backups = []
-    dir = os.listdir(backupdir)
-    for file in dir:
-        if file.startswith(name) and file.endswith(".db"):
-            existing_backups.append(file);
-
-    newestbu = ""
-    existing_backups.sort(reverse=True)
-    if len(existing_backups) > 0:
-        #remove old backups
-        # while there are more than 6,
-        # and one has not been saved today
-        while len(existing_backups) > maxsave and existing_backups[0] != fullname:
-            delfile = existing_backups.pop()
-            sys.stdout.write("Deleting %s\n"%delfile)
-            os.remove(os.path.join(backupdir,delfile))
-        # record name of most recent backup, one backup per day unless forced
-        newestbu = existing_backups[0]
-
-    # save a new backup
-    sqlstore.backup( fullpath )
+        s = Settings.instance()
+        geometry = QDesktopWidget().screenGeometry()
+        sw = geometry.width()
+        sh = geometry.height()
+        # calculate default values
+        dw = int(sw*.8)
+        dh = int(sh*.8)
+        dx = sw//2 - dw//2
+        dy = sh//2 - dh//2
+        # use stored values if they exist
+        cw = s.getDefault("window_width",dw)
+        ch = s.getDefault("window_height",dh)
+        cx = s.getDefault("window_x",dx)
+        cy = s.getDefault("window_y",dy)
+        # the application should start wholly on the screen
+        # otherwise, default its position to the center of the screen
+        if cx < 0 or cx+cw>sw:
+            cx = dx
+            cw = dw
+        if cy < 0 or cy+ch>sh:
+            cy = dy
+            ch = dh
+        self.resize(cw,ch)
+        self.move(cx,cy)
+        self.show()
 
 def setSettingsDefaults():
 
@@ -617,9 +611,10 @@ def main():
 
     with LogView(trace=False,echo=True) as diag:
 
-        plugin_path = "./lib/win32/x86_64"
+        plugin_path = "./lib/%s/x86_64"%sys.platform
         if hasattr(sys,"_MEIPASS"):
             plugin_path = sys._MEIPASS
+
         db_path = "./yue.db"
 
         sys.stdout.write("Loading database\n")
@@ -630,43 +625,13 @@ def main():
 
         setSettingsDefaults()
 
-        pl = PlaylistManager.instance().openCurrent()
-        if len(pl)==0:
-            songs = Library.instance().search(None, orderby=Song.random, limit=5)
-            lst = [ s['uid'] for s in songs ]
-            pl.set( lst )
-
         sys.stdout.write("Create Sound Device\n")
+        pl=PlaylistManager.instance().openCurrent()
         device = newDevice(pl,plugin_path)
 
         sys.stdout.write("Initializing application\n")
         window = MainWindow( diag, device )
-        window.plview.setPlaylist( Library.instance(), pl)
-
-        s = Settings.instance()
-
-        geometry = QDesktopWidget().screenGeometry()
-        sw = geometry.width()
-        sh = geometry.height()
-        dw = int(sw*.8)
-        dh = int(sh*.8)
-        dx = sw//2 - dw//2
-        dy = sh//2 - dh//2
-        cw = s.getDefault("window_width",dw)
-        ch = s.getDefault("window_height",dh)
-        cx = s.getDefault("window_x",dx)
-        cy = s.getDefault("window_y",dy)
-        # the application should start wholly on the screen
-        # otherwise, default its position to the center of the screen
-        if cx < 0 or cx+cw>sw:
-            cx = dx
-            cw = dw
-        if cy < 0 or cy+ch>sh:
-            cy = dy
-            ch = dh
-        window.resize(cw,ch)
-        window.move(cx,cy)
-        window.show()
+        window.showWindow()
 
         try:
             device.load_current( )

@@ -13,25 +13,13 @@ from functools import lru_cache
 
 from ...core.library import Library
 from ...core.song import Song
+from ...core.util import format_date, format_time
 from .LargeTable import LargeTable, TableColumn
 from .TableEditColumn import EditColumn
 
 from yue.client.SymTr import SymTr
 
 import time
-
-@lru_cache(maxsize=512)
-def format_date( unixTime ):
-    return time.strftime("%Y/%m/%d %H:%M", time.gmtime(unixTime))
-
-@lru_cache(maxsize=512)
-def format_time( t ):
-    m,s = divmod(t,60)
-    if m > 60:
-        h,m = divmod(m,60)
-        return "%d:%02d:%02d"%(h,m,s)
-    else:
-        return "%d:%02d"%(m,s)
 
 class SongTable(LargeTable):
     """

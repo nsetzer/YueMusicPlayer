@@ -21,7 +21,6 @@ from yue.client.widgets.LineEdit import LineEdit
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
-from yue.core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
@@ -154,13 +153,14 @@ class LibraryView(QWidget):
 
         self.menu_callback = None
 
-        order = Settings.instance()["ui_library_column_order"]
-        if len(order):
-            self.tbl_song.columns_setOrder(order)
         self.run_search("")
 
+    def setColumnState(self, order):
+        if len(order) > 0:
+            self.tbl_song.columns_setOrder( order )
 
     def getColumnState(self):
+        """ returns a list-of-strings representing the current visible columns """
         return self.tbl_song.columns_getOrder( )
 
     def onUpdate(self):

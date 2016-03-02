@@ -1,4 +1,6 @@
 
+#python34 setup.py build --compiler=mingw32
+#python34 setup.py install
 
 import os,sys
 
@@ -7,7 +9,7 @@ if os.name == 'nt':
     try:
         from pyHook import HookManager
     except ImportError as e:
-        print(e)
+        print("pyHook: %s"%e)
         HookManager = None
 
 class KeyHook(object):

@@ -19,11 +19,11 @@ import yue
 from yue.client.widgets.LargeTable import LargeTable, TableColumn
 from yue.client.widgets.LineEdit import LineEdit
 
+from yue.core.util import format_delta, string_quote
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
-from yue.core.settings import Settings
 from yue.core.playlist import PlaylistManager
 
 from collections import namedtuple
@@ -48,16 +48,6 @@ RecordMap = {
     Record.tme:"Listen Time",
     Record.frq:"Average Frequency",
 }
-
-def fmttime(t):
-    m,s = divmod(t,60)
-    if m > 60:
-        h,m = divmod(m,60)
-        if h > 24:
-            d,h = divmod(h,60)
-            return "%d:%02d:%02d:%02d"%(d,h,m,s)
-        return "%d:%02d:%02d"%(h,m,s)
-    return "%d:%02d"%(m,s)
 
 def buildQuickList(songs,minimum,key_index,text_transform):
 
@@ -123,10 +113,9 @@ class QuickSelectView(QWidget):
 
         self.col_count = 1
 
-        s = Settings.instance()
         self.favorites = {
-            Song.artist:set(s["ui_quickselect_favorite_artists"]),
-            Song.genre:set(s["ui_quickselect_favorite_genres"]),
+            Song.artist:set(),
+            Song.genre:set(),
         }
 
         self.selected = set()
@@ -154,6 +143,9 @@ class QuickSelectView(QWidget):
         data = buildQuickList(songs,2,self.display_class,text_transform)
         self.setData(data)
 
+    def setFavorites(self,kind,favorites):
+        self.favorites[kind] = set(favorites)
+
     def formatData(self):
         """
         organize records returned from buildQuickList to fit into the current table
@@ -168,7 +160,7 @@ class QuickSelectView(QWidget):
             c = i // l # which column to place the item into
             r = i - l*c # which row to place the item into
             if self.display_index in (Record.len,Record.tme):
-                d[r][ (c*2)     ] = fmttime(record[self.display_index])
+                d[r][ (c*2)     ] = format_delta(record[self.display_index])
             else:
                 d[r][ (c*2)     ] = record[self.display_index]
             d[r][ (c*2) + 1 ] = record[0]
@@ -253,7 +245,7 @@ class QuickSelectView(QWidget):
 
         terms = []
         for sel in self.selected:
-            term = "%s=\"%s\""%(self.display_class,sel.replace("\\","\\\\").replace("\"","\\\""))
+            term = "%s=%s"%(self.display_class,string_quote(sel))
             terms.append(term)
         query = ' || '.join(terms)
 
