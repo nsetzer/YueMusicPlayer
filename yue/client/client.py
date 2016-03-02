@@ -59,6 +59,7 @@ class ClientRepl(object):
         self.actions["open"] = self.exopen
         self.actions["backup"] = self.exbackup
         self.actions["explorer"] = self.exexplorer
+        self.actions["diag"] = self.exdiag
 
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
@@ -114,6 +115,12 @@ class ClientRepl(object):
         dbpath = os.path.realpath(Library.instance().sqlstore.path())
         dirpath = os.path.split(dbpath)[0]
         explorerOpen( dirpath )
+
+    def exdiag(self, args):
+        """ open directory of the database in explorer """
+
+        self.client.keyhook.diag = not self.client.keyhook.diag
+        print(self.client.keyhook.diag)
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""

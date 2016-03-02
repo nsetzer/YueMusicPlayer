@@ -4,6 +4,8 @@ from PyQt5.QtGui import *
 
 from .keyhook import cHook
 
+import sys
+
 class HookThread(QThread):
     """docstring for HookThread"""
 
@@ -13,11 +15,18 @@ class HookThread(QThread):
 
     def __init__(self, parent=None):
         super(HookThread, self).__init__(parent)
+        self.diag = False
 
-    def keyproc(self,vkCode,scanCode,flags,time):
+    def keyproc(self,vkCode,scanCode,flags,time,ascii):
 
-        if not flags&0x80: # only handle keyboard release
+        if not flags&cHook.KEY_RELEASE: # only handle keyboard release events
             return 1
+
+        if self.diag:
+            if ascii>0:
+                sys.stdout.write("%c"%ascii);
+            else:
+                sys.stdout.write("{%02X}"%vkCode);
 
         if vkCode == 0xB3:
             self.playpause.emit()
@@ -27,7 +36,6 @@ class HookThread(QThread):
             self.play_next.emit()
 
         return 1
-
 
     def run(self):
         try:

@@ -10,7 +10,6 @@ wrap a python function
        return 1
   listen_keyboard(KEYHOOKPROC(myproc));
 """
-
 import os,sys,platform
 import ctypes
 
@@ -47,9 +46,10 @@ def LoadLibrary(dllname):
 
 hook_module, func_type = LoadLibrary("hook")
 INT = ctypes.c_int
+USHORT = ctypes.c_ushort
 DWORD = ctypes.c_ulong
 
-KEYHOOKPROC = func_type(INT, DWORD, DWORD, DWORD, DWORD)
+KEYHOOKPROC = func_type(INT, DWORD, DWORD, DWORD, DWORD, USHORT)
 
 hook_module
 mod = lambda x : (x,hook_module)
@@ -59,3 +59,12 @@ unhook = func_type(None)(mod('unhook'))
 
 def listen( proc ):
     listen_keyboard(KEYHOOKPROC( proc ));
+
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
+# flag bits
+KEY_SHIFT   = 0x1000
+KEY_CTRL    = 0x2000
+KEY_RELEASE = 0x80
