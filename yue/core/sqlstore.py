@@ -41,6 +41,9 @@ class SQLStore(object):
             cursor.execute('begin')
             #cursor.execute('rollback')
 
+    def path(self):
+        return self.filepath
+
 class SQLTable(object):
     """docstring for SQLTable"""
     def __init__(self, store, name, columns, foreign_keys=None):

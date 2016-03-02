@@ -58,10 +58,18 @@ class ClientRepl(object):
         self.actions["new"] = self.exnew
         self.actions["open"] = self.exopen
         self.actions["backup"] = self.exbackup
+        self.actions["explorer"] = self.exexplorer
+
+        self.actions["quit"] = self.exexit
+        self.actions["exit"] = self.exexit
 
     def register(self, repl):
         for name,func in self.actions.items():
             repl.registerAction(name,func)
+
+    def exexit(self,args):
+        """ exit application """
+        QApplication.quit()
 
     def exnew(self, args):
         """
@@ -89,7 +97,7 @@ class ClientRepl(object):
 
     def exopen(self, args):
         """
-        $0 -c
+        $0 [-c]
         -c : create if playlist does not exist
         """
         args = ReplArgumentParser(args)
@@ -98,7 +106,14 @@ class ClientRepl(object):
         self.client.openPlaylistEditor( args[0] )
 
     def exbackup(self, args):
+        """ backup the database """
         self.client.backup_database()
+
+    def exexplorer(self, args):
+        """ open directory of the database in explorer """
+        dbpath = os.path.realpath(Library.instance().sqlstore.path())
+        dirpath = os.path.split(dbpath)[0]
+        explorerOpen( dirpath )
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""

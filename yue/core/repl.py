@@ -6,6 +6,7 @@ import sys
 
 from .library import Library
 from .song import Song
+from .util import format_delta
 
 class ReplArgumentParser(object):
     """docstring for ArgParse"""
@@ -99,7 +100,7 @@ class YueRepl(object):
         self.actions["help"]    = self.exhelp
         self.actions["exit"]    = lambda x : None
         self.actions["quit"]    = lambda x : None
-        self.actions["exit"].__doc__ = "exit this program, save any changes"
+        self.actions["exit"].__doc__ = " exit this program, save any changes"
         self.actions["quit"].__doc__ = self.actions["exit"].__doc__
 
     def registerAction( self, actname, actfunc):
@@ -187,13 +188,13 @@ class YueRepl(object):
         self.device.play()
 
     def expause(self,args):
-        """ play / pause current song
+        """ pause playback of current song
         $0
         """
         self.device.pause()
 
     def exstop(self,args):
-        """ play / pause current song
+        """ stop playback of current song
         $0
         """
         self.device.unload()
@@ -205,20 +206,20 @@ class YueRepl(object):
         self.device.playpause()
 
     def exnext(self,args):
-        """ play / pause current song
+        """ play the next song in the playlist
         $0
         """
         self.device.next()
 
     def exprev(self,args):
-        """ play / pause current song
+        """ play the previous song in the playlist
         $0
         """
         self.device.prev()
 
     def exposition(self,args):
-        """ play / pause current song
-        $0
+        """ seek to a time within the current playing song
+        $0 [ t ]
         """
         args = ReplArgumentParser(args)
 
@@ -243,7 +244,7 @@ class YueRepl(object):
         sys.stdout.write(text)
 
     def excurrent(self,args):
-        """ play / pause current song
+        """ display information on current song
         $0
         """
         idx,song = self.device.current()
@@ -255,6 +256,7 @@ class YueRepl(object):
         sys.stdout.write( text)
 
     def exstat(self,args):
+        """ print library statistics """
         # term will execute a search, contraining the statistics
         c_ply=0 # total play count
         c_len=0 # total play time
@@ -274,9 +276,9 @@ class YueRepl(object):
             c_frq += song[Song.frequency]
         c_frq /= count;
 
-        print("search" in args)
-        print( "Song Count        : %d"%count)
-        print( "Play Time         : %s"%c_len)
-        print( "Play Count        : %d"%c_ply)
-        print( "Play Count (AVG)  : %s"%(c_ply/count))
-        print( "Frequency         : %d"%(c_frq))
+        sys.stdout.write( "Song Count        : %d\n"%count)
+        sys.stdout.write( "Play Time         : %s\n"%format_delta(c_len))
+        sys.stdout.write( "Play Time (raw)   : %s\n"%c_len)
+        sys.stdout.write( "Play Count        : %d\n"%c_ply)
+        sys.stdout.write( "Play Count (AVG)  : %s\n"%(c_ply/count))
+        sys.stdout.write( "Frequency         : %d\n"%(c_frq))
