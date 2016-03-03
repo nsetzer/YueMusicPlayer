@@ -54,6 +54,10 @@ from .widgets.playbutton import PlayButton
 from .widgets.songview import CurrentSongView, SongPositionView
 from .widgets.closebutton import  CloseTabButton
 from .widgets.volume import VolumeController
+try:
+    from .widgets.scieditor import SimpleSciEditor
+except ImportError:
+    SimpleSciEditor = None
 
 from .DSP.peqwidget import WidgetOctaveEqualizer
 from .DSP.equalizer import DialogVolEqLearn
@@ -73,6 +77,8 @@ class ClientRepl(object):
         self.actions["backup"] = self.exbackup
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
+        if SimpleSciEditor is not None:
+            self.actions["editor"] = self.exeditor
 
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
@@ -210,6 +216,12 @@ class ClientRepl(object):
         self.client.keyhook.diag = not self.client.keyhook.diag
         print(self.client.keyhook.diag)
 
+    def exeditor(self, args):
+
+        if not hasattr(self,'editor'):
+            self.editor = SimpleSciEditor()
+        self.editor.show()
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -225,12 +237,12 @@ class MainWindow(QMainWindow):
         self.clientrepl.register( self.repl )
         #self.keyhook = KeyHook(self.controller, False)
         if HookThread is not None:
+            sys.stdout.write("Initialize Keyboard hook.\n")
             self.keyhook = HookThread()
             self.keyhook.start()
             self.keyhook.playpause.connect(self.device.playpause)
             self.keyhook.play_next.connect(self.controller.play_next)
             self.keyhook.play_prev.connect(self.controller.play_prev)
-            sys.stdout.write("Keyboard Hook initialized.\n")
         else:
             sys.stdout.write("Unable to initialize Keyboard Hook.\n")
 
@@ -238,10 +250,10 @@ class MainWindow(QMainWindow):
             port = 15123
             if hasattr(sys,"_MEIPASS"):
                 port = 15124 # use a different port when frozen
+            sys.stdout.write("Initialize Remote Thread.\n")
             self.remotethread = SocketListen(port=port,parent=self)
             self.remotethread.message_recieved.connect(self.executeCommand)
             self.remotethread.start()
-            sys.stdout.write("Remote Thread initialized.\n")
         else:
             sys.stdout.write("Unable to initialize Remote Thread.\n")
 
@@ -685,7 +697,7 @@ class MainWindow(QMainWindow):
             self.dialog_update = None
 
     def on_seek(self,position):
-
+        #TODO: move this function into controller
         self.controller.device.seek( position )
         if self.controller.device.isPaused():
             self.controller.device.play()
@@ -728,6 +740,9 @@ class MainWindow(QMainWindow):
         self.resize(cw,ch)
         self.move(cx,cy)
         self.show()
+
+        if not self.edit_cmd.isHidden():
+            self.edit_cmd.setFocus()
 
 def setSettingsDefaults():
 

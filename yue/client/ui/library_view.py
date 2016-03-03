@@ -34,10 +34,10 @@ class LineEdit_Search(LineEdit):
 
     def keyReleaseEvent(self,event=None):
         super(LineEdit_Search,self).keyReleaseEvent(event)
-        if event.key() == Qt.Key_Down:
+        if event is not None and event.key() == Qt.Key_Down:
             self.table.clearSelection( )
             self.table.setSelection( [0,] )
-            self.table.updateTable(0)
+            self.table.update(0)
             self.table.setFocus()
 
 class LibraryTable(SongTable):

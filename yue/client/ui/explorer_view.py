@@ -86,7 +86,7 @@ class LineEdit_Path(LineEdit):
         if event.key() == Qt.Key_Down:
             self.table.clearSelection( )
             self.table.setSelection( [0,] )
-            self.table.updateTable(0)
+            self.table.update(0)
             self.table.setFocus()
 
     def keyReleaseEnter(self,text):

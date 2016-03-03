@@ -287,19 +287,22 @@ class CurrentSongView(QWidget):
         pillo = (h-pillh*5)//2
 
         n = self.song[Song.rating]//2
-        for i in range(0,n):
+
+        for i in range(0,5):
             x=w-fw3+1
             y=h-((i+1)*pillh)-pillo+2
             pw=fw3-padr-1
             ph=pillh-2
-            painter.fillRect(x,y,pw,ph,QBrush(QColor(0,0,200)))
+            painter.fillRect(x,y,pw,ph,QBrush(QColor(128,128,200)))
+            if i < n:
+                painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
             #painter.drawRect(x,y,pw,ph)
         if self.song[Song.rating]%2==1:
             x=w-fw3+1
             y=h-((n+1)*pillh)-pillo+2
             pw=fw3-padr-1
             ph=pillh-2
-            painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(0,0,200)))
+            painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(60,60,200)))
             #painter.drawRect(x,y,pw,ph)
 
         #recths = int(recth*(self.song[Song.rating]/10))
