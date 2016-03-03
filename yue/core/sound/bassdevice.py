@@ -3,12 +3,13 @@ import os,sys
 
 from yue.core.song import Song
 from .device import SoundDevice, MediaState
+
 from ..bass.bassplayer import BassPlayer, BassException
 
 try:
-
     from ..bass.pybassdsp import ZBPEQ, ZBVIS, VOLEQ
-except ImportError:
+except ImportError as e:
+    print("dsp import",e)
     ZBPEQ = None
     ZBVIS = None
     VOLEQ = None
@@ -125,7 +126,7 @@ class BassSoundDevice(SoundDevice):
         sys.stdout.write("EQ: %s\n"%(self.enable_equalizer))
 
     def setEQ(self,value):
-        if self.voleq != None:
+        if self.voleq != None and value > 0:
             ivalue = min(500,value);
             fvalue = ivalue/250.0;
             self.voleq.setScale(fvalue);

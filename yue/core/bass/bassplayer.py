@@ -1,6 +1,5 @@
 
 from . import pybass
-#from . import pybassdsp
 
 import os
 import sys

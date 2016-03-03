@@ -36,16 +36,16 @@ class VlcSoundDevice(SoundDevice):
             else:
                 self.__instance__ = vlc.Instance()
         except Exception as e:
-            print "VLC instance Error: %s"%(e.args)
+            print("VLC instance Error: %s"%(e.args))
 
         if self.__instance__ == None:
-            print "VLC instance Error: No Instance was created"
+            print("VLC instance Error: No Instance was created")
         else:
             try:
                 self.__player__ = self.__instance__.media_player_new()
 
             except Exception as e:
-                print "VLC Player Error: %s"%(e.args)
+                print("VLC Player Error: %s"%(e.args))
 
             self.setVolume( self.volume )
 

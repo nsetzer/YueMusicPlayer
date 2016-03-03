@@ -15,7 +15,13 @@ from ..core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
-from ..core.sound.bassdevice import BassSoundDevice
+from ..core.sound.dummydevice import DummySoundDevice
+
+try:
+    from ..core.sound.bassdevice import BassSoundDevice
+except ImportError as e:
+    sys.stderr.write('bass import: %s'%e)
+    BassSoundDevice = None
 
 class QtCallbackSlot(QObject):
     """
@@ -41,6 +47,8 @@ class QtCallbackSlot(QObject):
         cbk(*args,**kwargs)
 
 def newDevice( playlist, libpath ):
+    if BassSoundDevice is None:
+        return DummySoundDevice(playlist, libpath,True, QtCallbackSlot)
     return BassSoundDevice(playlist, libpath,True, QtCallbackSlot)
 
 class PlaybackThread(QThread):

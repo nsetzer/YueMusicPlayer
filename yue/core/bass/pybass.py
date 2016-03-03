@@ -101,11 +101,13 @@ def LoadLibrary(libname):
     """
     if platform.system().lower() == 'windows':
         path = LookPath(libname)
+        dirpath = os.path.split(path)[0]
+        os.environ['PATH'] =  dirpath + ';' + os.environ['PATH']
         try:
           bass_module = ctypes.WinDLL( path )
         except OSError as e:
-          sys.stderr.write("%s\n"%str(e))
-          raise OSError( path )
+          sys.stderr.write("bass import error: [%s]\n\texists=%d\n\t%s\n\t%s\n\tensure parent directory in PATH, required libraries can be found\n"%(libname,os.path.exists(path),str(e),path))
+          raise ImportError( path )
 
         func_type = ctypes.WINFUNCTYPE
         return bass_module, func_type

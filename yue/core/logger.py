@@ -61,12 +61,14 @@ class Logger(object):
         try:
             self.writer.write(string)
 
-            if self.echo :
+            if self.echo and sys.__stdout__ is not None :
                 sys.__stdout__.write(string)
         except UnicodeEncodeError as e:
             sys.__stderr__.write(self.getTrace()+"\n")
         except UnicodeDecodeError as e:
             sys.__stderr__.write(self.getTrace()+"\n")
+        except AttributeError as e:
+            pass # __stdout__ is None?
 
     def getTrace(self):
         tr = traceback.extract_stack()
