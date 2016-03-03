@@ -160,10 +160,8 @@ class YueRepl(object):
             if len(self.helptopics):
                 sys.stdout.write( "Other Topics:\n" )
                 for name in sorted(self.helptopics.keys()):
-                    act = self.helptopics[name]
-                    desc = ""
-                    if act.__doc__ is not None:
-                        desc = act.__doc__.split("\n")[0]
+                    desc = self.helptopics[name]
+                    desc = desc.split("\n")[0]
                     sys.stdout.write( "%-16s : %s\n"%(name,desc) )
 
             return

@@ -4,11 +4,12 @@ import os,sys
 import time
 from datetime import datetime
 import urllib
+import argparse
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from sip import SIP_VERSION_STR
+from sip import SIP_VERSION_STR, delete as sip_delete
 
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
@@ -19,11 +20,21 @@ from ..core.song import Song
 from ..core.util import string_quote, backupDatabase
 from ..core.repl import YueRepl, ReplArgumentParser
 
-from .controller import newDevice, PlaybackController
-#from .hook import KeyHook
-from .hook2 import HookThread
-from .remote import SocketListen
 from . import resource
+from .controller import newDevice, PlaybackController
+try:
+    if os.name == 'nt':
+        from .hook2 import HookThread
+    else:
+        HookThread = None
+except ImportError as e:
+    sys.stderr.write("hook import: %s\n"%e)
+    HookThread = None
+try:
+    from .remote import SocketListen
+except ImportError as e:
+    sys.stderr.write("socket import: %s\n"%e)
+    SocketListen = None
 
 from .ui.library_view import LibraryView
 from .ui.quickselect_view import QuickSelectView
@@ -35,6 +46,7 @@ from .ui.openpl_dialog import OpenPlaylistDialog
 from .ui.newpl_dialog import NewPlaylistDialog
 from .ui.visualizer import BassVisualizer
 from .ui.ingest_dialog import IngestProgressDialog
+from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -54,6 +66,7 @@ class ClientRepl(object):
         self.client = client
 
         self.actions = {}
+        self.helptopics = {}
 
         self.actions["new"] = self.exnew
         self.actions["open"] = self.exopen
@@ -64,9 +77,84 @@ class ClientRepl(object):
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
 
+        self.helptopics['search'] = """ information on search format
+
+        Examples:
+            `artist = Soundgarden` return all songs with a given artist
+            `date = today`
+            `added = this week`
+            `(artist = one || artist = two) && playcount > 5`
+
+        Search Fields:
+
+        path, text, artist, composer, album, title, genre, country, lang, comment
+        uid, year, album_index, length, date, added,, playcount, skipcount
+
+        Special Search Fields:
+
+        text : simulataneous search of artist, composer, album, title, genre,
+               country, lang, and comment.
+
+               the default search field, when none is given.
+
+        length: accepts two formats
+            N : a duration specified in seconds
+            [dd:hh:]mm:ss : a duration specified in days, hours, minutes seconds.
+
+        data, added: accept three different formats
+
+            integer: a count of days.
+                `date < 7` returns any song played in the last week
+            date   : relative to a fixed date in year/month/day format
+                `date = 16/05/01` returns any song played on the given date
+            string : a string using natural language
+                `date = today` return any song played today
+                valid values:
+                    'today'
+                    'last [day|week|month|year]'
+                    'older than x [day|week|month|year][s]'
+
+        Operations:
+
+        text:
+            =   : partial string match
+            ==  : exact string match
+            !=  : don't match if there is a partial match
+            !== : don't match if there is an exact match
+
+        number:
+            =     : match exactly a given value
+                    `playcount = 5`
+            !=    : don't match a  given value
+            <, <= : match less than, or less than or equal to
+                    `playcount <= 5`
+            >, >= : match greater than, or greater than or equal to.
+                    `playcount >= 5`
+
+        Other:
+
+        logical and (&&) is optional between fields
+        the following are equivalent:
+            'artist=one && artist=two'
+            'artist=one artist=two'
+
+
+        Old Style mode:
+
+            `.art one two` is the same as 'artist=one && artist=two'
+
+
+
+
+
+        """
+
     def register(self, repl):
         for name,func in self.actions.items():
             repl.registerAction(name,func)
+
+        for name,string in self.helptopics.items():
+            repl.registerTopic(name,string)
 
     def exexit(self,args):
         """ exit application """
@@ -125,32 +213,40 @@ class ClientRepl(object):
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
-    def __init__(self, diag, device):
+    def __init__(self, diag, device, version):
         super(MainWindow, self).__init__()
 
         self.setAcceptDrops( True )
-
+        self.version = version
         self.device = device
         self.controller = PlaybackController( device, self );
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
         #self.keyhook = KeyHook(self.controller, False)
-        self.keyhook = HookThread()
-        self.keyhook.start()
-        self.keyhook.playpause.connect(self.device.playpause)
-        self.keyhook.play_next.connect(self.controller.play_next)
-        self.keyhook.play_prev.connect(self.controller.play_prev)
+        if HookThread is not None:
+            self.keyhook = HookThread()
+            self.keyhook.start()
+            self.keyhook.playpause.connect(self.device.playpause)
+            self.keyhook.play_next.connect(self.controller.play_next)
+            self.keyhook.play_prev.connect(self.controller.play_prev)
+            sys.stdout.write("Keyboard Hook initialized.\n")
+        else:
+            sys.stdout.write("Unable to initialize Keyboard Hook.\n")
 
-        port = 15123
-        if hasattr(sys,"_MEIPASS"):
-            port = 15124 # use a different port when frozen
-
-        self.remotethread = SocketListen(port=port,parent=self)
-        self.remotethread.message_recieved.connect(self.executeCommand)
-        self.remotethread.start()
+        if SocketListen is not None:
+            port = 15123
+            if hasattr(sys,"_MEIPASS"):
+                port = 15124 # use a different port when frozen
+            self.remotethread = SocketListen(port=port,parent=self)
+            self.remotethread.message_recieved.connect(self.executeCommand)
+            self.remotethread.start()
+            sys.stdout.write("Remote Thread initialized.\n")
+        else:
+            sys.stdout.write("Unable to initialize Remote Thread.\n")
 
         self.dialog_ingest = None
+        self.dialog_update = None
         self._init_ui( diag)
         self._init_values()
         self._init_menubar()
@@ -161,6 +257,8 @@ class MainWindow(QMainWindow):
         self.setMenuBar( self.bar_menu )
 
         self.bar_status = QStatusBar( self )
+        self.lbl_status = QLabel(self)
+        self.bar_status.addWidget( self.lbl_status)
         self.setStatusBar( self.bar_status )
 
         self.tabview = QTabWidget( self )
@@ -171,6 +269,7 @@ class MainWindow(QMainWindow):
         self.libview.create_playlist.connect(self.createNewPlaylist)
         self.libview.set_playlist.connect(self.setCurrentPlaylist)
         self.libview.setMenuCallback( self.addSongActions )
+        self.libview.notify.connect( self.update_statusbar_message )
 
         self.quickview = QuickSelectView(self);
         self.quickview.create_playlist.connect(self.createQuickPlaylist)
@@ -282,8 +381,9 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction("New Editable Playlist", self.newEditablePlaylist)
         menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
+        menu.addSeparator()
+        menu.addAction("Update Song Tags",self.updateTags)
         if self.controller.dspSupported():
-            menu.addSeparator()
             menu.addAction("Run Equalizer",self.runEqualizer)
             self.action_equalizer = menu.addAction("", self.toggleEQ)
             self.action_equalizer.setIcon( QIcon(":/img/app_check.png"))
@@ -295,7 +395,7 @@ class MainWindow(QMainWindow):
                 self.action_equalizer.setIconVisibleInMenu ( False )
                 self.action_equalizer.setText("Enable Equalizer")
                 self.songview.setEQEnabled(False)
-        menu.addSeparator()
+            menu.addSeparator()
         self.action_undo_delete = menu.addAction("Undo Delete")
         self.action_undo_delete.setDisabled( True )
 
@@ -319,11 +419,12 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: 1.0\n"
+        about_text += "Version: %s\n"%self.version
         about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
         about_text += "Qt Version: %s\n"%QT_VERSION_STR
         about_text += "sip Version: %s\n"%SIP_VERSION_STR
         about_text += "PyQt Version: %s\n"%PYQT_VERSION_STR
+        about_text += "Playback Engine: %s\n"%self.controller.device.name()
         menu.addAction("About",lambda:QMessageBox.about(self,"Yue Music Player",about_text))
 
     def closeEvent(self, event):
@@ -562,11 +663,36 @@ class MainWindow(QMainWindow):
             self.controller.play_next()
         self.plview.updateData()
 
+    def updateTags(self):
+
+        if self.dialog_update is not None:
+            return
+
+        dialog = SelectSongsDialog(parent=self)
+
+        if dialog.exec_():
+            query = dialog.getQuery()
+            self.dialog_update = UpdateTagProgressDialog(query,self)
+            self.dialog_update.setOnCloseCallback(self.onUpdateTagsExit)
+            self.dialog_update.start()
+            self.dialog_update.show()
+            dialog.setParent(None)
+
+    def onUpdateTagsExit(self):
+        if self.dialog_update is not None:
+            self.dialog_update.setParent(None)
+            #self.dialog_update.deleteLater()
+            self.dialog_update = None
+
     def on_seek(self,position):
 
         self.controller.device.seek( position )
         if self.controller.device.isPaused():
             self.controller.device.play()
+
+    def update_statusbar_message(self,msg):
+
+        self.lbl_status.setText(msg)
 
     def backup_database(self):
 
@@ -628,13 +754,18 @@ def setSettingsDefaults():
         "ban=0 && date>14",
         ])
 
-def main():
+def main(version="0.0.0"):
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Yue Music Player - v1.0.0")
+    app.setApplicationName("Yue Music Player - v%s"%version)
     app.setQuitOnLastWindowClosed(True)
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--sound', default="default",
+                   help='set sound device: default, bass, dummy')
+    args = parser.parse_args()
 
     with LogView(trace=False,echo=True) as diag:
 
@@ -654,10 +785,10 @@ def main():
 
         sys.stdout.write("Create Sound Device\n")
         pl=PlaylistManager.instance().openCurrent()
-        device = newDevice(pl,plugin_path)
+        device = newDevice(pl,plugin_path,kind=args.sound)
 
         sys.stdout.write("Initializing application\n")
-        window = MainWindow( diag, device )
+        window = MainWindow( diag, device, version )
         window.showWindow()
 
         try:

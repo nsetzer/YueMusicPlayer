@@ -1,11 +1,10 @@
-#!/usr/bin/python
-__version__ = "1.0"
-
-import traceback
+#!python34 $this
+__version__ = "1.0.0"
+import codecs,traceback
 try:
     from yue.client.client import main
-    main()
+    main(__version__)
 except Exception as e:
-    with open("error.log","w") as f:
-        f.write("%s\n"%e)
-        f.write(traceback.format_exc())
+    with codecs.open("yue-error.log","w","utf-8") as wf:
+        wf.write("%s\n"%e)
+        wf.write(traceback.format_exc())

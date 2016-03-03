@@ -46,10 +46,10 @@ class QtCallbackSlot(QObject):
     def execute_callback(self, cbk, args, kwargs):
         cbk(*args,**kwargs)
 
-def newDevice( playlist, libpath ):
-    if BassSoundDevice is None:
-        return DummySoundDevice(playlist, libpath,True, QtCallbackSlot)
-    return BassSoundDevice(playlist, libpath,True, QtCallbackSlot)
+def newDevice( playlist, libpath, kind="default" ):
+    if kind in ("bass","default") and BassSoundDevice is not None:
+        return BassSoundDevice(playlist, libpath,True, QtCallbackSlot)
+    return DummySoundDevice(playlist, libpath,True, QtCallbackSlot)
 
 class PlaybackThread(QThread):
     """peridocially update the UI during playback"""

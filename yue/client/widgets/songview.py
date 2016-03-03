@@ -85,6 +85,7 @@ class CurrentSongView(QWidget):
         super(CurrentSongView,self).__init__(parent);
 
         self.song = Song.new()
+        self.song[Song.rating]= 5
         self.playlist_index  = 0
         self.playlist_length = 0
         self.equalizer_enabled = False
@@ -223,9 +224,11 @@ class CurrentSongView(QWidget):
             self.offsetb = int((self.offsetb_max*1.5) * (event.x()/self.width()))
         self.update()
 
+
     def enterEvent(self,event):
         self.disable_autoscroll = True
         self.update()
+        super().enterEvent(event)
 
     def leaveEvent(self,event):
         self.disable_autoscroll = False
@@ -234,6 +237,7 @@ class CurrentSongView(QWidget):
         self.offsett = 0
         self.offsetb = 0
         self.update()
+        super().leaveEvent(event)
 
     def paintEvent(self, event):
         w = self.width()
@@ -279,10 +283,28 @@ class CurrentSongView(QWidget):
         rw = w - padl - padr - fwt - 2*fw3
         #painter.drawRect(2*padl+fwt,row4h-fh,rw,fh)
         recth=4*rh-self.padtb
-        painter.drawRect(w-fw3,self.padt,fw3-padr,recth)
-        recths = int(recth*(self.song[Song.rating]/10))
-        rectho = recth-recths
-        painter.fillRect(w-fw3+1,self.padt+rectho+1,fw3-padr-1,recths-1,QBrush(QColor(0,0,200)))
+        pillh = recth//5
+        pillo = (h-pillh*5)//2
+
+        n = self.song[Song.rating]//2
+        for i in range(0,n):
+            x=w-fw3+1
+            y=h-((i+1)*pillh)-pillo+2
+            pw=fw3-padr-1
+            ph=pillh-2
+            painter.fillRect(x,y,pw,ph,QBrush(QColor(0,0,200)))
+            #painter.drawRect(x,y,pw,ph)
+        if self.song[Song.rating]%2==1:
+            x=w-fw3+1
+            y=h-((n+1)*pillh)-pillo+2
+            pw=fw3-padr-1
+            ph=pillh-2
+            painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(0,0,200)))
+            #painter.drawRect(x,y,pw,ph)
+
+        #recths = int(recth*(self.song[Song.rating]/10))
+        #rectho = recth-recths
+        #painter.fillRect(w-fw3+1,self.padt+rectho+1,fw3-padr-1,recths-1,QBrush(QColor(0,0,200)))
 
         painter.setClipping(True)
         self.region_width = w-(fw1+1)*pltextlen - fw3
@@ -306,3 +328,21 @@ class CurrentSongView(QWidget):
             menu = QMenu(self)
             self.menu_callback(menu,self.song)
             menu.exec_( event.globalPos() )
+
+        if event.button() == Qt.LeftButton:
+            v = round((1.0-event.y()/self.height())*10)
+            self.song[Song.rating] = v
+            self.update()
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("Console Player")
+    app.setQuitOnLastWindowClosed(True)
+    window = CurrentSongView()
+    window.show()
+
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
