@@ -57,6 +57,14 @@ TODO:
 
 """
 
+byte_labels = ['B','KB','MB','GB']
+def format_bytes(b):
+    for label in byte_labels:
+        if b < 1024:
+            return "%d%s"%(b,label)
+        b /= 2014
+    return "%d%s"%(b,byte_labels[-1])
+
 def explorerOpen( url ):
 
     if os.name == "nt":
@@ -129,7 +137,7 @@ class FileTable(LargeTable):
         self.columns[-1].width = self.rm.width() + 4 # arbitrary pad, image is centered
 
         self.columns.append( TableDualColumn(self,'name',"File Name") )
-        self.columns[-1].setSecondaryTextTransform(lambda r,item : str(r['size']))
+        self.columns[-1].setSecondaryTextTransform(lambda r,item : format_bytes(r['size']))
 
     def mouseReleaseRight(self,event):
 
@@ -176,23 +184,38 @@ class FileTable(LargeTable):
 
         action = contextMenu.exec_( event.globalPos() )
 
-    def mouseDoubleClick(self,row,col,event):
+    def mouseReleaseOther(self,event=None):
+
+        # TODO: maintain a history, goback should go to previous
+        # directory, and not the parent directory.
+        if event is not None:
+            if event.button()==Qt.XButton1:
+                self.open_parent_directory()
+            else:
+                print(event.button())
+
+    def mouseDoubleClick(self,row,col,event=None):
 
         if event is None or event.button() == Qt.LeftButton:
-            item = self.view[row]
+            if 0<= row < len(self.view):
+                item = self.view[row]
+                if item['name'] == '..':
+                    self.open_parent_directory()
+                elif item['isDir']:
+                    self.position_stack.append(row)
+                    self.open_child_directory(item)
 
-            if item['name'] == '..':
-                self.parent().chdir( self.view.parent(self.view.pwd()) )
-                if self.position_stack:
-                    idx = self.position_stack.pop()
-                    self.scrollTo( idx )
-                    self.setSelection([idx,])
-            elif item['isDir']:
+    def open_parent_directory(self):
+        self.parent().chdir( self.view.parent(self.view.pwd()) )
+        if self.position_stack:
+            idx = self.position_stack.pop()
+            self.scrollTo( idx )
+            self.setSelection([idx,])
 
-                self.position_stack.append(row)
-                self.scrollTo( 0 )
-                self.parent().chdir( item['name'] )
-                self.setSelection([])
+    def open_child_directory(self,item):
+        self.scrollTo( 0 )
+        self.parent().chdir( item['name'] )
+        self.setSelection([])
 
     def sortColumn(self,*args):
         pass
@@ -247,6 +270,7 @@ class ExplorerView(QWidget):
             if clear_stack:
                 self.tbl_file.position_stack=[]
             self.view.chdir(path)
+
         except OSError as e:
             sys.stderr.write(str(e))
             QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)

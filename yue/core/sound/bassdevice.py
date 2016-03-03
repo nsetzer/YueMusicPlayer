@@ -67,6 +67,9 @@ class BassSoundDevice(SoundDevice):
         if use_capi:
             self.device.setStreamEndCallback( self.on_bass_end )
 
+    def name(self):
+        return "Bass Audio"
+
     def on_bass_end(self, *args):
         self.on_song_end.emit( self.current_song )
 

@@ -125,7 +125,7 @@ class PlayListViewWidget(QWidget):
         self.vbox.setContentsMargins(0,0,0,0)
 
         self.tbl = PlaylistTable(self)
-        self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , QColor(255,0,0))
+        self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , QColor(200,75,250))
 
         self.vbox.addWidget( self.tbl.container )
 
