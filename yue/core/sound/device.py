@@ -43,9 +43,6 @@ class SoundDevice(object):
 
     # playback controls
 
-    def name(self):
-        raise NotImplementedError()
-
     def unload(self):
         raise NotImplementedError()
 

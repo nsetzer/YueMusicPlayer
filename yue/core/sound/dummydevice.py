@@ -11,9 +11,6 @@ class DummySoundDevice(SoundDevice):
         super(DummySoundDevice, self).__init__( playlist, cbkfactory )
         self.playlist = playlist
 
-    def name(self):
-        return "Dummy Audio"
-
     def load_plugin(self,libpath,name):
         pass
 

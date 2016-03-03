@@ -9,49 +9,34 @@ if isPosix:
     EXT = '';
     ICOEXT='.png'
 
-isDebug = ('--debug' in sys.argv)
-
-if isDebug:
-  EXT="-debug"+EXT
-
-version = '0.0.0'
-
-main_script = os.path.join(ROOT_PATH,'client-main.py')
-
-with open(main_script,"r") as rf:
-  for line in rf:
-    line = line.strip()
-    if line.startswith("__version__"):
-      version = line.split('=')[1].strip()[1:-1]
-
-FULL_NAME = 'YueMusicPlayer-%s-%s%s'%(os.name,version,EXT)
+FULL_NAME = 'YueMusicPlayer-%s%s'%(os.name,EXT)
 
 #build a debug version and look for import errors,
 # add those import libraries to hidden imports list
-a = Analysis([main_script,],
+a = Analysis([os.path.join(ROOT_PATH,'client-main.py'),],
              pathex=[os.path.join(os.getcwd(),"yue"),],
              hiddenimports=["pkg_resources"],
              hookspath=None,
              runtime_hooks=None)
 
-libpath = os.path.join(ROOT_PATH,"lib", sys.platform, "x86_64")
+libpath = os.path.join(ROOT_PATH,"lib", "win32", "x86_64")
 
-def addDllFile(a,name):
-  current_path = os.path.join(libpath,name)
-  if os.path.exists( current_path ):
-    a.datas.append( (name, current_path, 'DATA') )
+#a.datas += [(os.path.join(libpath,"bass.dll"),      "bass.dll",'DATA'),]
+#a.datas += [(os.path.join(libpath,"bassdsp.dll"),   "bassdsp.dll",'DATA'),]
+#a.datas += [(os.path.join(libpath,"libfftw3-3.dll"),"libfftw3-3.dll",'DATA'),]
 
-addDllFile(a,"bass.dll")
-addDllFile(a,"bass_aac.dll")
-addDllFile(a,"bass_alac.dll")
-addDllFile(a,"bassdsp.dll")
-addDllFile(a,"bassflac.dll")
-addDllFile(a,"bassmidi.dll")
-addDllFile(a,"bassopus.dll")
-addDllFile(a,"basswma.dll")
-addDllFile(a,"basswv.dll")
-addDllFile(a,"libfftw3-3.dll")
-addDllFile(a,"hook.dll")
+libdata = lambda name : [(name,      os.path.join(libpath,name),      'DATA'),]
+a.datas += libdata("bass.dll")
+a.datas += libdata("bass_aac.dll")
+a.datas += libdata("bass_alac.dll")
+a.datas += libdata("bassdsp.dll")
+a.datas += libdata("bassflac.dll")
+a.datas += libdata("bassmidi.dll")
+a.datas += libdata("bassopus.dll")
+a.datas += libdata("basswma.dll")
+a.datas += libdata("basswv.dll")
+a.datas += libdata("libfftw3-3.dll")
+a.datas += libdata("hook.dll")
 
 # workaround remove extra copies of pyconfig under --onefile
 # if yopu still see an error, there may be more than 2 copies in the data.
@@ -67,8 +52,8 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           name=FULL_NAME,
-          debug=isDebug,
+          debug=('--debug' in sys.argv),
           strip=('--strip' in sys.argv),
-          upx=False,
-          console=isDebug,
+          upx=True,
+          console=('--debug' in sys.argv),
           icon= os.path.join(ROOT_PATH,"img",'icon'+ICOEXT))

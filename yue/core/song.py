@@ -21,8 +21,6 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-class UnsupportedFormatError(ValueError):
-    pass
 
 class Song(object):
     # column names
@@ -89,11 +87,9 @@ class Song(object):
         "pcnt"        : play_count,
         "count"       : play_count,
         "play_count"  : play_count,
-        "playcount"  : play_count,
         "skip"        : skip_count,
         "scnt"        : skip_count,
         "skip_count"  : skip_count,
-        "skipcount"  : skip_count,
         "rate"        : rating,
         "rating"      : rating,
         "text"        : all_text,
@@ -188,13 +184,9 @@ class Song(object):
     def supportedExtensions():
         return ext_mp3+ext_mp4+ext_asf+ext_flac
 
-    @staticmethod
-    def toString(song):
-        return "%s - %s - %s"%(song[Song.artist],song[Song.album],song[Song.title])
-
 # from kivy.logger import Logger
 
-def read_tags( path ):
+def read_tags( path):
 
     song = Song.new()
 
@@ -209,7 +201,7 @@ def read_tags( path ):
     elif ext in ext_asf:
         read_asf_tags( song, path )
     else:
-        raise UnsupportedFormatError(ext)
+        raise ValueError(ext)
 
     song['path']=path
 
@@ -299,31 +291,6 @@ def get_int(audio,tag,split_on=None):
     except Exception as e:
         print("mutagen: error reading %s: %s"%(tag,e))
     return 0
-
-def write_tags( song ):
-    # raises: PermissionError, OSError, ValueError
-    ext = os.path.splitext(song[Song.path])[1].lower()
-    if ext in ext_mp3:
-        return write_mp3_tags( song )
-
-    raise UnsupportedFormatError(ext)
-
-def write_mp3_tags(song):
-
-
-    path = song[Song.path]
-    try :
-        audio = EasyID3(path)
-    except ID3NoHeaderError:
-        # if the tag does not exist create a new one
-        audio = EasyID3()
-
-    audio['artist'] = song[Song.artist]
-    audio['title']  = song[Song.title]
-    audio['album']  = song[Song.album]
-    audio['length'] = str(song[Song.length])
-
-    audio.save(path)
 
 class ArtNotFound(IOError):
     pass

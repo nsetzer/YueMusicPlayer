@@ -916,8 +916,7 @@ class LargeTableCore(QWidget):
         elif event.button() == Qt.RightButton:
             self.__mouseReleaseRight(event)
         else:
-            self.mouseReleaseOther(event)
-
+            print("middle click")
 
         self.mouse_disable_release = False
         self.mouse_disable_col_click_event =False
@@ -989,9 +988,6 @@ class LargeTableCore(QWidget):
             self.mouseReleaseRightHeader(event)
         elif mx > self.data_x and mx < self.data_x2 and my > self.data_y and my < self.data_y2:
             self.mouseReleaseRight(event)
-
-    def mouseReleaseOther(self,event):
-        print("mouse click: %X"%event.button())
 
     def _mousePosToCellPos(self,mx,my):
         cell_x = 0

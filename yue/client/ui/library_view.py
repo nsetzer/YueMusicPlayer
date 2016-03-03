@@ -49,17 +49,9 @@ class LibraryTable(SongTable):
         self.current_uid = -1
         self.addRowTextColorComplexRule(self.currentSongRule,self.color_text_played_recent)
 
-        self.selection_changed.connect(self.on_selection_change)
-
     def currentSongRule(self,row):
         return self.data[row][Song.uid] == self.current_uid
 
-    def on_selection_change(self,event=None):
-
-        items = self.getSelection()
-        if len(items) == 1:
-            song = items[0]
-            self.parent().notify.emit( song[Song.path] )
 
     def mouseReleaseRight(self,event):
 
@@ -94,6 +86,7 @@ class LibraryTable(SongTable):
             self.parent().menu_callback(menu,items[0])
 
         action = menu.exec_( event.globalPos() )
+
 
     def mouseDoubleClick(self,row,col,event):
 
@@ -138,8 +131,6 @@ class LibraryView(QWidget):
 
 
     set_playlist = pyqtSignal(list,bool)
-
-    notify = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(LibraryView, self).__init__(parent)
