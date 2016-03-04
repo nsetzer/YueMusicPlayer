@@ -78,7 +78,6 @@ class ClientRepl(object):
         self.actions["backup"] = self.exbackup
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
-        self.actions["throw"] = self.exthrow
         if SimpleSciEditor is not None:
             self.actions["editor"] = self.exeditor
 
@@ -163,11 +162,6 @@ class ClientRepl(object):
 
         for name,string in self.helptopics.items():
             repl.registerTopic(name,string)
-
-    def exthrow(self,args):
-        """ throw an exception """
-
-        raise ValueError()
 
     def exexit(self,args):
         """ exit application """
@@ -397,9 +391,6 @@ class MainWindow(QMainWindow):
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
         menu.addAction("Exit",QApplication.quit)
-        def throw():
-            raise ValueError()
-        menu.addAction("throw",throw)
 
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
