@@ -63,8 +63,6 @@ class PlaybackThread(QThread):
         self.updates_enabled = False
         self.alive = True
 
-
-
     def run(self):
 
         self.mutex.lock();
@@ -185,6 +183,7 @@ class PlaybackController(object):
                 self.device.next()
 
         if idx == self.stop_index:
+            self.root.btn_playpause.setStopState(False)
             self.device.pause()
             self.stop_index = -1;
 
@@ -225,6 +224,11 @@ class PlaybackController(object):
             self.device.play()
         else:
             self.device.pause();
+
+    def seek(self,position):
+        self.device.seek( position )
+        if self.device.isPaused():
+            self.device.play()
 
     def toggleStop(self):
         # toggle stop state and update ui

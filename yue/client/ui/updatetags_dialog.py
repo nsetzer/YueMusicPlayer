@@ -90,14 +90,16 @@ class UpdateTagProgressDialog(ProgressDialog):
 
     def run(self):
 
+        self.setMessage("Reticulating splines")
+
         # get a thread local copy
         lib = Library.instance().reopen()
-
         songs = lib.search( self.query )
-
         self.pbar.setMaximum( len(songs)-1 )
 
-        self.setMessage("Updating MP3 Tags...")
+        QThread.usleep(2000000);
+
+        self.setMessage("Updating MP3 Tags")
         count = 0
         for i,song in enumerate(songs):
             try:
@@ -116,7 +118,10 @@ class UpdateTagProgressDialog(ProgressDialog):
             finally:
                 self.valueChanged.emit(i)
 
-        self.setMessage("Successfully update %d/%d files."%(count,len(songs)))
+        if count == 0:
+            self.setMessage("No songs updated.");
+        else:
+            self.setMessage("Successfully update %d/%d files."%(count,len(songs)))
 
 def main():
     app = QApplication(sys.argv)

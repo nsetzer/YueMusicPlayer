@@ -81,6 +81,9 @@ def fmt_seconds( t ):
         return "%d:%02d"%(m,s)
 
 class CurrentSongView(QWidget):
+
+    # uid, new rating
+    update_rating = pyqtSignal(int,int)
     def __init__(self, parent=None):
         super(CurrentSongView,self).__init__(parent);
 
@@ -89,6 +92,7 @@ class CurrentSongView(QWidget):
         self.playlist_index  = 0
         self.playlist_length = 0
         self.equalizer_enabled = False
+        self.is_library_song = True
 
         self.offseta = 0
         self.offsett = 0
@@ -119,6 +123,12 @@ class CurrentSongView(QWidget):
 
         self.scroll_index = 0;
         self.scroll_speed = 2 # pixels per step
+
+        self.rtdrawy=0
+        self.rtdrawh=0
+        self.rtdrawx=0
+        self.enable_rate_tracking = False
+        self.suggested_rating = 0
 
     def setPosition(self, position ):
         length = self.song[Song.length]
@@ -151,6 +161,7 @@ class CurrentSongView(QWidget):
     def setPlaylistInfo(self,index,length):
         self.playlist_index  = index
         self.playlist_length = length
+        self.is_library_song = 0<= self.playlist_index < self.playlist_length
         self.update()
 
     def setEQEnabled(self,b):
@@ -210,6 +221,13 @@ class CurrentSongView(QWidget):
         h=self.height()/4
         p=int(event.y()/h)
 
+        if event.x() > self.rtdrawx and self.enable_rate_tracking:
+            v = min(1.0,(event.y() - self.rtdrawy)/self.rtdrawh)
+            v = int(round((1.0-v)*10))
+            self.suggested_rating = v
+            self.update()
+            return
+
         if p==0:
             self.offseta = int((self.offseta_max*1.5) * (event.x()/self.width()))
             self.offsett = 0
@@ -222,15 +240,17 @@ class CurrentSongView(QWidget):
             self.offseta = 0
             self.offsett = 0
             self.offsetb = int((self.offsetb_max*1.5) * (event.x()/self.width()))
+
         self.update()
 
-
     def enterEvent(self,event):
+        self.enable_rate_tracking = False
         self.disable_autoscroll = True
         self.update()
         super().enterEvent(event)
 
     def leaveEvent(self,event):
+        self.enable_rate_tracking = False
         self.disable_autoscroll = False
         self.scroll_index = 0;
         self.offseta = 0
@@ -266,7 +286,7 @@ class CurrentSongView(QWidget):
         row4h = row3h+self.padtb+fh
 
         text = ""
-        if 0<= self.playlist_index < self.playlist_length:
+        if self.is_library_song:
             text = "%d/%d"%(self.playlist_index,self.playlist_length)
         pltextlen = len(text)
         painter.drawText(padl,row1h-fh,w-padlr-fw3,fh,Qt.AlignRight,text)
@@ -286,23 +306,31 @@ class CurrentSongView(QWidget):
         pillh = recth//5
         pillo = (h-pillh*5)//2
 
-        n = self.song[Song.rating]//2
+        self.rtdrawy=pillo
+        self.rtdrawh=pillh*5
+        self.rtdrawx=w-fw3+1
 
-        for i in range(0,5):
-            x=w-fw3+1
-            y=h-((i+1)*pillh)-pillo+2
-            pw=fw3-padr-1
-            ph=pillh-2
-            painter.fillRect(x,y,pw,ph,QBrush(QColor(128,128,200)))
-            if i < n:
-                painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
-            #painter.drawRect(x,y,pw,ph)
-        if self.song[Song.rating]%2==1:
-            x=w-fw3+1
-            y=h-((n+1)*pillh)-pillo+2
-            pw=fw3-padr-1
-            ph=pillh-2
-            painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(60,60,200)))
+        if self.is_library_song:
+            rating = self.song[Song.rating]
+            if self.enable_rate_tracking:
+                rating = self.suggested_rating
+            n = rating//2
+
+            for i in range(0,5):
+                x=w-fw3+1
+                y=h-((i+1)*pillh)-pillo+2
+                pw=fw3-padr-1
+                ph=pillh-2
+                painter.fillRect(x,y,pw,ph,QBrush(QColor(128,128,200)))
+                if i < n:
+                    painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
+                #painter.drawRect(x,y,pw,ph)
+            if rating%2==1:
+                x=w-fw3+1
+                y=h-((n+1)*pillh)-pillo+2
+                pw=fw3-padr-1
+                ph=pillh-2
+                painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(60,60,200)))
             #painter.drawRect(x,y,pw,ph)
 
         #recths = int(recth*(self.song[Song.rating]/10))
@@ -325,7 +353,13 @@ class CurrentSongView(QWidget):
         """
         self.menu_callback = cbk
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.enable_rate_tracking = True
+            event.accept()
+
     def mouseReleaseEvent(self, event):
+        self.enable_rate_tracking = False
 
         if event.button() == Qt.RightButton and self.menu_callback is not None:
             menu = QMenu(self)
@@ -333,9 +367,12 @@ class CurrentSongView(QWidget):
             menu.exec_( event.globalPos() )
 
         if event.button() == Qt.LeftButton:
-            v = round((1.0-event.y()/self.height())*10)
-            self.song[Song.rating] = v
-            self.update()
+            if event.x() > self.rtdrawx:
+                v = min(1.0,(event.y() - self.rtdrawy)/self.rtdrawh)
+                v = round((1.0-v)*10)
+                self.song[Song.rating] = v
+                self.update_rating.emit(self.song[Song.uid],v)
+                self.update()
 
 
 def main():

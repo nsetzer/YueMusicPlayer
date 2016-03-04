@@ -296,9 +296,10 @@ class MainWindow(QMainWindow):
 
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
+        self.songview.update_rating.connect(self.setRating)
 
         self.posview = SongPositionView( self );
-        self.posview.seek.connect(self.on_seek)
+        self.posview.seek.connect(self.controller.seek)
         self.posview.next.connect(self.controller.play_next)
         self.posview.prev.connect(self.controller.play_prev)
 
@@ -696,11 +697,10 @@ class MainWindow(QMainWindow):
             #self.dialog_update.deleteLater()
             self.dialog_update = None
 
-    def on_seek(self,position):
-        #TODO: move this function into controller
-        self.controller.device.seek( position )
-        if self.controller.device.isPaused():
-            self.controller.device.play()
+    def setRating(self,uid,rte):
+        # TODO: refresh library view
+        Library.instance().update(uid,**{Song.rating:rte})
+        self.libview.onUpdate()
 
     def update_statusbar_message(self,msg):
 
