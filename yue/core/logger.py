@@ -68,7 +68,9 @@ class Logger(object):
         except UnicodeDecodeError as e:
             sys.__stderr__.write(self.getTrace()+"\n")
         except AttributeError as e:
-            pass # __stdout__ is None?
+            sys.__stderr__.write(self.getTrace()+"\n")
+        except Exception as e:
+            sys.__stderr__.write(self.getTrace()+"\n")
 
     def getTrace(self):
         tr = traceback.extract_stack()
@@ -107,21 +109,26 @@ class BinaryWriter(object):
         # TODO: redirect to parent.writer
         sys.__stdout__.buffer.write( b )
 
-class ErrorLogger(object):
+class ErrorLogger(Logger):
     """docstring for ErrorLogger"""
     def __init__(self, parent):
         super(ErrorLogger, self).__init__()
         self.parent = parent
 
     def write(self,string):
-        if string.strip():
-            if not self.parent.trace:
-                trace = self.parent.getTrace()
-                if 'traceback.py' not in trace:
-                    string = trace + string
-                    if string[-1] != "\n":
-                        string += "\n"
-            self.parent.write(string)
+        # TODO: this code as written isnt useful
+        # what i want instead:
+        # determine the file that is writing the current error stream
+        # prior to writing the output, write the name of the file if
+        # it is not the last file written to the stream.
+        #if string.strip():
+        #    if not self.parent.trace:
+        #        trace = self.parent.getTrace()
+        #        if 'traceback.py' not in trace:
+        #            string = trace + string
+        #            if string[-1] != "\n":
+        #                string += "\n"
+        self.parent.write(string)
 
 class Buffer(object):
     """docstring for Buffer"""

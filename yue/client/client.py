@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import urllib
 import argparse
+import traceback
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -77,6 +78,7 @@ class ClientRepl(object):
         self.actions["backup"] = self.exbackup
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
+        self.actions["throw"] = self.exthrow
         if SimpleSciEditor is not None:
             self.actions["editor"] = self.exeditor
 
@@ -162,6 +164,11 @@ class ClientRepl(object):
         for name,string in self.helptopics.items():
             repl.registerTopic(name,string)
 
+    def exthrow(self,args):
+        """ throw an exception """
+
+        raise ValueError()
+
     def exexit(self,args):
         """ exit application """
         QApplication.quit()
@@ -235,7 +242,10 @@ class MainWindow(QMainWindow):
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
-        #self.keyhook = KeyHook(self.controller, False)
+
+        self.keyhook = None
+        self.remotethread = None
+
         if HookThread is not None:
             sys.stdout.write("Initialize Keyboard hook.\n")
             self.keyhook = HookThread()
@@ -245,7 +255,6 @@ class MainWindow(QMainWindow):
             self.keyhook.play_prev.connect(self.controller.play_prev)
         else:
             sys.stdout.write("Unable to initialize Keyboard Hook.\n")
-
         if SocketListen is not None:
             port = 15123
             if hasattr(sys,"_MEIPASS"):
@@ -388,6 +397,9 @@ class MainWindow(QMainWindow):
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
         menu.addAction("Exit",QApplication.quit)
+        def throw():
+            raise ValueError()
+        menu.addAction("throw",throw)
 
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
@@ -453,8 +465,12 @@ class MainWindow(QMainWindow):
         # hide now, to make it look like the application closed faster
         self.hide()
 
-        self.remotethread.join()
-        #self.keyhook.join()
+        if self.remotethread is not None:
+            self.remotethread.join()
+
+        # TODO: this doesnt work
+        #if self.keyhook is not None:
+        #    self.keyhook.join()
 
         # record the current volume, but prevent the application
         # from starting muted
@@ -769,6 +785,11 @@ def setSettingsDefaults():
         "ban=0 && date>14",
         ])
 
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
+        sys.stderr.write(line)
+
 def main(version="0.0.0"):
 
     app = QApplication(sys.argv)
@@ -783,6 +804,8 @@ def main(version="0.0.0"):
     args = parser.parse_args()
 
     with LogView(trace=False,echo=True) as diag:
+
+        sys.excepthook = handle_exception
 
         plugin_path = "./lib/%s/x86_64"%sys.platform
         if hasattr(sys,"_MEIPASS"):

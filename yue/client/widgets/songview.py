@@ -223,7 +223,8 @@ class CurrentSongView(QWidget):
 
         if event.x() > self.rtdrawx and self.enable_rate_tracking:
             v = min(1.0,(event.y() - self.rtdrawy)/self.rtdrawh)
-            v = int(round((1.0-v)*10))
+            v = round((1.0-v)*10)
+            v = min(10,min(10,v))
             self.suggested_rating = v
             self.update()
             return
@@ -321,7 +322,7 @@ class CurrentSongView(QWidget):
                 y=h-((i+1)*pillh)-pillo+2
                 pw=fw3-padr-1
                 ph=pillh-2
-                painter.fillRect(x,y,pw,ph,QBrush(QColor(128,128,200)))
+                painter.fillRect(x,y,pw,ph,QBrush(QColor(160,175,220)))
                 if i < n:
                     painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
                 #painter.drawRect(x,y,pw,ph)
@@ -370,6 +371,7 @@ class CurrentSongView(QWidget):
             if event.x() > self.rtdrawx:
                 v = min(1.0,(event.y() - self.rtdrawy)/self.rtdrawh)
                 v = round((1.0-v)*10)
+                v = min(10,min(10,v))
                 self.song[Song.rating] = v
                 self.update_rating.emit(self.song[Song.uid],v)
                 self.update()

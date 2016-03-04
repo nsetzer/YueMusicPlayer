@@ -19,6 +19,8 @@ from yue.client.client import main as client_main
 from yue.client.DSP.equalizer import main as eq_main
 from yue.client.ui.openpl_dialog import main as pl_main
 from yue.client.ui.newpl_dialog import main as npl_main
+from yue.client.ui.updatetags_dialog import main as ut_main
+from yue.client.widgets.songview import main as sv_main
 
 def convert():
     """ convert from old style library to new style library """
@@ -58,8 +60,6 @@ def convert():
         EnumSong.FILESIZE   : "file_size",
     }
 
-
-
     if len(library) == 0:
 
         xml = r"D:/Dropbox/ConsolePlayer/user/music.xml"
@@ -96,4 +96,6 @@ if __name__ == '__main__':
     #eq_main()
     #pl_main();
     #npl_main();
+    #ut_main();
     client_main();
+    #sv_main();
