@@ -21,6 +21,7 @@ from yue.client.DSP.equalizer import main as eq_main
 from yue.client.ui.openpl_dialog import main as pl_main
 from yue.client.ui.newpl_dialog import main as npl_main
 from yue.client.ui.updatetags_dialog import main as ut_main
+from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.widgets.songview import main as sv_main
 
 def convert():
@@ -100,9 +101,10 @@ if __name__ == '__main__':
         key = sys.argv[1]
     programs = {
         "songview.py" : sv_main,
+        "sync_dialog.py" : sync_main,
         "client" : client_main,
     }
-
+    print("key: %s"%key)
     main = programs.get(key,client_main)
     main()
     #eq_main()
