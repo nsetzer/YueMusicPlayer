@@ -23,6 +23,7 @@ from yue.client.ui.newpl_dialog import main as npl_main
 from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.widgets.songview import main as sv_main
+from yue.core.sync import main as sync_core_main
 
 def convert():
     """ convert from old style library to new style library """
@@ -101,7 +102,9 @@ if __name__ == '__main__':
         key = sys.argv[1]
     programs = {
         "songview.py" : sv_main,
+        "sync.py" : sync_core_main,
         "sync_dialog.py" : sync_main,
+        "client" : client_main,
         "client" : client_main,
     }
     print("key: %s"%key)

@@ -23,7 +23,7 @@ class HookThread(QThread):
             return 1
 
         if self.diag:
-            if ascii>0:
+            if 0x20<=ascii<0x80:
                 sys.stdout.write("%c"%ascii);
             else:
                 sys.stdout.write("{%02X}"%vkCode);
@@ -48,5 +48,5 @@ class HookThread(QThread):
         sys.stdout.write("KeyBoard Hook Thread (join)");
         # TODO: this does not work at all
         #cHook.unhook();
-        self.wait()
+        #self.wait()
 

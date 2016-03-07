@@ -76,6 +76,7 @@ class LibraryTable(SongTable):
         act.setDisabled( len(items) != 1 )
 
         menu.addAction("Play next",lambda:self.action_play_next(items))
+        act.setDisabled( len(items) == 0 )
 
         if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
             menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \

@@ -507,6 +507,9 @@ class MainWindow(QMainWindow):
 
         widget = PlaylistEditView(playlist_name)
         widget.on_rename.connect( self.renameTab )
+        widget.set_playlist.connect(self.setCurrentPlaylist)
+        widget.notify.connect(self.update_statusbar_message)
+
         index = self.tabview.addTab( widget, QIcon(':/img/app_list.png'), playlist_name)
         widget.btn = CloseTabButton( lambda : self.closePlaylistEditorTab( widget ), self)
         self.tabview.tabBar().setTabButton(index,QTabBar.RightSide,widget.btn)
@@ -518,6 +521,17 @@ class MainWindow(QMainWindow):
         # TODO: check if the tab *can* be closed
         # e.g. if the playlist editor has made changes,
         # ask if the user wants to discard the changes.
+
+        if isinstance(widget,PlaylistEditView):
+            # if the widget has unsaved changes issue a warning
+            # this is a tri-state field
+            # save, discard, or cancel
+            # TODO: this could be standardized, (when and if there
+            # are other types of closeable tabs)
+            if widget.isDirty():
+                result = widget.save_warning()
+                if result == QMessageBox.Cancel:
+                    return
 
         idx = self.tabIndex( widget )
         if idx >= 0:
@@ -682,6 +696,10 @@ class MainWindow(QMainWindow):
             self.plview.updateData()
 
     def setCurrentPlaylist(self, uids,play=False):
+        # TODO: this is poorly named
+        # in both playlist editor, library view, and here
+        # is really should be called something to reflect that
+        # the songs are inserted and not overwritten
         pl = PlaylistManager.instance().openCurrent()
         pl.insert_next( uids )
         if play:

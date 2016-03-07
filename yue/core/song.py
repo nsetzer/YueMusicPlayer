@@ -57,6 +57,8 @@ class Song(object):
     # when search / sorting a song list, causing a random ordering
     random = "RANDOM"
 
+    eqfactor = 256.0
+
     abbreviations = {
         "id"          : uid,
         "uid"         : uid,
@@ -191,6 +193,25 @@ class Song(object):
     @staticmethod
     def toString(song):
         return "%s - %s - %s"%(song[Song.artist],song[Song.album],song[Song.title])
+
+    @staticmethod
+    def toShortPath(song):
+        tart = stripIllegalChars(song[Song.artist]).strip().replace(" ","_")
+        tabm = stripIllegalChars(song[Song.album]).strip().replace(" ","_")
+        tnam = os.path.split(song[Song.path])[1].replace(" ","_")
+        tart = tart.rstrip(".") # windows...
+        tabm = tabm.rstrip(".")
+        tnam = tnam.rstrip(".")
+        if tart == "":
+            tart = "Unknown Artist"
+        if tabm.lower() in ["none","unknown",""]:
+            path = os.path.join(tart,tnam);
+        else:
+            path = os.path.join(tart,tabm,tnam);
+        return path
+
+def stripIllegalChars(x):
+    return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
 
 # from kivy.logger import Logger
 

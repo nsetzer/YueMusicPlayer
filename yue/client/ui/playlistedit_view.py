@@ -16,6 +16,7 @@ if isPython3:
 import yue
 from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.TableEditColumn import EditColumn
 
 from yue.client.ui.rename_dialog import RenameDialog
 from yue.client.ui.openpl_dialog import OpenPlaylistDialog
@@ -28,7 +29,55 @@ from yue.core.playlist import PlaylistManager
 
 from .library_view import LineEdit_Search
 
-class PlayListEditTable(SongTable):
+class EditTable(SongTable):
+    # todo I may want to further specialize, since this is cloned from
+    # the library view
+    def __init__(self, parent = None):
+        super(EditTable, self).__init__(parent)
+        self.selection_changed.connect(self.on_selection_change)
+
+    def on_selection_change(self,event=None):
+
+        items = self.getSelection()
+        if len(items) == 1:
+            song = items[0]
+            self.parent().notify.emit( song[Song.path] )
+
+    def mouseReleaseRight(self,event):
+
+        mx = event.x()
+        my = event.y()
+        cx,cy = self._mousePosToCellPos(mx,my)
+        row,cur_c = self.positionToRowCol(mx,my)
+
+        menu = QMenu(self)
+
+        items = self.getSelection()
+
+        act = menu.addAction("Play",lambda:self.action_play_next(items,True))
+        act.setDisabled( len(items) != 1 )
+
+        menu.addAction("Play next",lambda:self.action_play_next(items))
+        act.setDisabled( len(items) == 0 )
+
+        if isinstance(self.columns[cur_c],EditColumn):
+
+            menu.addSeparator()
+            menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
+                lambda:self.action_edit_column(row,cur_c))
+
+        action = menu.exec_( event.globalPos() )
+
+    def action_play_next(self, songs, play=False):
+        uids = [ song[Song.uid] for song in songs ]
+        self.parent().set_playlist.emit(uids,play)
+
+    def action_edit_column(self, row, col):
+        opts = self.columns[col].get_default_opts(row)
+        if opts:
+            self.columns[col].editor_start(*opts)
+
+class PlayListEditTable(EditTable):
     """docstring for SongTable"""
     def __init__(self, parent = None):
         super(PlayListEditTable, self).__init__(parent)
@@ -48,9 +97,17 @@ class PlayListEditTable(SongTable):
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.add( song[Song.uid] )
+                    self.parent().dirty = True
             self.parent().refresh()
 
-class LibraryEditTable(SongTable):
+    def mouseDoubleClick(self,row,col,event):
+
+        for song in self.getSelection():
+            self.parent().playlist_data.remove( song[Song.uid] )
+            self.parent().dirty = True
+        self.parent().refresh()
+
+class LibraryEditTable(EditTable):
     """docstring for SongTable"""
     def __init__(self, parent = None):
         super(LibraryEditTable, self).__init__(parent)
@@ -68,15 +125,28 @@ class LibraryEditTable(SongTable):
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.remove( song[Song.uid] )
+                    self.parent().dirty = True
             self.parent().refresh()
+
+    def mouseDoubleClick(self,row,col,event):
+
+        for song in self.getSelection():
+            self.parent().playlist_data.add( song[Song.uid] )
+            self.parent().dirty = True
+        self.parent().refresh()
 
 class PlaylistEditView(QWidget):
     """docstring for MainWindow"""
 
     on_rename = pyqtSignal(QWidget,str)
+    set_playlist = pyqtSignal(list,bool)
+    notify = pyqtSignal(str)
 
     def __init__(self, playlist_name):
         super(PlaylistEditView, self).__init__()
+
+        self.dirty = False
+
         self.vbox = QVBoxLayout(self)
 
         self.hbox1 = QHBoxLayout()
@@ -120,6 +190,8 @@ class PlaylistEditView(QWidget):
         self.playlist_data = set(self.playlist.iter())
         self.refresh()
 
+    def isDirty(self):
+        return self.dirty
 
     def onUpdate(self):
         text = self.txt_search.text()
@@ -175,6 +247,18 @@ class PlaylistEditView(QWidget):
         except Exception as e:
             raise e
 
+    def save_warning(self):
+        title="Save"
+        text="Save Changes?"
+        window = QMessageBox(QMessageBox.Question,title,text)
+        window.addButton(QMessageBox.Save)
+        window.addButton(QMessageBox.Discard)
+        window.addButton(QMessageBox.Cancel)
+        result = window.exec_()
+        if result == QMessageBox.Save:
+            return self.save()
+        return result;
+
     def save(self):
         dialog = RenameDialog(self.playlist_name,"Save As")
 
@@ -185,6 +269,9 @@ class PlaylistEditView(QWidget):
                 self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
                 self.playlist.set( list(self.playlist_data) )
                 self.on_rename.emit(self,self.playlist_name)
+                self.parent().dirty = False
+                return QMessageBox.Save
+        return QMessageBox.Cancel
 
     def load(self):
         dialog = OpenPlaylistDialog(self)
@@ -194,6 +281,8 @@ class PlaylistEditView(QWidget):
             self.playlist_data = set(self.playlist.iter())
             self.on_rename.emit(self,self.playlist_name)
             self.refresh()
+            return QMessageBox.Save
+        return QMessageBox.Cancel
 
     def export(self):
             pass
