@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from yue.core.song import Song
+from yue.core.util import format_date
 
 class SongPositionView(QWidget):
 
@@ -104,6 +105,7 @@ class CurrentSongView(QWidget):
         self.region_width = 0
 
         self.text_time = ""
+        self.text_date = ""
 
         fh = QFontMetrics(self.font()).height()
         self.padt = 2
@@ -115,6 +117,7 @@ class CurrentSongView(QWidget):
 
         self.setMouseTracking(True)
         self.disable_autoscroll = False
+        self.mouse_hover = False
 
         self.timer_autoscroll = QTimer(self)
         self.timer_autoscroll.timeout.connect(self.on_timeout_event)
@@ -139,6 +142,7 @@ class CurrentSongView(QWidget):
                 fmt_seconds(position),
                 fmt_seconds(length),
                 fmt_seconds(remaining) )
+        self.text_date = format_date( self.song[Song.last_played] )
 
         self.update()
 
@@ -250,12 +254,14 @@ class CurrentSongView(QWidget):
     def enterEvent(self,event):
         self.enable_rate_tracking = False
         self.disable_autoscroll = True
+        self.mouse_hover = True
         self.update()
         super().enterEvent(event)
 
     def leaveEvent(self,event):
         self.enable_rate_tracking = False
         self.disable_autoscroll = False
+        self.mouse_hover = False
         self.scroll_index = 0;
         self.offseta = 0
         self.offsett = 0
@@ -302,7 +308,11 @@ class CurrentSongView(QWidget):
 
         text = "%d"%self.song[Song.play_count]
         painter.drawText(padl,row4h-fh,w-padlr-fw3,fh,Qt.AlignRight,text)
-        painter.drawText(padl,row4h,self.text_time)
+
+        if self.mouse_hover:
+            painter.drawText(padl,row4h,self.text_date)
+        else:
+            painter.drawText(padl,row4h,self.text_time)
 
         rw = w - padl - padr - fwt - 2*fw3
         #painter.drawRect(2*padl+fwt,row4h-fh,rw,fh)
