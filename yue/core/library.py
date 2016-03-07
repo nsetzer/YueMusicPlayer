@@ -356,6 +356,17 @@ class Library(object):
     def songFromId(self,uid):
         return self.song_view.get(uid)
 
+    def songFromIds(self,lst):
+
+        songs = []
+        with self.song_view.store.conn:
+            c = self.song_view.store.conn.cursor()
+            for uid in lst:
+                item = self.song_view._get(c,uid)
+                songs.append( dict(zip(self.song_view.column_names,item)) )
+        return songs
+
+
     def toPathMap(self):
         """
         the current kivy datastore impl for find() is to scan the entire store

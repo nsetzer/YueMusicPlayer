@@ -4,6 +4,7 @@ import os, sys
 dirpath = os.path.dirname(os.path.abspath(__file__))
 dirpath = os.path.dirname(dirpath)
 sys.path.insert(0,dirpath)
+os.chdir(dirpath)
 
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -92,10 +93,21 @@ def convert():
     return library
 
 if __name__ == '__main__':
-    convert()
+    print(sys.argv)
+
+    key = "client"
+    if len(sys.argv) > 1:
+        key = sys.argv[1]
+    programs = {
+        "songview.py" : sv_main,
+        "client" : client_main,
+    }
+
+    main = programs.get(key,client_main)
+    main()
     #eq_main()
     #pl_main();
     #npl_main();
     #ut_main();
-    client_main();
+    #client_main();
     #sv_main();

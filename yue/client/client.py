@@ -18,7 +18,7 @@ from ..core.library import Library
 from ..core.playlist import PlaylistManager
 from ..core.sound.device import MediaState
 from ..core.song import Song
-from ..core.util import string_quote, backupDatabase
+from ..core.util import string_quote, backupDatabase, format_delta
 from ..core.repl import YueRepl, ReplArgumentParser
 
 from . import resource
@@ -273,7 +273,11 @@ class MainWindow(QMainWindow):
 
         self.bar_status = QStatusBar( self )
         self.lbl_status = QLabel(self)
+        # allow this widget to shrink as much as possible
+        self.lbl_status.setMinimumWidth(1)
+        self.lbl_pl_status = QLabel(self)
         self.bar_status.addWidget( self.lbl_status)
+        self.bar_status.addPermanentWidget( self.lbl_pl_status)
         self.setStatusBar( self.bar_status )
 
         self.tabview = QTabWidget( self )
@@ -296,6 +300,7 @@ class MainWindow(QMainWindow):
         self.plview = PlayListViewWidget(self);
         self.plview.setMenuCallback( self.addSongActions )
         self.plview.play_index.connect( self.controller.play_index )
+        self.plview.playlist_duration.connect( self.update_statusbar_duration )
 
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
@@ -712,6 +717,10 @@ class MainWindow(QMainWindow):
     def update_statusbar_message(self,msg):
 
         self.lbl_status.setText(msg)
+
+    def update_statusbar_duration(self,duration,remaining):
+        msg = "%s / %s"%(format_delta(remaining), format_delta(duration))
+        self.lbl_pl_status.setText(msg)
 
     def backup_database(self):
 

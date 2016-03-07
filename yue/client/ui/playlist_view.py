@@ -4,7 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-import os, sys
+import os, sys, time
 dirpath = os.path.dirname(os.path.abspath(__file__))
 dirpath = os.path.dirname(dirpath)
 sys.path.insert(0,dirpath)
@@ -118,6 +118,11 @@ class PlayListViewWidget(QWidget):
 
     play_index = pyqtSignal( int )
 
+    # signal that is emitted whenever the playlist duration changes.
+    # (total duration, time remaining)
+    # time remaining includes current song
+    playlist_duration = pyqtSignal(int,int)
+
     def __init__(self, parent=None):
         super(PlayListViewWidget, self).__init__(parent)
 
@@ -154,11 +159,18 @@ class PlayListViewWidget(QWidget):
         self.update()
 
     def updateData(self):
-        # this code actually makes me angry
-        # trying to combine these two steps into a single function call
-        # using a sql cursor fails for no reason
-        data = list(self.playlist.iter())
-        songs = [ self.library.songFromId(uid) for uid in data ]
+        #s = time.clock()
+        songs = self.library.songFromIds( self.playlist.iter() )
+
+
+        try:
+            if self.playlist is not None:
+                self.current_index,_ = self.playlist.current()
+        except IndexError:
+            pass
+
+
+        #print("plload",time.clock()-s)
         self.tbl.setData( songs )
         self.update()
 
@@ -174,6 +186,15 @@ class PlayListViewWidget(QWidget):
                 self.current_index,_ = self.playlist.current()
         except IndexError:
             pass
+
+        duration = 0
+        remaining = 0
+        for idx,song in enumerate(self.tbl.data):
+            duration += song[Song.length]
+            if idx >= self.current_index:
+                remaining += song[Song.length]
+        #print(duration,remaining)
+        self.playlist_duration.emit(duration,remaining)
 
         super(PlayListViewWidget,self).update()
 
