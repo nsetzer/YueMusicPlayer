@@ -1,3 +1,4 @@
+#! python34 ../../../test/test_client.py $this
 import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -218,6 +219,7 @@ class CurrentSongView(QWidget):
 
     def mouseMoveEvent(self,event):
 
+        w=self.width()
         h=self.height()/4
         p=int(event.y()/h)
 
@@ -229,20 +231,21 @@ class CurrentSongView(QWidget):
             self.update()
             return
 
-        if p==0:
-            self.offseta = int((self.offseta_max*1.5) * (event.x()/self.width()))
+        if p==0 and self.region_width<self.offseta_max:
+            self.offseta = int((self.offseta_max - w//4) * (event.x()/self.width()))
             self.offsett = 0
             self.offsetb = 0
-        if p==1:
+            self.update()
+        elif p==1 and self.region_width<self.offsett_max:
             self.offseta = 0
-            self.offsett = int((self.offsett_max*1.5) * (event.x()/self.width()))
+            self.offsett = int((self.offsett_max - w//4) * (event.x()/self.width()))
             self.offsetb = 0
-        if p==2:
+            self.update()
+        elif p==2 and self.region_width<self.offsetb_max:
             self.offseta = 0
             self.offsett = 0
-            self.offsetb = int((self.offsetb_max*1.5) * (event.x()/self.width()))
-
-        self.update()
+            self.offsetb = int((self.offsetb_max - w//4) * (event.x()/self.width()))
+            self.update()
 
     def enterEvent(self,event):
         self.enable_rate_tracking = False
@@ -303,7 +306,8 @@ class CurrentSongView(QWidget):
 
         rw = w - padl - padr - fwt - 2*fw3
         #painter.drawRect(2*padl+fwt,row4h-fh,rw,fh)
-        recth=4*rh-self.padtb
+        #recth=4*rh-self.padtb
+        recth=h-self.padtb
         pillh = recth//5
         pillo = (h-pillh*5)//2
 
@@ -325,13 +329,25 @@ class CurrentSongView(QWidget):
                 painter.fillRect(x,y,pw,ph,QBrush(QColor(160,175,220)))
                 if i < n:
                     painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
-                #painter.drawRect(x,y,pw,ph)
             if rating%2==1:
                 x=w-fw3+1
-                y=h-((n+1)*pillh)-pillo+2
+                y=h-((n+1)*pillh)-pillo+1
                 pw=fw3-padr-1
                 ph=pillh-2
                 painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(60,60,200)))
+
+            default_pen = painter.pen()
+            default_pen.setWidth(2)
+            default_pen.setJoinStyle(Qt.MiterJoin)
+            painter.setPen(default_pen)
+            for i in range(0,5):
+                x=w-fw3+1
+                y=h-((i+1)*pillh)-pillo+2
+                pw=fw3-padr-1
+                ph=pillh-2
+                painter.drawRect(x,y,pw-1,ph-1)
+            painter.setPen(default_pen)
+
             #painter.drawRect(x,y,pw,ph)
 
         #recths = int(recth*(self.song[Song.rating]/10))
@@ -342,9 +358,12 @@ class CurrentSongView(QWidget):
         self.region_width = w-(fw1+1)*pltextlen - fw3
         painter.setClipRegion(QRegion(0,0,self.region_width,row4h))
 
-        painter.drawText(padl-self.offseta,row1h,self.song[Song.artist])
-        painter.drawText(padl-self.offsett,row2h,self.song[Song.title])
-        painter.drawText(padl-self.offsetb,row3h,self.song[Song.album])
+        a = max(0,self.offseta)
+        t = max(0,self.offsett)
+        b = max(0,self.offsetb)
+        painter.drawText(padl-a,row1h,self.song[Song.artist])
+        painter.drawText(padl-t,row2h,self.song[Song.title])
+        painter.drawText(padl-b,row3h,self.song[Song.album])
 
     def setMenuCallback(self,cbk):
         """
