@@ -36,10 +36,20 @@ class SelectTable(LargeTable):
         print(items)
         menu = QMenu(self)
 
-        act = menu.addAction(QIcon(":/img/app_trash.png"),"Delete",lambda:self.delete(items[0]))
-        act.setDisabled( len(items) != 1 )
+        act = menu.addAction(QIcon(":/img/app_trash.png"),"Delete",lambda:self.delete_list(items[0]))
+        act.setDisabled( len(items) != 1 ) # in case selection is zero?
 
         menu.exec_( event.globalPos() )
+
+    def delete_list(self,listname):
+
+        title = "Delete Playlist"
+        msg = "Are you sure you want to delete `%s`."%listname
+        # I would prefer to use "delete" and "cancel", but this does not seem to accept strings
+        result = QMessageBox.warning(self, title, msg, QMessageBox.Ok, QMessageBox.Cancel)
+        if result==QMessageBox.Ok:
+            sys.stderr.write("delete: %s. <not supported>\n"%listname)
+
 
 class OpenPlaylistDialog(QDialog):
 
