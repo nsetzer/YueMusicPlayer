@@ -22,6 +22,7 @@ from yue.client.ui.openpl_dialog import main as pl_main
 from yue.client.ui.newpl_dialog import main as npl_main
 from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
+from yue.client.ui.settings import main as settings_main
 from yue.client.widgets.songview import main as sv_main
 from yue.core.sync import main as sync_core_main
 
@@ -104,7 +105,7 @@ if __name__ == '__main__':
         "songview.py" : sv_main,
         "sync.py" : sync_core_main,
         "sync_dialog.py" : sync_main,
-        "client" : client_main,
+        "settings.py" : settings_main,
         "client" : client_main,
     }
     print("key: %s"%key)

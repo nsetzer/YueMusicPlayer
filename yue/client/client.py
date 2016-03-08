@@ -48,6 +48,7 @@ from .ui.newpl_dialog import NewPlaylistDialog
 from .ui.visualizer import BassVisualizer
 from .ui.ingest_dialog import IngestProgressDialog
 from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
+from .ui.settings import SettingsDialog
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
@@ -395,6 +396,7 @@ class MainWindow(QMainWindow):
     def _init_menubar(self):
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
+        menu.addAction("Settings",self.showSettings)
         menu.addAction("Exit",QApplication.quit)
 
         menu = self.bar_menu.addMenu("&Music")
@@ -695,6 +697,14 @@ class MainWindow(QMainWindow):
             self.controller.play_index( 0 )
             self.plview.updateData()
 
+    def showSettings(self):
+
+        dialog = SettingsDialog(self)
+        dialog.import_settings( Settings.instance() )
+        if dialog.exec_():
+            dialog.export_settings( Settings.instance() )
+
+
     def setCurrentPlaylist(self, uids,play=False):
         # TODO: this is poorly named
         # in both playlist editor, library view, and here
@@ -799,10 +809,13 @@ def setSettingsDefaults():
     s.setDefault("ui_quickselect_favorite_genres",[])
 
     s.setDefault("playlist_size",50)
+    s.setDefault("playlist_preset_default",0)
     s.setDefault("playlist_presets",[
         "ban=0 && date>14",
         ])
-
+    s.setDefault("playlist_preset_names",[
+        "Not Recent",
+        ])
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):

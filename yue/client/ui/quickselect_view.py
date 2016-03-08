@@ -440,6 +440,8 @@ class QuickTable(LargeTable):
         act = contextMenu.addAction("Rename",lambda:self.action_rename(item))
         act.setDisabled( act is None )
 
+        contextMenu.addAction("Refresh",self.parent().generateData)
+
         action = contextMenu.exec_( event.globalPos() )
 
     def action_edit_genre(self,index):
