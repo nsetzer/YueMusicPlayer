@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
-from yue.core.song import Song
+from yue.core.song import Song, UnsupportedFormatError
 from yue.core.search import ParseError
 from ..core.settings import Settings
 from yue.core.library import Library
@@ -233,9 +233,13 @@ class PlaybackController(object):
     def playOneShot(self, path):
         """ play a song, then return to the current playlist """
         self.one_shot = True
-        song = Song.fromPath( path )
-        self.device.load( song )
-        self.device.play()
+        try:
+            song = Song.fromPath( path )
+        except UnsupportedFormatError as e:
+            sys.stderr.write("playback error: %s\n"%e)
+        else:
+            self.device.load( song )
+            self.device.play()
 
     def playpause(self, state):
         if state == MediaState.play:

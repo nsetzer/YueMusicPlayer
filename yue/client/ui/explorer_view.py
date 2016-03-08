@@ -206,6 +206,8 @@ class FileTable(LargeTable):
                 elif item['isDir']:
                     self.position_stack.append(row)
                     self.open_child_directory(item)
+                else:
+                    self.parent().action_play( item )
 
     def open_parent_directory(self):
         self.parent().chdir( self.view.parent(self.view.pwd()) )
