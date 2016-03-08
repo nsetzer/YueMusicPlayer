@@ -46,8 +46,15 @@ class SettingsDialog(QDialog):
 
         self.tab_preset.export_settings( settings )
 
+class SettingsTab(QWidget):
 
-class SettingsPresetTab(QWidget):
+    def import_settings(self,settings):
+        raise NotImplementedError()
+
+    def export_settings(self,settings):
+        raise NotImplementedError()
+
+class SettingsPresetTab(SettingsTab):
     """docstring for SettingsPresetTab"""
     def __init__(self, parent=None):
         super(SettingsPresetTab, self).__init__(parent)
@@ -94,15 +101,10 @@ class SettingsPresetTab(QWidget):
             queries.append(q)
             if i == self.table.default_row:
                 index = idx
-        print(names)
-        print(index)
         return names, queries, index
 
     def setDefaultPresetIndex(self, index):
         self.table.default_row = index
-
-    def getDefaultPresetIndex(self):
-        return self.table.default_row
 
 class SettingsPresetTable(LargeTable):
     """docstring for SettingsPresetTable"""
@@ -130,7 +132,7 @@ class SettingsPresetTable(LargeTable):
         self.columns[-1].setTextTransform( lambda _,i : str(i+1) )
         self.columns[-1].setWidthByCharCount(10)
         self.columns.append( EditColumn(self,1 ,"Name") )
-        self.columns[-1].setWidthByCharCount(30)
+        self.columns[-1].setWidthByCharCount(20)
         self.columns.append( PresetEditColumn(self,2 ,"Query") )
 
     def mouseReleaseRight(self,event):
@@ -139,7 +141,6 @@ class SettingsPresetTable(LargeTable):
 
         contextMenu = QMenu(self)
 
-        print(index)
         # file manipulation options
         act = contextMenu.addAction("New Preset", self.action_new)
         act = contextMenu.addAction("Delete Preset", lambda : self.action_delete( index ))
@@ -197,7 +198,6 @@ def validate_query(query):
         sys.stdout.write("%s\n"%e)
         return False
     return True
-
 
 def main():
 

@@ -379,6 +379,11 @@ class MainWindow(QMainWindow):
         if not s['ui_show_error_log']:
             self.dock_diag.hide()
 
+        if self.controller.dspSupported():
+            if not s['ui_show_visualizer']:
+                self.audioview.hide()
+                self.audioview.stop()
+
         #if s['enable_keyboard_hook']:
         #    pass # TODO enable keyhook here
 
@@ -435,6 +440,14 @@ class MainWindow(QMainWindow):
             self.action_view_logger.setText("Hide Error Log")
         else:
             self.action_view_logger.setText("Show Error Log")
+
+        if self.controller.dspSupported():
+            self.action_view_visualizer = menu.addAction("",self.toggleVisualizerVisible)
+            if s['ui_show_visualizer']:
+                self.action_view_visualizer.setText("Hide Visualizer")
+            else:
+                self.action_view_visualizer.setText("Show Visualizer")
+
         self.action_view_tree    = menu.addAction("Show Tree View")
         self.action_view_tree.setDisabled(True)
 
@@ -460,6 +473,7 @@ class MainWindow(QMainWindow):
 
         s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
         s['ui_show_console'] = int(not self.edit_cmd.isHidden())
+        s['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
         self.hide()
 
@@ -640,6 +654,16 @@ class MainWindow(QMainWindow):
         q5 = os.path.split(song[Song.path])[0]
         menu.addAction("Explore Containing Folder", lambda: self.exploreDirectory(q5))
 
+    def toggleVisualizerVisible(self):
+        if self.audioview.isHidden():
+            self.action_view_visualizer.setText("Hide Visualizer")
+            self.audioview.show()
+            self.audioview.start()
+        else:
+            self.action_view_visualizer.setText("Show Visualizer")
+            self.audioview.hide()
+            self.audioview.stop()
+
     def toggleConsoleVisible(self):
         if self.edit_cmd.isHidden():
             self.action_view_console.setText("Hide Console")
@@ -800,6 +824,7 @@ def setSettingsDefaults():
 
     s.setDefault("ui_show_console",0) # off
     s.setDefault("ui_show_error_log",0) # off
+    s.setDefault("ui_show_visualizer",1) # on
 
     s.setDefault("enable_keyboard_hook",1) # on by default
 
