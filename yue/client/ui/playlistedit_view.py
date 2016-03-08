@@ -20,6 +20,8 @@ from yue.client.widgets.TableEditColumn import EditColumn
 
 from yue.client.ui.rename_dialog import RenameDialog
 from yue.client.ui.openpl_dialog import OpenPlaylistDialog
+from yue.client.ui.plexport_dialog import ExportM3uDialog
+from yue.client.ui.plimport_dialog import ImportM3uDialog
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -155,8 +157,8 @@ class PlaylistEditView(QWidget):
         self.toolbar = QToolBar(self)
         self.toolbar.addAction(QIcon(':/img/app_save.png'),"save", self.save)
         self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
-        self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export")
-        self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import")
+        self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export", self.export_playlist)
+        self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import", self.import_playlist)
         self.toolbar.addAction(QIcon(':/img/app_play.png'),"Play")
 
         self.tbl_lib = LibraryEditTable( self )
@@ -226,7 +228,6 @@ class PlaylistEditView(QWidget):
                 else:
                     ldata.append( song )
 
-
             self.tbl_lib.setData(ldata)
             self.tbl_pl.setData(rdata)
             self.lbl_search.setText("%d/%d"%(len(rdata), len(lib)))
@@ -273,6 +274,7 @@ class PlaylistEditView(QWidget):
                 return QMessageBox.Save
         return QMessageBox.Cancel
 
+
     def load(self):
         dialog = OpenPlaylistDialog(self)
         if dialog.exec_():
@@ -284,5 +286,29 @@ class PlaylistEditView(QWidget):
             return QMessageBox.Save
         return QMessageBox.Cancel
 
-    def export(self):
-            pass
+    def export_playlist(self):
+
+        caption = "Export Playlist"
+        directory = os.path.join(os.getcwd(),self.playlist_name+".m3u")
+        filter = "M3U (*.m3u)"
+        filepath,filter = QFileDialog.getSaveFileName(self, caption, directory, filter)
+
+        dialog = ExportM3uDialog(self.playlist_data,filepath,self)
+        dialog.start()
+        dialog.exec_()
+
+    def import_playlist(self):
+
+        caption = "Import Playlist"
+        directory = os.getcwd()
+        filter = "M3U (*.m3u)"
+        filepath,filter = QFileDialog.getOpenFileName(self, caption, directory, filter)
+
+        dialog = ImportM3uDialog(filepath,self)
+        dialog.start()
+        dialog.exec_()
+
+        self.playlist_data = dialog.getData()
+        self.playlist_name = os.path.splitext(os.path.split(filepath)[1])[0]
+        self.on_rename.emit(self,self.playlist_name)
+        self.refresh()

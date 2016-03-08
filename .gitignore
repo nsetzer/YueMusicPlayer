@@ -74,3 +74,4 @@ lib/win32/x86_64/hook.dll
 *.o
 hookdll/libhook.a
 *.db-journal
+*.m3u
