@@ -69,23 +69,34 @@ class SettingsPresetTab(QWidget):
     def export_settings(self,settings):
         """ update values in a key/value store """
 
-        settings["playlist_preset_default"] = self.getDefaultPresetIndex()
-        names,queries = self.getData()
+        names,queries,index = self.getData()
+        settings["playlist_preset_default"] = index
         settings["playlist_preset_names"] = names
         settings["playlist_presets"] = queries
 
     def setData(self, names, queries):
 
-        data = [ [x,y] for x,y in zip(names,queries) ]
+        data = [ [i,x,y] for i,(x,y) in enumerate(zip(names,queries)) ]
         self.table.setData(data)
         for idx,query in enumerate(queries):
             if not validate_query( query ):
                 self.table.parse_error_rows.add(idx)
+        self.table.next_index = len(data)
 
     def getData(self):
-        names   = [ x[0] for x in self.table.data ]
-        queries = [ x[1] for x in self.table.data ]
-        return names, queries
+        names = []
+        queries = []
+        index=0
+        # translate the given index (i), which is arbitrary
+        # into the index that will be saved in the table
+        for idx,(i,n,q) in enumerate(self.table.data):
+            names.append(n)
+            queries.append(q)
+            if i == self.table.default_row:
+                index = idx
+        print(names)
+        print(index)
+        return names, queries, index
 
     def setDefaultPresetIndex(self, index):
         self.table.default_row = index
@@ -99,24 +110,28 @@ class SettingsPresetTable(LargeTable):
         super(SettingsPresetTable, self).__init__(parent)
         self.setLastColumnExpanding( True )
         self.showColumnHeader( True )
-        self.showRowHeader( True )
+        self.showRowHeader( False )
         self.setSelectionRule(LargeTable.SELECT_ONE)
 
         # TODO: this does not work if sorting is enabled, need
         # another way to store default internally
         self.default_row = 0
+        self.next_index = 0
 
         self.parse_error_rows = set()
-        self.rule_error = lambda row : row in self.parse_error_rows
-        self.rule_default = lambda row : row == self.default_row
+        self.rule_error = lambda row : self.data[row][0] in self.parse_error_rows
+        self.rule_default = lambda row : self.data[row][0] == self.default_row
 
         self.addRowHighlightComplexRule(self.rule_error,QColor(240,75,75))
         self.addRowTextColorComplexRule(self.rule_default,QColor(30,75,240))
 
     def initColumns(self):
-        self.columns.append( EditColumn(self,0 ,"Name") )
+        self.columns.append( EditColumn(self,0 ,"Index") )
+        self.columns[-1].setTextTransform( lambda _,i : str(i+1) )
+        self.columns[-1].setWidthByCharCount(10)
+        self.columns.append( EditColumn(self,1 ,"Name") )
         self.columns[-1].setWidthByCharCount(30)
-        self.columns.append( PresetEditColumn(self,1 ,"Query") )
+        self.columns.append( PresetEditColumn(self,2 ,"Query") )
 
     def mouseReleaseRight(self,event):
 
@@ -132,13 +147,17 @@ class SettingsPresetTable(LargeTable):
 
         contextMenu.addSeparator()
 
-        act = contextMenu.addAction("Set Default", lambda : self.setDefaultPresetIndex( index ))
-        act.setDisabled( index == self.default_row )
+        act = contextMenu.addAction("Set Default", lambda : self.action_setindex( index ))
+        act.setDisabled( index is not None and self.data[index][0] == self.default_row )
 
         action = contextMenu.exec_( event.globalPos() )
 
+    def action_setindex(self,index):
+        self.default_row = self.data[index][0]
+
     def action_new(self):
-        self.data.append( ["New Preset", ""] )
+        self.data.append( [self.next_index,"New Preset", ""] )
+        self.next_index += 1
         self.update()
 
     def action_delete(self,index):
@@ -157,10 +176,11 @@ class PresetEditColumn(EditColumn):
     def editing_finished(self,rows,new_value):
 
         for row in rows: # SHOULD have ZERO or ONE elements
+            idx = self.parent.data[row][0]
             if not validate_query( new_value ):
-                self.parent.parse_error_rows.add(row)
+                self.parent.parse_error_rows.add( idx )
             elif row in self.parent.parse_error_rows:
-                self.parent.parse_error_rows.remove(row)
+                self.parent.parse_error_rows.remove( idx  )
 
     def editor_insert(self,chara):
         # enable japanese character input

@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
 from yue.core.song import Song
+from yue.core.search import ParseError
 from ..core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
@@ -197,19 +198,36 @@ class PlaybackController(object):
         create a new playlist using the default query, or a preset
         """
         s = Settings.instance()
-        query = "ban=0"
         presets = s['playlist_presets']
-        if len(presets) > 0:
-            query = presets[0]
         size =s['playlist_size']
+        idx = s['playlist_preset_default']
 
-        songs = Library.instance().search(query, orderby=Song.random, limit=size)
-        lst = [ song[Song.uid] for song in songs ]
+        query = "ban=0"
+        if idx < len(presets):
+            query = presets[idx]
+        elif len(presets) > 0:
+            query = presets[0]
+
+        sys.stdout.write("create playlist `%s` limit %d\n"%(query,size))
+
+        # TODO: set limit to size + 10
+        # filter the list by searching for any consecutive songs-by-artist
+        # pop that song and cycle it to the end of the list
+        # then use the first `size` elements of the list as the result
+        # I also want to implement the hash.... limit total number of
+        # songs per artist in the resulting list when possible
+
+        try:
+            songs = Library.instance().search(query, orderby=Song.random, limit=size)
+            lst = [ song[Song.uid] for song in songs ]
+        except ParseError as e:
+            sys.stderr.write("%s"%e)
+            lst =[]
+
         self.playlist.set( lst )
         self.device.play_index( 0 )
         self.root.plview.updateData()
         self.root.plview.scrollToCurrent()
-
         self.root.backup_database()
 
     def playOneShot(self, path):
@@ -264,6 +282,7 @@ class PlaybackController(object):
             self.device.toggleEQ()
         else:
             sys.stderr.write("Equalizer not supported.\n")
+
     def getEQ(self):
         """ return true if equalizer is enabled """
         if isinstance(self.device,BassSoundDevice):
