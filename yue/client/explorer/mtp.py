@@ -66,7 +66,6 @@ except TypeError as e:
 def getDeviceNames():
 
     for i,dev in enumerate( mtp.detect_devices() ):
-        print(type(dev))
         entry = dev.device_entry
         vendor=entry.vendor.decode("utf-8")
         product=entry.product.decode("utf-8")
@@ -76,4 +75,23 @@ for index,name in getDeviceNames():
     print(name)
 
 mtp.connect()
+
+print(mtp.get_devicename())    # b'LGL34C'
+print(mtp.get_manufacturer())  # b'LGE'
+print(mtp.get_modelname())     # b'LGL34C'
+print(mtp.get_deviceversion()) # b'1.0'
+print(mtp.get_deviceversion()) # b'1.0'
+
+cbk=lambda t,s:sys.stdout.write("%d/%d\n"%(t,s))
+res = mtp.get_filelisting()
+print(len(res))
+for f in res:
+    print(type(f))
+    print(f)
+
+res = mtp.get_folder_list()
+print(len(res))
+for k,v in res.items():
+    print(k,v)
+
 mtp.disconnect()
