@@ -162,6 +162,8 @@ class FileTable(LargeTable):
         act.setDisabled( not self.parent().canPaste() )
 
         contextMenu.addSeparator()
+        act = contextMenu.addAction("Refresh",self.parent().action_refresh)
+        contextMenu.addSeparator()
 
         # library options
 
@@ -284,6 +286,7 @@ class ExplorerView(QWidget):
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
 
+
     def supportedExtension(self,ext):
         return ext in Song.supportedExtensions()
 
@@ -345,6 +348,11 @@ class ExplorerView(QWidget):
             self.dialog.setOnCloseCallback(self.onDialogExit)
             self.dialog.start()
             self.dialog.show()
+
+    def action_refresh(self):
+        self.chdir( self.view.pwd() )
+        self.tbl_file.scrollTo(0)
+        self.tbl_file.setSelection([])
 
     def canPaste( self ):
         return self.cut_items is not None and self.cut_root != self.view.pwd()
