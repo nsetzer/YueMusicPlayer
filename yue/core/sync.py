@@ -207,6 +207,36 @@ class TranscodeProcess(IterativeProcess):
     def end(self):
         return
 
+class ParallelTranscodeProcess(IterativeProcess):
+    """
+
+    transcode is slower than file copy, and the target device is usally
+    bottlenecked on IO. It should then be faster to run multiple transcodes
+    in parallel on the local device then copy the resulting file
+
+    use subprocess to launch N processes at once, writing to and from the
+    same local drive.
+
+    then copy the files in serial to the target directory.
+
+    write to a temporary directory.
+    """
+
+    def __init__(self, parent=None, datalist=None, no_exec=False):
+        super(TranscodeProcess,self).__init__( parent )
+        self.datalist = datalist
+        self.no_exec = no_exec
+        self.N = 5
+
+    def begin(self):
+        return 1+len(self.datalist)//self.N
+
+    def step(self,idx):
+        pass
+
+    def end(self):
+        return
+
 class SyncManager(object):
     T_NONE=0        # don't transcode file
     T_NON_MP3=1     # transcode non-mp3 to mp3
@@ -215,7 +245,7 @@ class SyncManager(object):
                     # special forces the use of ffmpeg, and therefore
                     # should set tag information correctly.
 
-    def __init__(self,library,playlist,target,enc_path,
+    def __init__(self,library,song_ids,target,enc_path,
         transcode=0,
         player_directory=None,
         equalize=False,
@@ -235,7 +265,7 @@ class SyncManager(object):
         """
 
         self.library = library
-        self.playlist = playlist
+        self.song_ids = song_ids
         self.target = target
         self.transcode = transcode
         self.no_exec = no_exec
@@ -388,7 +418,7 @@ class SyncManager(object):
 
     def data_init(self):
 
-        songs = self.library.songFromIds( self.playlist.iter() )
+        songs = self.library.songFromIds( self.song_ids )
         for i,song in enumerate(songs):
             path = os.path.join(self.target,Song.toShortPath(song))
             if self.transcode == SyncManager.T_NON_MP3 and not ExtIs(path,".mp3"):
@@ -674,11 +704,12 @@ def main():
 
     library = Library.instance()
     playlist = PlaylistManager.instance().openPlaylist("current")
+    uids = list(playlist.iter())
 
     print(os.path.realpath(db_path))
     print("lib",len(library))
 
-    sm = SyncManager(library,playlist,target,ffmpeg,transcode=transcode,equalize=equalize,no_exec=no_exec)
+    sm = SyncManager(library,uids,target,ffmpeg,transcode=transcode,equalize=equalize,no_exec=no_exec)
     sm.run()
 
 if __name__ == '__main__':

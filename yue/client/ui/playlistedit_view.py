@@ -22,6 +22,7 @@ from yue.client.ui.rename_dialog import RenameDialog
 from yue.client.ui.openpl_dialog import OpenPlaylistDialog
 from yue.client.ui.plexport_dialog import ExportM3uDialog
 from yue.client.ui.plimport_dialog import ImportM3uDialog
+from yue.client.ui.sync_dialog import SyncProfileDialog, SyncDialog
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -160,6 +161,7 @@ class PlaylistEditView(QWidget):
         self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export", self.export_playlist)
         self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import", self.import_playlist)
         self.toolbar.addAction(QIcon(':/img/app_play.png'),"Play")
+        self.toolbar.addAction(QIcon(':/img/app_sync.png'),"sync", self.sync)
 
         self.tbl_lib = LibraryEditTable( self )
         self.tbl_pl = PlayListEditTable( self )
@@ -274,7 +276,6 @@ class PlaylistEditView(QWidget):
                 return QMessageBox.Save
         return QMessageBox.Cancel
 
-
     def load(self):
         dialog = OpenPlaylistDialog(self)
         if dialog.exec_():
@@ -285,6 +286,16 @@ class PlaylistEditView(QWidget):
             self.refresh()
             return QMessageBox.Save
         return QMessageBox.Cancel
+
+    def sync(self):
+        pdialog = SyncProfileDialog(self)
+        if pdialog.exec_():
+            s = pdialog.export_settings()
+            # feeling lazy right now, trusing no one will try to start
+            # two sync dialogs at the same time.
+            self.sdialog = SyncDialog(self.playlist_data,s,self)
+            self.sdialog.start()
+            self.sdialog.show()
 
     def export_playlist(self):
 
