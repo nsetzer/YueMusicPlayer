@@ -35,8 +35,10 @@ class SettingsDialog(QDialog):
         self.btn_cancel.clicked.connect(self.reject)
 
         self.tab_preset = SettingsPresetTab(self)
+        self.tab_music  = SettingsMusicTab(self)
 
         self.tabview.addTab(self.tab_preset, "Presets")
+        self.tabview.addTab(self.tab_music, "Music")
 
     def import_settings(self,settings):
 
@@ -53,6 +55,62 @@ class SettingsTab(QWidget):
 
     def export_settings(self,settings):
         raise NotImplementedError()
+
+class SettingsMusicTab(SettingsTab):
+    """docstring for SettingsPresetTab"""
+    def __init__(self, parent=None):
+        super(SettingsMusicTab, self).__init__(parent)
+
+        self.vbox = QVBoxLayout( self )
+        self.hbox_size = QHBoxLayout( )
+
+        self.spin_size = QSpinBox(self)
+        self.spin_size.setRange(10,200)
+        self.hbox_size.addWidget(QLabel("Default Playlist Size:"))
+        self.hbox_size.addWidget(self.spin_size)
+
+        self.table = SettingsMusicPrefixTable()
+        self.chk_prefix = QCheckBox("Allow Relative Paths",self)
+
+        self.vbox.addLayout(self.hbox_size)
+        self.vbox.addWidget(self.chk_prefix)
+        self.vbox.addWidget(QLabel("Path Prefix Alternatives:",self))
+        self.vbox.addWidget(self.table.container)
+
+
+class SettingsMusicPrefixTable(LargeTable):
+    """docstring for SettingsMusicPrefixTable"""
+    def __init__(self, parent=None):
+        super(SettingsMusicPrefixTable, self).__init__(parent)
+        self.setLastColumnExpanding( True )
+        self.showColumnHeader( True )
+        self.showRowHeader( False )
+        self.setSelectionRule(LargeTable.SELECT_ONE)
+
+    def initColumns(self):
+        self.columns.append( EditColumn(self,0 ,"Prefix") )
+        self.columns[-1].setTextTransform( lambda _,s : s if s else "<New Prefix>" )
+
+    def mouseReleaseRight(self,event):
+
+        index = self.getSelectionIndex()
+
+        contextMenu = QMenu(self)
+
+        act = contextMenu.addAction("New Prefix", self.action_new)
+        act = contextMenu.addAction("Delete Prefix", lambda : self.action_delete( index ))
+        act.setDisabled( index is None )
+
+        action = contextMenu.exec_( event.globalPos() )
+
+    def action_new(self):
+        self.data.append( ["",] )
+        self.update()
+
+    def action_delete(self,index):
+        self.data.pop(index)
+        self.update()
+
 
 class SettingsPresetTab(SettingsTab):
     """docstring for SettingsPresetTab"""
@@ -141,7 +199,6 @@ class SettingsPresetTable(LargeTable):
 
         contextMenu = QMenu(self)
 
-        # file manipulation options
         act = contextMenu.addAction("New Preset", self.action_new)
         act = contextMenu.addAction("Delete Preset", lambda : self.action_delete( index ))
         act.setDisabled( index is None or len(self.data) == 1 )
