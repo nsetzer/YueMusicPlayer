@@ -19,7 +19,7 @@ from yue.client.client import main as client_main
 
 from yue.client.DSP.equalizer import main as eq_main
 from yue.client.ui.openpl_dialog import main as pl_main
-from yue.client.ui.newpl_dialog import main as npl_main
+from yue.client.ui.newpl_dialog import main as newpl_main
 from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.ui.settings import main as settings_main
@@ -106,6 +106,7 @@ if __name__ == '__main__':
         "sync.py" : sync_core_main,
         "sync_dialog.py" : sync_main,
         "settings.py" : settings_main,
+        "newpl_dialog.py" : newpl_main,
         "client" : client_main,
     }
     print("key: %s"%key)

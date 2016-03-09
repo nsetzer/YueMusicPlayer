@@ -1,4 +1,4 @@
-#! cd ../../.. && python34 $path/$this
+#! python34 ../../../test/test_client.py $this
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -28,7 +28,7 @@ class NewPlaylistDialog(QDialog):
         self.chk_today   = QCheckBox("Ignore Songs Played Today",self)
         self.chk_ban     = QCheckBox("Ignore Bannished Songs",self)
 
-        self.spin_preset = QSpinBox(self)
+        self.cbox_preset = QComboBox(self)
         self.spin_size   = QSpinBox(self)
         #self.spin_hash   = QSpinBox(self)
 
@@ -45,13 +45,11 @@ class NewPlaylistDialog(QDialog):
 
         self.chk_ban.setChecked(True)
 
-        self.spin_preset.setRange(0,9);
         #self.spin_hash.setRange(0,100);
         self.spin_size.setRange(10,200);
 
-        self.spin_preset.setDisabled(True);
+        self.cbox_preset.setDisabled(True);
 
-        self.spin_preset.setValue(0);
         #self.spin_hash.setValue(0);
         self.spin_size.setValue(limit);
 
@@ -63,8 +61,8 @@ class NewPlaylistDialog(QDialog):
         self.grid.addWidget(self.rad_all   ,row,0,Qt.AlignLeft)
         row+=1;
         self.grid.addWidget(self.rad_preset,row,0,Qt.AlignLeft)
-        self.grid.addWidget(QLabel("Preset Number:"),row,1,Qt.AlignRight)
-        self.grid.addWidget(self.spin_preset,row,2,Qt.AlignRight)
+        #self.grid.addWidget(QLabel("Preset Number:"),row,1,Qt.AlignRight)
+        self.grid.addWidget(self.cbox_preset,row,1,1,2,Qt.AlignRight)
         row+=1;
         self.grid.addWidget(self.rad_custom,row,0,Qt.AlignLeft)
 
@@ -102,33 +100,37 @@ class NewPlaylistDialog(QDialog):
         self.btn_accept.clicked.connect(self.accept)
         self.btn_cancel.clicked.connect(self.reject)
 
-        self.spin_preset.valueChanged.connect(self.event_spin_preset_changed)
+        self.cbox_preset.currentIndexChanged.connect(self.event_cbox_preset_changed)
 
-    def setPresets(self,presets):
-        self.presets = presets
+        self.resize(480,240)
+
+    def setPresets(self,names,queries):
         self.rad_preset.setEnabled(True)
-        self.spin_preset.setValue(0);
-        self.spin_preset.setRange(1,len(presets));
+        self.cbox_preset.clear();
+        for n,q in sorted(zip(names,queries),key=lambda x:x[0]):
+            self.cbox_preset.addItem(n,q)
+        self.cbox_preset.setCurrentIndex(0);
 
     def event_click_radio_button_1(self,event=None):
-        self.spin_preset.setDisabled(True);
+        self.cbox_preset.setDisabled(True);
         self.edit.setText("");
 
     def event_click_radio_button_2(self,event=None):
-        self.spin_preset.setDisabled(False);
-        self.event_spin_preset_changed(self.spin_preset.value())
+        self.cbox_preset.setDisabled(False);
+        self.event_cbox_preset_changed(self.cbox_preset.currentIndex())
 
     def event_click_radio_button_3(self,event=None):
-        self.spin_preset.setDisabled(True);
+        self.cbox_preset.setDisabled(True);
 
     def event_text_changed(self,event=None):
         super(LineEdit,self.edit).keyPressEvent(event)
         self.rad_custom.setChecked(True)
-        self.spin_preset.setDisabled(True);
+        self.cbox_preset.setDisabled(True);
 
-    def event_spin_preset_changed(self,value):
+    def event_cbox_preset_changed(self, value):
         if self.rad_preset.isChecked():
-            self.edit.setText(self.presets[value-1]);
+            text = self.cbox_preset.itemData(value)
+            self.edit.setText(text);
 
     def getQueryParams(self):
 
@@ -154,7 +156,10 @@ def main():
     app.setApplicationName("Console Player")
     app.setQuitOnLastWindowClosed(True)
     window = NewPlaylistDialog("artist=foo")
-    window.setPresets(["!ban","abm=bar","this || that"])
+
+    q=["!ban","abm=bar","this || that"]
+    n=["not banned","test"]
+    window.setPresets(n,q)
     window.exec_()
 
     print(window.getQueryParams())

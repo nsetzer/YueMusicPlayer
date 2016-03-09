@@ -142,7 +142,6 @@ class CurrentSongView(QWidget):
                 fmt_seconds(position),
                 fmt_seconds(length),
                 fmt_seconds(remaining) )
-        self.text_date = format_date( self.song[Song.last_played] )
 
         self.update()
 
@@ -158,6 +157,8 @@ class CurrentSongView(QWidget):
 
         self.scroll_index = 0
 
+        self.text_date = format_date( self.song[Song.last_played] )
+        self.text_eq = "%d%%"%int(100.0*song[Song.equalizer]/Song.eqfactor)
         self.setPosition( 0 )
 
         if not self.timer_autoscroll.isActive():
@@ -302,7 +303,10 @@ class CurrentSongView(QWidget):
         painter.drawText(padl,row1h-fh,w-padlr-fw3,fh,Qt.AlignRight,text)
 
         if self.equalizer_enabled:
-            painter.drawText(padl,row2h-fh,w-padlr-fw3,fh,Qt.AlignRight,"EQ")
+            text = "EQ"
+            if self.mouse_hover:
+                text = self.text_eq
+            painter.drawText(padl,row2h-fh,w-padlr-fw3,fh,Qt.AlignRight,text)
 
         #painter.drawText(padl,row3h-fh,w-padlr-fw3,fh,Qt.AlignRight,"33")
 

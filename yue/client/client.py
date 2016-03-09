@@ -706,7 +706,9 @@ class MainWindow(QMainWindow):
         limit = s['playlist_size']
         presets = s['playlist_presets']
         dialog = NewPlaylistDialog(query,limit=limit,parent=self)
-        dialog.setPresets(presets)
+        n=s["playlist_preset_names"]
+        q=s["playlist_presets"]
+        dialog.setPresets(n,q)
 
         if dialog.exec():
 
