@@ -25,6 +25,7 @@ class PlaylistManager(object):
 
         self.db_names = SQLTable( sqlstore ,"playlists", playlist_columns)
         self.db_lists = SQLTable( sqlstore ,"playlist_songs", playlist_songs_columns)
+        self.sqlstore = sqlstore
 
     @staticmethod
     def init( sqlstore ):
@@ -33,6 +34,11 @@ class PlaylistManager(object):
     @staticmethod
     def instance():
         return PlaylistManager.__instance
+
+    def reopen(self):
+        # return a copy of the library,
+        # use to access from another thread
+        return PlaylistManager( self.sqlstore.reopen() )
 
     def newPlaylist(self, name):
 
