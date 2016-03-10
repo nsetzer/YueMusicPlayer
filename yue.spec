@@ -31,7 +31,7 @@ FULL_NAME = 'YueMusicPlayer-%s-%s%s'%(os.name,version,EXT)
 # add those import libraries to hidden imports list
 a = Analysis([main_script,],
              pathex=[os.path.join(os.getcwd(),"yue"),],
-             hiddenimports=["pkg_resources"],
+             hiddenimports=["pkg_resources","PyQt5"],
              hookspath=None,
              runtime_hooks=None)
 
@@ -54,14 +54,24 @@ addDllFile(a,"basswv.dll")
 addDllFile(a,"libfftw3-3.dll")
 addDllFile(a,"hook.dll")
 
-def addQtDllFile(a,*name):
-  qtdll = os.path.join(get_python_lib(),"PyQt5",*name)
+def addQtPlatformDllFile(a,name):
+  qtdll = os.path.join(get_python_lib(),"PyQt5","plugins","platforms",name)
   if os.path.exists( qtdll ):
-    a.datas.append( (name[-1], qtdll, 'DATA') )
+    a.datas.append( (os.path.join("platforms",name), qtdll, 'DATA') )
 
-addQtDllFile(a,"plugins","platforms","qwindows.dll")
+addQtPlatformDllFile(a,"qwindows.dll")
+
+def addQtDllFile(a,name):
+  qtdll = os.path.join(get_python_lib(),"PyQt5",name)
+  if os.path.exists( qtdll ):
+    a.datas.append( (name, qtdll, 'DATA') )
+
 addQtDllFile(a,"libEGL.dll")
 addQtDllFile(a,"libGLESv2.dll")
+
+# %QT_QPA_PLATFORM_PLUGIN_PATH%
+# C:\Python34\Lib\site-packages\PyQt5\plugins
+# QApplication.addLibraryPath(os.path.join(pyqt, "plugins"))
 
 # workaround remove extra copies of pyconfig under --onefile
 # if yopu still see an error, there may be more than 2 copies in the data.
