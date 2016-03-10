@@ -8,6 +8,10 @@ import argparse
 import traceback
 
 from PyQt5.QtCore import *
+# this is required so that the frozen executable
+# can find `platforms/qwindows.dll`
+if hasattr(sys,"_MEIPASS"):
+    QCoreApplication.addLibraryPath(sys._MEIPASS)
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR, delete as sip_delete
