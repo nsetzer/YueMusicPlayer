@@ -1,5 +1,6 @@
 # -*- mode: python -*-
 import os,sys
+from distutils.sysconfig import get_python_lib
 isPosix = os.name != 'nt'
 ROOT_PATH = os.path.join(os.getcwd(),"")
 
@@ -52,6 +53,15 @@ addDllFile(a,"basswma.dll")
 addDllFile(a,"basswv.dll")
 addDllFile(a,"libfftw3-3.dll")
 addDllFile(a,"hook.dll")
+
+def addQtDllFile(a,*name):
+  qtdll = os.path.join(get_python_lib(),"PyQt5",*name)
+  if os.path.exists( qtdll ):
+    a.datas.append( (name[-1], qtdll, 'DATA') )
+
+addQtDllFile(a,"plugins","platforms","qwindows.dll")
+addQtDllFile(a,"libEGL.dll")
+addQtDllFile(a,"libGLESv2.dll")
 
 # workaround remove extra copies of pyconfig under --onefile
 # if yopu still see an error, there may be more than 2 copies in the data.
