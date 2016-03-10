@@ -148,8 +148,9 @@ class PlaybackController(object):
         self.root.plview.update()
 
     def on_song_tick(self, pos):
-        self.root.posview.setValue(pos)
-        self.root.songview.setPosition(pos)
+        if pos >= 0:
+            self.root.posview.setValue(pos)
+            self.root.songview.setPosition(pos)
 
     def on_state_changed(self,idx,key,state):
         # this can be used to start/stop a thread which updates

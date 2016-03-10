@@ -106,6 +106,7 @@ class CurrentSongView(QWidget):
 
         self.text_time = ""
         self.text_date = ""
+        self.text_eq = ""
 
         fh = QFontMetrics(self.font()).height()
         self.padt = 2
