@@ -169,7 +169,7 @@ class PlaylistEditView(QWidget):
         self.tbl_lib.setSibling(self.tbl_pl)
         self.tbl_pl.setSibling(self.tbl_lib)
 
-        self.tbl_pl.update_data.connect(self.onUpdate)
+        #self.tbl_pl.update_data.connect(self.onUpdate)
 
         self.txt_search = LineEdit_Search(self,self.tbl_pl)
         self.txt_search.textEdited.connect(self.onTextChanged)
@@ -197,10 +197,10 @@ class PlaylistEditView(QWidget):
     def isDirty(self):
         return self.dirty
 
-    def onUpdate(self):
-        text = self.txt_search.text()
-        print(text)
-        #self.run_search(text)
+    #def onUpdate(self):
+    #    text = self.txt_search.text()
+    #    print(text)
+    #    #self.run_search(text)
 
     def onTextChanged(self,text,update=0):
         self.run_search(text)
