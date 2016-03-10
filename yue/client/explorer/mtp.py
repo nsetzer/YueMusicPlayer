@@ -32,6 +32,43 @@ build libmtp
         -L/C/msys64/mingw64/bin -L/usr/local/lib \
         -liconv-2 -lws2_32 -lusb-1.0
 
+
+results from testing comtypes
+I was unable to call GetDeviceFriendlyName()
+----
+
+import ctypes
+import comtypes
+from comtypes.client import CreateObject, GetModule
+
+BYTE = ctypes.c_byte
+WORD = ctypes.c_ushort
+DWORD = ctypes.c_ulong
+CHAR = ctypes.c_char
+WCHAR = ctypes.c_wchar
+
+# os.getenv("WINDIR")
+portdevpath="C:\\Windows\\System32\\PortableDeviceApi.dll"
+compath = "C:\\Windows\\System32\\ole32.dll"
+
+pdev = ctypes.WinDLL(portdevpath)
+
+GetModule(portdevpath)
+
+from comtypes.gen.PortableDeviceApiLib import PortableDeviceManager
+
+dm = CreateObject(PortableDeviceManager)
+
+print(dm.GetDevices())
+count = DWORD()
+
+print(dm.GetDevices(None,0))
+
+#print(help(dm.GetDeviceFriendlyName))
+dm.GetDeviceFriendlyName(??? what goes here ???)
+
+
+
 """
 # https://github.com/guardianproject/keysync/blob/master/otrapps/util.py
 
