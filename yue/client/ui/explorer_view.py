@@ -242,6 +242,7 @@ class ExplorerView(QWidget):
 
         super(ExplorerView, self).__init__(parent)
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.source = DirectorySource()
         self.view = SourceListView(self.source,self.source.root())

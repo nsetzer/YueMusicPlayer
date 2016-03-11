@@ -152,9 +152,21 @@ class PlaylistEditView(QWidget):
         self.dirty = False
 
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.hbox1 = QHBoxLayout()
+        self.hbox1.setContentsMargins(0,0,0,0)
         self.hbox2 = QHBoxLayout()
+        self.hbox2.setContentsMargins(0,0,0,0)
+
+        self.hbox3 = QHBoxLayout()
+        self.lbll=QLabel("Library")
+        self.lbll.setAlignment(Qt.AlignHCenter)
+        self.lblp=QLabel("Playlist")
+        self.lblp.setAlignment(Qt.AlignHCenter)
+        self.hbox3.addWidget(self.lbll)
+        self.hbox3.addWidget(self.lblp)
+        self.hbox3.setContentsMargins(0,0,0,0)
 
         self.toolbar = QToolBar(self)
         self.toolbar.addAction(QIcon(':/img/app_save.png'),"save", self.save)
@@ -172,7 +184,7 @@ class PlaylistEditView(QWidget):
 
         #self.tbl_pl.update_data.connect(self.onUpdate)
 
-        self.txt_search = LineEdit_Search(self,self.tbl_pl)
+        self.txt_search = LineEdit_Search(self,self.tbl_pl,placeholder="Search Playlist")
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
@@ -186,6 +198,7 @@ class PlaylistEditView(QWidget):
         self.vbox.addWidget( self.toolbar )
         self.vbox.addLayout( self.hbox1 )
         self.vbox.addWidget( self.lbl_error )
+        self.vbox.addLayout( self.hbox3 )
         self.vbox.addLayout( self.hbox2 )
 
         self.lbl_error.hide()

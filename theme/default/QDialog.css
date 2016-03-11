@@ -1,0 +1,48 @@
+QDialog {
+    background: %theme_p_light%;
+    color: %text_dark%;
+}
+
+QDialog QLabel {
+    color: %text_dark%;
+}
+
+QDialog QLineEdit:disabled {
+    background: %theme_button_disabled%;
+
+}
+QDialog QLineEdit {
+    background: %theme_button_inv%;
+    border: 1px solid %theme_very_dark%;
+    border-radius: 2px;
+    color: %text_dark%;
+}
+
+QDialog QLineEdit:!focus {
+    background: %theme_button_inv%;
+}
+
+QDialog QTextEdit {
+    background-color: transparent;
+    border: 0px solid transparent;
+    color: %text_dark%;
+    /*font-family: "Lucida Console";*/
+    font-style:normal;
+    font-size:%font_size%px;
+}
+/* line edits in dialogs are sizeing funny*/
+QDialog QComboBox {
+    min-width:200px;
+}
+
+QDialog QRadioButton , QDialog QCheckBox {
+    color: %text_dark%;
+}
+
+QDialog QGroupBox {
+    color: %text_dark%;
+}
+
+QDialog QScrollArea {
+    background: %theme_p_light%;
+}

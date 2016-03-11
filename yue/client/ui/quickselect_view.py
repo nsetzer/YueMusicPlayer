@@ -103,6 +103,7 @@ class QuickSelectView(QWidget):
         super(QuickSelectView, self).__init__(parent)
 
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.lbl_info = QLabel(self)
         self.table = QuickTable( self )
