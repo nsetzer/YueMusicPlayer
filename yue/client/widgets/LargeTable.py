@@ -1390,7 +1390,9 @@ class LargeTableBase(LargeTableCore):
             if true the row highlight will be 'color'
             if there are multiple rules the first one to match will determine the color
         """
-        self.rowHighlight_complex_list.append( (fncptr,QBrush(color)) )
+        b = QBrush(color)
+        self.rowHighlight_complex_list.append( (fncptr,b) )
+        return b
     def setRowHighlightComplexRule(self,index,fncptr,color):
         """
             modify the rule at index to now use a new function or lambda and a new color

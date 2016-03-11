@@ -1,0 +1,223 @@
+/* Custom Style Sheet							*/
+/* Interpreter Version: 1.1						*/
+/* File Name:								*/
+/* 	QScrollBar.css							*/
+/*									*/
+/* File Description:							*/
+/*	Styling for scrollbars, and the Time Progress bar go here 	*/
+/*									*/
+/* Version Notes:							*/
+/*      Only one line comments are supported				*/
+/*	Comments must have opening '/*' and closing '*/' 		*/
+/*		characters - all on one line				*/
+/*									*/
+/*      Place images in ./style/images/					*/
+/*      path to images is: url(%IMAGE%image.png)			*/
+/*									*/
+/*      If a file named 'Main.css' exists, it will be loaded first 	*/
+/*	Files that contain the lowercase letter 'x' as the first 	*/
+/*		letter in the name will be ignored when styles 		*/
+/*		are being loaded					*/
+
+QScrollBar:horizontal {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 %theme_p_vdark%, stop: 0.7 %theme_p_dark%,
+                    stop: 1.0 %theme_p_vdark%);
+    height: 15px;
+    margin: 0px %sbar_box_size% 0px %sbar_box_size%;
+}
+
+QScrollBar::handle:horizontal {
+
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 %theme_p_dark%, stop: 0.7 %theme_p_mid%,
+                    stop: 1.0 %theme_p_dark%);
+    background-image: url(%IMAGE%qscrollbar_handle_horizontal.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 1px solid %theme_very_dark%;
+    border-radius: %sbar_handle_radius%;
+
+    min-width: 10px;
+}
+
+/*left button*/
+QScrollBar::sub-line:horizontal {
+    border: 1px solid %theme_very_dark%;
+    /*border-top-left-radius: 5px;	*/
+    /*border-bottom-left-radius: 5px; */
+    background: %theme_button%;
+    width: %sbar_box_size%;
+    subcontrol-position: left;
+    subcontrol-origin: margin;
+}
+QScrollBar::sub-line:horizontal:hover {
+    background: %theme_button_hover%;
+}
+QScrollBar::sub-line:horizontal:pressed{
+    background: %theme_button_pressed%;
+}
+QScrollBar:left-arrow:horizontal {
+    border-image: url(%IMAGE%qscrollbar_arrow_left.png);
+    width: 8px;
+    height: 8px;
+}
+
+
+/*right button*/
+QScrollBar::add-line:horizontal {
+    border: 1px solid %theme_very_dark%;
+    /*border-top-right-radius: 5px;    */
+    /*border-bottom-right-radius: 5px; */
+    background: %theme_button%;
+    width: %sbar_box_size%;
+    subcontrol-position: right;
+    subcontrol-origin: margin;
+
+}
+QScrollBar::add-line:horizontal:hover {
+    background: %theme_button_hover%
+}
+QScrollBar::add-line:horizontal:pressed {
+    background: %theme_button_pressed%
+}
+
+QScrollBar::right-arrow:horizontal {
+    border-image: url(%IMAGE%qscrollbar_arrow_right.png);
+    width: 8px;
+    height: 8px;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* ************************************************************ */
+
+QScrollBar:vertical {
+    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                    stop: 0 %theme_p_vdark%, stop: 0.7 %theme_p_dark%,
+                    stop: 1.0 %theme_p_vdark%);
+    width: 14px;
+    margin: %sbar_box_size% 0 %sbar_box_size% 0;
+}
+
+QScrollBar::handle:vertical {
+    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                    stop: 0 %theme_p_dark%, stop: 0.7 %theme_p_mid%,
+                    stop: 1.0 %theme_p_dark%);
+    background-image: url(%IMAGE%qscrollbar_handle_vertical.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    /* repeated texture on handle*/
+    border-image: url(%IMAGE%qscrollbar_vertical.png) -5 0 -5 0 repeat;
+    border: 1px solid %theme_very_dark%;
+    border-radius: %sbar_handle_radius%;
+
+    min-height: 16px;
+}
+/*top button*/
+QScrollBar::sub-line:vertical {
+    border: 1px solid %theme_very_dark%;
+    /*border-top-left-radius: 5px;  */
+    /*border-top-right-radius: 5px; */
+    background: %theme_button_90%;
+    height: %sbar_box_size%;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+QScrollBar::sub-line:vertical:hover {
+    background: %theme_button_hover_90%;
+}
+QScrollBar::sub-line:vertical:pressed {
+    background: %theme_button_pressed_90%;
+}
+QScrollBar:up-arrow:vertical {
+    border-image: url(%IMAGE%qscrollbar_arrow_top.png);
+    width: 8px;
+    height: 8px;
+}
+
+/*bottom button*/
+QScrollBar::add-line:vertical {
+    border: 1px solid %theme_very_dark%;
+    /*border-bottom-left-radius: 5px;  */
+    /*border-bottom-right-radius: 5px; */
+    background: %theme_button_90%;
+
+    height: %sbar_box_size%;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+QScrollBar::add-line:vertical:hover {
+    background: %theme_button_hover_90%;
+}
+QScrollBar::add-line:vertical:pressed {
+    background: %theme_button_pressed_90%;
+}
+
+QScrollBar::down-arrow:vertical {
+    border-image: url(%IMAGE%qscrollbar_arrow_bottom.png);
+    width: 8px;
+    height: 8px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+
+/*************************************************/
+/*************************************************/
+/*************************************************/
+QSlider::groove:horizontal {
+     border: 1px solid %theme_very_dark%;
+
+     height: 5px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */
+     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 %theme_p_mid%, stop:1 %theme_p_dark%);
+     /* top right bottom left*/
+     margin-left: 7px;
+     margin-right: 7px;
+ }
+
+QSlider::handle:horizontal {
+
+    /* background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,             */
+    /*                 stop: 0 %theme_p_dark%, stop: 0.4 %theme_s_mid%,    */
+    /*                 stop: 0.7 %theme_p_mid%, stop: 1.0 %theme_p_dark%); */
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0.0 %theme_p_dark%,
+                    stop: 0.5 %theme_p_mid%,
+                    stop: 1.0 %theme_p_dark%);
+
+    border: 2px solid %theme_very_dark%;
+    border-radius: 1px;
+    margin: -5px;
+    /*  border-top-left-radius: 16px;        */
+    /*  border-top-right-radius: 16px;       */
+    /*  border-bottom-left-radius: 16px;     */
+    /*  border-bottom-right-radius: 16px;    */
+
+    min-width: 6px;
+
+}
+
+/* **********************************************************************************/
+/* **********************************************************************************/
+
+/*QSlider#TimeSlider:horizontal {}*/
+
+QSlider#TimeSlider::handle:horizontal {
+
+    /* background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,             */
+    /*                 stop: 0 %theme_p_dark%, stop: 0.4 %theme_s_mid%,    */
+    /*                 stop: 0.7 %theme_p_mid%, stop: 1.0 %theme_p_dark%); */
+    background: %text_color%;
+
+    border: 2px solid %theme_very_dark%;
+    border-radius: 1px;
+    /*margin-top: -6px;*/
+    /*margin-bottom: -6px;*/
+
+
+}
+
+

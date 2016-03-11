@@ -1,0 +1,418 @@
+/* Custom Style Sheet                                                      */
+/* Interpreter Version: 1.2                                                */
+/*                                                                         */
+/* File Name:                                                              */
+/*     Main.css                                                            */
+/*                                                                         */
+/* File Description:                                                       */
+/*    The Main.css File is loaded First. Remember that order matters       */
+/*    This file contains basic styling for all widgets used in the         */
+/*    Application. Specialized styling for other widgets are found         */
+/*    in their respective files                                            */
+/*                                                                         */
+/* Version Notes:                                                          */
+/*    Only one line comments are supported                                 */
+/*    Comments must have opening '/*' and closing '*/'                     */
+/*                                                                         */
+/* Place images in ./style/images/                                         */
+/* Use the %IMAGE% macro to get the path to an image as show:              */
+/*      path to images is: url(%IMAGE%image.png)                           */
+/*      path to images is: url(%IMAGE%/image.png)                          */
+/* Note on %IMAGE% macro:                                                  */
+/*      %IMAGE% expands to the path to the images folder for the           */
+/*         current style. If the given image is not located in that        */
+/*         folder it will instead look for the image in the default        */
+/*         style folder, and failing that, will look in global             */
+/*         images folder.                                                  */
+/*         use %IMAGE_DEFAULT% to always expand to the default style       */
+/*         use %IMAGE_GLOBAL% to always expand to the base images folder   */
+/*                                                                         */
+/*                                                                         */
+/* If a file named 'Main.css' exists in the style, it will be loaded first */
+/*    Files that contain the lowercase letter 'x' as the first             */
+/*        letter in the name will be ignored when styles are being loaded  */
+/* Examples:                                                               */
+/* http://web.mit.edu/qt-dynamic/www/stylesheet-examples.html              */
+/* http://web.mit.edu/qt-dynamic/www/stylesheet.htm                        */
+/* http://web.mit.edu/qt-dynamic/www/index.html                            */
+
+* {
+    color: %text_color%;
+    selection-background-color: %theme_neutral%;
+    /*Sans-Serif: Arial, Verdana*/
+    /*MonoSpace : Courier New*/
+
+    font-family: "%font_family%";
+    font-style:normal;
+    font-size:%font_size%px;
+
+}
+*:disabled {
+    background:%theme_button_disabled%;
+    selection-background-color: transparent;
+    color:%theme_neutral%;
+}
+
+QMainWindow {
+    background: %theme_bg_color%;
+
+}
+QDockWidget {
+    background: %theme_bg_color%;
+
+}
+
+QTextEdit {
+    border: 2px solid %theme_very_dark%;
+    border-radius: 6px;
+    padding: 0 4px;
+    background: %theme_very_dark%;
+
+    font-family: "%mono_font_family%";
+    font-style:normal;
+    font-size:%font_size%px;
+
+    color: %text_light%;
+}
+
+QMainWindow QLineEdit {
+    border: 2px solid %theme_very_dark%;
+    border-radius: 6px;
+    padding: 0 4px;
+    background: %theme_very_dark%;
+
+    font-family: "%mono_font_family%";
+    font-style:normal;
+    font-size:%font_size%px;
+
+    color: %text_light%;
+}
+
+ComboBox LineEdit {
+    /* custom comb-boxes also use custom line edits, remove the line edits styling*/
+    background: transparent;
+    border: 0px solid transparent;
+    border-radius: 0px;
+    color: %text_dark%;
+}
+
+
+QLineEdit#Console_cmdValid {
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    background: %theme_very_light%;
+}
+QLineEdit#Console {
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    background: %theme_very_dark%;
+}
+
+QLineEdit:!focus {
+    background: %theme_p_dark%;
+}
+
+QLabel:disabled {
+    background: transparent;
+}
+
+QLabel#ColorEditor {
+    border: 3px solid %theme_very_dark%
+}
+QSplitter::handle:horizontal {
+    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
+                    stop: 0 %theme_p_mid%, stop: 0.5 %theme_p_dark%,
+                    stop: 1.0 %theme_p_mid%);
+    image: url(%IMAGE%qsplitter_horizontal.png);
+    width: 5px;
+}
+
+/* a horizontal line*/
+QSplitter::handle:vertical {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 %theme_p_mid%, stop: 0.5 %theme_p_dark%,
+                    stop: 1.0 %theme_p_mid%);
+    image: url(%IMAGE%qsplitter_vertical.png);
+
+    height: 5px;
+}
+
+QToolTip {
+    background: %theme_p_light%;
+    border: 2px solid inset %theme_p_vdark%;
+    color: %text_dark%;
+    padding: 5px;
+    border-radius: 3px;
+    opacity: 200;
+}
+
+QMenu {
+    background-color: %theme_button_disabled%; /* sets background of the menu */
+    color: %text_dark%;
+    border: 1px solid %theme_very_dark%;
+}
+QMenu::separator {
+    height: 2px;
+    background: %theme_p_dark%;
+    /*margin-left: 10px;*/
+    /*margin-right: 2px;*/
+}
+
+QMenuBar {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_mid%, stop:1 %theme_p_dark%);
+    color:%text_dark%;
+    border-bottom: 2px solid %theme_very_dark%;
+}
+
+QMenuBar::item {
+    spacing: 3px; /* spacing between menu bar items */
+    padding: 1px 4px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_mid%, stop:1 %theme_p_dark%);
+    border-bottom: 1px solid %theme_very_dark%;
+}
+
+QMenuBar::item:selected { /* when selected using mouse or keyboard */
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_light%, stop:1 %theme_p_mid%);
+}
+
+QMenuBar::item:pressed {
+    background: %theme_p_light%;
+}
+
+QStatusBar {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_mid%, stop:1 %theme_p_dark%);
+}
+QStatusBar::item {
+    border-right: 1px solid %theme_very_dark%;
+}
+
+QStatusBar QLabel {
+    color: %text_dark%;
+    border: 0px;
+    padding-left: 1px;
+    padding-right: 1px;
+}
+
+QPlainTextEdit {
+    background-color: %theme_very_dark%;
+    color: %text_light%;
+    font-family: "%mono_font_family%";
+    font-style:normal;
+    font-size:%font_size%px;
+}
+
+QComboBox {
+    border: 1px solid %theme_very_dark%;
+    border-radius: 3px;
+    /* top right bottom left*/
+    padding: 1px 0px 1px 3px;
+    min-width: 3em;
+    color: %text_dark%;
+    background: %theme_button%;
+}
+
+QComboBox:editable {
+    border: 1px solid inset %theme_very_dark%;
+    background: %theme_button_inv%;
+    selection-background-color: %theme_neutral%;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 16px;
+
+    background: %theme_button%;
+    border-left: 1px solid %theme_very_dark%;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+QComboBox::drop-down:disabled {
+    background: %theme_button_disabled%;
+}
+QComboBox::drop-down:hover {
+    background: %theme_button_hover%;
+}
+
+QComboBox::drop-down:pressed {
+    background: %theme_button_pressed%;
+}
+
+QComboBox::down-arrow {
+    image: url(%IMAGE%qspinbox_arrow_down.png);
+}
+QComboBox::down-arrow:disabled {
+    image: none;
+}
+
+QComboBox QAbstractItemView {
+    color: %text_dark%;
+    background: %theme_p_mid%;
+    border: 2px solid %theme_very_dark%;
+    selection-background-color: %theme_bg_color_alt%;
+}
+
+QSpinBox {
+    border: 1px solid %theme_very_dark%;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
+    background: %theme_button_inv%;
+    color: %text_dark%;
+
+}
+
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right; /* position at the top right corner */
+
+    background: %theme_button%;
+
+    background-image: url(%IMAGE%qspinbox_arrow_up.png);
+    background-repeat: no-repeat;
+    background-position: center;
+
+    border: 1px solid %theme_very_dark%;
+    width: 14px;
+    height: 8px;
+
+}
+
+QSpinBox::up-button:hover {
+    background: %theme_button_hover%;
+    background-image: url(%IMAGE%qspinbox_arrow_up.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+QSpinBox::up-button:pressed {
+    background: %theme_button_pressed%;
+    background-image: url(%IMAGE%qspinbox_arrow_up.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+QSpinBox::up-button:disabled {
+    background: %theme_button_disabled%;
+    background-image: none;
+}
+
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+
+    background: %theme_button%;
+
+    background-image: url(%IMAGE%qspinbox_arrow_down.png);
+    background-repeat: no-repeat;
+    background-position: center;
+
+    border: 1px solid %theme_very_dark%;
+    width: 14px;
+    height: 8px;
+}
+
+QSpinBox::down-button:hover {
+    background: %theme_button_hover%;
+    background-image: url(%IMAGE%qspinbox_arrow_down.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+QSpinBox::down-button:pressed {
+    background: %theme_button_pressed%;
+    background-image: url(%IMAGE%qspinbox_arrow_down.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+QSpinBox::down-button:disabled {
+    background: %theme_button_disabled%;
+    background-image: none;
+}
+
+QRadioButton , QCheckBox {
+    spacing: 5px;
+}
+
+QRadioButton:disabled, QCheckBox:disabled {
+    background: transparent;
+}
+
+QCheckBox::indicator {
+    width: 13px;
+    height: 13px;
+}
+QRadioButton::indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 8px;
+}
+
+QRadioButton::indicator:unchecked , QCheckBox::indicator:unchecked {
+    border: 2px solid %theme_very_dark%;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_light%, stop:1 %theme_p_mid%);
+}
+
+QRadioButton::indicator:checked , QCheckBox::indicator:checked {
+    border: 2px solid %theme_very_dark%;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 %theme_s_light%, stop:1 %theme_s_dark%);
+}
+
+QRadioButton::indicator:unchecked:disabled, QCheckBox::indicator:unchecked:disabled {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_light%, stop:1 %theme_p_vdark%);
+}
+QRadioButton::indicator:checked:disabled, QCheckBox::indicator:checked:disabled {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_light%, stop:1 %theme_s_mid%);
+}
+
+QRadioButton::indicator:hover , QCheckBox::indicator:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_mid%, stop:1 %theme_s_mid%);
+}
+
+QRadioButton::indicator:pressed , QCheckBox::indicator:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 %theme_p_mid%, stop:1 %theme_s_dark%);
+}
+
+QProgressBar {
+    background: %theme_p_vdark%;
+    color: %text_light%;
+    border: 2px solid %theme_very_dark%;
+    border-radius: 4px;
+    text-align: center;
+
+}
+QProgressBar::chunk {
+     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop: 0.0 %theme_s_mid%, stop: 0.3 %theme_s_light%,
+        stop: 0.7 %theme_s_mid%, stop: 1.0 %theme_s_dark%);
+     width: 1px;
+}
+
+QGroupBox {
+    background-color: transparent;
+    border: 2px solid %theme_very_dark%;
+    border-radius: 5px;
+    /*margin-top: 1ex; /* leave space at the top for the title */
+    margin-top: 0.5em;
+    margin-left: 0.5em;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left; /* position at the top center */
+    padding-left: 4px;
+    padding-right: 4px;
+    border: 2px solid %theme_very_dark%;
+    border-radius: 5px;
+    background-color: %theme_p_mid%;
+}

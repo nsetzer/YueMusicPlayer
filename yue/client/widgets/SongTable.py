@@ -74,17 +74,28 @@ class SongTable(LargeTable):
         self.date_mark_2= self.date_mark_1 - (13*24*60*60) # date of two weeks ago
 
     def setRuleColors(self,rc_recent,rc_not_recent,rc_banish,rc_selected):
-        self.color_text_played_recent     = rc_recent
-        self.color_text_played_not_recent = rc_not_recent
-        self.color_text_banish            = rc_banish
+        self.color_text_played_recent.setRed(rc_recent.red())
+        self.color_text_played_recent.setGreen(rc_recent.green())
+        self.color_text_played_recent.setBlue(rc_recent.blue())
 
-        for i in range(len( self.getRowHighlightComplexRule() ) ):
-            if self.getRowHighlightComplexRule()[i][0] == self.rule_selected:
+        self.color_text_played_not_recent.setRed(rc_not_recent.red())
+        self.color_text_played_not_recent.setGreen(rc_not_recent.green())
+        self.color_text_played_not_recent.setBlue(rc_not_recent.blue())
+
+        self.color_text_banish.setRed(rc_banish.red())
+        self.color_text_banish.setGreen(rc_banish.green())
+        self.color_text_banish.setBlue(rc_banish.blue())
+
+        rules = self.getRowHighlightComplexRule()
+        for i in range(len(rules)):
+            if rule[i][0] == self.rule_selected:
                 self.setRowHighlightComplexRule(i,None,rc_selected)
 
-        for i in range(len( self.getRowTextColorComplexRule() ) ):
-            if self.getRowTextColorComplexRule()[i][0] == self.rule_banish:
-                self.setRowTextColorComplexRule(i,None,self.color_text_banish)
+        rules = self.getRowTextColorComplexRule()
+        for i in range(len(rules)):
+            if rules[i][0] == self.rule_banish:
+                self.setRowTextColorComplexRule(i,None,rc_banish)
+        self.update()
 
     def initColumns(self):
         self.columns.append( SongEditColumn(self,Song.play_count     ,"Play Count",int) )

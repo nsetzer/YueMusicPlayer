@@ -32,12 +32,14 @@ class SongPositionView(QWidget):
         self.btn_prev.setMaximumWidth(32)
         self.btn_prev.clicked.connect(lambda:self.prev.emit())
         self.btn_prev.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
+        self.btn_prev.setObjectName("MediaPrev")
 
         self.btn_next = QPushButton(">")
         self.btn_next.setMinimumWidth(16)
         self.btn_next.setMaximumWidth(32)
         self.btn_next.clicked.connect(lambda:self.next.emit())
         self.btn_next.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed)
+        self.btn_next.setObjectName("MediaNext")
 
         self.hbox.addWidget(self.btn_prev)
         self.hbox.addWidget(self.slider)
@@ -54,6 +56,7 @@ class SongPositionSlider(QSlider):
 
     def __init__(self, view, parent=None):
         super(SongPositionSlider,self).__init__(Qt.Horizontal,parent);
+        self.setObjectName("TimeSlider")
 
         self.user_control = False
         self.view = view;
@@ -108,11 +111,9 @@ class CurrentSongView(QWidget):
         self.text_date = ""
         self.text_eq = ""
 
-        fh = QFontMetrics(self.font()).height()
         self.padt = 2
         self.padb = 2
         self.padtb = self.padt+self.padb
-        self.setFixedHeight( (fh+self.padtb) * 4)
 
         self.menu_callback = None;
 
@@ -134,6 +135,18 @@ class CurrentSongView(QWidget):
         self.rtdrawx=0
         self.enable_rate_tracking = False
         self.suggested_rating = 0
+
+        self.resize()
+
+    def resize(self):
+        f = QApplication.instance().font()
+        fh = QFontMetrics(f).height()
+        self.setFixedHeight( (fh+self.padtb) * 4)
+        print("resize: fh:%d fam:%s ps:%d h:%d"%( \
+            fh, \
+            f.family(), \
+            f.pointSize(), \
+            QFontMetrics(QApplication.instance().font()).height()))
 
     def setPosition(self, position ):
         length = self.song[Song.length]
@@ -315,9 +328,9 @@ class CurrentSongView(QWidget):
         painter.drawText(padl,row4h-fh,w-padlr-fw3,fh,Qt.AlignRight,text)
 
         if self.mouse_hover:
-            painter.drawText(padl,row4h,self.text_date)
+            painter.drawText(padl,row4h-fh,w,fh,Qt.AlignLeft,self.text_date)
         else:
-            painter.drawText(padl,row4h,self.text_time)
+            painter.drawText(padl,row4h-fh,w,fh,Qt.AlignLeft,self.text_time)
 
         rw = w - padl - padr - fwt - 2*fw3
         #painter.drawRect(2*padl+fwt,row4h-fh,rw,fh)
@@ -330,6 +343,9 @@ class CurrentSongView(QWidget):
         self.rtdrawh=pillh*5
         self.rtdrawx=w-fw3+1
 
+        bgc = self.palette().dark()    # QBrush(QColor(160,175,220))
+        fgc = self.palette().light()  # QBrush(QColor(60,60,200))
+
         if self.is_library_song:
             rating = self.song[Song.rating]
             if self.enable_rate_tracking:
@@ -341,20 +357,24 @@ class CurrentSongView(QWidget):
                 y=h-((i+1)*pillh)-pillo+2
                 pw=fw3-padr-1
                 ph=pillh-2
-                painter.fillRect(x,y,pw,ph,QBrush(QColor(160,175,220)))
+
+
+                painter.fillRect(x,y,pw,ph,bgc)
                 if i < n:
-                    painter.fillRect(x,y,pw,ph,QBrush(QColor(60,60,200)))
+                    painter.fillRect(x,y,pw,ph,fgc)
             if rating%2==1:
                 x=w-fw3+1
                 y=h-((n+1)*pillh)-pillo+1
                 pw=fw3-padr-1
                 ph=pillh-2
-                painter.fillRect(x,y+ph//2,pw,ph//2,QBrush(QColor(60,60,200)))
+                painter.fillRect(x,y+ph//2,pw,ph//2,fgc)
 
             default_pen = painter.pen()
-            default_pen.setWidth(2)
-            default_pen.setJoinStyle(Qt.MiterJoin)
-            painter.setPen(default_pen)
+            pen = QPen(default_pen)
+            pen.setColor(QColor(0,0,0))
+            pen.setWidth(2)
+            pen.setJoinStyle(Qt.MiterJoin)
+            painter.setPen(pen)
             for i in range(0,5):
                 x=w-fw3+1
                 y=h-((i+1)*pillh)-pillo+2

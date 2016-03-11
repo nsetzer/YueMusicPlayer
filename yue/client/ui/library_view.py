@@ -148,8 +148,10 @@ class LibraryView(QWidget):
         #self.cwidget = QWidget()
         #self.setCentralWidget(self.cwidget);
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.hbox = QHBoxLayout()
+        self.hbox.setContentsMargins(0,0,0,0)
 
         self.tbl_song = LibraryTable( self )
         self.tbl_song.showColumnHeader( True )
@@ -164,6 +166,7 @@ class LibraryView(QWidget):
         #self.btn_newlist = QToolButton(self)
         self.btn_newlist = QPushButton(self)
         self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
+        self.btn_newlist.setObjectName("NewPlaylistButton")
         self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
         self.btn_newlist.setFlat(True)
         #act = QAction(QIcon(":/img/app_newlist.png"),"Create Playlist",self)

@@ -144,6 +144,7 @@ class PlaylistEditView(QWidget):
     on_rename = pyqtSignal(QWidget,str)
     set_playlist = pyqtSignal(list,bool)
     notify = pyqtSignal(str)
+    set_playlist = pyqtSignal(list)
 
     def __init__(self, playlist_name):
         super(PlaylistEditView, self).__init__()
@@ -160,7 +161,7 @@ class PlaylistEditView(QWidget):
         self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
         self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export", self.export_playlist)
         self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import", self.import_playlist)
-        self.toolbar.addAction(QIcon(':/img/app_play.png'),"Play")
+        self.toolbar.addAction(QIcon(':/img/app_newlist.png'),"Play",self.create_playlist)
         self.toolbar.addAction(QIcon(':/img/app_sync.png'),"sync", self.sync)
 
         self.tbl_lib = LibraryEditTable( self )
@@ -323,3 +324,8 @@ class PlaylistEditView(QWidget):
         self.playlist_name = os.path.splitext(os.path.split(filepath)[1])[0]
         self.on_rename.emit(self,self.playlist_name)
         self.refresh()
+
+    def create_playlist(self):
+
+        if len(self.playlist_data) > 0:
+            self.set_playlist.emit(list(self.playlist_data))

@@ -16,6 +16,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR, delete as sip_delete
 
+from .style import style_set_custom_theme, setApplicationPallete, currentStyle, clearStyle, StyleError
+
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
 from ..core.library import Library
@@ -83,6 +85,7 @@ class ClientRepl(object):
         self.actions["backup"] = self.exbackup
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
+        self.actions["theme"] = self.extheme
         if SimpleSciEditor is not None:
             self.actions["editor"] = self.exeditor
 
@@ -228,6 +231,13 @@ class ClientRepl(object):
             self.editor = SimpleSciEditor()
         self.editor.show()
 
+    def extheme(self,args):
+
+        args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
+        args.assertMinArgs( 1 )
+        theme = args[0]
+        self.client.set_style( theme )
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -265,11 +275,17 @@ class MainWindow(QMainWindow):
         else:
             sys.stdout.write("Unable to initialize Remote Thread.\n")
 
+        self.default_palette = QPalette(self.palette())
+        self.default_font    = QFont(self.font())
+
         self.dialog_ingest = None
         self.dialog_update = None
         self._init_ui( diag)
         self._init_values()
         self._init_menubar()
+
+        s = Settings.instance()
+        self.set_style(s["current_theme"])
 
     def _init_ui(self, diag):
 
@@ -333,6 +349,7 @@ class MainWindow(QMainWindow):
         # note: visible state is not stored for the playlist,
         # it should always be displayed at startup
         self.dock_list = QDockWidget()
+        self.dock_list.setWindowFlags(Qt.FramelessWindowHint)
         self.dock_list.setWidget( self.plview )
         self.dock_list.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
         self.dock_list.visibilityChanged.connect(self.showhide_list)
@@ -529,6 +546,7 @@ class MainWindow(QMainWindow):
         widget.on_rename.connect( self.renameTab )
         widget.set_playlist.connect(self.setCurrentPlaylist)
         widget.notify.connect(self.update_statusbar_message)
+        widget.set_playlist.connect(self.setNewPlaylist)
 
         index = self.tabview.addTab( widget, QIcon(':/img/app_list.png'), playlist_name)
         widget.btn = CloseTabButton( lambda : self.closePlaylistEditorTab( widget ), self)
@@ -704,6 +722,12 @@ class MainWindow(QMainWindow):
         self.controller.play_index( 0 )
         self.plview.updateData()
 
+    def setNewPlaylist(self,uids):
+        pl = PlaylistManager.instance().openCurrent()
+        pl.set( uids )
+        self.controller.play_index( 0 )
+        self.plview.updateData()
+
     def createNewPlaylist(self,query=""):
 
         s = Settings.instance();
@@ -722,10 +746,7 @@ class MainWindow(QMainWindow):
                         orderby=Song.random,
                         limit=params['limit'])
             lst = [ song[Song.uid] for song in songs ]
-            pl = PlaylistManager.instance().openCurrent()
-            pl.set( lst )
-            self.controller.play_index( 0 )
-            self.plview.updateData()
+            self.setNewPlaylist( lst )
 
     def showSettings(self):
 
@@ -733,7 +754,6 @@ class MainWindow(QMainWindow):
         dialog.import_settings( Settings.instance() )
         if dialog.exec_():
             dialog.export_settings( Settings.instance() )
-
 
     def setCurrentPlaylist(self, uids,play=False):
         # TODO: this is poorly named
@@ -818,9 +838,84 @@ class MainWindow(QMainWindow):
         if not self.edit_cmd.isHidden():
             self.edit_cmd.setFocus()
 
+    def set_style(self, theme):
+        app = QApplication.instance()
+
+        if theme == "none":
+            clearStyle()
+            app.setStyleSheet("")
+            app.setPalette(self.default_palette)
+            qdct = {"font_family":"",
+                    "font_size":"10",
+                    "color_special1":QColor(220,220,120),
+                    "text_important1":QColor(125,50,100),
+                    "text_important2":QColor(255,5,15),
+                    "theme_s_mid":QColor(60,60,200),
+                    "theme_p_mid":QColor(60,60,200),
+                    "theme_s_vdark":QColor(160,175,220)}
+            app.setFont(self.default_font)
+        else:
+            try:
+                css,cdct = style_set_custom_theme(os.getcwd()+"/theme",theme)
+            except StyleError as e:
+                sys.stderr.write("style error: %s\n"%e)
+                return
+            else:
+                app.setStyleSheet(css)
+                p = setApplicationPallete(app,cdct);
+                qdct = currentStyle()
+                font=QFont(qdct['font_family'],pointSize=int(qdct['font_size']))
+                app.setFont(font)
+        # TODO:
+        # This needs to be refactored once I have a better idea
+        # of how to adjust palettes for specific widgets, and know
+        # exactly what widgets need to be updated manually.
+
+        # table highlight rules
+        #self.plview.tbl.setRowHighlightComplexRule(0,None,qdct["color_special1"])
+        self.plview.brush_current.setColor(qdct["color_special1"])
+
+        # manually update all SongTable instances in the app
+        self.libview.tbl_song.setRuleColors( \
+            qdct["text_important1"], \
+            qdct["text_important2"], \
+            qdct["theme_p_mid"], \
+            qdct["color_special1"] )
+        for i in range( self.tabview.count() ):
+            tab = self.tabview.widget(i)
+            if isinstance(tab,PlaylistEditView):
+                tab.tbl_lib.setRuleColors( \
+                    qdct["text_important1"], \
+                    qdct["text_important2"], \
+                    qdct["theme_p_mid"]    , \
+                    qdct["color_special1"] )
+                tab.tbl_pl.setRuleColors( \
+                    qdct["text_important1"], \
+                    qdct["text_important2"], \
+                    qdct["theme_p_mid"]    , \
+                    qdct["color_special1"] )
+
+        # create and set a custom palette for the song view
+        p = self.palette()
+        CG   = [QPalette.Disabled,QPalette.Active,QPalette.Inactive]
+        for cg in CG:
+            p.setColor( cg, QPalette.Light    , qdct['theme_s_mid']   )
+            p.setColor( cg, QPalette.Dark      , qdct['theme_s_vdark']   )
+        cfont = self.songview.font()
+        self.songview.setPalette(p)
+        self.songview.resize()
+
+        if self.controller.dspSupported():
+            self.peqview.setColors()
+
+        s = Settings.instance()
+        s["current_theme"] = theme
+
 def setSettingsDefaults():
 
     s = Settings.instance()
+
+    s.setDefault("current_theme","none")
 
     s.setDefault("backup_enabled",1)
     s.setDefault("backup_directory","./backup")
@@ -889,6 +984,7 @@ def main(version="0.0.0"):
 
         sys.stdout.write("Initializing application\n")
         window = MainWindow( diag, device, version )
+
         window.showWindow()
 
         try:

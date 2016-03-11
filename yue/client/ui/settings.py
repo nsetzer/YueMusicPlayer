@@ -12,6 +12,8 @@ from yue.core.sqlstore import SQLStore
 from yue.core.search import ruleFromString, ParseError
 from yue.client.SymTr import SymTr
 
+from yue.client.style import currentStyle
+
 
 class SettingsDialog(QDialog):
     def __init__(self,parent=None):
@@ -77,7 +79,6 @@ class SettingsMusicTab(SettingsTab):
         self.vbox.addWidget(QLabel("Path Prefix Alternatives:",self))
         self.vbox.addWidget(self.table.container)
 
-
 class SettingsMusicPrefixTable(LargeTable):
     """docstring for SettingsMusicPrefixTable"""
     def __init__(self, parent=None):
@@ -110,7 +111,6 @@ class SettingsMusicPrefixTable(LargeTable):
     def action_delete(self,index):
         self.data.pop(index)
         self.update()
-
 
 class SettingsPresetTab(SettingsTab):
     """docstring for SettingsPresetTab"""
@@ -166,7 +166,7 @@ class SettingsPresetTab(SettingsTab):
 
 class SettingsPresetTable(LargeTable):
     """docstring for SettingsPresetTable"""
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, qdctpalette=None):
         super(SettingsPresetTable, self).__init__(parent)
         self.setLastColumnExpanding( True )
         self.showColumnHeader( True )
@@ -182,8 +182,14 @@ class SettingsPresetTable(LargeTable):
         self.rule_error = lambda row : self.data[row][0] in self.parse_error_rows
         self.rule_default = lambda row : self.data[row][0] == self.default_row
 
-        self.addRowHighlightComplexRule(self.rule_error,QColor(240,75,75))
-        self.addRowTextColorComplexRule(self.rule_default,QColor(30,75,240))
+        qdct = currentStyle()
+        if qdct:
+            #self.addRowHighlightComplexRule(self.rule_error,qdct['color_invalid'])
+            self.addRowTextColorComplexRule(self.rule_default,qdct['text_important1'])
+            self.addRowTextColorComplexRule(self.rule_error,qdct['color_invalid'])
+        else:
+            self.addRowTextColorComplexRule(self.rule_default,QColor(30,75,240))
+            self.addRowTextColorComplexRule(self.rule_error,QColor(240,75,75))
 
     def initColumns(self):
         self.columns.append( EditColumn(self,0 ,"Index") )

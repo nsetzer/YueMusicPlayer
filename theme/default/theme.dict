@@ -1,0 +1,110 @@
+####################################################################################
+# CSS Dictionary - Version 2                                                       #
+#                                                                                  #
+####################################################################################
+# How to use a dictionary file                                                     #
+#                                                                                  #
+# A dictionary is a set of 'key => value' pairs called a macro                     #
+# In a style sheet any instance of the string '%key%' sans quotes                  #
+# will be replaced with the defined value.                                         #
+#                                                                                  #
+# a macro can be any valid ascii string, spaces are not allowed in key names       #
+# the value must be valid CSS (Cascadin Style Sheet) code.                         #
+#                                                                                  #
+# Macros are expanded as they are read within the document.                        #
+# for example if you define at the start of a file "red=>#FF0000"                  #
+# you can then use the variable %red% in the definition of other macros.           #
+# then, red can be redefined, "red=>#AA3333", and for all following lines          #
+# any instance of %red% will be replaced with the new definition                   #
+#                                                                                  #
+# use a back slash '\' as the last character on a line to indicate that            #
+# the macro definition continues on to the next line.                              #
+#                                                                                  #
+# The Following are limitations of this format:                                    #
+#  colors for required fields must be one of the following patterns:               #
+#     hex:      #RRGGBB         always 2 characters each                           #
+#     rgb       rgb(r,g,b)      r,g,b value in range 0 to 255                      #
+#               rgba(r,g,b,a)   a, for alpha value in range 0 to 1                 #
+# hex values must precede with the pound '#' symbol.                               #
+#                                                                                  #
+# the primary and secondary colors are generated based off of the mid color        #
+# light is 1.500 times the brightness of mid                                       #
+# dark  is 0.750 times the brightness of mid                                       #
+# vdark is 0.375 times the brightness of mid                                       #
+#                                                                                  #
+####################################################################################
+####################################################################################
+
+
+# the following key names must exist in each theme.dict file
+# and must appear exactly as shown.
+# The application can access and set these colors to allow the user
+# to easy apply custom colors to this theme.
+# custom colors will appear in a separate file, './user.dict'
+# custom colors with the same name as those in the required list will
+# override the colors found in this file.
+
+theme_p_light       => #afafaf
+theme_p_mid         => #757575
+theme_p_dark        => #575757
+theme_p_vdark       => #2b2b2b
+theme_s_dark        => #a05800
+theme_s_light       => #ff8c00
+theme_s_mid         => #d67800
+theme_s_vdark       => #502c00
+theme_very_dark     => #000000
+theme_very_light    => #ffffff
+theme_neutral       => #505050
+theme_bg_color      => #1e2328
+theme_bg_color_alt  => rgba(45,50,60,128)
+#theme_bg_color_alt  => #252b32
+
+font_size           => 11
+font_family         => Verdana
+mono_font_family    => Lucida Console
+
+text_light          => rgb(215,215,215)
+text_color          => rgb(214,120,  0)
+text_dark           => rgb(  0,  0,  0)
+
+text_important1     => rgb(125, 50,100)
+text_important2     => rgb(255,  5, 15)
+
+color_highlight     => rgba( 25, 75,150,0.686)
+color_highlightOOF  => rgba( 25, 75,150,0.294)
+
+color_special1      => rgba(125, 50,100,0.498)
+color_special2      => rgba(  5,  5,200,0.196)
+
+color_invalid       => rgba(255, 10, 20,0.498)
+
+# ---------------------------------------------------------------------
+# The following key names and colors are not required for every theme.
+# Any name could be defined here, they are for convenience when styling
+# multiple widgets. Note that any key name can appear as part of the
+# value for another key, as seen with theme button. These values
+# will be replaced at run time, before setting the style.
+# ---------------------------------------------------------------------
+
+sbar_box_size => 16px
+sbar_handle_radius => 0px
+
+theme_button     =>qlineargradient(x1: 0, y1: 0, \
+                                   x2: 0, y2: 1, \
+                                   stop: 0 %theme_p_light%, \
+                                   stop: 0.5 %theme_p_mid%, \
+                                   stop: 1.0 %theme_p_dark%);
+theme_button_inv =>qlineargradient(x1: 0, y1: 0, \
+                                   x2: 0, y2: 1,\
+                                   stop: 0 %theme_p_mid%,\
+                                   stop: 0.3 %theme_p_light%,\
+                                   stop: 0.7 %theme_p_light%,\
+                                   stop: 1.0 %theme_p_mid%);
+theme_button_hover     =>qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 %theme_s_light%, stop: 0.4 %theme_p_light%, stop: 0.6 %theme_p_light%,stop: 1.0 %theme_s_light%);
+theme_button_pressed   =>qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 %theme_s_light%, stop: 0.5 %theme_p_mid%  , stop: 1.0 %theme_p_dark%);
+theme_button_disabled  =>qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,stop: 0 %theme_p_light%, stop: 1.0 %theme_p_mid%);
+theme_button_90        =>qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,stop: 0 %theme_p_light%, stop: 0.5 %theme_p_mid%  , stop: 1.0 %theme_p_dark%);
+theme_button_hover_90  =>qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,stop: 0 %theme_s_light%, stop: 0.4 %theme_p_light%, stop: 0.6 %theme_p_light%,stop: 1.0 %theme_s_light%);
+theme_button_pressed_90=>qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,stop: 0 %theme_s_light%, stop: 0.5 %theme_p_mid%  , stop: 1.0 %theme_p_dark%);
+
+

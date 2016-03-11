@@ -214,10 +214,10 @@ class WidgetOctaveEqualizer(QWidget):
         # it controls where to draw the sliders in the widget
         self.ctrl_index = [ self.settings.f2i(f) for f in self.settings.fc_list]
 
-        self.color_log_line  = QColor(44,44,44);
-        self.color_bg_line   = QColor(64,64,88);
-        self.color_zero_line = QColor(64,64,88);
-        self.color_gain_line = QColor(12,192,64);
+        self.color_log_line  = self.palette().mid()#QColor(44,44,44);
+        self.color_bg_line   = self.palette().mid()#QColor(64,64,88);
+        self.color_zero_line = self.palette().mid()#QColor(64,64,88);
+        self.color_gain_line = self.palette().mid()#QColor(12,192,64);
 
         self.borderl=0;
         self.borderr=0;
@@ -231,13 +231,15 @@ class WidgetOctaveEqualizer(QWidget):
                          list(range(100,1100,100)) + \
                          list(range(2000,10000,1000)) + [20000,]
 
+        self.setColors()
+
     def setColors(self):
         app_palette =QApplication.instance().palette()
 
-        bg = app_palette.alternateBase().color()
-        #print bg.red(),bg.green(),bg.blue();
+        bg = app_palette.window().color()
+
         bgr,bgg,bgb = bg.red(),bg.green(),bg.blue();
-        factor = .33
+        factor = .50
         r = int( min(255,bgr*(1.0+factor)) if bgr < 127 else bgr*(1.0-factor) )
         g = int( min(255,bgg*(1.0+factor)) if bgg < 127 else bgg*(1.0-factor) )
         b = int( min(255,bgb*(1.0+factor)) if bgb < 127 else bgb*(1.0-factor) )
@@ -255,12 +257,11 @@ class WidgetOctaveEqualizer(QWidget):
         b = int( min(255,bgb*(1.0+factor)) if bgb < 127 else bgb*(1.0-factor) )
         self.color_zero_line = QColor(r,g,b);
 
-        #r =  25 if bgr < 127 else  32
-        #g = 255 if bgg < 127 else   0
-        #b =  32 if bgb < 127 else 255
         self.color_gain_line = app_palette.text().color()
+
     def get_yscale(self):
         return (.5*(self.height()-self.bordert-self.borderb)*1.0)/self.max_value
+
     def paintEvent(self, event= None):
         w = self.width()
         h = self.height()
@@ -268,8 +269,6 @@ class WidgetOctaveEqualizer(QWidget):
         p = QPainter(self)
         size = float(len(self.settings.bins))
 
-
-        self.setColors()
         p.translate(QPointF(self.borderl,self.bordert))
         self.draw_main(p,w-self.borderl-self.borderr,h-self.bordert-self.borderb,size);
 

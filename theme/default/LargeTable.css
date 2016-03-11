@@ -1,0 +1,12 @@
+
+
+LargeTable {
+	/*large tables only support a small selection of css style attributes*/
+    background: %theme_bg_color%;  /*QPalette.Base*/
+	/* alternate is only used if alternate row colors is enabled*/
+	alternate-background-color: %theme_bg_color_alt%; /*QPalette.AlternateBase*/
+	selection-background-color: %color_highlight%; /*QPalette.Highlight*/
+	selection-color: white;	/*selected text color: QPalette.HighLightText*/
+	/*color: %acolor%; */
+}
+

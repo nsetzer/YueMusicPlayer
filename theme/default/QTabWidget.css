@@ -1,0 +1,76 @@
+/* Custom Style Sheet							*/
+/* Interpreter Version: 1.1						*/
+/* File Name:								*/
+/* 	QTabWidget.css							*/
+/*									*/
+/* File Description:							*/
+/*	Styling for the Main Tab Bar					*/
+/*									*/
+/* Version Notes:							*/
+/*      Only one line comments are supported				*/
+/*	Comments must have opening '/*' and closing '*/' 		*/
+/*		characters - all on one line				*/
+/*									*/
+/*      Place images in ./style/images/					*/
+/*      path to images is: url(%IMAGE%image.png)			*/
+/*									*/
+/*      If a file named 'Main.css' exists, it will be loaded first 	*/
+/*	Files that contain the lowercase letter 'x' as the first 	*/
+/*		letter in the name will be ignored when styles 		*/
+/*		are being loaded					*/
+
+/* theme rgb(200,85,0)*/
+
+/*bar separator*/
+QTabWidget::pane {
+    border-top: 2px solid %theme_very_dark%;
+}
+ 
+QTabWidget::tab-bar {
+    left: 5px;
+}
+
+QTabBar::tab {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 %theme_p_light%, stop: 0.5 %theme_p_mid%,
+                    stop: 1.0 %theme_p_dark%);
+    border: 2px solid %theme_very_dark%;
+    color: %text_dark%;
+    /*border-bottom-color: #C2C7CB; /* same as the pane color */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    min-width: 16ex;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 6px;
+    padding-right: 6px;
+	text-align: right;
+	image-position: center;
+	spacing: 0;
+	margin: 0;
+}
+
+QTabBar::tab:selected {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0.0 %theme_s_mid%, stop: 0.2 %theme_p_light%, 
+                    stop: 0.5 %theme_p_mid%, stop: 1.0 %theme_p_dark%);
+    border-color: %theme_very_dark%;
+}
+QTabBar::tab:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0.0 %theme_s_light%, stop: 0.2 %theme_p_light%, 
+                    stop: 1.0 %theme_p_mid%);
+}
+
+QTabBar::tab:!selected {
+    /* make unselected tabs smaller */
+    margin-top: 4px;
+}
+
+QTabBar::tab:first:selected {
+    margin-left: 0; /* the first selected tab has nothing to overlap with on the left */
+}
+
+QTabBar::tab:last:selected {
+    margin-right: 0; /* the last selected tab has nothing to overlap with on the right */
+}
