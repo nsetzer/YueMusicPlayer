@@ -107,9 +107,9 @@ class CurrentSongView(QWidget):
         self.offsetb_max = -1
         self.region_width = 0
 
-        self.text_time = ""
-        self.text_date = ""
-        self.text_eq = ""
+        self.text_time = "000"
+        self.text_date = "000"
+        self.text_eq = "000"
 
         self.padt = 2
         self.padb = 2
@@ -142,7 +142,7 @@ class CurrentSongView(QWidget):
         f = QApplication.instance().font()
         fh = QFontMetrics(f).height()
         self.setFixedHeight( (fh+self.padtb) * 4)
-        print("resize: fh:%d fam:%s ps:%d h:%d"%( \
+        print("songview resize: fh:%d fam:%s ps:%d h:%d"%( \
             fh, \
             f.family(), \
             f.pointSize(), \
@@ -289,6 +289,7 @@ class CurrentSongView(QWidget):
         h = self.height()
 
         painter = QPainter(self)
+        painter.setFont(QApplication.instance().font())
         fh = painter.fontMetrics().height()
 
         fw1 = painter.fontMetrics().width('0')
@@ -396,9 +397,10 @@ class CurrentSongView(QWidget):
         a = max(0,self.offseta)
         t = max(0,self.offsett)
         b = max(0,self.offsetb)
-        painter.drawText(padl-a,row1h,self.song[Song.artist])
-        painter.drawText(padl-t,row2h,self.song[Song.title])
-        painter.drawText(padl-b,row3h,self.song[Song.album])
+
+        painter.drawText(padl-a,self.padt,self.region_width,fh,Qt.AlignLeft,self.song[Song.artist])
+        painter.drawText(padl-t,self.padtb+fh,self.region_width,fh,Qt.AlignLeft,self.song[Song.title])
+        painter.drawText(padl-b,2*(self.padtb+fh),self.region_width,fh,Qt.AlignLeft,self.song[Song.album])
 
     def setMenuCallback(self,cbk):
         """

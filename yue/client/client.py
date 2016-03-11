@@ -870,10 +870,13 @@ class MainWindow(QMainWindow):
         # This needs to be refactored once I have a better idea
         # of how to adjust palettes for specific widgets, and know
         # exactly what widgets need to be updated manually.
+        # note: currentStyle(), clearStyle() should instead be used
+        # by widgets to grab color changes.
 
         # table highlight rules
         #self.plview.tbl.setRowHighlightComplexRule(0,None,qdct["color_special1"])
         self.plview.brush_current.setColor(qdct["color_special1"])
+        self.expview.brush_library.setColor(qdct["color_special1"])
 
         # manually update all SongTable instances in the app
         self.libview.tbl_song.setRuleColors( \
@@ -904,6 +907,10 @@ class MainWindow(QMainWindow):
         cfont = self.songview.font()
         self.songview.setPalette(p)
         self.songview.resize()
+
+        h = self.songview.height()
+        self.btn_playpause.setFixedHeight( h )
+        self.btn_playpause.setFixedWidth( h )
 
         if self.controller.dspSupported():
             self.peqview.setColors()

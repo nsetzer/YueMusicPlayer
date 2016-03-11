@@ -247,7 +247,7 @@ class ExplorerView(QWidget):
         self.view = SourceListView(self.source,self.source.root())
 
         self.tbl_file = FileTable( self.view, self )
-        self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
+        self.brush_library = self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
