@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from .slider import PositionSlider
 
 class VolumeController(QWidget):
     def __init__(self, parent):
@@ -14,11 +15,11 @@ class VolumeController(QWidget):
         self.btn = QToolButton(self)
         self.btn.setDefaultAction(QAction(QIcon(':/img/app_volume.png'),"volume",self))
 
-        self.volume_slider = QSlider(Qt.Horizontal,self);
+        self.volume_slider = PositionSlider(self);
         self.volume_slider.setRange(0,100)
 
         self.hbox.addWidget(self.btn)
-        self.hbox.addWidget( self.volume_slider)
+        self.hbox.addWidget(self.volume_slider)
 
     def sizeHint(self):
         return QSize(128,32)

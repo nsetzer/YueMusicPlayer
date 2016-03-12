@@ -192,12 +192,13 @@ class SettingsPresetTable(LargeTable):
             self.addRowTextColorComplexRule(self.rule_error,QColor(240,75,75))
 
     def initColumns(self):
-        self.columns.append( EditColumn(self,0 ,"Index") )
-        self.columns[-1].setTextTransform( lambda _,i : str(i+1) )
-        self.columns[-1].setWidthByCharCount(10)
+        #self.columns.append( EditColumn(self,0 ,"Index") )
+        #self.columns[-1].setTextTransform( lambda _,i : str(i+1) )
+        #self.columns[-1].setWidthByCharCount(10)
         self.columns.append( EditColumn(self,1 ,"Name") )
         self.columns[-1].setWidthByCharCount(20)
         self.columns.append( PresetEditColumn(self,2 ,"Query") )
+        self.columns[-1].setTextTransform( lambda _,i : i if i else "<Blank Search>")
 
     def mouseReleaseRight(self,event):
 

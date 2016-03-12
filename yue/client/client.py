@@ -344,12 +344,13 @@ class MainWindow(QMainWindow):
         self.edit_cmd.setPlaceholderText("Command Input")
 
         self.volcontroller = VolumeController(self)
+        # TODO: something needs to be done about this :
         self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
+        self.volcontroller.volume_slider.value_set.connect(self.setVolume)
 
         # note: visible state is not stored for the playlist,
         # it should always be displayed at startup
         self.dock_list = QDockWidget()
-        self.dock_list.setWindowFlags(Qt.FramelessWindowHint)
         self.dock_list.setWidget( self.plview )
         self.dock_list.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
         self.dock_list.visibilityChanged.connect(self.showhide_list)
@@ -608,6 +609,7 @@ class MainWindow(QMainWindow):
     def setVolume(self, vol):
 
         #Settings.instance()["volume"] = vol
+        print(vol)
         self.controller.device.setVolume( vol/100.0 )
 
     def executeSearch(self,query,switch=True):
@@ -865,7 +867,9 @@ class MainWindow(QMainWindow):
                 p = setApplicationPallete(app,cdct);
                 qdct = currentStyle()
                 font=QFont(qdct['font_family'],pointSize=int(qdct['font_size']))
-                app.setFont(font)
+
+        print("qdct font: `%s` `%d`"%(qdct['font_family'],int(qdct['font_size'])))
+                #app.setFont(font)
         # TODO:
         # This needs to be refactored once I have a better idea
         # of how to adjust palettes for specific widgets, and know
@@ -879,20 +883,14 @@ class MainWindow(QMainWindow):
         self.expview.brush_library.setColor(qdct["color_special1"])
 
         # manually update all SongTable instances in the app
-        self.libview.tbl_song.setRuleColors( \
-            qdct["text_important1"], \
-            qdct["text_important2"], \
-            qdct["theme_p_mid"], \
-            qdct["color_special1"] )
+        songtables = [self.libview.tbl_song,]
         for i in range( self.tabview.count() ):
             tab = self.tabview.widget(i)
             if isinstance(tab,PlaylistEditView):
-                tab.tbl_lib.setRuleColors( \
-                    qdct["text_important1"], \
-                    qdct["text_important2"], \
-                    qdct["theme_p_mid"]    , \
-                    qdct["color_special1"] )
-                tab.tbl_pl.setRuleColors( \
+                songtables.append( tab.tbl_lib)
+                songtables.append( tab.tbl_pl)
+        for table in songtables:
+            table.setRuleColors( \
                     qdct["text_important1"], \
                     qdct["text_important2"], \
                     qdct["theme_p_mid"]    , \
@@ -903,7 +901,7 @@ class MainWindow(QMainWindow):
         CG   = [QPalette.Disabled,QPalette.Active,QPalette.Inactive]
         for cg in CG:
             p.setColor( cg, QPalette.Light    , qdct['theme_s_mid']   )
-            p.setColor( cg, QPalette.Dark      , qdct['theme_s_vdark']   )
+            p.setColor( cg, QPalette.Dark     , qdct['theme_s_vdark']   )
         cfont = self.songview.font()
         self.songview.setPalette(p)
         self.songview.resize()

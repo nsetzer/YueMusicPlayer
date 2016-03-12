@@ -10,6 +10,8 @@ from PyQt5.QtGui import *
 from yue.core.song import Song
 from yue.core.util import format_date
 
+from .slider import PositionSlider
+
 class SongPositionView(QWidget):
 
     seek = pyqtSignal( int )
@@ -22,10 +24,10 @@ class SongPositionView(QWidget):
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
 
-        self.slider = SongPositionSlider( self );
+        self.slider = PositionSlider( self );
         self.slider.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
-        #self.slider.setTickInterval(15)
-        #self.slider.setTickPosition(QSlider.TicksBelow)
+        self.slider.value_set.connect(self.seek.emit)
+        self.slider.setObjectName("TimeSlider")
 
         self.btn_prev = QPushButton("<")
         self.btn_prev.setMinimumWidth(16)
@@ -139,14 +141,15 @@ class CurrentSongView(QWidget):
         self.resize()
 
     def resize(self):
-        f = QApplication.instance().font()
+        #f = QApplication.instance().font()
+        f = self.font()
         fh = QFontMetrics(f).height()
         self.setFixedHeight( (fh+self.padtb) * 4)
         print("songview resize: fh:%d fam:%s ps:%d h:%d"%( \
             fh, \
             f.family(), \
             f.pointSize(), \
-            QFontMetrics(QApplication.instance().font()).height()))
+            QFontMetrics(f).height()))
 
     def setPosition(self, position ):
         length = self.song[Song.length]
@@ -289,7 +292,7 @@ class CurrentSongView(QWidget):
         h = self.height()
 
         painter = QPainter(self)
-        painter.setFont(QApplication.instance().font())
+        #painter.setFont(QApplication.instance().font())
         fh = painter.fontMetrics().height()
 
         fw1 = painter.fontMetrics().width('0')
@@ -398,9 +401,9 @@ class CurrentSongView(QWidget):
         t = max(0,self.offsett)
         b = max(0,self.offsetb)
 
-        painter.drawText(padl-a,self.padt,self.region_width,fh,Qt.AlignLeft,self.song[Song.artist])
-        painter.drawText(padl-t,self.padtb+fh,self.region_width,fh,Qt.AlignLeft,self.song[Song.title])
-        painter.drawText(padl-b,2*(self.padtb+fh),self.region_width,fh,Qt.AlignLeft,self.song[Song.album])
+        painter.drawText(padl-a,self.padt,2*self.offseta_max,fh,Qt.AlignLeft,self.song[Song.artist])
+        painter.drawText(padl-t,self.padtb+fh,2*self.offsett_max,fh,Qt.AlignLeft,self.song[Song.title])
+        painter.drawText(padl-b,2*(self.padtb+fh),2*self.offsetb_max,fh,Qt.AlignLeft,self.song[Song.album])
 
     def setMenuCallback(self,cbk):
         """
