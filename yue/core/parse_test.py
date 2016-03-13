@@ -23,7 +23,7 @@ from yue.core.search import PartialStringSearchRule, \
 DB_PATH = "./unittest.db"
 
 class TestSearchParse(unittest.TestCase):
-    """Examples for using the cEBFS library
+    """test case for search feature
     """
 
     def setUp(self):

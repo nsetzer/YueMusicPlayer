@@ -57,7 +57,7 @@ class Song(object):
     # when search / sorting a song list, causing a random ordering
     random = "RANDOM"
 
-    eqfactor = 256.0
+    eqfactor = 250.0
 
     abbreviations = {
         "id"          : uid,
@@ -166,16 +166,16 @@ class Song(object):
         N=4 # rough average over this many plays
 
         t1 = time.localtime(time.time())
-        t2 = time.localtime( last_played )
+        t2 = time.localtime(last_played)
 
         d1 = datetime.datetime(*t1[:6])
         d2 = datetime.datetime(*t2[:6])
         delta = d1-d2
 
-        days = round(delta.days + delta.seconds/(60*60*24))
-
         if playcount == 0:
-            return timegm(t1), int(days)
+            return timegm(t1), 0
+
+        days = round(delta.days + delta.seconds/(60*60*24))
 
         if playcount < N:
             N = playcount
@@ -209,6 +209,16 @@ class Song(object):
         else:
             path = os.path.join(tart,tabm,tnam);
         return path
+
+    @staticmethod
+    def getEqFactor(song):
+        value = song[Song.equalizer]
+        if value == 0:
+            return 0
+        ivalue = min(500,value);
+        fvalue = ivalue/Song.eqfactor;
+        return fvalue
+
 
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )

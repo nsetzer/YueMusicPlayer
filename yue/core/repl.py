@@ -71,7 +71,7 @@ class ReplArgumentParser(object):
             yield arg
 
 class YueRepl(object):
-    """docstring for EBFSRepl"""
+    """docstring for YueRepl"""
     def __init__(self, device=None):
         super(YueRepl, self).__init__()
         self.root = None

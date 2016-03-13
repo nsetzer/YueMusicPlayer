@@ -610,7 +610,6 @@ class MainWindow(QMainWindow):
     def setVolume(self, vol):
 
         #Settings.instance()["volume"] = vol
-        print(vol)
         self.controller.device.setVolume( vol/100.0 )
 
     def executeSearch(self,query,switch=True):

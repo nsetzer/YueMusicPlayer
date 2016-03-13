@@ -175,7 +175,7 @@ class CurrentSongView(QWidget):
         self.scroll_index = 0
 
         self.text_date = format_date( self.song[Song.last_played] )
-        self.text_eq = "%d%%"%int(100.0*song[Song.equalizer]/Song.eqfactor)
+        self.text_eq = "%d%%"%int(100.0*Song.getEqFactor(song))
         self.setPosition( 0 )
 
         if not self.timer_autoscroll.isActive():

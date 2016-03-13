@@ -10,7 +10,7 @@ from yue.core.playlist import PlaylistManager
 DB_PATH = "./unittest.db"
 
 class TestSettings(unittest.TestCase):
-    """Examples for using the cEBFS library
+    """Examples for using the library
     """
 
     def __init__(self,*args,**kwargs):

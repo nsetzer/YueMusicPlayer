@@ -103,7 +103,7 @@ class BassSoundDevice(SoundDevice):
             if self.device.load( path ):
                 self.error_state = False
 
-                self.setEQ( song[Song.equalizer] )
+                self.setEQ( song )
 
                 self.on_load.emit(song)
             else:
@@ -128,12 +128,12 @@ class BassSoundDevice(SoundDevice):
             self.voleq.setEnabled(False);
         sys.stdout.write("EQ: %s\n"%(self.enable_equalizer))
 
-    def setEQ(self,value):
-        if self.voleq != None and value > 0:
-            ivalue = min(500,value);
-            fvalue = ivalue/250.0;
-            self.voleq.setScale(fvalue);
-            if value > 0 and self.enable_equalizer:
+    def setEQ(self, song):
+
+        factor = Song.getEqFactor( song )
+        if self.voleq != None:
+            self.voleq.setScale(factor);
+            if factor > 0 and self.enable_equalizer:
                 self.voleq.setEnabled(True);
             else:
                 self.voleq.setEnabled(False);

@@ -251,7 +251,6 @@ class Library(object):
         # altering artist, album requires updating count of songs
         # and removing artists that no longer exist.
         if 'artist' in kwargs:
-            print(kwargs['artist'], getSortKey(kwargs['artist']))
             new_art_id = self.artist_db._get_id_or_insert(c,
                 artist=kwargs['artist'],
                 sortkey=getSortKey(kwargs['artist']))

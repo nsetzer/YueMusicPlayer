@@ -9,7 +9,7 @@ DB_PATH = "./unittest.db"
 PL_NAME = 'demo'
 
 class TestPlaylist(unittest.TestCase):
-    """Examples for using the cEBFS library
+    """Examples for using the playlist
     """
 
     def __init__(self,*args,**kwargs):
