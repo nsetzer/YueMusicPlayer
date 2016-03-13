@@ -1,4 +1,4 @@
-
+#! python34 ../../../test/test_client.py $this
 
 import os,sys
 isPython3 = sys.version_info[0]==3
@@ -177,6 +177,12 @@ class PlayButton(QWidget):
 
         painter.drawPath(self.path_cont)
 
+    def enterEvent(self,event):
+        self.state_hvr1 = True
+        self.state_hvr2 = False
+        self.stat_mouseDown = False;
+        self.update()
+
     def leaveEvent(self,event):
         self.state_hvr1 = False
         self.state_hvr2 = False
@@ -241,30 +247,105 @@ class PlayButton(QWidget):
         self.state_btn2 = state
         self.update()
 
+class AdvanceButton(QWidget):
 
-#class ButtonPlay(PlayButtonBase):
-#    def sizeHint(self):
-#        return QSize(32, 32)
-#    def clickEvent(self):
-#        # there is a slight lag on the Player functions
-#        # query the state first and set to the opposite of that
-#        if self.location == 0 :
-#            self.state_btn1 = (MpGlobal.Player.state() == MpMusic.PLAYING)
-#            MpGlobal.Player.playPause()
-#        else:
-#            MpGlobal.Player.cont()
-#            self.state_btn2 = MpGlobal.Player.stopNext
-#    def updateDisplay(self, state = True):
-#        if state == True:
-#            self.state_btn1 = (MpGlobal.Player.state() == MpMusic.PLAYING)
-#        else:
-#            self.state_btn1 = True # show the play arrow
-#        self.state_btn2 = MpGlobal.Player.stopNext
-#        self.update()
-#    #def update(self):
-#    #    fnt_h = QFontMetrics(self.font()).height()
-#    #    self.setFixedHeight((fnt_h)*4)
-#    #    self.setFixedWidth((fnt_h)*4)
-#    #    print (fnt_h+2)*4
-#    #    super(ButtonPlay,self).update()
+    clicked = pyqtSignal()
 
+    def __init__(self, reverse=False, parent=None):
+        super(AdvanceButton, self).__init__( parent )
+
+        self.reverse = reverse
+        self.mouse_hover = False
+
+
+        s = 100
+        m = 3
+        m2 = 2*m
+        a = 15
+        self.path = QPainterPath()
+        self.path.moveTo(s-m,m)
+        self.path.arcTo(m,m, 2*(s-m2),s-m2, 90,180)
+        self.path.arcTo(s-a,s-m,a*2,-(s-m2),90,180)
+
+        self.fillColorlg = QColor(112, 112, 112) # light gray
+        self.fillColormg = QColor(72, 72, 72) # dark gray
+        self.fillColordg = QColor(64, 64, 64) # dark gray
+
+        self.gradient1 = QRadialGradient(50, 50, 50, 50, 50)
+        self.gradient1.setColorAt(0.0, self.fillColorlg)
+        self.gradient1.setColorAt(.70, self.fillColordg)
+
+        self.gradient2 = QRadialGradient(50, 50, 50, 50, 50)
+        self.gradient2.setColorAt(0.0, self.fillColordg)
+        self.gradient2.setColorAt(.70, self.fillColorlg)
+
+        h = 35
+        w = s - 3*a
+        points = [QPointF(s/2+w/2,s/2-h/2),
+                  QPointF(s/2+w/2,s/2+h/2),
+                  QPointF(s/2,s/2)]
+        poly = QPolygonF(points)
+
+        self.path_icon = QPainterPath()
+        self.path_icon.setFillRule(Qt.WindingFill)
+        self.path_icon.addPolygon(poly)
+        self.path_icon.closeSubpath()
+        self.path_icon.translate(-20,0)
+        self.path_icon.addPolygon(poly)
+        self.path_icon.closeSubpath()
+        self.path_icon.translate(-10,0)
+        self.path_icon.addRect(20,s/2-h/2,5,h)
+
+        self.penColor = QColor(0, 0, 0)
+        self.penWidth = 3
+
+    def paintEvent(self, event):
+
+        w = self.width()
+        h = self.height()
+        side = min(w,h)
+        painter = QPainter(self)
+        painter.setPen(QPen(self.penColor, self.penWidth, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setTransform ( QTransform.fromTranslate(.5,1))
+
+        if self.reverse == True:
+            painter.translate( w, 0)
+            painter.scale( -w / 100.0, h / 100.0)
+        else:
+            painter.translate( 0, 0)
+            painter.scale( w / 100.0, h / 100.0)
+
+        gradient = self.gradient1
+        if self.mouse_hover:
+            gradient = self.gradient2
+
+        painter.setBrush(QBrush(gradient))
+        painter.drawPath(self.path)
+        painter.setBrush(QBrush(self.penColor))
+        painter.translate(10,0)
+        painter.drawPath(self.path_icon)
+
+    def enterEvent(self,event):
+        self.mouse_hover = True
+        self.update()
+
+    def leaveEvent(self,event):
+        self.mouse_hover = False
+        self.update()
+
+    def mouseReleaseEvent(self,event):
+        self.clicked.emit()
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("Console Player")
+    app.setQuitOnLastWindowClosed(True)
+    window = AdvanceButton(True)
+    window.show()
+
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
