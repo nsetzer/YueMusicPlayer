@@ -55,13 +55,14 @@ from .ui.visualizer import BassVisualizer
 from .ui.ingest_dialog import IngestProgressDialog
 from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
 from .ui.settings import SettingsDialog
-from .ui.song_view import CurrentSongView, SongPositionView
+from .ui.song_view import CurrentSongView
 from .ui.volume import VolumeController
 
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
-from .widgets.playbutton import PlayButton
+from .widgets.playbutton import PlayButton, AdvanceButton
+from .widgets.slider import PositionSlider
 from .widgets.closebutton import  CloseTabButton
 try:
     from .widgets.scieditor import CodeEditor
@@ -221,7 +222,7 @@ class ClientRepl(object):
         explorerOpen( dirpath )
 
     def exdiag(self, args):
-        """ open directory of the database in explorer """
+        """ enable/disable diagnostics """
 
         self.client.keyhook.diag = not self.client.keyhook.diag
         print(self.client.keyhook.diag)
@@ -234,6 +235,7 @@ class ClientRepl(object):
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
             self.editor.setVariable("Song",Song)
+            self.editor.setText("help()\nfor song in Library.search(""):\n    pass")
         self.editor.show()
 
     def extheme(self,args):
@@ -332,17 +334,8 @@ class MainWindow(QMainWindow):
         self.songview.setMenuCallback( self.addSongActions )
         self.songview.update_rating.connect(self.setRating)
 
-        self.posview = SongPositionView( self );
-        self.posview.seek.connect(self.controller.seek)
-        self.posview.next.connect(self.controller.play_next)
-        self.posview.prev.connect(self.controller.play_prev)
 
-        h = self.songview.height()
-        self.btn_playpause = PlayButton( self )
-        self.btn_playpause.setFixedHeight( h )
-        self.btn_playpause.setFixedWidth( h )
-        self.btn_playpause.on_play.connect(self.controller.playpause)
-        self.btn_playpause.on_stop.connect(self.controller._setStop)
+
 
         self.edit_cmd = LineEditRepl( self.repl, self );
         self.edit_cmd.setFocus()
@@ -384,13 +377,40 @@ class MainWindow(QMainWindow):
             self.plview.vbox.insertWidget(0, self.audioview)
         self.tabview.setCornerWidget( self.volcontroller )
 
-        self.hbox = QHBoxLayout();
-        self.hbox.addWidget( self.btn_playpause )
-        self.hbox.addWidget( self.songview )
+        h = 48
+        self.btn_playpause = PlayButton( self )
+        self.btn_playpause.setFixedHeight( h )
+        self.btn_playpause.setFixedWidth( h )
+        self.btn_playpause.on_play.connect(self.controller.playpause)
+        self.btn_playpause.on_stop.connect(self.controller._setStop)
+
+        self.btn_next = AdvanceButton(True,self)
+        self.btn_next.setFixedHeight( .75*h )
+        self.btn_next.clicked.connect(self.controller.play_next)
+        self.btn_prev = AdvanceButton(False,self)
+        self.btn_prev.setFixedHeight( .75*h )
+        self.btn_prev.clicked.connect(self.controller.play_prev)
+
+        self.hbox_btn = QHBoxLayout();
+        self.hbox_btn.setContentsMargins(0,0,0,0)
+        self.hbox_btn.addWidget( QWidget(self) ) # layout spacer
+        self.hbox_btn.addWidget( self.btn_prev )
+        self.hbox_btn.addWidget( self.btn_playpause )
+        self.hbox_btn.addWidget( self.btn_next )
+        self.hbox_btn.addWidget( QWidget(self) )
+
+        self.posview = PositionSlider( self );
+        self.posview.value_set.connect(self.controller.seek)
+        self.posview.setObjectName("TimeSlider")
+
+        self.hbox_sv = QHBoxLayout();
+        self.hbox_sv.setContentsMargins(0,0,0,0)
+        self.hbox_sv.addWidget( self.songview )
 
         # TODO: this is currently the biggest hack here
-        self.plview.vbox.insertLayout(0, self.hbox)
+        self.plview.vbox.insertLayout(0, self.hbox_sv)
         self.plview.vbox.insertWidget(0, self.posview)
+        self.plview.vbox.insertLayout(0, self.hbox_btn)
         self.plview.vbox.insertWidget(0, self.edit_cmd)
 
     def _init_values(self):

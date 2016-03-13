@@ -24,6 +24,7 @@ from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.ui.settings import main as settings_main
 from yue.client.ui.song_view import main as sv_main
+from yue.client.widgets.playbutton import main as pb_main
 from yue.core.sync import main as sync_core_main
 
 def convert():
@@ -108,6 +109,7 @@ if __name__ == '__main__':
         "sync_dialog.py" : sync_main,
         "settings.py" : settings_main,
         "newpl_dialog.py" : newpl_main,
+        "playbutton.py" : pb_main,
         "client" : client_main,
     }
     print("key: %s"%key)
