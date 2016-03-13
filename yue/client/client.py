@@ -329,13 +329,11 @@ class MainWindow(QMainWindow):
         self.plview.setMenuCallback( self.addSongActions )
         self.plview.play_index.connect( self.controller.play_index )
         self.plview.playlist_duration.connect( self.update_statusbar_duration )
+        self.plview.playlist_changed.connect( self.update_song_view )
 
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
         self.songview.update_rating.connect(self.setRating)
-
-
-
 
         self.edit_cmd = LineEditRepl( self.repl, self );
         self.edit_cmd.setFocus()
@@ -377,7 +375,7 @@ class MainWindow(QMainWindow):
             self.plview.vbox.insertWidget(0, self.audioview)
         self.tabview.setCornerWidget( self.volcontroller )
 
-        h = 48
+        h = 36
         self.btn_playpause = PlayButton( self )
         self.btn_playpause.setFixedHeight( h )
         self.btn_playpause.setFixedWidth( h )
@@ -822,6 +820,10 @@ class MainWindow(QMainWindow):
 
         self.lbl_status.setText(msg)
 
+    def update_song_view(self):
+        index,length = self.controller.get_playlist_info()
+        self.songview.setPlaylistInfo( index, length )
+
     def update_statusbar_duration(self,duration,remaining):
         msg = "%s / %s"%(format_delta(remaining), format_delta(duration))
         self.lbl_pl_status.setText(msg)
@@ -930,7 +932,7 @@ class MainWindow(QMainWindow):
         self.songview.setPalette(p)
         self.songview.resize()
 
-        h = self.songview.height()
+        h = 48#self.songview.height()
         self.btn_playpause.setFixedHeight( h )
         self.btn_playpause.setFixedWidth( h )
 

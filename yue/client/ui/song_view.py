@@ -117,7 +117,7 @@ class CurrentSongView(QWidget):
     def setPlaylistInfo(self,index,length):
         self.playlist_index  = index
         self.playlist_length = length
-        self.is_library_song = 0<= self.playlist_index < self.playlist_length
+        self.is_library_song = 0< self.playlist_index <= self.playlist_length
         self.update()
 
     def setEQEnabled(self,b):

@@ -111,6 +111,21 @@ class TestPlaylist(unittest.TestCase):
         new_value = pl.get(size)
         self.assertEqual(new_value,value)
 
+    def test_playlist_insert_end2(self):
+
+        sqlstore = SQLStore( DB_PATH )
+        pm = PlaylistManager( sqlstore )
+        pl = pm.openPlaylist(PL_NAME)
+        pl.set( [1,2,3,4,5] )
+
+        size = pl.size()
+
+        value = 10
+        pl.insert( 200 ,value)
+        self.assertEqual(pl.size(), size+1 )
+        new_value = pl.get(size)
+        self.assertEqual(new_value,value)
+
     @unittest.skip("undefined behavior")
     def test_playlist_insert_beyond_end(self):
 
@@ -200,6 +215,20 @@ class TestPlaylist(unittest.TestCase):
         idx,key = pl.current()
         self.assertEqual(idx,2)
         self.assertEqual(key,1)
+
+    def test_playlist_reinsertlist_simple(self):
+
+        sqlstore = SQLStore( DB_PATH )
+        pm = PlaylistManager( sqlstore )
+        pl = pm.openPlaylist(PL_NAME)
+        pl.set( [1,2,3,4,5] )
+
+        pl.reinsertList( [0,1,2], 17 )
+
+        expected = [4, 5, 1, 2, 3]
+        for i,v in enumerate(expected):
+            actual = pl.get(i)
+            self.assertEqual( actual, v, "%d %d"%(v,actual))
 
     def test_playlist_shuffle(self):
         sqlstore = SQLStore( DB_PATH )

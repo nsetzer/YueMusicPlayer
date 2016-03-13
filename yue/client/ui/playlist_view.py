@@ -58,7 +58,11 @@ class PlaylistTable(LargeTable):
     def keyPressDelete(self,event):
         sel = self.getSelectionIndex()
         self.parent().playlist.delete( sel )
-        self.setSelection([min(sel),])
+        new_sel = min(sel)
+        self.setSelection([new_sel,])
+        if self.parent().current_index in sel:
+            self.parent().play_index.emit(new_sel)
+        self.parent().playlist_changed.emit()
         self.parent().updateData()
 
     def processDropEvent(self,source,row,data):
@@ -79,6 +83,7 @@ class PlaylistTable(LargeTable):
             self.parent().playlist.insert( row, ids)
             self.setSelection( list(range(row,row+len(ids))) )
 
+        self.parent().playlist_changed.emit()
         self.parent().updateData()
 
     def shuffleList(self):
@@ -122,6 +127,8 @@ class PlayListViewWidget(QWidget):
     # (total duration, time remaining)
     # time remaining includes current song
     playlist_duration = pyqtSignal(int,int)
+
+    playlist_changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super(PlayListViewWidget, self).__init__(parent)

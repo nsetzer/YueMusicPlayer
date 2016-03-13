@@ -138,7 +138,7 @@ class PlayListView(object):
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
             result = c.fetchone()
             if not result:
-                raise IndexError("%d/%d"%(idx,size))
+                raise IndexError("%d/%d - (no item)"%(idx,size))
             key = result[0]
             return key
         raise IndexError("%d/%d"%(idx,size))
@@ -151,7 +151,9 @@ class PlayListView(object):
 
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            _, _, _, current = self.db_names._get( c, self.uid );
+            _, _, size, current = self.db_names._get( c, self.uid );
+            if idx >= size:
+                idx = size
             for key in reversed(lst):
                 self._insert_one( c, idx, key)
                 if idx <= current:
@@ -271,10 +273,12 @@ class PlayListView(object):
 
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            _, _, _, current = self.db_names._get( c, self.uid );
-
+            _, _, size, current = self.db_names._get( c, self.uid );
+            if row >= size:
+                row = size
             # delete and keep track of selected items
-            for item in sorted(lst,reverse=True):
+            lst = sorted(lst,reverse=True)
+            for item in lst:
                 key = self._get(c, item)
                 self._delete_one(c, item)
                 keys.append( key )
@@ -298,6 +302,15 @@ class PlayListView(object):
                 self.db_names._update( c, self.uid, idx=current)
 
             _, _, _, cur = self.db_names._get( c, self.uid );
+
+            #c.execute("SELECT idx FROM playlist_songs where uid=? ORDER BY idx",(self.uid,))
+            #idxlst = []
+            #items = c.fetchmany()
+            #while items:
+            #    for item in items:
+            #        idxlst.append( item[0] )# song_id
+            #    items = c.fetchmany()
+            #print(idxlst)
 
             return row,row+len(keys);
 
