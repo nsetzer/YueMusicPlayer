@@ -55,13 +55,14 @@ from .ui.visualizer import BassVisualizer
 from .ui.ingest_dialog import IngestProgressDialog
 from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
 from .ui.settings import SettingsDialog
+from .ui.song_view import CurrentSongView, SongPositionView
+from .ui.volume import VolumeController
+
 
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
 from .widgets.playbutton import PlayButton
-from .widgets.songview import CurrentSongView, SongPositionView
 from .widgets.closebutton import  CloseTabButton
-from .widgets.volume import VolumeController
 try:
     from .widgets.scieditor import SimpleSciEditor
 except ImportError:

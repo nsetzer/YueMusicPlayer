@@ -10,7 +10,7 @@ from PyQt5.QtGui import *
 from yue.core.song import Song
 from yue.core.util import format_date
 
-from .slider import PositionSlider
+from ..widgets.slider import PositionSlider
 
 class SongPositionView(QWidget):
 

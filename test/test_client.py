@@ -23,7 +23,7 @@ from yue.client.ui.newpl_dialog import main as newpl_main
 from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.ui.settings import main as settings_main
-from yue.client.widgets.songview import main as sv_main
+from yue.client.ui.song_view import main as sv_main
 from yue.core.sync import main as sync_core_main
 
 def convert():
@@ -81,21 +81,22 @@ def convert():
                 new_song["blocked"] = old_song.banish
                 library._insert(c, **new_song)
 
-        m3udir=r"D:\Dropbox\ConsolePlayer\user\playlist"
-        for name in os.listdir(m3udir):
-            shortname,ext = os.path.splitext(name)
-            if ext == ".m3u":
-                print(name)
-                songs = playList_Load_M3U(os.path.join(m3udir,name),lib)
-                print("len",len(songs),len(lib))
-                lst = [ song[EnumSong.UID] for song in songs]
-                pl = PlaylistManager.instance().openPlaylist( shortname )
-                pl.set( lst )
-                print("done")
+        #m3udir=r"D:\Dropbox\ConsolePlayer\user\playlist"
+        #for name in os.listdir(m3udir):
+        #    shortname,ext = os.path.splitext(name)
+        #    if ext == ".m3u":
+        #        print(name)
+        #        songs = playList_Load_M3U(os.path.join(m3udir,name),lib)
+        #        print("len",len(songs),len(lib))
+        #        lst = [ song[EnumSong.UID] for song in songs]
+        #        pl = PlaylistManager.instance().openPlaylist( shortname )
+        #        pl.set( lst )
+        #        print("done")
 
     return library
 
 if __name__ == '__main__':
+    convert()
     print(sys.argv)
 
     key = "client"
