@@ -64,9 +64,9 @@ from .widgets.LineEdit import LineEditRepl
 from .widgets.playbutton import PlayButton
 from .widgets.closebutton import  CloseTabButton
 try:
-    from .widgets.scieditor import SimpleSciEditor
+    from .widgets.scieditor import CodeEditor
 except ImportError:
-    SimpleSciEditor = None
+    CodeEditor = None
 
 from .DSP.peqwidget import WidgetOctaveEqualizer
 from .DSP.equalizer import DialogVolEqLearn
@@ -87,7 +87,7 @@ class ClientRepl(object):
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
         self.actions["theme"] = self.extheme
-        if SimpleSciEditor is not None:
+        if CodeEditor is not None:
             self.actions["editor"] = self.exeditor
 
         self.actions["quit"] = self.exexit
@@ -229,7 +229,11 @@ class ClientRepl(object):
     def exeditor(self, args):
 
         if not hasattr(self,'editor'):
-            self.editor = SimpleSciEditor()
+            self.editor = CodeEditor()
+            self.editor.setVariable("Client",self)
+            self.editor.setVariable("Library",Library.instance())
+            self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
+            self.editor.setVariable("Song",Song)
         self.editor.show()
 
     def extheme(self,args):

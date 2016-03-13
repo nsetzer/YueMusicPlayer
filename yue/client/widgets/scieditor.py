@@ -1,4 +1,4 @@
-#! python34 ../test_texteditor.py
+#! python34 $this
 
 # http://www.scintilla.org/ScintillaDoc.html
 
@@ -94,11 +94,48 @@ class SimpleSciEditor(QsciScintilla):
         else:
             self.markerAdd(nline, self.ARROW_MARKER_NUM)
 
+class CodeEditor(QWidget):
+    def __init__(self, parent=None):
+        super(CodeEditor, self).__init__(parent)
+
+        self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
+
+        self.btn_exec = QPushButton("Run",self)
+        self.edit_code = SimpleSciEditor(self)
+
+        self.vbox.addWidget(self.edit_code)
+        self.vbox.addWidget(self.btn_exec)
+
+        self.btn_exec.clicked.connect(self.exec_)
+
+        self.locals = {"help":self._help,}
+
+    def setText(self,text):
+        self.edit_code.setText(text)
+
+    def setVariable(self,key,val):
+        self.locals[key] = val
+
+    def exec_(self):
+
+        try:
+            exec( self.edit_code.text(), {}, self.locals)
+        except SyntaxError as e:
+            sys.stderr.write("%s\n"%e)
+        else:
+            print("Execution Complete.")
+
+    def _help(self):
+        for k,v in self.locals.items():
+            print(k,v)
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    editor = SimpleSciEditor()
+    editor = CodeEditor()
     editor.show()
-    text=open(sys.argv[0]).read()
-    editor.setText(text)
-    assert editor.text()==text
+    editor.setVariable("seven",7)
+    editor.setText("print('hello world')\n")
+
     app.exec_()
