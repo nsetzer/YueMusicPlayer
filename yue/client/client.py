@@ -375,7 +375,7 @@ class MainWindow(QMainWindow):
             self.plview.vbox.insertWidget(0, self.audioview)
         self.tabview.setCornerWidget( self.volcontroller )
 
-        h = 36
+        h=48
         self.btn_playpause = PlayButton( self )
         self.btn_playpause.setFixedHeight( h )
         self.btn_playpause.setFixedWidth( h )
@@ -401,8 +401,13 @@ class MainWindow(QMainWindow):
         self.posview.value_set.connect(self.controller.seek)
         self.posview.setObjectName("TimeSlider")
 
+        self.aartview = QLabel(self)
+        h=self.songview.height()
+        self.aartview.setFixedHeight(h)
+        self.aartview.setFixedWidth(h)
         self.hbox_sv = QHBoxLayout();
         self.hbox_sv.setContentsMargins(0,0,0,0)
+        self.hbox_sv.addWidget( self.aartview )
         self.hbox_sv.addWidget( self.songview )
 
         # TODO: this is currently the biggest hack here
@@ -935,6 +940,10 @@ class MainWindow(QMainWindow):
         h = 48#self.songview.height()
         self.btn_playpause.setFixedHeight( h )
         self.btn_playpause.setFixedWidth( h )
+
+        h=self.songview.height()
+        self.aartview.setFixedHeight(h)
+        self.aartview.setFixedWidth(h)
 
         if self.controller.dspSupported():
             self.peqview.setColors()

@@ -397,7 +397,33 @@ def get_album_art( song_path, temp_path):
         if os.path.exists( path ):
             return path
 
-    raise ArtNotFound(ext) # todo: file not found error
+    raise ArtNotFound(song_path)
+
+def get_album_art_data( song ):
+    song_path = song[Song.path]
+    ext = os.path.splitext(song_path)[1].lower()
+
+    data = None
+    try:
+        if ext == ".mp3":
+            data = get_album_art_mp3( song_path )
+        elif ext == '.flac':
+            data = get_album_art_flac( song_path )
+    except Exception as e:
+        print("mutagen: %s"%e)
+
+    dirname = os.path.dirname( song_path )
+
+    names = ["cover.jpg","cover.png","folder.jpg","folder.png"]
+    names.append("%s - %s.jpg"%(song[Song.artist],song[Song.album]))
+
+    for name in names:
+        path = os.path.join(dirname,name)
+        if os.path.exists( path ):
+            with open(path,"rb") as rb:
+                return rb.read()
+
+    raise ArtNotFound(song_path)
 
 def get_album_art_mp3( path ):
     audio = ID3(path)

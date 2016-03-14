@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
-from yue.core.song import Song, UnsupportedFormatError
+from yue.core.song import Song, UnsupportedFormatError, get_album_art_data, ArtNotFound
 from yue.core.search import ParseError
 from ..core.settings import Settings
 from yue.core.library import Library
@@ -133,7 +133,6 @@ class PlaybackController(object):
         self.one_shot = False
         self.device.prev()
 
-
     def get_playlist_info(self):
         index = -1
         try:
@@ -145,13 +144,28 @@ class PlaybackController(object):
         length = len(self.playlist)
 
         return index, length
+
     def on_song_load(self, song):
 
         index,length = self.get_playlist_info()
         self.root.songview.setCurrentSong( song )
         self.root.songview.setPlaylistInfo( index, length)
+
+        try:
+            img = QImage.fromData(get_album_art_data(song))
+            pimg = QPixmap.fromImage(img)
+            pimg = pimg.scaledToHeight(self.root.aartview.height(),Qt.SmoothTransformation)
+            self.root.aartview.setPixmap(pimg)
+            self.root.aartview.setHidden(False)
+        except ArtNotFound as e:
+            sys.stderr.write("%s\n"%e)
+            self.root.aartview.setHidden(True)
+
+
         self.root.posview.setMaximum( song[Song.length] )
+
         self.root.libview.setCurrentSongId(song[Song.uid])
+
         self.root.plview.update()
 
     def on_song_tick(self, pos):

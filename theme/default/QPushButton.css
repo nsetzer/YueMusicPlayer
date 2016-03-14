@@ -59,10 +59,6 @@ QPushButton {
     border: 2px solid %theme_very_dark%;
     border-radius: 2px;
 
-    /* without padding the button edges are immediatley after the text with no spacing*/
-    padding-right: 4px;
-    padding-left: 4px;
-
     background-color: %theme_button%;
     min-width: 16px;
     color: %text_dark%;
