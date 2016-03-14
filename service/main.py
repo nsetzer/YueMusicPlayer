@@ -18,7 +18,7 @@ if not os.path.exists(app_path):
 # update system path with path to yue package
 sys.path.insert(0,app_path)
 
-from yue.server.server import YueServer
+from yue.app.server.server import YueServer
 
 if __name__ == '__main__':
 

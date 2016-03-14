@@ -9,12 +9,12 @@ from kivy.logger import Logger
 
 from yue.app.sound.manager import SoundManager
 from yue.app.sound.device import MediaState
-from yue.app.sound.pybass import get_platform_path
+from yue.core.bass.pybass import get_platform_path
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 
-from yue.server.ingest import Ingest
+from yue.app.server.ingest import Ingest
 
 serviceport = 15123
 activityport = 15124

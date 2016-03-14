@@ -8,7 +8,7 @@ from kivy.logger import Logger
 
 from .device import SoundDevice, MediaState
 
-from .bassplayer import BassPlayer, BassException
+from yue.core.bass.bassplayer import BassPlayer, BassException
 
 class BassSoundDevice(SoundDevice):
     """Playback implementation of SoundManager using Kivy"""
