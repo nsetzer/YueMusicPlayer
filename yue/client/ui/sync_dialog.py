@@ -210,7 +210,7 @@ class SyncProfileDialog(QDialog):
         self.edit_transcode_path.setText(settings.get("encoder_path",""))
 
         self.cbox_equalize.setChecked(settings.get("equalize",False))
-        self.cbox_equalize.setChecked(settings.get("no_exec",False))
+        self.cbox_noexec.setChecked(settings.get("no_exec",False))
 
         idx = {   0 : 0,
                 128 : 1,

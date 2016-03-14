@@ -257,11 +257,15 @@ class WritePlaylistProcess(IterativeProcess):
         name,query = self.datalist[idx]
         name = name.replace(" ","_") + ".m3u"
 
-        songs = self.library.search(query,orderby=[Song.artist,Song.album])
+        # for NORMAL devices use this:
+        #songs = self.library.search(query,orderby=[Song.artist,Song.album])
+        # FOR COWON, use this:
+        songs = self.library.search(query,orderby=Song.random,limit=400)
 
         sys.stdout.write("save playlist: %s:%s\n"%(name,len(songs)))
-        path = os.path.join(self.parent.target,name)
-        saveCowonPlaylist(path,songs)
+        if not self.no_exec:
+            path = os.path.join(self.parent.target,name)
+            saveCowonPlaylist(path,songs)
 
     def end(self):
         return
@@ -447,7 +451,7 @@ class SyncManager(object):
             vol = song[Song.equalizer] / Song.eqfactor
         srcpath = song[Song.path]
         bitrate = self.data.bitrate
-        if srcpath.lower().endswith('mp3') and self.transcode_special:
+        if srcpath.lower().endswith('mp3') and self.data.transcode_special:
             bitrate=0
 
         # TODO, COPY, TRANSCODE new FORCE OVERWRITE option
@@ -485,7 +489,8 @@ class SyncManager(object):
         sys.stdout.write("Generating target playlist & library\n")
         new_playlist= self.data.getTargetPlaylist()
 
-        db_path = self.getTargetLibraryPath()
+        #db_path = self.getTargetLibraryPath()
+        db_path = os.path.join(os.getcwd(),"target.db")
         if os.path.exists(db_path):
             os.remove(db_path)
         sqlstore = SQLStore(db_path)
@@ -668,17 +673,16 @@ def getShortName_ZEN(path):
     return "";
 
 def saveCowonPlaylist(filename,songs):
+    songs.sort(key=lambda x:x[Song.album])
+    songs.sort(key=lambda x:sort_parameter_str(x,Song.artist))
     with codecs.open(filename,"w","utf-8") as wf :
         #http://anythingbutipod.com/forum/showthread.php?t=67351
         wf.write("#EXTM3U\r\n")
-        print(len(songs))
-        print(songs)
         for song in songs:
             try:
                 path = getShortName_COWON(song[Song.path]);
             except OSError as e:
                 sys.stdout.write("error saving song to playlist - %s"%e)
-
             else:
                 if path :
                     dur=song[Song.length]
