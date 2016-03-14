@@ -2,7 +2,7 @@
 
 from kivy.uix.label import Label
 
-from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget
+from yue.app.widgets.view import ListElem, NodeWidget, ListViewWidget
 
 class SongInfoElem(ListElem):
     """ Tree Element with unique id reference to an item in a database """

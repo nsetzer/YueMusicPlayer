@@ -8,7 +8,7 @@ from kivy.core.text import Label as CoreLabel
 
 from kivy.uix.scrollview import ScrollView
 
-from yue.custom_widgets.songedit import SongEdit
+from yue.app.widgets.songedit import SongEdit
 
 
 class SongInfo(Widget):

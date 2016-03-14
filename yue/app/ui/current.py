@@ -6,16 +6,16 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.clock import mainthread
 
-from yue.custom_widgets.songinfo import SongInfo
+from yue.app.widgets.songinfo import SongInfo
 
 
-from yue.custom_widgets.playlist import PlayListViewWidget
-from yue.settings import Settings
-from yue.sound.manager import SoundManager
+from yue.app.widgets.playlist import PlayListViewWidget
+from yue.app.settings import Settings
+from yue.app.sound.manager import SoundManager
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
-from yue.ui.util import PlayListToViewList
+from yue.app.ui.util import PlayListToViewList
 
 class CurrentPlayListViewWidget(PlayListViewWidget):
     """docstring for PlayListViewWidget"""

@@ -32,7 +32,7 @@ TODO:
 
 """
 
-from yue.settings import Settings
+from yue.app.settings import Settings
 
 from .kivydevice import KivySoundDevice
 from .bassdevice import BassSoundDevice, ServerBassSoundDevice

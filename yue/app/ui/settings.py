@@ -13,7 +13,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
-from yue.settings import Settings
+from yue.app.settings import Settings
 from yue.core.library import Library
 
 class SettingsScreen(Screen):

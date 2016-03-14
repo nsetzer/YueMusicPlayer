@@ -25,8 +25,8 @@ from kivy.uix.label import Label
 
 from kivy.lang import Builder
 
-from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
-from yue.settings import Settings
+from yue.app.widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
+from yue.app.settings import Settings
 
 class HomeScreen(Screen):
     def __init__(self,**kwargs):

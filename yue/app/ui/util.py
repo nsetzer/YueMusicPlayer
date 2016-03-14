@@ -6,10 +6,10 @@ core song/library types.
 
 
 """
-from yue.custom_widgets.view import TreeElem
-from yue.custom_widgets.playlist import PlayListElem
-from yue.custom_widgets.querybuilder import QueryKind
-from yue.custom_widgets.tristate import TriState
+from yue.app.widgets.view import TreeElem
+from yue.app.widgets.playlist import PlayListElem
+from yue.app.widgets.querybuilder import QueryKind
+from yue.app.widgets.tristate import TriState
 
 from yue.core.search import PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \

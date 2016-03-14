@@ -1,4 +1,4 @@
-#! cd .. && python2.7 main.py --size=480x640
+#! cd ../.. && python2.7 main.py --size=480x640
 
 """
 
@@ -16,21 +16,21 @@ from kivy.lib import osc
 from kivy.clock import Clock
 from kivy.core.window import Window, Keyboard
 
-from yue.ui.library import LibraryScreen
-from yue.ui.home import HomeScreen
-from yue.ui.nowplaying import NowPlayingScreen
-from yue.ui.current import CurrentPlaylistScreen
-from yue.ui.preset import PresetScreen, ModifyPresetScreen
-from yue.ui.ingest import IngestScreen
-from yue.ui.settings import SettingsScreen
-from yue.ui.util import libraryToTree, PlayListToViewList
-
+from yue.core.sqlstore import SQLStore
 from yue.core.playlist import PlaylistManager
 from yue.core.library import Library
-from yue.settings import Settings
-from yue.sound.manager import SoundManager
-from yue.sound.clientdevice import ServiceInfo
-from yue.core.sqlstore import SQLStore
+
+from yue.app.ui.library import LibraryScreen
+from yue.app.ui.home import HomeScreen
+from yue.app.ui.nowplaying import NowPlayingScreen
+from yue.app.ui.current import CurrentPlaylistScreen
+from yue.app.ui.preset import PresetScreen, ModifyPresetScreen
+from yue.app.ui.ingest import IngestScreen
+from yue.app.ui.settings import SettingsScreen
+from yue.app.ui.util import libraryToTree, PlayListToViewList
+from yue.app.settings import Settings
+from yue.app.sound.manager import SoundManager
+from yue.app.sound.clientdevice import ServiceInfo
 
 import os,sys
 from subprocess import Popen

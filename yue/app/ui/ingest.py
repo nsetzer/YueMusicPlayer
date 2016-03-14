@@ -33,7 +33,7 @@ from kivy.clock import mainthread
 from kivy.logger import Logger
 from kivy.lib import osc
 
-from yue.settings import Settings
+from yue.app.settings import Settings
 from yue.core.library import Library
 from yue.core.sqlstore import SQLStore
 

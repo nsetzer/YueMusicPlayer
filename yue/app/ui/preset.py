@@ -29,12 +29,12 @@ from kivy.logger import Logger
 from kivy.uix.scrollview import ScrollView
 #from kivy.uix.gridlayout import GridLayout
 
-from yue.custom_widgets.view import TreeViewWidget
-from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
+from yue.app.widgets.view import TreeViewWidget
+from yue.app.widgets.querybuilder import QueryBuilder, QueryKind
 
-from yue.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
+from yue.app.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
 
-from yue.settings import Settings
+from yue.app.settings import Settings
 from yue.core.library import Library
 from yue.core.song import Song
 

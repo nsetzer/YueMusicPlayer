@@ -29,7 +29,7 @@ from kivy.graphics.texture import Texture
 from kivy.graphics import Rectangle
 
 
-from yue.custom_widgets.view import ListElem, NodeWidget, ListViewWidget
+from yue.app.widgets.view import ListElem, NodeWidget, ListViewWidget
 
 def fmttime(s):
     m,s = divmod(int(s),60)

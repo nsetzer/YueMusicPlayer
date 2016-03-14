@@ -10,11 +10,11 @@ from kivy.uix.image import Image, AsyncImage
 from kivy.logger import Logger
 from kivy.clock import mainthread
 
-from yue.custom_widgets.timebar import TimeBar
-from yue.settings import Settings
+from yue.app.widgets.timebar import TimeBar
+from yue.app.settings import Settings
 from yue.core.playlist import PlaylistManager
-from yue.sound.manager import SoundManager
-from yue.sound.device import MediaState
+from yue.app.sound.manager import SoundManager
+from yue.app.sound.device import MediaState
 from yue.core.song import ArtNotFound, get_album_art
 
 class NowPlayingScreen(Screen):
