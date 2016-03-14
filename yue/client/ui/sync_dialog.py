@@ -19,10 +19,11 @@ class QtSyncManager(SyncManager):
         player_directory=None,
         equalize=False,
         bitrate=0,
+        dynamic_playlists=None,
         no_exec=False,
         parent=None):
         super(QtSyncManager, self).__init__(library,playlist,target,enc_path, \
-            transcode,player_directory,equalize,bitrate,no_exec)
+            transcode,player_directory,equalize,bitrate,dynamic_playlists,no_exec)
 
         self.step_count = 0
         self.parent = parent
@@ -33,7 +34,7 @@ class QtSyncManager(SyncManager):
     def message(self,msg):
         self.parent.setMessage(msg)
 
-    def getYesOrNo(msg):
+    def getYesOrNo(self,msg):
         result = self.parent.getInput("Delete",msg,"cancel","delete")
         return result==1
 
@@ -55,11 +56,12 @@ class QtSyncManager(SyncManager):
 
 class SyncDialog(ProgressDialog):
 
-    def __init__(self, uids, settings, parent=None):
+    def __init__(self, uids, settings, dynamic_playlists=None, parent=None):
         super().__init__("Sync", parent)
 
         self.uids = uids
-        self.settings = settings # sync profile settings
+        self.settings = settings # sync profile settings, (not db settings)
+        self.dynamic_playlists = dynamic_playlists
 
     def setRange(self,a,b):
         self.pbar.setRange(a,b)
@@ -79,7 +81,11 @@ class SyncDialog(ProgressDialog):
 
         lib = Library.instance().reopen()
         sm = QtSyncManager(lib,self.uids,target_path,encoder_path, \
-                transcode=transcode,equalize=equalize,no_exec=no_exec,parent=self)
+                transcode=transcode,
+                equalize=equalize,
+                dynamic_playlists=self.dynamic_playlists,
+                no_exec=no_exec,
+                parent=self)
         sm.run()
 
 class SyncProfileDialog(QDialog):

@@ -237,6 +237,35 @@ class ParallelTranscodeProcess(IterativeProcess):
     def end(self):
         return
 
+class WritePlaylistProcess(IterativeProcess):
+    """docstring for WritePlaylistProcess
+
+    datalist: as list-of-2-tuple, (name,query)"""
+
+    def __init__(self,  library, datalist, format=0, parent=None, no_exec=False):
+        super(WritePlaylistProcess,self).__init__( parent )
+        self.library = library
+        self.datalist = datalist
+        self.no_exec = no_exec
+
+    def begin(self):
+        self.parent.log("write playlist: %d"%len(self.datalist))
+        # open a thread local instance of the library
+        return len(self.datalist)
+
+    def step(self,idx):
+        name,query = self.datalist[idx]
+        name = name.replace(" ","_") + ".m3u"
+
+        songs = self.library.search(query,orderby=[Song.artist,Song.album])
+
+        sys.stdout.write("save playlist: %s:%s\n"%(name,len(songs)))
+        path = os.path.join(self.parent.target,name)
+        saveCowonPlaylist(path,songs)
+
+    def end(self):
+        return
+
 class SyncManager(object):
     T_NONE=0        # don't transcode file
     T_NON_MP3=1     # transcode non-mp3 to mp3
@@ -250,6 +279,7 @@ class SyncManager(object):
         player_directory=None,
         equalize=False,
         bitrate=0,
+        dynamic_playlists=None,
         no_exec=False):
         super(SyncManager,self).__init__()
         """
@@ -272,6 +302,8 @@ class SyncManager(object):
         self.player_directory = player_directory
         self.queries = []
         self.equalize = equalize
+        self.save_playlists = dynamic_playlists is not None
+        self.dynamic_playlists = dynamic_playlists # as list-of-2-tuples: name,query
 
         self.target_library = None # list of songs
 
@@ -297,8 +329,9 @@ class SyncManager(object):
         d = len(delete_list)
         c = len(copylist)
         t = len(transcodelist)
+        p = 0 if self.dynamic_playlists is None else len(self.dynamic_playlists)
 
-        self.setOperationsCount(d+c+t)
+        self.setOperationsCount(d+c+t+p)
 
         self.message("Delete Files")
         proc = DeleteProcess(parent=self,filelist=delete_list,no_exec=self.no_exec)
@@ -312,6 +345,14 @@ class SyncManager(object):
         proc = TranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
         self.run_proc( proc )
 
+        if self.save_playlists:
+            self.message("Save Dynamic Playlists")
+
+            target_library = self.createTargetLibrary()
+            format=0
+            proc = WritePlaylistProcess(target_library,self.dynamic_playlists, \
+                        format,self,no_exec=self.no_exec)
+            self.run_proc( proc )
 
         self.message("Finished %d/%d/%d"%(d,c,t))
 
@@ -331,7 +372,7 @@ class SyncManager(object):
         """ reimplement this """
         self.log(msg)
 
-    def getYesOrNo(msg):
+    def getYesOrNo(self,msg):
         """ reimplement this """
         if self.no_exec:
             return True
@@ -427,54 +468,41 @@ class SyncManager(object):
             else:
                 self.data.add(path,song,False)
 
-    def compute_target_library(self):
-        new_playlist= self.data.playlist_dst()
+    def getTargetLibraryPath(self):
+        # todo windows only
+        #drive = os.path.splitdrive(self.target)[0] + os.sep
+        #player_path = self.player_directory or \
+        #              os.path.join(drive,"Player","user","");
+        libpath = os.path.join(self.target,"library.db")
+        #if os.path.exists(player_path):
+        #    libpath = os.path.join(player_path,"music.xml")
+        return libpath
 
-        drive = os.path.splitdrive(self.target)[0] + os.sep
-        player_path = self.player_directory or \
-                      os.path.join(drive,"Player","user","");
+    def createTargetLibrary(self):
+        if self.target_library is not None:
+            return self.target_library;
 
-        libpath = os.path.join(self.target,"library.xml")
-        if os.path.exists(player_path):
-            libpath = os.path.join(player_path,"music.xml")
+        sys.stdout.write("Generating target playlist & library\n")
+        new_playlist= self.data.getTargetPlaylist()
 
-        self.target_library = AudioServer.Library(libpath,new_playlist)
+        db_path = self.getTargetLibraryPath()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+        sqlstore = SQLStore(db_path)
+        library = Library( sqlstore )
 
-    def save_playlist_library(self):
+        with library.sqlstore.conn:
+            c = library.sqlstore.conn.cursor()
+            for song in new_playlist:
+                if "artist_key" in song:
+                    del song['artist_key']
+                library._insert(c, **song)
 
-        if self.target_library is None:
-            self.compute_target_library();
-            print(self.target_library.filepath)
-            self.target_library.save()
+        self.target_library = library
 
-        rtarg= os.path.realpath(self.target)
-        drive = os.path.splitdrive(rtarg)[0] + os.sep
+        sys.stdout.write("finished creating target library\n")
 
-        player_path = "./"
-        if self.player_directory and os.path.exists(self.player_directory):
-            player_path = self.player_directory
-        else:
-            player_path = os.path.join(drive,"Player","user","");
-            if not os.path.exists(player_path):
-                player_path = rtarg
-
-
-        if len(self.queries) == 0:
-            return
-
-        # a set of queries can be used to save a custom playlist
-        dirname = "Music"
-        use_zen = True
-
-        if not os.path.exists(os.path.join(drive,dirname)):
-            dirname = "playlist"
-            drive = player_path
-            use_zen = False
-            if not os.path.exists(os.path.join(drive,dirname)):
-                return;
-        for fname,query in self.queries:
-            m3u = os.path.join(drive,dirname,fname);
-            self.save_zen_query_list(self.target_library,m3u,query,True);
+        return library
 
     #def save_cover_images(self):
     #    if self.target_library is None:
@@ -492,6 +520,7 @@ class SyncManager(object):
     #                    copy_image(path,p)
     #                else:
     #                    print("skipping...")
+
     #def save_zen_query_list(self,library,m3ufile,query,zen = True):
     #    subset = library.search(query);
     #    print(m3ufile,":",len(subset))
@@ -626,7 +655,7 @@ def getShortName_COWON(path):
             #out = win32api.GetShortPathName(path)
         out = out.replace("/","\\")
         return out[2:]; # remove drive letter
-    return "";
+    raise OSError('file not found: %s'%path)
 
 def getShortName_ZEN(path):
     # fore ZEN M3U
@@ -637,6 +666,29 @@ def getShortName_ZEN(path):
         out = out.replace("\\","/")
         return out[2:]; # remove drive letter
     return "";
+
+def saveCowonPlaylist(filename,songs):
+    with codecs.open(filename,"w","utf-8") as wf :
+        #http://anythingbutipod.com/forum/showthread.php?t=67351
+        wf.write("#EXTM3U\r\n")
+        print(len(songs))
+        print(songs)
+        for song in songs:
+            try:
+                path = getShortName_COWON(song[Song.path]);
+            except OSError as e:
+                sys.stdout.write("error saving song to playlist - %s"%e)
+
+            else:
+                if path :
+                    dur=song[Song.length]
+                    a=song[Song.artist]
+                    t=song[Song.title]
+                    wf.write("#EXTINF:%d,%s - %s\r\n"%(dur,a,t));
+                    wf.write(path+"\r\n");
+                else:
+                    print("error "+path)
+
 
 #def save_ZEN_playlist(filename,library):
 #    """
@@ -709,7 +761,13 @@ def main():
     print(os.path.realpath(db_path))
     print("lib",len(library))
 
-    sm = SyncManager(library,uids,target,ffmpeg,transcode=transcode,equalize=equalize,no_exec=no_exec)
+    dp = [("blind melon","blind melon"),]
+
+    sm = SyncManager(library,uids,target,ffmpeg,
+            transcode=transcode,
+            equalize=equalize,
+            dynamic_playlists = dp,
+            no_exec=no_exec)
     sm.run()
 
 if __name__ == '__main__':

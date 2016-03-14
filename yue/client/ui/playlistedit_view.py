@@ -27,6 +27,7 @@ from yue.client.ui.sync_dialog import SyncProfileDialog, SyncDialog
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
+from yue.core.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
@@ -304,10 +305,12 @@ class PlaylistEditView(QWidget):
     def sync(self):
         pdialog = SyncProfileDialog(self)
         if pdialog.exec_():
+            s=Settings.instance()
+            dp=list(zip(s["playlist_preset_names"],s["playlist_presets"]))
             s = pdialog.export_settings()
             # feeling lazy right now, trusing no one will try to start
             # two sync dialogs at the same time.
-            self.sdialog = SyncDialog(self.playlist_data,s,self)
+            self.sdialog = SyncDialog(self.playlist_data,s,dp,self)
             self.sdialog.start()
             self.sdialog.show()
 
