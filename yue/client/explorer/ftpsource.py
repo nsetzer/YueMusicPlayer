@@ -47,8 +47,8 @@ class FTPSource(DataSource):
         super(FTPSource, self).__init__()
 
         self.ftp = FTP()
-        self.ftp.connecT(host,port)
-        self.ftp.login(username.password)
+        self.ftp.connect(host,port)
+        self.ftp.login(username,password)
 
     def root(self):
         return "/"
@@ -93,7 +93,7 @@ class FTPSource(DataSource):
         raise NotImplementedError(mode)
 
     def exists(self,path):
-        p,n=self.posixpath.split(path)
+        p,n=posixpath.split(path)
         lst = set(self.listdir(p))
         return n in lst
 
