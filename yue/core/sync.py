@@ -19,34 +19,14 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.explorer.source import DirectorySource, source_walk_ext, source_copy_file
+from yue.core.explorer.ftpsource import FTPSource, parseFTPurl
+
+# TODO: move to source
 def ChangeExt(path,ext):
     return os.path.splitext(path)[0] + ext
-
 def ExtIs(path,ext):
     return os.path.splitext(path)[1].lower() == ext.lower()
-
-def makedirs(path):
-    if not os.path.exists( path ):
-        os.makedirs( path )
-
-def copy_file(src,dst):
-    b = 1<<17;
-    with open(src,"rb") as rf:
-        with open(dst,"wb") as wf:
-            buffer = rf.read(b);
-            while buffer:
-                wf.write(buffer)
-                buffer = rf.read(b);
-
-def walk(target, extensions):
-    """ walk is a generator for media files in a directory
-        It will return files in all sub directories as well.
-    """
-    for dirname,_,files in os.walk(target):
-        for file in files:
-            ext = os.path.splitext(file)[1]
-            if ext in extensions:
-                yield os.path.join(dirname,file)
 
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
@@ -300,7 +280,7 @@ class SyncManager(object):
 
         self.library = library
         self.song_ids = song_ids
-        self.target = target
+        #self.target = target
         self.transcode = transcode
         self.no_exec = no_exec
         self.player_directory = player_directory
@@ -313,18 +293,38 @@ class SyncManager(object):
 
         self.encoder = FFmpegEncoder(enc_path,no_exec=no_exec)
 
+        self.openTargetSource( target )
+
         self.data =  SyncData(self.encoder)
         self.data.force_transcode = self.transcode in (SyncManager.T_ALL,SyncManager.T_SPECIAL)
         self.data.transcode_special = self.transcode == SyncManager.T_SPECIAL
         self.data.equalize = equalize
         self.data.bitrate = bitrate
 
+    def openTargetSource(self,target):
+
+        self.local_source = DirectorySource()
+
+        if target.startswith("ftp"):
+            data = parseFTPurl(target)
+            print(data)
+            self.target_path = data["path"]
+            self.target_source = FTPSource(data["hostname"],
+                                           data["port"],
+                                           data["username"],
+                                           data["password"])
+
+        else:
+            self.target_source = self.local_source
+            self.target_path = target
+
     # main process
 
     def run(self):
 
         self.message("Scanning Directory")
-        makedirs(self.target)
+        self.target_source.mkdir(self.target_path)
+
         self.data_init()
         delete_list = self.walk_target()
         copylist = list(self.data.items_copy())
@@ -405,7 +405,10 @@ class SyncManager(object):
         # return a list of files to delete.
 
         lst_delete = []
-        for path in walk(self.target,Song.supportedExtensions()):
+        for path in source_walk_ext(self.target_source,\
+                                    self.target_path,
+                                    Song.supportedExtensions()):
+            print("> %s"%path)
             if not self.data.exists(path):
                 # need to remove this file as it is not on the list
                 lst_delete.append(path)
@@ -419,26 +422,33 @@ class SyncManager(object):
         return lst_delete
 
     def remove_path(self,filepath):
-        self.log("delete: %s\n"%filepath)
+        self.log("delete: %s"%filepath)
         if not self.no_exec:
             os.remove(filepath)
 
     def copy_path(self, tgtpath):
         song, transcode = self.data.getValue( tgtpath )
-        self.log("copy: %s -> %s\n"%(song[Song.path],tgtpath))
+        msg="copy: %s -> %s"%(song[Song.path],tgtpath)
+        msg=''.join([ a if ord(a)<128 else "%02X"%ord(a) for a in msg])
+        self.log(msg)
         if not self.no_exec:
-            makedirs(os.path.split(tgtpath)[0])
+            p = self.target_source.parent(tgtpath)
+            self.target_source.mkdir( p )
 
             # TODO, COPY, TRANSCODE new FORCE OVERWRITE option
-            if not self.no_exec and os.path.exists(tgtpath):
+            if not self.no_exec and self.target_source.exists(tgtpath):
                 return
-            copy_file(song[Song.path],tgtpath)
+
+            #copy_file(song[Song.path],tgtpath)
+            source_copy_file(self.local_source,song[Song.path],
+                             self.target_source, tgtpath, 1<<15)
 
     def transcode_path(self, tgtpath):
         song, transcode = self.data.getValue( tgtpath )
-        self.log("transcode: %s -> %s\n"%(song[Song.path],tgtpath))
+        self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
         if not self.no_exec:
-            makedirs(os.path.split(tgtpath)[0])
+            p = self.target_source.parent(tgtpath)
+            self.target_source.mkdir( p )
         self.transcode_song(song,tgtpath)
 
     def transcode_song(self,song,tgtpath):
@@ -455,7 +465,7 @@ class SyncManager(object):
             bitrate=0
 
         # TODO, COPY, TRANSCODE new FORCE OVERWRITE option
-        if not self.no_exec and os.path.exists(tgtpath):
+        if not self.no_exec and self.target_source.exists(tgtpath):
             return
         self.encoder.transcode(srcpath,tgtpath,bitrate,vol=vol,metadata=metadata)
 
@@ -465,7 +475,7 @@ class SyncManager(object):
 
         songs = self.library.songFromIds( self.song_ids )
         for i,song in enumerate(songs):
-            path = os.path.join(self.target,Song.toShortPath(song))
+            path = self.target_source.join(self.target_path,*Song.toShortPath(song))
             if self.transcode == SyncManager.T_NON_MP3 and not ExtIs(path,".mp3"):
                 path = ChangeExt(path,".mp3")
                 self.data.add(path,song,True)
@@ -477,7 +487,7 @@ class SyncManager(object):
         #drive = os.path.splitdrive(self.target)[0] + os.sep
         #player_path = self.player_directory or \
         #              os.path.join(drive,"Player","user","");
-        libpath = os.path.join(self.target,"library.db")
+        libpath = self.target_source.join(self.target_path,"library.db")
         #if os.path.exists(player_path):
         #    libpath = os.path.join(player_path,"music.xml")
         return libpath
@@ -489,7 +499,7 @@ class SyncManager(object):
         sys.stdout.write("Generating target playlist & library\n")
         new_playlist= self.data.getTargetPlaylist()
 
-        #db_path = self.getTargetLibraryPath()
+        # TODO create local then COPY to target path
         db_path = os.path.join(os.getcwd(),"target.db")
         if os.path.exists(db_path):
             os.remove(db_path)
@@ -504,6 +514,10 @@ class SyncManager(object):
                 library._insert(c, **song)
 
         self.target_library = library
+
+        #db_path = self.getTargetLibraryPath()
+        #source_copy_file(self.local_source ...,
+         #                    self.target_source, ...)
 
         sys.stdout.write("finished creating target library\n")
 
@@ -748,7 +762,8 @@ def main():
     db_path = "yue.db"
 
     target = "test"
-    transcode = SyncManager.T_NON_MP3
+    target = "ftp://192.168.0.9:2121//Music"
+    transcode = SyncManager.T_NONE
     equalize = False
     bitrate = 320
     run = True
@@ -759,13 +774,13 @@ def main():
     PlaylistManager.init( sqlstore )
 
     library = Library.instance()
-    playlist = PlaylistManager.instance().openPlaylist("current")
-    uids = list(playlist.iter())
+    playlist = library.search("0 limited execution")
+    uids = [s[Song.uid] for s in playlist]
 
     print(os.path.realpath(db_path))
     print("lib",len(library))
 
-    dp = [("blind melon","blind melon"),]
+    dp = None # [("blind melon","blind melon"),]
 
     sm = SyncManager(library,uids,target,ffmpeg,
             transcode=transcode,

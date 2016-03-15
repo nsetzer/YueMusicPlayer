@@ -5,6 +5,26 @@ from io import BytesIO,SEEK_SET
 
 from .source import DataSource
 
+import re
+
+reftp = re.compile('ftp\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(\/.*)')
+
+def parseFTPurl( url ):
+    m = reftp.match( url )
+    if m:
+        g = m.groups()
+        return {
+            "username" : g[1] or "",
+            "password" : g[2] or "",
+            "hostname" : g[3] or "",
+            "port"     : int(g[4][1:]) if g[4] else 21, # default ftp port
+            "path"     : g[5] or "/",
+        }
+    raise ValueError("invalid: %s"%url)
+
+def utf8_fix(s):
+    return ''.join([ a if ord(a)<128 else "%02X"%ord(a) for a in s])
+
 class FTPWriter(object):
     """docstring for FTPWriter"""
     def __init__(self, ftp, path):
@@ -24,7 +44,8 @@ class FTPWriter(object):
 
     def close(self):
         self.file.seek(0)
-        self.ftp.storbinary('STOR %s'%self.path, self.file)
+        text = "STOR " + utf8_fix(self.path)
+        self.ftp.storbinary(text, self.file)
 
     def __enter__(self):
         return self
@@ -32,7 +53,6 @@ class FTPWriter(object):
     def __exit__(self,typ,val,tb):
         if typ is None:
             self.close()
-
 
 class FTPSource(DataSource):
     """docstring for DirectorySource"""
@@ -49,6 +69,8 @@ class FTPSource(DataSource):
         self.ftp = FTP()
         self.ftp.connect(host,port)
         self.ftp.login(username,password)
+
+        self.hostname = "%s:%d"%(host,port)
 
     def root(self):
         return "/"
@@ -93,6 +115,7 @@ class FTPSource(DataSource):
         raise NotImplementedError(mode)
 
     def exists(self,path):
+        path = utf8_fix(path)
         p,n=posixpath.split(path)
         lst = set(self.listdir(p))
         return n in lst
@@ -101,7 +124,13 @@ class FTPSource(DataSource):
         return self.ftp.size(path) is None
 
     def mkdir(self,path):
-        self.ftp.mkd(path)
+        # this is a really ugly quick and dirty solution
+        path = utf8_fix(path)
+        if not self.exists(path):
+            p = self.parent( path )
+            if not self.exists(p):
+                self.ftp.mkd( p )
+            self.ftp.mkd(path)
 
     def split(self,path):
         return posixpath.split(path)
@@ -119,4 +148,4 @@ class FTPSource(DataSource):
         return result
 
     def getExportPath(self,path):
-        return path # nothing to do
+        return self.hostname+path

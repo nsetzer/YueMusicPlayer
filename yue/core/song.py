@@ -205,9 +205,9 @@ class Song(object):
         if tart == "":
             tart = "Unknown Artist"
         if tabm.lower() in ["none","unknown",""]:
-            path = os.path.join(tart,tnam);
+            path = (tart,tnam);
         else:
-            path = os.path.join(tart,tabm,tnam);
+            path = (tart,tabm,tnam);
         return path
 
     @staticmethod

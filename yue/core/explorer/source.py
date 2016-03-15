@@ -394,3 +394,48 @@ class SourceListView(SourceView):
                 print("stat_fast OS error:",path,name)
                 print(s)
         return self.statcache[name]
+
+def source_copy_file(sourceA, pathA, sourceB, pathB, chunksize):
+    """
+    Perform file copy from one source to another.
+    chunksize is the number of bytes to read/write at one time.
+    """
+    with sourceA.open(pathA,"rb") as rb:
+        with sourceB.open(pathB,"wb") as wb:
+            buf = rb.read(chunksize)
+            while buf:
+                wb.write(buf)# TODO: write should return len buf
+                buf = rb.read(chunksize)
+
+def source_walk(source, dirpath ):
+    """ return all files from target source directory """
+    # i tried to write this without recursion, but it became
+    # too complicated - the problem was yielding the input last correctly
+
+    for item in source.listdir(dirpath):
+        if item == ".." or item == ".":
+            continue
+        path = source.join(dirpath,item)
+        if source.isdir(path):
+            for x in source_walk( source, path ):
+                yield x
+        else:
+            yield path
+
+    yield dirpath
+
+def source_walk_ext(source, dirpath, extensions):
+    """ return all files from target source directory """
+    # i tried to write this without recursion, but it became
+    # too complicated - the problem was yielding the input last correctly
+
+    for item in source.listdir(dirpath):
+        if item == ".." or item == ".":
+            continue
+        path = source.join(dirpath,item)
+        ext = os.path.splitext(item)[1]
+        if ext in extensions:
+            yield path
+        elif source.isdir(path):
+            for x in source_walk_ext( source, path, extensions ):
+                yield x

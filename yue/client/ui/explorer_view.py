@@ -25,7 +25,7 @@ from yue.core.library import Library
 from yue.client.ui.ingest_dialog import IngestProgressDialog
 from yue.client.ui.movefile_dialog import MoveFileProgressDialog
 from yue.client.ui.rename_dialog import RenameDialog
-from yue.client.explorer.source import DirectorySource,SourceListView
+from yue.core.explorer.source import DirectorySource,SourceListView
 
 """
 TODO:
