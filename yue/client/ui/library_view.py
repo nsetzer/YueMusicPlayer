@@ -157,6 +157,7 @@ class LibraryView(QWidget):
         self.tbl_song.showColumnHeader( True )
         self.tbl_song.showRowHeader( False )
 
+        # needed for song sort
         self.tbl_song.update_data.connect(self.onUpdate)
 
         self.txt_search = LineEdit_Search(self,self.tbl_song)

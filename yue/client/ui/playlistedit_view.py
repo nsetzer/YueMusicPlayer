@@ -139,6 +139,12 @@ class LibraryEditTable(EditTable):
             self.parent().dirty = True
         self.parent().refresh()
 
+    def sortColumn(self,col_index):
+        # pass the event to the sibling, the playlist
+        # editor will handle the event instead, which
+        # will signal view to execute a new search
+        self.sibling.sortColumn(col_index)
+
 class PlaylistEditView(QWidget):
     """docstring for MainWindow"""
 
@@ -183,6 +189,10 @@ class PlaylistEditView(QWidget):
         self.tbl_lib.setSibling(self.tbl_pl)
         self.tbl_pl.setSibling(self.tbl_lib)
 
+        # needed for song sort
+        self.tbl_lib.update_data.connect(self.onUpdate)
+        self.tbl_pl.update_data.connect(self.onUpdate)
+
         #self.tbl_pl.update_data.connect(self.onUpdate)
 
         self.txt_search = LineEdit_Search(self,self.tbl_pl,placeholder="Search Playlist")
@@ -212,10 +222,10 @@ class PlaylistEditView(QWidget):
     def isDirty(self):
         return self.dirty
 
-    #def onUpdate(self):
-    #    text = self.txt_search.text()
-    #    print(text)
-    #    #self.run_search(text)
+    def onUpdate(self):
+        text = self.txt_search.text()
+        print(text)
+        self.run_search(text)
 
     def onTextChanged(self,text,update=0):
         self.run_search(text)
