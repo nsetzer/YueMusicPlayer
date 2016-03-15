@@ -33,6 +33,41 @@ def ChangeExt(path,ext):
 def ExtIs(path,ext):
     return os.path.splitext(path)[1].lower() == ext.lower()
 
+#!/usr/bin/env python
+
+def run_async(func):
+    """
+        run_async(func)
+            function decorator, intended to make "func" run in a separate
+            thread (asynchronously).
+            Returns the created Thread object
+
+            E.g.:
+            @run_async
+            def task1():
+                do_something
+
+            @run_async
+            def task2():
+                do_something_too
+
+            t1 = task1()
+            t2 = task2()
+            ...
+            t1.join()
+            t2.join()
+    """
+    from threading import Thread
+    from functools import wraps
+
+    @wraps(func)
+    def async_func(*args, **kwargs):
+        func_hl = Thread(target = func, args = args, kwargs = kwargs)
+        func_hl.start()
+        return func_hl
+
+    return async_func
+
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
         super(FFmpegEncoder,self).__init__();
@@ -200,6 +235,12 @@ class TranscodeProcess(IterativeProcess):
     def end(self):
         return
 
+@run_async
+def async_transcode(obj,src,dst):
+    if obj.local_source.exists(dst):
+        obj.local_source.delete(dst)
+    obj.transcode_path(src,dst)
+
 class ParallelTranscodeProcess(IterativeProcess):
     """
 
@@ -242,6 +283,8 @@ class ParallelTranscodeProcess(IterativeProcess):
 
     def step(self,idx):
         s=idx*self.N
+        tasks = []
+
         for k in range(self.N):
             i = idx*self.N + k
             if i >= len(self.datalist):
@@ -249,10 +292,16 @@ class ParallelTranscodeProcess(IterativeProcess):
             tgtpath = self.datalist[i]
             trpath = os.path.join(self.tempdir,"yuesync-%d.mp3"%k)
             # current encoder does not support parallel execution
-            self.parent.transcode_path( tgtpath, trpath )
+            t = async_transcode(self.parent, tgtpath, trpath)
+            tasks.append( (t,trpath,tgtpath) )
+
+        for t,trpath,tgtpath in tasks:
             if not self.no_exec:
+                t.join()
+                print("join %s\n"%trpath)
                 source_copy_file(self.parent.local_source, trpath,
                                  self.parent.target_source, tgtpath, 1<<15)
+
 
     def end(self):
         return
@@ -752,7 +801,6 @@ def saveCowonPlaylist(filename,songs):
                 else:
                     print("error "+path)
 
-
 #def save_ZEN_playlist(filename,library):
 #    """
 #        saves songs as a list to the specified list
@@ -806,8 +854,8 @@ def main():
     ffmpeg=r"C:\ffmpeg\bin\ffmpeg.exe"
     db_path = "yue.db"
 
-    target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
-    #target = "test"
+    #target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
+    target = "test"
     transcode = SyncManager.T_NON_MP3
     equalize = False
     bitrate = 320
