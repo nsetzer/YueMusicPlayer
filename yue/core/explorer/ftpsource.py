@@ -55,7 +55,15 @@ class FTPWriter(object):
             self.close()
 
 class FTPSource(DataSource):
-    """docstring for DirectorySource"""
+    """
+    there is some sort of problem with utf-8/latin-1 and ftplib
+
+    storbinary must accepts a STRING, since it builds a cmd and add
+    the CRLF to the input argument using the plus operator.
+
+    the command fails when given unicode text (ord > 127) and also
+    fails whenm given a byte string.
+    """
 
     # TODO: turn this into a directory generator
     # which first loads the directory, then loops over
