@@ -1,5 +1,5 @@
 
-from ftplib import FTP
+from ftplib import FTP,error_perm
 import posixpath
 from io import BytesIO,SEEK_SET
 
@@ -7,7 +7,7 @@ from .source import DataSource
 
 import re
 
-reftp = re.compile('ftp\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(\/.*)')
+reftp = re.compile('ftp\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(.*)')
 
 def parseFTPurl( url ):
     m = reftp.match( url )
@@ -83,6 +83,9 @@ class FTPSource(DataSource):
     def root(self):
         return "/"
 
+    def fix(self, path):
+        return utf8_fix(path)
+
     def join(self,*args):
         return posixpath.join(*args)
 
@@ -111,11 +114,15 @@ class FTPSource(DataSource):
 
     def delete(self,path):
         # todo support removing directory rmdir()
+        path = utf8_fix(path)
         if self.exists( path ):
             if self.isdir(path):
                 self.ftp.rmd(path)
             else:
-                self.ftp.remove(path)
+                try:
+                    self.ftp.delete(path)
+                except Exception as e:
+                    print("ftp delete error: %s"%e)
 
     def open(self,path,mode):
         if mode=="wb":
@@ -129,7 +136,11 @@ class FTPSource(DataSource):
         return n in lst
 
     def isdir(self,path):
-        return self.ftp.size(path) is None
+        path = utf8_fix(path)
+        try:
+            return self.ftp.size(path) is None
+        except error_perm:
+            return self.exists( path )
 
     def mkdir(self,path):
         # this is a really ugly quick and dirty solution

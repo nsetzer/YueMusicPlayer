@@ -1,5 +1,9 @@
 #! python34 ../../test/test_client.py $this
 
+"""
+TODO:
+    delete process should clean up empty directories
+"""
 try:
     import PIL
 except ImportError:
@@ -9,6 +13,7 @@ except ImportError:
 import os,sys
 import codecs
 import subprocess
+import tempfile, shutil
 
 from yue.core.song import Song
 from yue.core.library import Library
@@ -111,6 +116,12 @@ class IterativeProcess(object):
         super(IterativeProcess, self).__init__()
         self.parent = parent
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return # return true to supress exception
+
 class DeleteProcess(IterativeProcess):
     """docstring for DeleteProcess"""
 
@@ -118,6 +129,7 @@ class DeleteProcess(IterativeProcess):
         super(DeleteProcess,self).__init__( parent )
         self.filelist = filelist
         self.no_exec = no_exec
+        self.delete_errors = 0
 
     def begin(self):
         self.parent.log("delete: %d"%len(self.filelist))
@@ -138,7 +150,8 @@ class DeleteProcess(IterativeProcess):
         try:
             filepath = self.filelist[idx]
             self.parent.remove_path(filepath)
-        except:
+        except Exception as e:
+            sys.stderr.write("del error: %s"%e)
             self.delete_errors += 1
         return True
 
@@ -203,19 +216,47 @@ class ParallelTranscodeProcess(IterativeProcess):
     """
 
     def __init__(self, parent=None, datalist=None, no_exec=False):
-        super(TranscodeProcess,self).__init__( parent )
+        super(ParallelTranscodeProcess,self).__init__( parent )
         self.datalist = datalist
         self.no_exec = no_exec
-        self.N = 5
+        self.N = 5 # num actions to take in parallel
+
+        self.tempdir = ""
+
+
+    def __enter__(self):
+        if not self.no_exec:
+            self.tempdir = tempfile.mkdtemp(prefix="yuesync_")
+        sys.stdout.write("create temp directory: %s\n"%self.tempdir)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if not self.no_exec:
+            shutil.rmtree(self.tempdir)
+        return # return true to supress exception
 
     def begin(self):
-        return 1+len(self.datalist)//self.N
+        nsteps = (len(self.datalist)+self.N) // self.N
+        sys.stdout.write("transcode requires %d steps for %d files.\n"%(nsteps,len(self.datalist)))
+        return nsteps
 
     def step(self,idx):
-        pass
+        s=idx*self.N
+        for k in range(self.N):
+            i = idx*self.N + k
+            if i >= len(self.datalist):
+                break;
+            tgtpath = self.datalist[i]
+            trpath = os.path.join(self.tempdir,"yuesync-%d.mp3"%k)
+            # current encoder does not support parallel execution
+            self.parent.transcode_path( tgtpath, trpath )
+            if not self.no_exec:
+                source_copy_file(self.parent.local_source, trpath,
+                                 self.parent.target_source, tgtpath, 1<<15)
 
     def end(self):
         return
+
 
 class WritePlaylistProcess(IterativeProcess):
     """docstring for WritePlaylistProcess
@@ -346,7 +387,7 @@ class SyncManager(object):
         self.run_proc( proc )
 
         self.message("Transcode Files")
-        proc = TranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
+        proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
         self.run_proc( proc )
 
         if self.save_playlists:
@@ -361,10 +402,11 @@ class SyncManager(object):
         self.message("Finished %d/%d/%d"%(d,c,t))
 
     def run_proc(self,proc):
-        n = proc.begin()
-        for i in range(n):
-            proc.step(i)
-        proc.end()
+        with proc:
+            n = proc.begin()
+            for i in range(n):
+                proc.step(i)
+            proc.end()
 
     # functions to reimplement in UI
 
@@ -408,7 +450,6 @@ class SyncManager(object):
         for path in source_walk_ext(self.target_source,\
                                     self.target_path,
                                     Song.supportedExtensions()):
-            print("> %s"%path)
             if not self.data.exists(path):
                 # need to remove this file as it is not on the list
                 lst_delete.append(path)
@@ -424,7 +465,7 @@ class SyncManager(object):
     def remove_path(self,filepath):
         self.log("delete: %s"%filepath)
         if not self.no_exec:
-            os.remove(filepath)
+            self.target_source.delete(filepath)
 
     def copy_path(self, tgtpath):
         song, transcode = self.data.getValue( tgtpath )
@@ -443,13 +484,16 @@ class SyncManager(object):
             source_copy_file(self.local_source,song[Song.path],
                              self.target_source, tgtpath, 1<<15)
 
-    def transcode_path(self, tgtpath):
+    def transcode_path(self, tgtpath, outpath=None):
         song, transcode = self.data.getValue( tgtpath )
         self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
         if not self.no_exec:
             p = self.target_source.parent(tgtpath)
             self.target_source.mkdir( p )
-        self.transcode_song(song,tgtpath)
+        if outpath is not None:
+            self.transcode_song(song,outpath)
+        else:
+            self.transcode_song(song,tgtpath)
 
     def transcode_song(self,song,tgtpath):
         metadata=dict(
@@ -476,6 +520,7 @@ class SyncManager(object):
         songs = self.library.songFromIds( self.song_ids )
         for i,song in enumerate(songs):
             path = self.target_source.join(self.target_path,*Song.toShortPath(song))
+            path = self.target_source.fix( path )
             if self.transcode == SyncManager.T_NON_MP3 and not ExtIs(path,".mp3"):
                 path = ChangeExt(path,".mp3")
                 self.data.add(path,song,True)
@@ -761,9 +806,9 @@ def main():
     ffmpeg=r"C:\ffmpeg\bin\ffmpeg.exe"
     db_path = "yue.db"
 
-    target = "test"
-    target = "ftp://192.168.0.9:2121//Music"
-    transcode = SyncManager.T_NONE
+    target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
+    #target = "test"
+    transcode = SyncManager.T_NON_MP3
     equalize = False
     bitrate = 320
     run = True
@@ -774,7 +819,7 @@ def main():
     PlaylistManager.init( sqlstore )
 
     library = Library.instance()
-    playlist = library.search("0 limited execution")
+    playlist = library.search("gothic emily")
     uids = [s[Song.uid] for s in playlist]
 
     print(os.path.realpath(db_path))

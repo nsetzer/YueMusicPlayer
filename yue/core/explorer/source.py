@@ -23,6 +23,10 @@ class DataSource(object):
     def close(self):
         print("closing %s."%self.__class__.__name__)
 
+    def fix(self,path):
+        # override for filesystems that restrict charactersets
+        return path
+
     def normpath(self,path,root):
         raise SourceNotImplemented(self,"cannot list path.")
 
