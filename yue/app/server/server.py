@@ -19,8 +19,6 @@ from yue.app.server.ingest import Ingest
 serviceport = 15123
 activityport = 15124
 
-
-
 class YueServer(object):
     """docstring for YueServer"""
     # https://docs.python.org/2/library/queue.html
@@ -34,6 +32,11 @@ class YueServer(object):
         osc.bind(self.oscid, self.ingest_start, '/ingest_start')
 
         self.db_path = os.path.join(app_path,"yue.db")
+        # this should  be a configurable path (SERVER/APP)
+        alt_db_path="/storage/emulated/0/Music/library.db"
+        if os.path.exists(alt_db_path):
+            self.db_path = alt_db_path
+
         self.sqlstore = SQLStore( self.db_path )
         Library.init( self.sqlstore )
         PlaylistManager.init( self.sqlstore )
@@ -121,8 +124,12 @@ class YueServer(object):
     def sendCurrent(self):
         sm = SoundManager.instance()
         pl = PlaylistManager.instance().openPlaylist('current')
-        idx,key = pl.current()
-        osc.sendMsg('/song_state', dataArray=(idx,key,sm.state()), port=activityport)
+        try:
+            idx,key = pl.current()
+            osc.sendMsg('/song_state', dataArray=(idx,key,sm.state()), port=activityport)
+        except IndexError as e:
+            Logger.error("Playlist index error (%s)"%e)
+
 
     def on_playlist_end(self,*args):
         """callback for when there are no more songs in the current playlist"""

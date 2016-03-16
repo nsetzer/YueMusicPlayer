@@ -42,7 +42,13 @@ class Settings(object):
         self.img_noart_path =  os.path.join(self.platform_path,'img','noart.png')
 
         self.db_settings_path = os.path.join(self.platform_path, "settings.db")
+
         self.db_path  = os.path.join(self.platform_path, "yue.db")
+        if self.platform == 'android':
+            # this should  be a configurable path (SERVER/APP)
+            alt_db_path="/storage/emulated/0/Music/library.db"
+            if os.path.exists(alt_db_path):
+                self.db_path = alt_db_path
 
         self.db_settings = DictStore( self.db_settings_path )
 

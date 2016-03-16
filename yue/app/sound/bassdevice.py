@@ -74,14 +74,20 @@ class BassSoundDevice(SoundDevice):
 
     def play(self):
         if self.device.play():
-            idx,key = self.playlist.current()
-            self.dispatch('on_state_changed',idx,key,self.state())
+            try:
+                idx,key = self.playlist.current()
+                self.dispatch('on_state_changed',idx,key,self.state())
+            except IndexError:
+                pass
         #    self.setClock(True)
 
     def pause(self):
         if self.device.pause():
-            idx,key = self.playlist.current()
-            self.dispatch('on_state_changed',idx,key,self.state())
+            try:
+                idx,key = self.playlist.current()
+                self.dispatch('on_state_changed',idx,key,self.state())
+            except IndexError:
+                pass
         #    self.setClock(False)
 
     #def stop(self):
