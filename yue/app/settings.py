@@ -14,7 +14,7 @@ class Settings(object):
     def __init__(self, manager):
         super(Settings, self).__init__()
 
-        self.font_size = 12
+        self.font_size = 24
         self.font_height = 0
         #self.font_factor = 1.5
 
@@ -66,6 +66,7 @@ class Settings(object):
 
     def init_platform(self):
         self.platform = sys.platform
+        self.platform = 'linux' if 'linux' in self.platform else self.platform
         self.platform_path = os.getcwd()
         self.arch = 'x86_64'
 
@@ -94,7 +95,9 @@ class Settings(object):
         return kivy.metrics.sp( font_size )
 
     def row_height(self):
-        return self.font_height + self.padding_top + self.padding_bottom
+        # this should really depend on DPI...
+        m= 4 if 'android'==self.platform else 1
+        return self.font_height*m + self.padding_top + self.padding_bottom
 
     def go_back(self, *args):
         """ go back to the previous screen. return true on success """
