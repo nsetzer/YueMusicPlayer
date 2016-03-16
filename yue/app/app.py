@@ -19,6 +19,7 @@ from kivy.core.window import Window, Keyboard
 from yue.core.sqlstore import SQLStore
 from yue.core.playlist import PlaylistManager
 from yue.core.library import Library
+from yue.core.song import Song
 
 from yue.app.ui.library import LibraryScreen
 from yue.app.ui.home import HomeScreen
@@ -74,22 +75,16 @@ class BackgroundDataLoad(Thread):
 
         tree = libraryToTree( library )
         # build a dummy playlist until it can be stored in the db
-        lst = []
-        g = library.iter()
-        try:
-            for i in range(20):
-                song = next(g)
-                lst.append(song['uid'])
-        except StopIteration:
-            pass
+        songs = library.search("",orderby=Song.random,limit=50)
+        uids = [song[Song.uid] for song in songs]
 
-        if len(lst):
-            viewlst = PlayListToViewList( library, lst )
-            plcur.set( lst )
-            idx,key = plcur.current()
-            song = library.songFromId( key )
-            SoundManager.instance().load( song )
+        if len(uids):
+            plcur.set( uids )
+            SoundManager.instance().load( songs[0] )
+            viewlst = PlayListToViewList( library, uids )
             scr_cur.setPlayList( viewlst )
+        else:
+            Logger.error("boo: shouldnt be here")
 
         scr_lib.setLibraryTree( tree )
 

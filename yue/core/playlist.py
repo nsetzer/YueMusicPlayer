@@ -361,7 +361,7 @@ class PlayListView(object):
             c.execute("SELECT song_id from playlist_songs where uid=? and idx=?", (self.uid,idx))
             result = c.fetchone()
             if not result:
-                raise IndexError(idx)
+                raise IndexError("name:`%s` idx:%d size:%d"%(name,idx,size))
             key = result[0]
             return idx,key
 

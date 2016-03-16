@@ -64,6 +64,8 @@ def get_platform_path():
     platform_name = sys.platform
     platform_path = os.getcwd()
 
+    if 'linux' in platform_name: # inconsistent on 'linux' vs linux2
+      platform_name = "linux"
     if hasattr(sys,"_MEIPASS"):
       return sys._MEIPASS
 
