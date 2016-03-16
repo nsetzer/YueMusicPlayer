@@ -235,7 +235,8 @@ class ClientRepl(object):
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
             self.editor.setVariable("Song",Song)
-            self.editor.setText("help()\nfor song in Library.search(""):\n    pass")
+            self.editor.setText("help()\nfor song in Library.search('title=fizzbuzz'):"+\
+                "\n    Library.update(song[Song.uid],**{Song.title:'foobar'}")
         self.editor.show()
 
     def extheme(self,args):

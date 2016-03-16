@@ -454,5 +454,8 @@ def source_walk_ext(source, dirpath, extensions, delete_dirs=False):
     if len(items):
         items = source.listdir(dirpath)
     if len(items)==0 and delete_dirs:
-        source.delete( dirpath )
+        try:
+            source.delete( dirpath )
+        except PermissionError:
+            sys.stderr.write("unable to delete %s\n"%dirpath)
         return

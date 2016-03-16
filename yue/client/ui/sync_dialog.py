@@ -20,10 +20,13 @@ class QtSyncManager(SyncManager):
         equalize=False,
         bitrate=0,
         dynamic_playlists=None,
+        target_prefix="",
+        playlist_format=1,
         no_exec=False,
         parent=None):
         super(QtSyncManager, self).__init__(library,playlist,target,enc_path, \
-            transcode,player_directory,equalize,bitrate,dynamic_playlists,no_exec)
+            transcode,player_directory,equalize,bitrate,dynamic_playlists, \
+            target_prefix, playlist_format, no_exec)
 
         self.step_count = 0
         self.parent = parent
@@ -84,6 +87,8 @@ class SyncDialog(ProgressDialog):
         dp = None
         if self.settings.get('save_playlists',False):
             dp = self.dynamic_playlists
+        target_prefix= self.settings.get("target_prefix","")
+        format = self.settings.get("playlist_format",SyncManager.P_M3U)
         #dp = [("limited","limited"),]
         # TODO: pass playlist_format to Sync Manager
 
@@ -92,6 +97,8 @@ class SyncDialog(ProgressDialog):
                 transcode=transcode,
                 equalize=equalize,
                 dynamic_playlists=dp,
+                target_prefix=target_prefix,
+                playlist_format=format,
                 no_exec=no_exec,
                 parent=self)
         sm.run()
@@ -135,6 +142,8 @@ class SyncProfileDialog(QDialog):
         self.cbox_dpfmt = QComboBox(self)
         self.cbox_dpfmt.addItem("M3U"  ,SyncManager.P_M3U)
         self.cbox_dpfmt.addItem("Cowon",SyncManager.P_COWON)
+
+        self.edit_prefix = QLabel(self)
 
         self.btn_accept  = QPushButton("Sync",self)
         self.btn_cancel  = QPushButton("Cancel",self)
@@ -196,6 +205,10 @@ class SyncProfileDialog(QDialog):
         row+=1
         self.grid.addWidget(self.cbox_savedp,row,0,1,2,Qt.AlignLeft)
         self.grid.addWidget(self.cbox_dpfmt,row,2,1,2,Qt.AlignRight)
+
+        row+=1
+        # im not ready to fully expose this feature
+        self.grid.addWidget(self.edit_prefix,row,0,1,4,Qt.AlignLeft)
 
         row+=1
         self.grid.addWidget(QLabel("Transcode:",self),row,0,Qt.AlignLeft)
@@ -270,6 +283,8 @@ class SyncProfileDialog(QDialog):
                     settings.get('playlist_format',SyncManager.P_M3U),0)
         self.cbox_dpfmt.setCurrentIndex(idx)
 
+        self.edit_prefix.setText(settings.get('target_prefix',""))
+
     def export_settings(self):
 
         s = {}
@@ -291,6 +306,7 @@ class SyncProfileDialog(QDialog):
 
         s['save_playlists'] = self.cbox_savedp.isChecked()
         s['playlist_format'] = self.cbox_dpfmt.itemData( self.cbox_dpfmt.currentIndex() )
+        s['target_prefix'] = self.edit_prefix.text()
 
         return s
 
@@ -356,6 +372,10 @@ def settings_load( path ):
         s['bitrate'] = int(s.get('bitrate',0))
     except ValueError:
         s['bitrate'] = 0
+    try:
+        s['playlist_format'] = int(s.get('playlist_format',0))
+    except ValueError:
+        s['playlist_format'] = 0
     return s
 
 def main():
@@ -370,12 +390,13 @@ def main():
 
     playlist = Library.instance().search("(.abm 0 limited execution)")
     uids = [s[Song.uid] for s in playlist]
+    dp = [("limited","limited"),]
 
     pdialog = SyncProfileDialog()
     if pdialog.exec_():
         s = pdialog.export_settings()
         #s['no_exec'] = True
-        sdialog = SyncDialog(uids,s)
+        sdialog = SyncDialog(uids,s,dp)
         sdialog.start()
         sdialog.show()
 
