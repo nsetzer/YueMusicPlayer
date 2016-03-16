@@ -3,8 +3,16 @@
 """
 TODO:
     delete process should clean up empty directories
+
+    make deleting empty directories an option
+        what happens if the only file in a directory is a cover img?
+
+    these errors are related to calling ftplib functions from another thread
+        ftplib.error_reply: 200 TYPE is now ASCII
+        ftplib.error_reply: 226 15 matches total
 """
 try:
+    # TODO: i don't need PIL with PyQT
     import PIL
 except ImportError:
     sys.stderr.write("PIL unsupported")
@@ -32,8 +40,6 @@ def ChangeExt(path,ext):
     return os.path.splitext(path)[0] + ext
 def ExtIs(path,ext):
     return os.path.splitext(path)[1].lower() == ext.lower()
-
-#!/usr/bin/env python
 
 def run_async(func):
     """
@@ -67,6 +73,15 @@ def run_async(func):
         return func_hl
 
     return async_func
+
+class StreamWriter(object):
+
+    def __init__(self,file,encoding):
+        self.file = file
+        self.encoding = encoding
+
+    def write(self,string):
+        self.file.write(string.encode(self.encoding))
 
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
@@ -239,7 +254,7 @@ class TranscodeProcess(IterativeProcess):
 def async_transcode(obj,src,dst):
     if obj.local_source.exists(dst):
         obj.local_source.delete(dst)
-    obj.transcode_path(src,dst)
+    obj.transcode_local(src,dst)
 
 class ParallelTranscodeProcess(IterativeProcess):
     """
@@ -264,7 +279,6 @@ class ParallelTranscodeProcess(IterativeProcess):
 
         self.tempdir = ""
 
-
     def __enter__(self):
         if not self.no_exec:
             self.tempdir = tempfile.mkdtemp(prefix="yuesync_")
@@ -285,6 +299,7 @@ class ParallelTranscodeProcess(IterativeProcess):
         s=idx*self.N
         tasks = []
 
+        # launch N threads to perform transcode in parallel
         for k in range(self.N):
             i = idx*self.N + k
             if i >= len(self.datalist):
@@ -295,6 +310,9 @@ class ParallelTranscodeProcess(IterativeProcess):
             t = async_transcode(self.parent, tgtpath, trpath)
             tasks.append( (t,trpath,tgtpath) )
 
+        # join the threads and copy in serial, target may be bandwidth
+        # limited, so throughput may only allow one file at a time.
+        # as it is, transcode is the slowest part (compared to copy)
         for t,trpath,tgtpath in tasks:
             if not self.no_exec:
                 t.join()
@@ -306,7 +324,6 @@ class ParallelTranscodeProcess(IterativeProcess):
     def end(self):
         return
 
-
 class WritePlaylistProcess(IterativeProcess):
     """docstring for WritePlaylistProcess
 
@@ -317,6 +334,7 @@ class WritePlaylistProcess(IterativeProcess):
         self.library = library
         self.datalist = datalist
         self.no_exec = no_exec
+        self.format = format
 
     def begin(self):
         self.parent.log("write playlist: %d"%len(self.datalist))
@@ -327,15 +345,42 @@ class WritePlaylistProcess(IterativeProcess):
         name,query = self.datalist[idx]
         name = name.replace(" ","_") + ".m3u"
 
-        # for NORMAL devices use this:
-        #songs = self.library.search(query,orderby=[Song.artist,Song.album])
-        # FOR COWON, use this:
-        songs = self.library.search(query,orderby=Song.random,limit=400)
+        if self.format == SyncManager.P_M3U:
+            self.save_m3u(name, query)
+        else:
+            self.save_cowon(name, query)
 
-        sys.stdout.write("save playlist: %s:%s\n"%(name,len(songs)))
+    def save_m3u(self, name, query):
+        songs = self.library.search(query,orderby=[Song.artist,Song.album])
+        sys.stdout.write("save playlist (m3u): (exec:%s) %s:%s\n"%(not self.no_exec,name,len(songs)))
         if not self.no_exec:
-            path = os.path.join(self.parent.target,name)
-            saveCowonPlaylist(path,songs)
+            try:
+                path = self.parent.target_source.join(self.parent.target_path,name)
+                print("%s"%path)
+                with self.parent.target_source.open(path,"wb") as wb:
+                    w = StreamWriter(wb,"utf-8")
+                    saveM3uPlaylist(w,songs)
+            except Exception as e:
+                print(type(e))
+                print("%s"%e)
+
+    def save_cowon(self, name, query):
+        # COWON has a bug related to file size of the playlist
+        # but i have never had a problem with 400 songs,
+        # usually around 450 is when problems start to happen, sometimes
+        # I can get as high as 500. 400 is just playling it safe.
+        songs = self.library.search(query,orderby=Song.random,limit=400)
+        sys.stdout.write("save playlist (cowon): (exec:%s) %s:%s\n"%(not self.no_exec,name,len(songs)))
+        if not self.no_exec:
+            try:
+                path = self.parent.target_source.join(self.parent.target_path,name)
+                print("%s"%path)
+                with self.parent.target_source.open(path,"wb") as wb:
+                    w = StreamWriter(wb,"utf-8")
+                    saveCowonPlaylist(w,songs)
+            except Exception as e:
+                print(type(e))
+                print("%s"%e)
 
     def end(self):
         return
@@ -347,6 +392,9 @@ class SyncManager(object):
     T_SPECIAL=3     # like ALL, but use default bitrate for existing mp3 files
                     # special forces the use of ffmpeg, and therefore
                     # should set tag information correctly.
+
+    P_M3U   = 1 # standard m3u format
+    P_COWON = 2 # m3u specific to COWON devices
 
     def __init__(self,library,song_ids,target,enc_path,
         transcode=0,
@@ -360,6 +408,9 @@ class SyncManager(object):
         library: instance of Library()
         playlist: instance of PlaylistView()
         target: root directory to sync files to
+        target_prefix_path: prefix path for target device:
+                            if target is a relative path, this is
+                            prefixed to the target path in the library
         enc_path: path to ffmpeg (todo: or sox)
         transcode: one of {NONE,NON_MP3,ALL,SPECIAL}
         player_directory: ...
@@ -370,26 +421,19 @@ class SyncManager(object):
 
         self.library = library
         self.song_ids = song_ids
-        #self.target = target
+        self.target_input = target
+        self.target_prefix_path = "" # "/storage/emulated/0"
         self.transcode = transcode
         self.no_exec = no_exec
         self.player_directory = player_directory
         self.queries = []
         self.equalize = equalize
+        self.bitrate = bitrate
         self.save_playlists = dynamic_playlists is not None
         self.dynamic_playlists = dynamic_playlists # as list-of-2-tuples: name,query
+        self.encoder_path = enc_path
 
         self.target_library = None # list of songs
-
-        self.encoder = FFmpegEncoder(enc_path,no_exec=no_exec)
-
-        self.openTargetSource( target )
-
-        self.data =  SyncData(self.encoder)
-        self.data.force_transcode = self.transcode in (SyncManager.T_ALL,SyncManager.T_SPECIAL)
-        self.data.transcode_special = self.transcode == SyncManager.T_SPECIAL
-        self.data.equalize = equalize
-        self.data.bitrate = bitrate
 
     def openTargetSource(self,target):
 
@@ -408,9 +452,41 @@ class SyncManager(object):
             self.target_source = self.local_source
             self.target_path = target
 
+    def closeSource(self):
+
+        self.target_source.close()
+        if self.local_source is not self.target_source:
+            self.local_source.close()
     # main process
 
     def run(self):
+
+        self.encoder = FFmpegEncoder(self.encoder_path,no_exec=self.no_exec)
+
+        try:
+
+            self.openTargetSource( self.target_input )
+
+        except ConnectionRefusedError as e:
+            self.message("%s"%e)
+            return
+
+        try:
+            self.run_main()
+        except Exception as e:
+            sys.stderr.write("%s\n"%e)
+            self.closeSource()
+            raise e
+
+        self.closeSource()
+
+    def run_main(self):
+
+        self.data =  SyncData(self.encoder)
+        self.data.force_transcode = self.transcode in (SyncManager.T_ALL,SyncManager.T_SPECIAL)
+        self.data.transcode_special = self.transcode == SyncManager.T_SPECIAL
+        self.data.equalize = self.equalize
+        self.data.bitrate = self.bitrate
 
         self.message("Scanning Directory")
         self.target_source.mkdir(self.target_path)
@@ -425,7 +501,10 @@ class SyncManager(object):
         t = len(transcodelist)
         p = 0 if self.dynamic_playlists is None else len(self.dynamic_playlists)
 
-        self.setOperationsCount(d+c+t+p)
+        count=d+c+t+p
+        if not count:
+            count+=1
+        self.setOperationsCount(count)
 
         self.message("Delete Files")
         proc = DeleteProcess(parent=self,filelist=delete_list,no_exec=self.no_exec)
@@ -443,7 +522,7 @@ class SyncManager(object):
             self.message("Save Dynamic Playlists")
 
             target_library = self.createTargetLibrary()
-            format=0
+            format=SyncManager.P_M3U
             proc = WritePlaylistProcess(target_library,self.dynamic_playlists, \
                         format,self,no_exec=self.no_exec)
             self.run_proc( proc )
@@ -496,9 +575,10 @@ class SyncManager(object):
         # return a list of files to delete.
 
         lst_delete = []
-        for path in source_walk_ext(self.target_source,\
+        for path in source_walk_ext(self.target_source,
                                     self.target_path,
-                                    Song.supportedExtensions()):
+                                    Song.supportedExtensions(),
+                                    not self.no_exec):
             if not self.data.exists(path):
                 # need to remove this file as it is not on the list
                 lst_delete.append(path)
@@ -533,16 +613,20 @@ class SyncManager(object):
             source_copy_file(self.local_source,song[Song.path],
                              self.target_source, tgtpath, 1<<15)
 
-    def transcode_path(self, tgtpath, outpath=None):
+    def transcode_path(self, tgtpath):
         song, transcode = self.data.getValue( tgtpath )
         self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
         if not self.no_exec:
             p = self.target_source.parent(tgtpath)
             self.target_source.mkdir( p )
-        if outpath is not None:
-            self.transcode_song(song,outpath)
-        else:
-            self.transcode_song(song,tgtpath)
+
+        self.transcode_song(song,tgtpath)
+
+    def transcode_local(self, tgtpath, outpath):
+        song, transcode = self.data.getValue( tgtpath )
+        self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
+        self.transcode_song(song,outpath)
+
 
     def transcode_song(self,song,tgtpath):
         metadata=dict(
@@ -558,7 +642,7 @@ class SyncManager(object):
             bitrate=0
 
         # TODO, COPY, TRANSCODE new FORCE OVERWRITE option
-        if not self.no_exec and self.target_source.exists(tgtpath):
+        if self.no_exec:# and self.target_source.exists(tgtpath):
             return
         self.encoder.transcode(srcpath,tgtpath,bitrate,vol=vol,metadata=metadata)
 
@@ -569,6 +653,7 @@ class SyncManager(object):
         songs = self.library.songFromIds( self.song_ids )
         for i,song in enumerate(songs):
             path = self.target_source.join(self.target_path,*Song.toShortPath(song))
+
             path = self.target_source.fix( path )
             if self.transcode == SyncManager.T_NON_MP3 and not ExtIs(path,".mp3"):
                 path = ChangeExt(path,".mp3")
@@ -605,6 +690,9 @@ class SyncManager(object):
             for song in new_playlist:
                 if "artist_key" in song:
                     del song['artist_key']
+                if self.target_prefix_path:
+                    song[Song.path] = self.target_source.join( \
+                                      self.target_prefix_path,song[Song.path])
                 library._insert(c, **song)
 
         self.target_library = library
@@ -780,26 +868,47 @@ def getShortName_ZEN(path):
         return out[2:]; # remove drive letter
     return "";
 
-def saveCowonPlaylist(filename,songs):
+def saveM3uPlaylist(wf,songs):
+    """
+    wf: as codecs.open(path,"w","utf-8") or equivalent
+    songs: a playlist, list of song-dictionaries
+    """
     songs.sort(key=lambda x:x[Song.album])
     songs.sort(key=lambda x:sort_parameter_str(x,Song.artist))
-    with codecs.open(filename,"w","utf-8") as wf :
-        #http://anythingbutipod.com/forum/showthread.php?t=67351
-        wf.write("#EXTM3U\r\n")
-        for song in songs:
-            try:
-                path = getShortName_COWON(song[Song.path]);
-            except OSError as e:
-                sys.stdout.write("error saving song to playlist - %s"%e)
+    #with codecs.open(filename,"w","utf-8") as wf :
+    #http://anythingbutipod.com/forum/showthread.php?t=67351
+    wf.write("#EXTM3U\r\n")
+    for song in songs:
+        dur=song[Song.length]
+        a=song[Song.artist]
+        t=song[Song.title]
+        wf.write("#EXTINF:%d,%s - %s\r\n"%(dur,a,t));
+        wf.write(song[Song.path]+"\r\n");
+
+def saveCowonPlaylist(wf,songs):
+    """
+    wf: as codecs.open(path,"w","utf-8") or equivalent
+    songs: a playlist, list of song-dictionaries
+    """
+    songs.sort(key=lambda x:x[Song.album])
+    songs.sort(key=lambda x:sort_parameter_str(x,Song.artist))
+    #with codecs.open(filename,"w","utf-8") as wf :
+    #http://anythingbutipod.com/forum/showthread.php?t=67351
+    wf.write("#EXTM3U\r\n")
+    for song in songs:
+        try:
+            path = getShortName_COWON(song[Song.path]);
+        except OSError as e:
+            sys.stdout.write("error saving song to playlist - %s\n"%e)
+        else:
+            if path :
+                dur=song[Song.length]
+                a=song[Song.artist]
+                t=song[Song.title]
+                wf.write("#EXTINF:%d,%s - %s\r\n"%(dur,a,t));
+                wf.write(path+"\r\n");
             else:
-                if path :
-                    dur=song[Song.length]
-                    a=song[Song.artist]
-                    t=song[Song.title]
-                    wf.write("#EXTINF:%d,%s - %s\r\n"%(dur,a,t));
-                    wf.write(path+"\r\n");
-                else:
-                    print("error "+path)
+                print("error "+path)
 
 #def save_ZEN_playlist(filename,library):
 #    """
@@ -854,10 +963,10 @@ def main():
     ffmpeg=r"C:\ffmpeg\bin\ffmpeg.exe"
     db_path = "yue.db"
 
-    #target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
-    target = "test"
+    target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
+    #target = "test"
     transcode = SyncManager.T_NON_MP3
-    equalize = False
+    equalize = True
     bitrate = 320
     run = True
     no_exec = False
@@ -867,7 +976,7 @@ def main():
     PlaylistManager.init( sqlstore )
 
     library = Library.instance()
-    playlist = library.search("gothic emily")
+    playlist = library.search("(.abm 0 limited execution)")
     uids = [s[Song.uid] for s in playlist]
 
     print(os.path.realpath(db_path))

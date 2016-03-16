@@ -1,10 +1,10 @@
 
-from ftplib import FTP,error_perm
+from ftplib import FTP,error_perm, all_errors
 import posixpath
 from io import BytesIO,SEEK_SET
 
 from .source import DataSource
-
+import sys
 import re
 
 reftp = re.compile('ftp\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(.*)')
@@ -82,6 +82,16 @@ class FTPSource(DataSource):
 
     def root(self):
         return "/"
+
+    def close(self):
+
+        try:
+            self.ftp.quit()
+        except all_errors as e:
+            sys.stderr.write("Error Closing FTP connection\n")
+            sys.stderr.write("%s\n"%e)
+
+        super().close()
 
     def fix(self, path):
         return utf8_fix(path)

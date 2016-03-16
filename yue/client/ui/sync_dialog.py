@@ -45,14 +45,15 @@ class QtSyncManager(SyncManager):
             sys.stdout.write("<>\n")
 
     def run_proc(self,proc):
-        n = proc.begin()
-        for i in range(n):
-            proc.step(i)
-            self.step_count += 1
-            self.parent.valueChanged.emit(self.step_count)
-            if self.no_exec:
-                QThread.usleep(25000);
-        proc.end()
+        with proc:
+            n = proc.begin()
+            for i in range(n):
+                proc.step(i)
+                self.step_count += 1
+                self.parent.valueChanged.emit(self.step_count)
+                if self.no_exec:
+                    QThread.usleep(25000);
+            proc.end()
 
 class SyncDialog(ProgressDialog):
 
@@ -68,6 +69,7 @@ class SyncDialog(ProgressDialog):
 
     def run(self):
 
+        print(self.settings)
         target_path = self.settings["target_path"]
         bitrate  = self.settings.get("bitrate",0)
         no_exec  = self.settings.get("no_exec",False)
@@ -79,11 +81,17 @@ class SyncDialog(ProgressDialog):
           "none" : SyncManager.T_NONE,
         }.get(self.settings.get("transcode","none"),SyncManager.T_NONE)
 
+        dp = None
+        if self.settings.get('save_playlists',False):
+            dp = self.dynamic_playlists
+        #dp = [("limited","limited"),]
+        # TODO: pass playlist_format to Sync Manager
+
         lib = Library.instance().reopen()
         sm = QtSyncManager(lib,self.uids,target_path,encoder_path, \
                 transcode=transcode,
                 equalize=equalize,
-                dynamic_playlists=self.dynamic_playlists,
+                dynamic_playlists=dp,
                 no_exec=no_exec,
                 parent=self)
         sm.run()
@@ -120,13 +128,46 @@ class SyncProfileDialog(QDialog):
 
         self.cbox_equalize = QCheckBox("Equalize")
         self.cbox_noexec = QCheckBox("Dry Run")
-        self.cbox_noexec.setToolTip("run without syncing files.")
+
+        # todo: add combo box for format
+        # need: COWON, M3U
+        self.cbox_savedp = QCheckBox("Save Dynamic Playlists")
+        self.cbox_dpfmt = QComboBox(self)
+        self.cbox_dpfmt.addItem("M3U"  ,SyncManager.P_M3U)
+        self.cbox_dpfmt.addItem("Cowon",SyncManager.P_COWON)
 
         self.btn_accept  = QPushButton("Sync",self)
         self.btn_cancel  = QPushButton("Cancel",self)
 
         self.btn_save  = QPushButton(QIcon(':/img/app_save.png'),"",self)
         self.btn_load  = QPushButton(QIcon(':/img/app_open.png'),"",self)
+
+        # --------------------------
+        # HELP
+
+        self.cbox_equalize.setToolTip("use bassdsp equalizer to adjust volume during transcode")
+        self.cbox_noexec.setToolTip("run without syncing files.")
+
+        self.btn_target_path.setToolTip("Select local Directory")
+        self.btn_target_path.setToolTip("Select Executable Path")
+        self.btn_save.setToolTip("Save current configuration")
+        self.btn_load.setToolTip("Load configuration")
+
+        self.edit_target_path.setToolTip("Copy files to destination")
+        self.edit_target_path.setWhatsThis("Destination can be a local path or ftp"+
+                "\nF:\\Music"+
+                "\nftp://hostname//storage/emulated/0/Music"+
+                "\nftp://username:password@hostname:port/Music")
+
+        self.edit_transcode_path.setToolTip("Path to FFMPEG executable")
+
+        self.rad_transcode_all.setToolTip("Transcode All Files to MP3")
+        self.rad_transcode_non.setToolTip("Transcode Non-MP3 Files to MP3")
+        self.rad_transcode_none.setToolTip("Do not transcode files")
+        self.cbox_bitrate.setToolTip("Transcode MP3 bitrate"+
+                                     "\ndefault uses encoders default bitrate.")
+
+        self.cbox_savedp.setToolTip("Save Preset Playlists as m3u files")
 
         # --------------------------
         # Defaults
@@ -151,6 +192,10 @@ class SyncProfileDialog(QDialog):
         row+=1
         self.grid.addWidget(self.edit_target_path,row,0,1,3)
         self.grid.addWidget(self.btn_target_path,row,3)
+
+        row+=1
+        self.grid.addWidget(self.cbox_savedp,row,0,1,2,Qt.AlignLeft)
+        self.grid.addWidget(self.cbox_dpfmt,row,2,1,2,Qt.AlignRight)
 
         row+=1
         self.grid.addWidget(QLabel("Transcode:",self),row,0,Qt.AlignLeft)
@@ -219,6 +264,12 @@ class SyncProfileDialog(QDialog):
                 320 : 4, }.get(settings.get('bitrate',0),0)
         self.cbox_bitrate.setCurrentIndex(idx)
 
+        self.cbox_savedp.setChecked( settings.get('save_playlists',False))
+        idx = { SyncManager.P_M3U   : 0,
+                SyncManager.P_COWON : 1}.get( \
+                    settings.get('playlist_format',SyncManager.P_M3U),0)
+        self.cbox_dpfmt.setCurrentIndex(idx)
+
     def export_settings(self):
 
         s = {}
@@ -237,6 +288,9 @@ class SyncProfileDialog(QDialog):
         s['no_exec'] = self.cbox_noexec.isChecked()
 
         s['bitrate'] = self.cbox_bitrate.itemData( self.cbox_bitrate.currentIndex() )
+
+        s['save_playlists'] = self.cbox_savedp.isChecked()
+        s['playlist_format'] = self.cbox_dpfmt.itemData( self.cbox_dpfmt.currentIndex() )
 
         return s
 
@@ -268,7 +322,8 @@ class SyncProfileDialog(QDialog):
 
         print(s)
 
-        if not os.path.exists(s['target_path']):
+        if not s['target_path'].startswith("ftp") and \
+           not os.path.exists(s['target_path']):
             msg ="Target Path Does Not Exist\n`%s`"%s['target_path']
             QMessageBox.critical(self,"Error",msg)
             return
@@ -294,6 +349,7 @@ def settings_load( path ):
             if line:
                 k,v = line.split('=')
                 s[k] = v
+    s['save_playlists'] = s.get('save_playlists',"false").lower() == 'true'
     s['equalize'] = s.get('equalize',"false").lower() == 'true'
     s['no_exec'] = s.get('no_exec',"false").lower() == 'true'
     try:
@@ -312,12 +368,13 @@ def main():
     Library.init( sqlstore )
     PlaylistManager.init( sqlstore )
 
-    uids = list(PlaylistManager.instance().openCurrent().iter())
+    playlist = Library.instance().search("(.abm 0 limited execution)")
+    uids = [s[Song.uid] for s in playlist]
 
     pdialog = SyncProfileDialog()
     if pdialog.exec_():
         s = pdialog.export_settings()
-        s['no_exec'] = True
+        #s['no_exec'] = True
         sdialog = SyncDialog(uids,s)
         sdialog.start()
         sdialog.show()
