@@ -76,6 +76,7 @@ class NotificationDemoApp(App):
 
         Clock.schedule_interval(lambda *x: osc.readQueue(oscid), 0)
 
+
     def stop_service(self):
         if self.pid is not None:
             Logger.info("example: stopping popen service")
@@ -93,6 +94,9 @@ class NotificationDemoApp(App):
         self.stop_service()
 
         Logger.critical('example: exit')
+
+    def on_pause(self):
+        return True # prevent on_stop when in background
 
 if __name__ == '__main__':
     NotificationDemoApp().run()

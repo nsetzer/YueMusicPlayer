@@ -8,12 +8,24 @@ from plyer.utils import platform
 from plyer.compat import PY2
 
 if platform == 'android':
-    from jnius import autoclass, cast
+    from jnius import autoclass, cast, PythonJavaClass, java_method
     from android.broadcast import BroadcastReceiver
 import time
 
 serviceport = 15123
 activityport = 15124
+
+class Callback(PythonJavaClass):
+    __javainterfaces__ = ['org/renpy/android/GenericBroadcastReceiverCallback']
+    __javacontext__ = 'app'
+
+    def __init__(self, callback, *args, **kwargs):
+        self.callback = callback
+        PythonJavaClass.__init__(self, *args, **kwargs)
+
+    @java_method('(Landroid/content/Context;Landroid/content/Intent;)V')
+    def onReceive(self, context, intent):
+        self.callback(context, intent)
 
 def update_notification(message, *args):
 
@@ -36,6 +48,7 @@ def update_service(ptext, pmessage):
     PendingIntent = autoclass('android.app.PendingIntent')
     AndroidString = autoclass('java.lang.String')
     NotificationBuilder = autoclass('android.app.Notification$Builder')
+    #registerReceiver = autoclass('android.content.registerReceiver')
     # Action is added in api 19. Action.Builder is added in 20
     # the current api used below was deprectated in 23.
     Action = autoclass('android.app.Notification$Action')
@@ -51,7 +64,7 @@ def update_service(ptext, pmessage):
     text = AndroidString(ptext.encode('utf-8'))
     message = AndroidString(pmessage.encode('utf-8'))
 
-    # kivy doesnt hace a tray icon by default
+    # kivy doesnt have a tray icon by default
     Logger.info("> drawable icon %s"%hasattr(Drawable,'icon'))
     Logger.info("> drawable icon %s"%type(Drawable.icon))
     Logger.info("> drawable tray_small %s"%hasattr(Drawable,'tray_small'))
@@ -87,9 +100,14 @@ def update_service(ptext, pmessage):
     act2msg = AndroidString("Act2".encode('utf-8'))
     act3msg = AndroidString("Act3".encode('utf-8'))
 
+    #cbk = Callback(intent_callback)
     intentAct1 = Intent(service, service.getClass())
     intentAct1.setAction(actiontext)
+    # must use intentAct1.setClass()  ???
+    #intentAct1.setClass(cbk,Callback)
     contentIntent = PendingIntent.getBroadcast(service, 12345, intentAct1, PendingIntent.FLAG_UPDATE_CURRENT )
+    Logger.error(">: cnti %s"%(type(contentIntent)))
+    Logger.error(">: act1 %s"%(type(intentAct1)))
     notification_builder.addAction(Drawable.icon,act1msg,contentIntent)
 
     intentAct2 = Intent(service, service.getClass())
@@ -135,6 +153,7 @@ def get_scaled_icon(icon):
 
 def intent_callback(context, intent, *args):
     # context, intent
+    Logger.warning("captured intent")
     Logger.warning("%s"%context)
     Logger.warning("%s"%intent)
     Logger.warning("%s"%args)
@@ -147,7 +166,7 @@ def main():
 
     osc.bind(oscid, update_notification, '/update')
 
-    br = BroadcastReceiver(intent_callback,["GET_CONTENT",])
+    br = BroadcastReceiver(intent_callback,["GET_CONTENT",]) # no prefix ACTION_ required
     br.start()
 
     while True:
