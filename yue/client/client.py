@@ -295,6 +295,17 @@ class MainWindow(QMainWindow):
         s = Settings.instance()
         self.set_style(s["current_theme"])
 
+        try:
+            self.device.load_current( )
+            # TODO: check that p is less than length of current song (minus 5s)
+            # or something similar. Then make this a configuration option
+            # that defaults on.
+            p = s["current_position"]
+            self.device.seek( p )
+            self.controller.on_song_tick( p )
+        except IndexError:
+            sys.stderr.write("error: No Current Song\n")
+
     def _init_ui(self, diag):
 
         self.bar_menu = QMenuBar( self )
@@ -530,6 +541,8 @@ class MainWindow(QMainWindow):
 
         if self.remotethread is not None:
             self.remotethread.join()
+
+        s['current_position'] = int(self.device.position())
 
         # TODO: this doesnt work
         #if self.keyhook is not None:
@@ -958,6 +971,8 @@ def setSettingsDefaults():
 
     s.setDefault("current_theme","none")
 
+    s.setDefault("current_position",0)
+
     s.setDefault("backup_enabled",1)
     s.setDefault("backup_directory","./backup")
 
@@ -1027,11 +1042,6 @@ def main(version="0.0.0"):
         window = MainWindow( diag, device, version )
 
         window.showWindow()
-
-        try:
-            device.load_current( )
-        except IndexError:
-            sys.stderr.write("error: No Current Song\n")
 
     sys.exit(app.exec_())
 
