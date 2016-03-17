@@ -145,11 +145,15 @@ class FFmpegEncoder(object):
         if self.logger == sys.stderr:
             argstr = argstr.encode('utf-8')
         #self.logger.write( argstr )
-        with open(os.devnull, 'w') as nul:
-            #return subprocess.Popen(args,shell=True)
-            self.logger.write("transcode: "+" ".join(args) + "\n")
-            if not self.no_exec:
-                subprocess.check_call(args,stdout=nul,stderr=nul)
+        self.logger.write("transcode: "+" ".join(args) + "\n")
+        # when run under windows (under gui)
+        # std in/out/err must be given a PIPE/nul
+        # otherwise: '[WinError 6] The handle is invalid'
+        # shell must be true to prevent a cmd window from opening
+        if not self.no_exec:
+            with open(os.devnull, 'r') as nulr:
+                with open(os.devnull, 'w') as nulw:
+                    subprocess.check_call(args,stdin=nulr,stdout=nulw,stderr=nulw, shell=True)
 
 class IterativeProcess(object):
     """docstring for IterativeProcess"""
@@ -308,6 +312,9 @@ class ParallelTranscodeProcess(IterativeProcess):
             if not self.no_exec:
                 t.join()
                 print("join %s\n"%trpath)
+                p = self.parent.target_source.parent(tgtpath)
+                self.parent.target_source.mkdir( p )
+
                 source_copy_file(self.parent.local_source, trpath,
                                  self.parent.target_source, tgtpath, 1<<15)
 

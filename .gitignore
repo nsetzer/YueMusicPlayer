@@ -75,3 +75,4 @@ lib/win32/x86_64/hook.dll
 hookdll/libhook.a
 *.db-journal
 *.m3u
+nexus.ini

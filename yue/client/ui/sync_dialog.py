@@ -388,9 +388,11 @@ def main():
     Library.init( sqlstore )
     PlaylistManager.init( sqlstore )
 
-    playlist = Library.instance().search("(.abm 0 limited execution)")
-    uids = [s[Song.uid] for s in playlist]
-    dp = [("limited","limited"),]
+    #playlist = Library.instance().search("(.abm 0 limited execution)")
+    #uids = [s[Song.uid] for s in playlist]
+
+    uids = list(PlaylistManager.instance().openPlaylist("Nexus5x").iter())
+    dp = None # [("limited","limited"),]
 
     pdialog = SyncProfileDialog()
     if pdialog.exec_():
