@@ -158,7 +158,8 @@ class PlaybackController(object):
             self.root.aartview.setPixmap(pimg)
             self.root.aartview.setHidden(False)
         except ArtNotFound as e:
-            sys.stderr.write("%s\n"%e)
+            # surpress error not interesting
+            #sys.stderr.write("%s\n"%e)
             self.root.aartview.setHidden(True)
 
 

@@ -12,6 +12,7 @@ class LogView(QTextEdit):
     """docstring for Console"""
 
     logLine = pyqtSignal(str,name="logLine");
+    logLines = pyqtSignal(object,name="logLines");
 
     def __init__(self,trace=False,echo = False):
         super(LogView, self).__init__()
@@ -19,15 +20,31 @@ class LogView(QTextEdit):
         self.echo = echo
         self.setReadOnly(True) # Qt options
         self.setLineWrapMode(QTextEdit.NoWrap)
+
         self.logLine.connect(self.writeToWidget)
+        self.logLines.connect(self.writeLinesToWidget)
 
-
-        self.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
+        self.num_chars = 0
+        self.max_chars = 1024*1024 # one meg?
+        # now done with styles
+        #self.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
 
     def writeToWidget(self,utf8str):
         self.moveCursor(QTextCursor.End)
         self.insertPlainText( utf8str )
+        self.num_chars += len(utf8str)
         self.moveCursor(QTextCursor.End)
+
+        self.reflow()
+
+    def writeLinesToWidget(self,seq):
+        self.moveCursor(QTextCursor.End)
+        for line in seq:
+            self.insertPlainText( line )
+            self.num_chars += len(line)
+            self.moveCursor(QTextCursor.End)
+
+        self.reflow()
 
     def write(self,utf8str):
         # this allows mutli threading
@@ -35,10 +52,13 @@ class LogView(QTextEdit):
         self.logLine.emit(utf8str)
 
     def writelines(self,seq):
-        self.moveCursor(QTextCursor.End)
-        for line in seq:
-            self.insertPlainText( line )
-            self.moveCursor(QTextCursor.End)
+        self.logLines.emit(seq)
+
+    def reflow(self):
+        # truncate the log
+        if self.num_chars > self.max_chars:
+            text=self.toPlainText()
+            self.setPlainText(text[-self.max_chars:])
 
     def flush(self):
         pass
