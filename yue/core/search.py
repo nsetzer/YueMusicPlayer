@@ -461,7 +461,7 @@ flow = {
 
 negate = "!"
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserFormatDays( days ):
 
     now = datetime.now()
@@ -469,7 +469,7 @@ def parserFormatDays( days ):
     dt2 = dt1 + timedelta( 1 )
     return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserFormatDate( value ):
 
 
@@ -487,7 +487,7 @@ def parserFormatDate( value ):
 
     return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserNLPDate( value ):
     dt = NLPDateRange().parse( value )
     if dt:
