@@ -149,6 +149,36 @@ class TestSearchParse(unittest.TestCase):
         actual = ruleFromString("pcnt >= 5")
         self.assertEqual(expected,actual)
 
+    def test_parser_text_edge(self):
+        # for = != == !==, LHS should be infered as all text when not given
+        expected = AndSearchRule([
+                allTextRule(OrSearchRule,PartialStringSearchRule,"foo"),
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                ])
+        actual = ruleFromString("foo && !=bar")
+        self.assertEqual(expected,actual)
+
+        expected = AndSearchRule([
+                PartialStringSearchRule(Song.artist, "foo"),
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                ])
+        actual = ruleFromString("artist=foo !=bar")
+        self.assertEqual(expected,actual)
+
+        expected = AndSearchRule([
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"foo"),
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                ])
+        actual = ruleFromString("!=foo && !=bar")
+        self.assertEqual(expected,actual)
+
+        expected = AndSearchRule([
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"foo"),
+                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                ])
+        actual = ruleFromString("!=foo !=bar")
+        self.assertEqual(expected,actual)
+
     def test_parser_nested(self):
 
         expected = AndSearchRule([
@@ -191,8 +221,8 @@ class TestSearchParse(unittest.TestCase):
         with self.assertRaises(RHSError):
             ruleFromString(" artist = (album = bar) ")
 
-        with self.assertRaises(LHSError):
-            ruleFromString(" (album = bar) = value")
+        #with self.assertRaises(LHSError):
+        #    ruleFromString(" (album = bar) = value")
 
         with self.assertRaises(RHSError):
             ruleFromString(" artist >= (album = bar) ")
