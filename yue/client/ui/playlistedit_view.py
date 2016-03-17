@@ -102,13 +102,20 @@ class PlayListEditTable(EditTable):
                 if isinstance(song,dict):
                     self.parent().playlist_data.add( song[Song.uid] )
                     self.parent().dirty = True
+            self.sibling.setSelection([])
             self.parent().refresh()
+
 
     def mouseDoubleClick(self,row,col,event):
 
         for song in self.getSelection():
             self.parent().playlist_data.remove( song[Song.uid] )
             self.parent().dirty = True
+        sel = self.getSelectionIndex()
+        if sel:
+            self.setSelection([min(sel),])
+        else:
+            self.setSelection([])
         self.parent().refresh()
 
 class LibraryEditTable(EditTable):
@@ -130,6 +137,7 @@ class LibraryEditTable(EditTable):
                 if isinstance(song,dict):
                     self.parent().playlist_data.remove( song[Song.uid] )
                     self.parent().dirty = True
+            self.sibling.setSelection([])
             self.parent().refresh()
 
     def mouseDoubleClick(self,row,col,event):
@@ -137,6 +145,11 @@ class LibraryEditTable(EditTable):
         for song in self.getSelection():
             self.parent().playlist_data.add( song[Song.uid] )
             self.parent().dirty = True
+        sel = self.getSelectionIndex()
+        if sel:
+            self.setSelection([min(sel),])
+        else:
+            self.setSelection([])
         self.parent().refresh()
 
     def sortColumn(self,col_index):
@@ -197,11 +210,9 @@ class PlaylistEditView(QWidget):
 
         self.txt_search = LineEdit_Search(self,self.tbl_pl,placeholder="Search Playlist")
         self.txt_search.textEdited.connect(self.onTextChanged)
-        self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
 
         self.hbox1.addWidget( self.txt_search )
-        self.hbox1.addWidget( self.lbl_search )
 
         self.hbox2.addWidget( self.tbl_lib.container )
         self.hbox2.addWidget( self.tbl_pl.container )
@@ -224,7 +235,6 @@ class PlaylistEditView(QWidget):
 
     def onUpdate(self):
         text = self.txt_search.text()
-        print(text)
         self.run_search(text)
 
     def onTextChanged(self,text,update=0):
@@ -257,7 +267,10 @@ class PlaylistEditView(QWidget):
 
             self.tbl_lib.setData(ldata)
             self.tbl_pl.setData(rdata)
-            self.lbl_search.setText("%d/%d"%(len(rdata), len(lib)))
+
+            l=len(lib) - len(self.playlist_data)
+            self.lbll.setText("Library (%d/%d)"%(len(ldata),l))
+            self.lblp.setText("Playlist (%d/%d)"%(len(rdata),len(self.playlist_data)))
 
             if not self.lbl_error.isHidden():
                 self.txt_search.setStyleSheet("")
@@ -297,7 +310,7 @@ class PlaylistEditView(QWidget):
                 self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
                 self.playlist.set( list(self.playlist_data) )
                 self.on_rename.emit(self,self.playlist_name)
-                self.parent().dirty = False
+                self.dirty = False
                 return QMessageBox.Save
         return QMessageBox.Cancel
 

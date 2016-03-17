@@ -1,5 +1,5 @@
 #!python34 $this
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 import codecs,traceback
 try:
     from yue.client.client import main

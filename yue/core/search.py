@@ -461,7 +461,7 @@ flow = {
 
 negate = "!"
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserFormatDays( days ):
 
     now = datetime.now()
@@ -469,7 +469,7 @@ def parserFormatDays( days ):
     dt2 = dt1 + timedelta( 1 )
     return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserFormatDate( value ):
 
 
@@ -487,7 +487,7 @@ def parserFormatDate( value ):
 
     return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
-@lru_cache(maxsize=16)
+#@lru_cache(maxsize=16)
 def parserNLPDate( value ):
     dt = NLPDateRange().parse( value )
     if dt:
@@ -637,31 +637,35 @@ def parseTokens( tokens ):
             continue
         elif tok in operators:
             if not hasr:
-                raise RHSError(tok, "expected value")
+                raise RHSError(tok, "expected value [V01]")
             r = tokens.pop(i+1)
             if not isinstance(r,(str,unicode)):
-                raise RHSError(tok, "expected string")
+                raise RHSError(tok, "expected string [S01]")
             # left side is optional, defaults to all text
             if not hasl:
                 tokens[i] = parserRule(Song.all_text,operators[tok],r)
             else:
-                i -= 1
-                l = tokens.pop(i)
-                if not isinstance(l,(str,unicode)):
-                    raise LHSError(tok, "expected string")
-                tokens[i] = parserRule(l,operators[tok],r)
+                #i -= 1
+                l = tokens[i-1]
+                if not isinstance(l,(str,unicode)) or l in flow:
+                    #raise LHSError(tok, "expected string [02]")
+                    tokens[i] = parserRule(Song.all_text,operators[tok],r)
+                else:
+                    i-=1
+                    tokens.pop(i)
+                    tokens[i] = parserRule(l,operators[tok],r)
         elif tok in special:
             if not hasr:
-                raise RHSError(tok, "expected value")
+                raise RHSError(tok, "expected value [V02]")
             if not hasl:
-                raise LHSError(tok, "expected value")
+                raise LHSError(tok, "expected value [V03]")
             r = tokens.pop(i+1)
             if not isinstance(r,(str,unicode)):
-                raise RHSError(tok, "expected string")
+                raise RHSError(tok, "expected string [S02]")
             i-=1
             l = tokens.pop(i)
             if not isinstance(l,(str,unicode)):
-                raise LHSError(tok, "expected string")
+                raise LHSError(tok, "expected string [S03]")
             tokens[i] = parserRule(l,special[tok],r)
         i += 1
 

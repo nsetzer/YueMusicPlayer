@@ -74,15 +74,6 @@ def run_async(func):
 
     return async_func
 
-class StreamWriter(object):
-
-    def __init__(self,file,encoding):
-        self.file = file
-        self.encoding = encoding
-
-    def write(self,string):
-        self.file.write(string.encode(self.encoding))
-
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
         super(FFmpegEncoder,self).__init__();
@@ -154,11 +145,15 @@ class FFmpegEncoder(object):
         if self.logger == sys.stderr:
             argstr = argstr.encode('utf-8')
         #self.logger.write( argstr )
-        with open(os.devnull, 'w') as nul:
-            #return subprocess.Popen(args,shell=True)
-            self.logger.write("transcode: "+" ".join(args) + "\n")
-            if not self.no_exec:
-                subprocess.check_call(args,stdout=nul,stderr=nul)
+        self.logger.write("transcode: "+" ".join(args) + "\n")
+        # when run under windows (under gui)
+        # std in/out/err must be given a PIPE/nul
+        # otherwise: '[WinError 6] The handle is invalid'
+        # shell must be true to prevent a cmd window from opening
+        if not self.no_exec:
+            with open(os.devnull, 'r') as nulr:
+                with open(os.devnull, 'w') as nulw:
+                    subprocess.check_call(args,stdin=nulr,stdout=nulw,stderr=nulw, shell=True)
 
 class IterativeProcess(object):
     """docstring for IterativeProcess"""
@@ -317,6 +312,9 @@ class ParallelTranscodeProcess(IterativeProcess):
             if not self.no_exec:
                 t.join()
                 print("join %s\n"%trpath)
+                p = self.parent.target_source.parent(tgtpath)
+                self.parent.target_source.mkdir( p )
+
                 source_copy_file(self.parent.local_source, trpath,
                                  self.parent.target_source, tgtpath, 1<<15)
 
@@ -343,12 +341,21 @@ class WritePlaylistProcess(IterativeProcess):
 
     def step(self,idx):
         name,query = self.datalist[idx]
-        name = name.replace(" ","_") + ".m3u"
+        alt_name = name.replace(" ","_") + ".m3u"
 
-        if self.format == SyncManager.P_M3U:
-            self.save_m3u(name, query)
+        if self.format == SyncManager.P_YUE:
+            self.save_yue(name, query)
+        elif self.format == SyncManager.P_M3U:
+            self.save_m3u(alt_name, query)
         else:
-            self.save_cowon(name, query)
+            self.save_cowon(alt_name, query)
+
+    def save_yue(self, name, query):
+        songs = self.library.search(query,orderby=[Song.artist,Song.album])
+        uids = [song[Song.uid] for song in songs]
+        pm = PlaylistManager(self.library.sqlstore)
+        pl=pm.openPlaylist(name)
+        pl.set(uids)
 
     def save_m3u(self, name, query):
         songs = self.library.search(query,orderby=[Song.artist,Song.album])
@@ -358,7 +365,7 @@ class WritePlaylistProcess(IterativeProcess):
                 path = self.parent.target_source.join(self.parent.target_path,name)
                 print("%s"%path)
                 with self.parent.target_source.open(path,"wb") as wb:
-                    w = StreamWriter(wb,"utf-8")
+                    w = codecs.getwriter("utf-8")(wb)
                     saveM3uPlaylist(w,songs)
             except Exception as e:
                 print(type(e))
@@ -376,7 +383,7 @@ class WritePlaylistProcess(IterativeProcess):
                 path = self.parent.target_source.join(self.parent.target_path,name)
                 print("%s"%path)
                 with self.parent.target_source.open(path,"wb") as wb:
-                    w = StreamWriter(wb,"utf-8")
+                    w = codecs.getwriter("utf-8")(wb)
                     saveCowonPlaylist(w,songs)
             except Exception as e:
                 print(type(e))
@@ -393,6 +400,7 @@ class SyncManager(object):
                     # special forces the use of ffmpeg, and therefore
                     # should set tag information correctly.
 
+    P_YUE   = 1 # internal format
     P_M3U   = 1 # standard m3u format
     P_COWON = 2 # m3u specific to COWON devices
 
@@ -402,6 +410,8 @@ class SyncManager(object):
         equalize=False,
         bitrate=0,
         dynamic_playlists=None,
+        target_prefix="",
+        playlist_format=1,
         no_exec=False):
         super(SyncManager,self).__init__()
         """
@@ -422,7 +432,7 @@ class SyncManager(object):
         self.library = library
         self.song_ids = song_ids
         self.target_input = target
-        self.target_prefix_path = "" # "/storage/emulated/0"
+        self.target_prefix_path = target_prefix # "/storage/emulated/0"
         self.transcode = transcode
         self.no_exec = no_exec
         self.player_directory = player_directory
@@ -431,6 +441,7 @@ class SyncManager(object):
         self.bitrate = bitrate
         self.save_playlists = dynamic_playlists is not None
         self.dynamic_playlists = dynamic_playlists # as list-of-2-tuples: name,query
+        self.playlist_format = playlist_format
         self.encoder_path = enc_path
 
         self.target_library = None # list of songs
@@ -507,25 +518,36 @@ class SyncManager(object):
         self.setOperationsCount(count)
 
         self.message("Delete Files")
-        proc = DeleteProcess(parent=self,filelist=delete_list,no_exec=self.no_exec)
-        self.run_proc( proc )
+        if d>0:
+            proc = DeleteProcess(parent=self,filelist=delete_list,no_exec=self.no_exec)
+            self.run_proc( proc )
 
         self.message("Copy Files")
-        proc = CopyProcess(parent=self,datalist=copylist,no_exec=self.no_exec)
-        self.run_proc( proc )
+        if c>0:
+            proc = CopyProcess(parent=self,datalist=copylist,no_exec=self.no_exec)
+            self.run_proc( proc )
 
         self.message("Transcode Files")
-        proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
-        self.run_proc( proc )
+        if t>0:
+            proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
+            self.run_proc( proc )
+
+        target_library = self.createTargetLibrary()
 
         if self.save_playlists:
             self.message("Save Dynamic Playlists")
 
-            target_library = self.createTargetLibrary()
-            format=SyncManager.P_M3U
+
+            fmt=self.playlist_format
             proc = WritePlaylistProcess(target_library,self.dynamic_playlists, \
-                        format,self,no_exec=self.no_exec)
+                        fmt,self,no_exec=self.no_exec)
             self.run_proc( proc )
+
+        # close the target library, then copy to remove device
+        target_library.sqlstore.close()
+        libpath=self.getTargetLibraryPath()
+        source_copy_file(self.local_source,target_library.sqlstore.filepath,
+                         self.target_source, libpath, 1<<15)
 
         self.message("Finished %d/%d/%d"%(d,c,t))
 
@@ -626,7 +648,6 @@ class SyncManager(object):
         song, transcode = self.data.getValue( tgtpath )
         self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
         self.transcode_song(song,outpath)
-
 
     def transcode_song(self,song,tgtpath):
         metadata=dict(
@@ -963,13 +984,15 @@ def main():
     ffmpeg=r"C:\ffmpeg\bin\ffmpeg.exe"
     db_path = "yue.db"
 
-    target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
-    #target = "test"
+    #target = "ftp://nsetzer:password@192.168.0.9:2121/Music"
+    target = "test"
     transcode = SyncManager.T_NON_MP3
     equalize = True
     bitrate = 320
     run = True
     no_exec = False
+    format=SyncManager.P_M3U
+    target_prefix=os.getcwd()
 
     sqlstore = SQLStore(db_path)
     Library.init( sqlstore )
@@ -982,12 +1005,14 @@ def main():
     print(os.path.realpath(db_path))
     print("lib",len(library))
 
-    dp = None # [("blind melon","blind melon"),]
+    dp = [("limited","limited"),]
 
     sm = SyncManager(library,uids,target,ffmpeg,
             transcode=transcode,
             equalize=equalize,
             dynamic_playlists = dp,
+            target_prefix=target_prefix,
+            playlist_format=format,
             no_exec=no_exec)
     sm.run()
 

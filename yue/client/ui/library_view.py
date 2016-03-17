@@ -223,6 +223,7 @@ class LibraryView(QWidget):
                 self.txt_search.setText( text )
 
             self.tbl_song.scrollTo( 0 )
+            self.tbl_song.setSelection([])
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
