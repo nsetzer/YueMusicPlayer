@@ -535,7 +535,8 @@ class MainWindow(QMainWindow):
 
         s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
         s['ui_show_console'] = int(not self.edit_cmd.isHidden())
-        s['ui_show_visualizer'] = int(not self.audioview.isHidden())
+        if self.controller.dspSupported():
+            s['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
         self.hide()
 

@@ -257,7 +257,6 @@ class AdvanceButton(QWidget):
         self.reverse = reverse
         self.mouse_hover = False
 
-
         s = 100
         m = 3
         m2 = 2*m
@@ -266,18 +265,6 @@ class AdvanceButton(QWidget):
         self.path.moveTo(s-m,m)
         self.path.arcTo(m,m, 2*(s-m2),s-m2, 90,180)
         self.path.arcTo(s-a,s-m,a*2,-(s-m2),90,180)
-
-        self.fillColorlg = QColor(112, 112, 112) # light gray
-        self.fillColormg = QColor(72, 72, 72) # dark gray
-        self.fillColordg = QColor(64, 64, 64) # dark gray
-
-        self.gradient1 = QRadialGradient(50, 50, 50, 50, 50)
-        self.gradient1.setColorAt(0.0, self.fillColorlg)
-        self.gradient1.setColorAt(.70, self.fillColordg)
-
-        self.gradient2 = QRadialGradient(50, 50, 50, 50, 50)
-        self.gradient2.setColorAt(0.0, self.fillColordg)
-        self.gradient2.setColorAt(.70, self.fillColorlg)
 
         h = 35
         w = s - 3*a
@@ -308,6 +295,17 @@ class AdvanceButton(QWidget):
         painter.setPen(QPen(self.penColor, self.penWidth, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setTransform ( QTransform.fromTranslate(.5,1))
+
+        self.fillColormg = self.palette().mid().color()
+        self.fillColordg = self.palette().dark().color()
+
+        self.gradient1 = QRadialGradient(50, 50, 50, 50, 50)
+        self.gradient1.setColorAt(0.0, self.fillColormg)
+        self.gradient1.setColorAt(.70, self.fillColordg)
+
+        self.gradient2 = QRadialGradient(50, 50, 50, 50, 50)
+        self.gradient2.setColorAt(0.0, self.fillColordg)
+        self.gradient2.setColorAt(.70, self.fillColormg)
 
         if self.reverse == True:
             painter.translate( w, 0)
