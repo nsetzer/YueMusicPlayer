@@ -400,6 +400,12 @@ def get_album_art( song_path, temp_path):
     raise ArtNotFound(song_path)
 
 def get_album_art_data( song ):
+    # song only needs to be a dictionary containing:
+    #   Song.path
+    #   Song.artist
+    #   Song.album
+    # the path could be to a file that does not exist, as long
+    # as the directory does exist.
     song_path = song[Song.path]
     ext = os.path.splitext(song_path)[1].lower()
 
@@ -412,10 +418,15 @@ def get_album_art_data( song ):
     except Exception as e:
         print("mutagen: %s"%e)
 
+    if data is not None:
+        return data
+
     dirname = os.path.dirname( song_path )
 
     names = ["cover.jpg","cover.png","folder.jpg","folder.png"]
-    names.append("%s - %s.jpg"%(song[Song.artist],song[Song.album]))
+    n = "%s - %s.jpg"%(song[Song.artist],song[Song.album])
+    names.append(n)
+    names.append(n.replace(" ","_"))
 
     for name in names:
         path = os.path.join(dirname,name)
