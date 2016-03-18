@@ -66,8 +66,9 @@ class BassPlayer(object):
 
         if BassPlayer.supportsFloat() :
             #raise FloatingPointError("BASS does not support Floating Point DSP.")
-            print('BASS_Init error Floating Point DSP unsupported')
             BassPlayer.default_flags = pybass.BASS_SAMPLE_FLOAT
+        else:
+            sys.stderr.write('BASS init error: Floating Point DSP unsupported')
 
         BassPlayer.isINIT = True
 

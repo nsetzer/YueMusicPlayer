@@ -428,34 +428,3 @@ def source_walk(source, dirpath ):
 
     yield dirpath
 
-def source_walk_ext(source, dirpath, extensions, delete_dirs=False):
-    """ return all files from target source directory """
-    # i tried to write this without recursion, but it became
-    # too complicated - the problem was yielding the input last correctly
-
-    items = source.listdir(dirpath)
-
-    for item in items:
-        if item == ".." or item == ".":
-            continue
-        path = source.join(dirpath,item)
-        ext = os.path.splitext(item)[1]
-        if ext in extensions:
-            yield path
-        elif source.isdir(path):
-            for x in source_walk_ext( source, path, extensions, delete_dirs ):
-                yield x
-
-    # this solution is less than ideal, since we have to list twice,
-    # but it is the only way to delete a directory at the moment
-    # if a child directory is deleted, this will result in the parent
-    # being cleaned up if the parent becomes empty.
-    # it would be better to run this AFTER the delete process.
-    if len(items):
-        items = source.listdir(dirpath)
-    if len(items)==0 and delete_dirs:
-        try:
-            source.delete( dirpath )
-        except PermissionError:
-            sys.stderr.write("unable to delete %s\n"%dirpath)
-        return

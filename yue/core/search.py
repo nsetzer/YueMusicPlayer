@@ -273,11 +273,15 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
         direction = " COLLATE NOCASE" + direction
 
     if orderby is not None:
-
+        # orderby can be:
+        # "random"
+        #  Song.column
+        #  (Song.column, Song.column)
+        #  ( (Song.column, dir) , (Song.column, dir) )
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
 
-        if "random" in orderby[0]:
+        if isinstance(orderby[0],str) and orderby[0].lower()=="random":
             query += " ORDER BY RANDOM()"
         else:
             query += " ORDER BY "

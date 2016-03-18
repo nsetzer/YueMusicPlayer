@@ -150,7 +150,16 @@ class FTPSource(DataSource):
         try:
             return self.ftp.size(path) is None
         except error_perm:
-            return self.exists( path )
+            # TODO: to think about more later,
+            # under my use-case, I'm only asking if a path is a directory
+            # if I Already think it exists. Under the current FTP impl
+            # ftp.size() fails for various reasons unless the file exists
+            # and is an accessable file. I can infer that a failure to
+            # determine the size means that the path is a directory,
+            # but this does not hold true under other use cases.
+            # I can't cache listdir calls, but if I could, then I could
+            # use that to determine if the file exists
+            return True#self.exists( path )
 
     def mkdir(self,path):
         # this is a really ugly quick and dirty solution

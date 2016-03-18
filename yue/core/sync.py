@@ -32,7 +32,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.core.explorer.source import DirectorySource, source_walk_ext, source_copy_file
+from yue.core.explorer.source import DirectorySource, source_copy_file
 from yue.core.explorer.ftpsource import FTPSource, parseFTPurl
 
 # TODO: move to source
@@ -73,6 +73,8 @@ def run_async(func):
         return func_hl
 
     return async_func
+
+
 
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
@@ -266,13 +268,18 @@ class ParallelTranscodeProcess(IterativeProcess):
     write to a temporary directory.
     """
 
-    def __init__(self, parent=None, datalist=None, no_exec=False):
+    def __init__(self, parent=None, datalist=None,NPARALLEL=5, no_exec=False):
         super(ParallelTranscodeProcess,self).__init__( parent )
         self.datalist = datalist
         self.no_exec = no_exec
-        self.N = 5 # num actions to take in parallel
+        self.N = NPARALLEL # num actions to take in parallel
 
         self.tempdir = ""
+        self.nsteps=0
+
+    @staticmethod
+    def num_steps(n,NPARALLEL):
+        return (n+NPARALLEL) // NPARALLEL
 
     def __enter__(self):
         if not self.no_exec:
@@ -286,13 +293,15 @@ class ParallelTranscodeProcess(IterativeProcess):
         return # return true to supress exception
 
     def begin(self):
-        nsteps = (len(self.datalist)+self.N) // self.N
-        sys.stdout.write("transcode requires %d steps for %d files.\n"%(nsteps,len(self.datalist)))
-        return nsteps
+        self.nsteps = ParallelTranscodeProcess.num_steps(len(self.datalist),self.N)
+        sys.stdout.write("transcode requires %d steps for %d files.\n"%(self.nsteps,len(self.datalist)))
+        return self.nsteps
 
     def step(self,idx):
         s=idx*self.N
         tasks = []
+
+        self.parent.message("Transcode: (%d/%d)"%(idx+1,self.nsteps))
 
         # launch N threads to perform transcode in parallel
         for k in range(self.N):
@@ -507,9 +516,11 @@ class SyncManager(object):
         copylist = list(self.data.items_copy())
         transcodelist =  list(self.data.items_transcode())
 
+        NPARALLEL=5
+
         d = len(delete_list)
         c = len(copylist)
-        t = len(transcodelist)
+        t = nsteps = ParallelTranscodeProcess.num_steps(len(transcodelist),NPARALLEL)
         p = 0 if self.dynamic_playlists is None else len(self.dynamic_playlists)
 
         count=d+c+t+p
@@ -529,7 +540,8 @@ class SyncManager(object):
 
         self.message("Transcode Files")
         if t>0:
-            proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,no_exec=self.no_exec)
+            proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,
+                        NPARALLEL=NPARALLEL,no_exec=self.no_exec)
             self.run_proc( proc )
 
         target_library = self.createTargetLibrary()
@@ -597,10 +609,9 @@ class SyncManager(object):
         # return a list of files to delete.
 
         lst_delete = []
-        for path in source_walk_ext(self.target_source,
-                                    self.target_path,
-                                    Song.supportedExtensions(),
-                                    not self.no_exec):
+        for path in self.source_walk_ext(self.target_path,
+                                         Song.supportedExtensions(),
+                                         not self.no_exec):
             if not self.data.exists(path):
                 # need to remove this file as it is not on the list
                 lst_delete.append(path)
@@ -612,6 +623,40 @@ class SyncManager(object):
                 #if not self.data.transcode(path):
                 self.data.delete(path)
         return lst_delete
+
+    def source_walk_ext(self, dirpath, extensions, delete_dirs=False):
+        """ return all files from target source directory """
+        #TODO: write without recursion
+        x=self.target_source.breakpath( dirpath )[-3:]
+        x=self.target_source.join(*x)
+        self.message("Scanning Directory: %s"%x)
+        items = self.target_source.listdir(dirpath)
+
+        for item in items:
+            if item == ".." or item == ".":
+                continue
+            path = self.target_source.join(dirpath,item)
+            ext = os.path.splitext(item)[1]
+            if ext in extensions:
+                yield path
+            elif self.target_source.isdir(path):
+                for x in self.source_walk_ext(path, extensions, delete_dirs ):
+                    yield x
+
+        # this solution is less than ideal, since we have to list twice,
+        # but it is the only way to delete a directory at the moment
+        # if a child directory is deleted, this will result in the parent
+        # being cleaned up if the parent becomes empty.
+        # it would be better to run this AFTER the delete process.
+        if len(items):
+            items = self.target_source.listdir(dirpath)
+        if len(items)==0 and delete_dirs:
+            try:
+                self.target_source.delete( dirpath )
+            except PermissionError:
+                sys.stderr.write("unable to delete %s\n"%dirpath)
+            return
+
 
     def remove_path(self,filepath):
         self.log("delete: %s"%filepath)
