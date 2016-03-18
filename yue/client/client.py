@@ -249,7 +249,7 @@ class ClientRepl(object):
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
-    def __init__(self, diag, device, version):
+    def __init__(self, errorlog_view, device, version):
         super(MainWindow, self).__init__()
 
         self.setAcceptDrops( True )
@@ -259,6 +259,7 @@ class MainWindow(QMainWindow):
         self.repl = YueRepl( device )
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
+        self.errorlog_view = errorlog_view
 
         self.keyhook = None
         self.remotethread = None
@@ -288,7 +289,7 @@ class MainWindow(QMainWindow):
 
         self.dialog_ingest = None
         self.dialog_update = None
-        self._init_ui( diag)
+        self._init_ui()
         self._init_values()
         self._init_menubar()
 
@@ -306,7 +307,7 @@ class MainWindow(QMainWindow):
         except IndexError:
             sys.stderr.write("error: No Current Song\n")
 
-    def _init_ui(self, diag):
+    def _init_ui(self):
 
         self.bar_menu = QMenuBar( self )
         self.setMenuBar( self.bar_menu )
@@ -364,7 +365,7 @@ class MainWindow(QMainWindow):
         self.dock_list.visibilityChanged.connect(self.showhide_list)
 
         self.dock_diag = QDockWidget()
-        self.dock_diag.setWidget( diag )
+        self.dock_diag.setWidget( self.errorlog_view )
         self.dock_diag.setAllowedAreas(Qt.BottomDockWidgetArea)
         self.dock_diag.visibilityChanged.connect(self.showhide_diag)
 
@@ -497,11 +498,6 @@ class MainWindow(QMainWindow):
             self.action_view_console.setText("Show Console")
 
         self.action_view_list = menu.addAction("Show Play List",lambda : self.toggleDialogVisible(self.dock_list))
-        self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
-        if s['ui_show_error_log']:
-            self.action_view_logger.setText("Hide Error Log")
-        else:
-            self.action_view_logger.setText("Show Error Log")
 
         if self.controller.dspSupported():
             self.action_view_visualizer = menu.addAction("",self.toggleVisualizerVisible)
@@ -512,6 +508,14 @@ class MainWindow(QMainWindow):
 
         self.action_view_tree    = menu.addAction("Show Tree View")
         self.action_view_tree.setDisabled(True)
+
+        self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
+        if s['ui_show_error_log']:
+            self.action_view_logger.setText("Hide Error Log")
+        else:
+            self.action_view_logger.setText("Show Error Log")
+
+        menu.addAction("Clear Error Log",self.errorlog_view.clear)
 
         menu = self.bar_menu.addMenu("&?")
         # sip version, qt version, python version, application version

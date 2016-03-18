@@ -87,6 +87,10 @@ class LogView(QTextEdit):
                     wf.write(line)
         return
 
+    def clear(self):
+        self.setPlainText("")
+        self.num_chars=0
+
 def main():
     """
     demonstrate how to use a log view object.
