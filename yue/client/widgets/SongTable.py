@@ -56,7 +56,9 @@ class SongTable(LargeTable):
     def __init__(self,parent=None):
         super(SongTable,self).__init__(parent)
 
-        self.sort_orderby = [Song.artist, Song.album, Song.title]
+        self.sort_orderby = [(Song.artist,Song.asc),
+                             (Song.album,Song.asc),
+                             (Song.title,Song.asc)]
         self.sort_reverse = False
         self.sort_limit = 3 # this limit controls maximum number of fields passed to ORDER BY
 
@@ -211,10 +213,22 @@ class SongTable(LargeTable):
     def sortColumn(self,col_index):
         column = self.columns[col_index]
         index  =  column.index
-        if self.sort_orderby:
-            if self.sort_orderby[0] != index:
-                self.sort_orderby = ([index,] + self.sort_orderby)[:self.sort_limit]
         self.sort_reverse = self.setSortColumn(col_index) == -1
+        if self.sort_orderby:
+
+            if self.sort_orderby[0][0] == index:
+                dir = Song.desc if self.sort_orderby[0][1] == Song.asc else Song.asc
+                self.sort_orderby[0] = (index,dir)
+            else:
+                # remove copies of sort index, if any
+                i=1;
+                while i < len(self.sort_orderby):
+                    if self.sort_orderby[1][0] == index or i+1 >= self.sort_limit:
+                        self.sort_orderby.pop(i)
+                        continue
+                    i+=1
+                dir = Song.desc if column.column_sort_default==-1 else Song.asc
+                self.sort_orderby.insert(0,(index,dir))
         self.update_data.emit()
 
     def getColumn(self,song_enum,check_hidden=False):

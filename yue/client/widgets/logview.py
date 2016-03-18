@@ -56,9 +56,10 @@ class LogView(QTextEdit):
 
     def reflow(self):
         # truncate the log
-        if self.num_chars > self.max_chars:
+        if self.num_chars > self.max_chars*1.25:
             text=self.toPlainText()
             self.setPlainText(text[-self.max_chars:])
+            self.num_chars = self.max_chars
 
     def flush(self):
         pass

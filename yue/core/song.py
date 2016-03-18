@@ -56,6 +56,8 @@ class Song(object):
     # this is not a column, but is used by the orderby option
     # when search / sorting a song list, causing a random ordering
     random = "RANDOM"
+    asc = "ASC"
+    desc = "DESC"
 
     eqfactor = 250.0
 

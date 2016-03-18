@@ -277,11 +277,30 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
 
-        if orderby[0].upper() == "RANDOM":
+        if "random" in orderby[0]:
             query += " ORDER BY RANDOM()"
         else:
-            orderby = [ x+direction for x in orderby]
-            query += " ORDER BY " + ", ".join(orderby)
+            query += " ORDER BY "
+
+            x=orderby[0]
+            if isinstance(x,(tuple,list)):
+                query += x[0] # orderby field
+                if case_insensitive:
+                    query += " COLLATE NOCASE "
+                query += x[1] # orderby direction
+            else:
+                query += x + direction
+
+            for x in orderby[1:]:
+                if isinstance(x,(tuple,list)):
+                    query += ", " + x[0] # orderby field
+                    if case_insensitive:
+                        query += " COLLATE NOCASE "
+                    query += x[1] # orderby direction
+                else:
+                    query += ", " + x + direction
+            #orderby = [ x+direction for x in orderby]
+            #query += " ORDER BY " + ", ".join(orderby)
 
     if limit is not None:
         query += " LIMIT %d"%limit
