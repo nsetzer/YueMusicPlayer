@@ -183,6 +183,8 @@ class NodeWidget(Widget):
                 self.anim.on_complete = lambda w : self.on_complete(w,elem_idx)
                 self.anim.start(self)
                 self.elem.offset_x = 0
+                return True
+        return False
 
     def swipe_reset(self):
         if self.elem is not None and self.parent is not None:
@@ -515,6 +517,7 @@ class ViewWidget(Widget):
                 self._touch_drag = False
                 self._touch_drag_idx = -1
                 self._touch_token = None
+                self._touch_swipe = False
                 return True
 
             # event is contained within this widget, but is not a scroll
@@ -542,7 +545,7 @@ class ViewWidget(Widget):
                 self.dispatch('on_drop',self._touch_drag_idx,idx)
             # arbitrary time in milliseconds
             # TODO: kivy has settings for Jitter and tap time, check those
-            elif self._touch_dy < self.row_height//3 and t < .2:
+            elif not self._touch_swipe and self._touch_dy < self.row_height//3 and t < .2:
                 elem = self.nodes[idx].elem
                 if touch.is_double_tap:
                     self.dispatch('on_double_tap',idx+self.offset_idx, elem)
@@ -551,10 +554,11 @@ class ViewWidget(Widget):
             else:
                 # create a momentum effect,
                 # parameters need to be played with.
-                delta = self.offset - self._touch_begin_x
-                target = max(0,min(self.offset_max, self.offset+delta//2))
-                self.anim_scroll = Animation(offset=target, duration=.125);
-                self.anim_scroll.start(self)
+                #delta = self.offset - self._touch_begin_x
+                #target = max(0,min(self.offset_max, self.offset+delta//2))
+                #self.anim_scroll = Animation(offset=target, duration=.125);
+                #self.anim_scroll.start(self)
+                pass
 
             if self._touch_token is not None:
                 self.remove_widget(self._touch_token)
@@ -586,7 +590,8 @@ class ViewWidget(Widget):
 
                 if 0 <= idx < len(self.nodes):
                     if self.nodes[idx].parent is not None:
-                        self.nodes[idx].swipe(self.offset_idx+idx,touch.dx)
+                        if self.nodes[idx].swipe(self.offset_idx+idx,touch.dx):
+                            self._touch_swipe = True
                     # if a diagonal drag selects a different row,
                     # reset the previous row.
                     if idx != self._touch_last_index:

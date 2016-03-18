@@ -74,17 +74,20 @@ class BackgroundDataLoad(Thread):
             Settings.instance().platform_path,"library.ini") );
 
         tree = libraryToTree( library )
-        # build a dummy playlist until it can be stored in the db
-        songs = library.search("",orderby=Song.random,limit=50)
-        uids = [song[Song.uid] for song in songs]
 
-        if len(uids):
-            plcur.set( uids )
-            SoundManager.instance().load( songs[0] )
+        if len(plcur)==0:
+            # build a dummy playlist until it can be stored in the db
+            songs = library.search("",orderby=Song.random,limit=50)
+            uids = [song[Song.uid] for song in songs]
+            if len(uids):
+                plcur.set( uids )
+                SoundManager.instance().load( songs[0] )
+                viewlst = PlayListToViewList( library, uids )
+                scr_cur.setPlayList( viewlst )
+        else:
+            uids = list(plcur.iter())
             viewlst = PlayListToViewList( library, uids )
             scr_cur.setPlayList( viewlst )
-        else:
-            Logger.error("boo: shouldnt be here")
 
         scr_lib.setLibraryTree( tree )
 

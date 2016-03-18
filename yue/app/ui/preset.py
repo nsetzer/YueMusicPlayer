@@ -33,9 +33,13 @@ from yue.app.widgets.view import TreeViewWidget
 from yue.app.widgets.querybuilder import QueryBuilder, QueryKind
 
 from yue.app.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
+from yue.app.ui.util import PlayListToViewList, PlayListFromTree, TrackTreeElem
+from yue.app.widgets.tristate import TriState
+from yue.app.sound.manager import SoundManager
 
 from yue.app.settings import Settings
 from yue.core.library import Library
+from yue.core.playlist import PlaylistManager
 from yue.core.song import Song
 
 class PresetScreen(Screen):
@@ -74,12 +78,13 @@ class ModifyPresetScreen(Screen):
          'playcount':int, 'year':int, 'last_played':int }
 
         self.scrollview = ScrollView(size_hint=(1.0, None), )
-        self.queryview = QueryBuilder( columns, kind_map, default_column = 'all-text' )
+        fs = Settings.instance().font_size
+        self.queryview = QueryBuilder( columns, kind_map, default_column = 'all-text', font_size=fs )
         self.queryview.bind(on_children_change=self.on_terms_change)
         self.queryview.newTerm()
         self.scrollview.add_widget( self.queryview )
 
-        self.treeview = TreeViewWidget(font_size = Settings.instance().font_size)
+        self.treeview = TreeViewWidget(font_size = fs)
 
 
         self.btn_new = Button(text="+")
@@ -108,6 +113,8 @@ class ModifyPresetScreen(Screen):
         self.hbox_bot.add_widget(self.btn_home)
         self.hbox_bot.add_widget(self.btn_save)
         self.hbox_bot.add_widget(self.btn_create)
+
+        self.btn_create.bind(on_press=self.on_create_playlist)
 
         self.vbox.add_widget( self.scrollview )
         self.vbox.add_widget( self.hbox_mid )
@@ -153,5 +160,42 @@ class ModifyPresetScreen(Screen):
     def toggleSelection(self,state=None):
         """ TODO: library implements a toggle select all, which should
             be moved into the tree view class. """
-        pass
+        # if no target state is given, check to see if any
+        # elements are selected, if they are then unselect all
+        # otherwise set all to selected
+        if state is None:
+            state = TriState.checked
+            for item in self.treeview.data:
+                if item.check_state is not TriState.unchecked:
+                    state = TriState.unchecked
+                    break;
 
+        for item in self.treeview.data:
+            item.setChecked( state )
+
+        self.treeview.update_labels()
+
+    def on_create_playlist(self,*args):
+        """ TODO this is duplicated from library """
+        # i should do this asynchronously
+        # but i don't yet know how to disable the button until
+        # the task completes
+        # also, I think I want this to pull up a new screen for more options
+
+        # so for now, this will do everything, but it will change soon
+
+        lst = PlayListFromTree( Library.instance(), self.treeview.data )
+        if len(lst) == 0:
+            return
+
+        self.toggleSelection(TriState.unchecked)
+
+        viewlst = PlayListToViewList( Library.instance(), lst )
+
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_current_playlist )
+        scr.setPlayList( viewlst )
+
+        playlist = PlaylistManager.instance().openPlaylist('current')
+        playlist.set( lst )
+        SoundManager.instance().play_index(0)

@@ -1,6 +1,6 @@
 
 import os, sys, platform
-import kivy.metrics
+from kivy.metrics import Metrics
 from kivy.logger import Logger
 from kivy.core.text import LabelBase
 
@@ -14,9 +14,18 @@ class Settings(object):
     def __init__(self, manager):
         super(Settings, self).__init__()
 
-        self.font_size = int(.8 * .25 * kivy.metrics.Metrics.dpi)
+        if Metrics.dpi < 100:
+            self.font_size = 12
+        else:
+            # px = in * dpi
+            # px = pt * dpi / 72
+            # pt = 72 * in
+            # quarter inch = 18 font point size
+            #
+            self.font_size = 36
         self._font_height = CoreLabel(font_size=self.font_size).get_extents("_")[1]
-
+        Logger.info("FONT: size: %d height: %d"%(self.font_size,self._font_height))
+        Logger.info("FONT: dpi: %d density: %d font_scale:%d"%(Metrics.dpi,Metrics.density,Metrics.fontscale))
         self.manager = manager
         self.screen_home = 'Home'
         self.screen_library = 'Library'
@@ -64,10 +73,10 @@ class Settings(object):
 
     def recompute_dimensions(self):
 
-        lbl = CoreLabel(font_size = self.font_size)
-        self.font_height = lbl.get_extents("_")[1]
-        self.padding_top = self.font_height//2
-        self.padding_bottom = self.font_height//2
+        #lbl = CoreLabel(font_size = self.font_size)
+        #self.font_height = lbl.get_extents("_")[1]
+        self.padding_top = self.font_height()//2
+        self.padding_bottom = self.padding_top
 
     def init_platform(self):
         self.platform = sys.platform
@@ -102,9 +111,9 @@ class Settings(object):
 
     def row_height(self):
         # this should really depend on DPI...
-        print("dpi",kivy.metrics.Metrics.dpi)
-        m= 4 if 'android'==self.platform else 1
-        return self.font_height*m + self.padding_top + self.padding_bottom
+        #print("dpi",kivy.metrics.Metrics.dpi)
+        #m= 4 if 'android'==self.platform else 1
+        return self.font_height() + self.padding_top + self.padding_bottom
 
     def go_back(self, *args):
         """ go back to the previous screen. return true on success """

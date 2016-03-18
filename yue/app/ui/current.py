@@ -62,11 +62,9 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
             SoundManager.instance().play_index( idx )
             popup.dismiss()
 
-
-
         content.bind(on_action= on_action)
-        content.bind(on_accept= lambda *x : self.popup.dismiss() )
-        content.bind(on_reject= lambda *x : self.popup.dismiss() )
+        content.bind(on_accept= lambda *x : popup.dismiss() )
+        content.bind(on_reject= lambda *x : popup.dismiss() )
 
         popup.open()
 
