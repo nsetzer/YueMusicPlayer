@@ -14,9 +14,8 @@ class Settings(object):
     def __init__(self, manager):
         super(Settings, self).__init__()
 
-        self.font_size = 24
-        self.font_height = 0
-        #self.font_factor = 1.5
+        self.font_size = int(.8 * .25 * kivy.metrics.Metrics.dpi)
+        self._font_height = CoreLabel(font_size=self.font_size).get_extents("_")[1]
 
         self.manager = manager
         self.screen_home = 'Home'
@@ -96,12 +95,14 @@ class Settings(object):
         Logger.info("settings: platform path: %s"%self.platform_path)
         Logger.info("settings: platform lib : %s"%self.platform_libpath)
 
-    def font_height(self, font_size ):
+    def font_height(self):
         """ return height in pixels for a given font size """
-        return kivy.metrics.sp( font_size )
+        #return kivy.metrics.sp( font_size )
+        return self._font_height
 
     def row_height(self):
         # this should really depend on DPI...
+        print("dpi",kivy.metrics.Metrics.dpi)
         m= 4 if 'android'==self.platform else 1
         return self.font_height*m + self.padding_top + self.padding_bottom
 
