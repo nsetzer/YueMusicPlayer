@@ -172,6 +172,12 @@ class CurrentSongView(QWidget):
 
         self.update()
 
+    def _get_suggested_rating(self,y):
+        v = min(1.0,(y - self.rtdrawy)/self.rtdrawh)
+        v = round((1.0-v)*10)
+        v = min(10,min(10,v))
+        return v
+
     def mouseMoveEvent(self,event):
 
         w=self.width()
@@ -179,10 +185,7 @@ class CurrentSongView(QWidget):
         p=int(event.y()/h)
 
         if event.x() > self.rtdrawx and self.enable_rate_tracking:
-            v = min(1.0,(event.y() - self.rtdrawy)/self.rtdrawh)
-            v = round((1.0-v)*10)
-            v = min(10,min(10,v))
-            self.suggested_rating = v
+            self.suggested_rating = self._get_suggested_rating( event.y() )
             self.update()
             return
 
@@ -349,6 +352,8 @@ class CurrentSongView(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.enable_rate_tracking = True
+            self.suggested_rating = self._get_suggested_rating( event.y() )
+            self.update()
             event.accept()
 
     def mouseReleaseEvent(self, event):

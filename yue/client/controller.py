@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from ..core.sound.device import MediaState
-from yue.core.song import Song, UnsupportedFormatError, get_album_art_data, ArtNotFound
+from yue.core.song import Song, UnsupportedFormatError
 from yue.core.search import ParseError
 from ..core.settings import Settings
 from yue.core.library import Library
@@ -151,17 +151,7 @@ class PlaybackController(object):
         self.root.songview.setCurrentSong( song )
         self.root.songview.setPlaylistInfo( index, length)
 
-        try:
-            img = QImage.fromData(get_album_art_data(song))
-            pimg = QPixmap.fromImage(img)
-            pimg = pimg.scaledToHeight(self.root.aartview.height(),Qt.SmoothTransformation)
-            self.root.aartview.setPixmap(pimg)
-            self.root.aartview.setHidden(False)
-        except ArtNotFound as e:
-            # surpress error not interesting
-            #sys.stderr.write("%s\n"%e)
-            self.root.aartview.setHidden(True)
-
+        self.root.aartview.setArt( song )
 
         self.root.posview.setMaximum( song[Song.length] )
 

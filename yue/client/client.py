@@ -23,7 +23,7 @@ from ..core.settings import Settings
 from ..core.library import Library
 from ..core.playlist import PlaylistManager
 from ..core.sound.device import MediaState
-from ..core.song import Song
+from ..core.song import Song , get_album_art_data, ArtNotFound
 from ..core.util import string_quote, backupDatabase, format_delta
 from ..core.repl import YueRepl, ReplArgumentParser
 
@@ -56,6 +56,7 @@ from .ui.ingest_dialog import IngestProgressDialog
 from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
 from .ui.settings import SettingsDialog
 from .ui.song_view import CurrentSongView
+from .ui.art_view import AlbumArtView
 from .ui.volume import VolumeController
 
 
@@ -71,6 +72,8 @@ except ImportError:
 
 from .DSP.peqwidget import WidgetOctaveEqualizer
 from .DSP.equalizer import DialogVolEqLearn
+
+
 
 class ClientRepl(object):
     """ augments the basic repl given in yue.core """
@@ -396,25 +399,27 @@ class MainWindow(QMainWindow):
         self.btn_playpause.on_stop.connect(self.controller._setStop)
 
         self.btn_next = AdvanceButton(True,self)
-        self.btn_next.setFixedHeight( .75*h )
+        self.btn_next.setFixedHeight( .66*h )
+        self.btn_next.setFixedWidth( 32 )
         self.btn_next.clicked.connect(self.controller.play_next)
         self.btn_prev = AdvanceButton(False,self)
-        self.btn_prev.setFixedHeight( .75*h )
+        self.btn_prev.setFixedHeight( .66*h )
+        self.btn_prev.setFixedWidth( 32 )
         self.btn_prev.clicked.connect(self.controller.play_prev)
 
         self.hbox_btn = QHBoxLayout();
         self.hbox_btn.setContentsMargins(0,0,0,0)
-        self.hbox_btn.addWidget( QWidget(self) ) # layout spacer
+        self.hbox_btn.addStretch(1) # layout spacer
         self.hbox_btn.addWidget( self.btn_prev )
         self.hbox_btn.addWidget( self.btn_playpause )
         self.hbox_btn.addWidget( self.btn_next )
-        self.hbox_btn.addWidget( QWidget(self) )
+        self.hbox_btn.addStretch(1)
 
         self.posview = PositionSlider( self );
         self.posview.value_set.connect(self.controller.seek)
         self.posview.setObjectName("TimeSlider")
 
-        self.aartview = QLabel(self)
+        self.aartview = AlbumArtView(self)
         h=self.songview.height()
         self.aartview.setFixedHeight(h)
         self.aartview.setFixedWidth(h)
@@ -461,7 +466,17 @@ class MainWindow(QMainWindow):
             pl.set( lst )
         self.plview.setPlaylist( Library.instance(), pl)
 
+    def toggleFullScreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
     def _init_menubar(self):
+
+        self.xcut_fullscreen = QShortcut(QKeySequence("F1"), self)
+        self.xcut_fullscreen.activated.connect(self.toggleFullScreen)
+
         s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
         menu.addAction("Settings",self.showSettings)

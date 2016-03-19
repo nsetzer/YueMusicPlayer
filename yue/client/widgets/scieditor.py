@@ -31,6 +31,8 @@ class SimpleSciEditor(QsciScintilla):
     def __init__(self, parent=None):
         super(SimpleSciEditor, self).__init__(parent)
 
+
+
         # Set the default font
         #font = QFont()
         font = QFontDatabase.systemFont(QFontDatabase.FixedFont)
@@ -97,6 +99,9 @@ class SimpleSciEditor(QsciScintilla):
 class CodeEditor(QWidget):
     def __init__(self, parent=None):
         super(CodeEditor, self).__init__(parent)
+
+        self.xcut_exec = QShortcut(QKeySequence("F5"), self)
+        self.xcut_exec.activated.connect(self.exec_)
 
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
