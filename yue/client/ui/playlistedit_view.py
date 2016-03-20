@@ -97,26 +97,29 @@ class PlayListEditTable(EditTable):
     def processDropEvent(self,source,row,data):
 
         # allow drops from the current playlist because why not
+        uids = set()
         if source is not None:
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.add( song[Song.uid] )
                     self.parent().dirty = True
+                    uids.add( song[Song.uid] )
             self.sibling.setSelection([])
-            self.parent().refresh()
-
+            self.parent().refresh(ruids=uids)
 
     def mouseDoubleClick(self,row,col,event):
 
+        uids = set()
         for song in self.getSelection():
             self.parent().playlist_data.remove( song[Song.uid] )
             self.parent().dirty = True
+            uids.add(song[Song.uid])
         sel = self.getSelectionIndex()
         if sel:
             self.setSelection([min(sel),])
         else:
             self.setSelection([])
-        self.parent().refresh()
+        self.parent().refresh(luids=uids)
 
 class LibraryEditTable(EditTable):
     """docstring for SongTable"""
@@ -132,25 +135,29 @@ class LibraryEditTable(EditTable):
 
     def processDropEvent(self,source,row,data):
 
+        uids = set()
         if source is self.sibling:
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.remove( song[Song.uid] )
                     self.parent().dirty = True
+                    uids.add( song[Song.uid] )
             self.sibling.setSelection([])
-            self.parent().refresh()
+            self.parent().refresh(luids=uids)
 
     def mouseDoubleClick(self,row,col,event):
 
+        uids = set()
         for song in self.getSelection():
             self.parent().playlist_data.add( song[Song.uid] )
             self.parent().dirty = True
+            uids.add(song[Song.uid])
         sel = self.getSelectionIndex()
         if sel:
             self.setSelection([min(sel),])
         else:
             self.setSelection([])
-        self.parent().refresh()
+        self.parent().refresh(ruids=uids)
 
     def sortColumn(self,col_index):
         # pass the event to the sibling, the playlist
@@ -240,15 +247,20 @@ class PlaylistEditView(QWidget):
     def onTextChanged(self,text,update=0):
         self.run_search(text)
 
-    def refresh(self):
+    def refresh(self,ruids=None,luids=None):
         # todo: ability to scroll to the index of a recently dropped song
 
-        self.run_search(self.txt_search.text())
+        self.run_search(self.txt_search.text(),ruids=ruids,luids=luids)
 
-    def run_search(self, text, setText=False):
+    def run_search(self, text, setText=False,ruids=None,luids=None):
         """
         setText: if true set the text box to contain text
         """
+        if ruids is None:
+            ruids = set()
+        if luids is None:
+            luids = set()
+
         try:
             # search the entire library for songs that match the query
             lib = Library.instance()
@@ -257,12 +269,19 @@ class PlaylistEditView(QWidget):
                 reverse=self.tbl_pl.sort_reverse )
 
             # filter results into two sets, in the playlist and not
+            rselection=set()
+            lselection=set()
             ldata = []
             rdata = []
             for song in songs:
+                uid = song[Song.uid]
                 if song[Song.uid] in self.playlist_data:
+                    if uid in ruids:
+                        rselection.add(len(rdata))
                     rdata.append( song )
                 else:
+                    if uid in luids:
+                        lselection.add(len(ldata))
                     ldata.append( song )
 
             self.tbl_lib.setData(ldata)
@@ -278,9 +297,15 @@ class PlaylistEditView(QWidget):
 
             if setText:
                 self.txt_search.setText( text )
-
                 self.tbl_lib.scrollTo( 0 )
                 self.tbl_pl.scrollTo( 0 )
+            elif rselection:
+                self.tbl_pl.setSelection( rselection )
+                self.tbl_pl.scrollTo( min(rselection) )
+            elif lselection:
+                self.tbl_lib.setSelection( lselection )
+                self.tbl_lib.scrollTo( min(lselection) )
+
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)

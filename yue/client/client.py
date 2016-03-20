@@ -73,8 +73,6 @@ except ImportError:
 from .DSP.peqwidget import WidgetOctaveEqualizer
 from .DSP.equalizer import DialogVolEqLearn
 
-
-
 class ClientRepl(object):
     """ augments the basic repl given in yue.core """
 

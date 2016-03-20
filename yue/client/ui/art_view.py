@@ -22,9 +22,9 @@ class AlbumArtDialog(QDialog):
     def setImage(self,image):
 
         self.image = image
-        self.display()
+        self.update_pixmap()
 
-    def display(self):
+    def update_pixmap(self):
         self.pixmap = QPixmap.fromImage(self.image).scaled(
                                 self.size(),
                                 Qt.KeepAspectRatio,
@@ -32,8 +32,7 @@ class AlbumArtDialog(QDialog):
         self.label.setPixmap(self.pixmap)
 
     def resizeEvent(self,event):
-        self.display()
-        pass
+        self.update_pixmap()
 
 class AlbumArtView(QLabel):
     """docstring for AlbumArtView"""
@@ -41,7 +40,7 @@ class AlbumArtView(QLabel):
         super(AlbumArtView, self).__init__(parent)
 
         self.dialog = AlbumArtDialog(self)
-        self.dialog.resize(512,512)
+
     def setArt(self, song):
         try:
             self.image = QImage.fromData(get_album_art_data(song))
@@ -58,4 +57,5 @@ class AlbumArtView(QLabel):
 
     def mouseReleaseEvent(self,event):
         self.dialog.setImage( self.image )
+        self.dialog.resize(512,512)
         self.dialog.show()
