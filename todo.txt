@@ -1,12 +1,18 @@
 
 
-
-
- - support floating point dsp in bassplayer on platforms that support is.
- - create a background service
-    https://kivy.org/planet/2014/01/building-a-background-application-on-android-with-kivy/
+https://kivy.org/planet/2014/01/building-a-background-application-on-android-with-kivy/
 
 goals:
+
+    create a sandwich button which slides in a menu on the left
+        this menu contains options for other screens to go to,
+        and highlights which menu is current (disabled button)
+
+    a common app bar on the top of the UI
+        sandwich button | current song title/artist | play/pause
+        display current song at HALF default font size, with
+        artist stacked on top of title.
+        At first, just display text "artist/title", update signals later.
 
     create a widget with buttons for all of the different screens
         use an icon instead of words
@@ -15,6 +21,7 @@ goals:
             this depends on how many screens I have
 
     Home Screen provides access to different menu layouts
+        Home screen is now a pop in / overlay widget
         Now Playing:
             displays a list of songs in the now playing playlist
             displays controls for volume, current song progress, etc

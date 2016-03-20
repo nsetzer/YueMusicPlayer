@@ -106,7 +106,7 @@ class BassSoundDevice(SoundDevice):
         return self.device.duration()
 
     def setVolume(self,volume):
-        self.device.volume( max(0,min(100,int(vol*100))) )
+        self.device.volume( max(0,min(100,int(volume*100))) )
 
     def getVolume(self):
         return self.device.volume()/100

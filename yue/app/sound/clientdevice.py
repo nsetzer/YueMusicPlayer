@@ -50,10 +50,11 @@ class ClientSoundDevice(SoundDevice):
         raise NotImplementedError()
 
     def setVolume(self,volume):
+        self.volume = volume
         osc.sendMsg('/audio_action', dataArray=["volume",volume], port=self.info.serviceport)
 
     def getVolume(self):
-        raise NotImplementedError()
+        return self.volume
 
     def state(self):
         raise NotImplementedError()

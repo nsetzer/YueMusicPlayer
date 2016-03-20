@@ -7,6 +7,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.image import Image, AsyncImage
+from kivy.uix.slider import Slider
 from kivy.logger import Logger
 from kivy.clock import mainthread
 
@@ -69,12 +70,19 @@ class NowPlayingScreen(Screen):
         self.timebar = TimeBar()
         self.timebar.size_hint=(1.0,None)
 
+        # use value_normalized, set a small range here to prevent the
+        # number of signals that are sent to the backend
+        self.sld_vol = Slider(orientation='horizontal',min=0, max=25)
+        self.sld_vol.size_hint=(1.0,None)
+        self.sld_vol.height=row_height
+
         self.hbox_btns.add_widget( self.btn_prev )
         self.hbox_btns.add_widget( self.btn_playpause )
         self.hbox_btns.add_widget( self.btn_next )
 
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
+        self.vbox.add_widget( self.sld_vol )
         self.vbox.add_widget( self.lbl_title )
         self.vbox.add_widget( self.lbl_artist )
         self.vbox.add_widget( self.lbl_index ) # for lack of a better place for now
@@ -85,6 +93,9 @@ class NowPlayingScreen(Screen):
         self.timebar.bind(on_seek=self.change_position)
         SoundManager.instance().bind(on_load=self.update)
         SoundManager.instance().bind(on_song_tick=self.on_tick)
+
+        self.sld_vol.value_normalized = SoundManager.instance().getVolume()
+        self.sld_vol.bind( value_normalized=self.set_volume )
 
         self.bind(size=self.resize)
 
@@ -145,3 +156,7 @@ class NowPlayingScreen(Screen):
     def change_position(self,obj,position):
 
         SoundManager.instance().seek( position )
+
+    def set_volume(self,obj,value):
+        # v in range 0.0...1.0
+        SoundManager.instance().setVolume(value)

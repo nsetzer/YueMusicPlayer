@@ -191,6 +191,8 @@ class YueApp(App):
 
         SoundManager.init( Settings.instance().platform_libpath, info = info )
 
+        #TODO: set SoundManager volume here from the settings, to properly initialize
+
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
@@ -205,9 +207,9 @@ class YueApp(App):
         osc.bind(info.oscid, self.ingest_update , '/ingest_update')
         osc.bind(info.oscid, self.ingest_finished , '/ingest_finished')
 
+        sm.add_widget(np_scr)
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)
-        sm.add_widget(np_scr)
         sm.add_widget(lb_scr)
         sm.add_widget(pr_scr)
         sm.add_widget(mp_scr)
