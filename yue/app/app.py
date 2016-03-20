@@ -238,6 +238,8 @@ class YueApp(App):
 
         Window.bind(on_keyboard=self.on_key_event)
 
+        SoundManager.instance().load_current( )
+
     def on_key_event(self, window, keycode1, keycode2, text, modifiers):
         if keycode1 in [Keyboard.keycodes['escape'], ]:
             return Settings.instance().go_back()

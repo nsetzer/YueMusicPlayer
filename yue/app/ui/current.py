@@ -53,7 +53,9 @@ class CurrentPlayListViewWidget(PlayListViewWidget):
     def on_tap(self,idx,elem,*args):
         song = Library.instance().songFromId( elem.uid )
 
-        content = SongInfo( song, action_label="play song" )
+        content = SongInfo( song,
+                            font_size=Settings.instance().font_size,
+                            action_label="play song" )
         popup = Popup(title='Song Information',
                   content=content,
                   size_hint=(.9,.9) )

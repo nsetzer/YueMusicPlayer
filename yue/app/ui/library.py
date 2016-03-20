@@ -133,7 +133,9 @@ class LibraryScreen(Screen):
 
         if isinstance(elem,TrackTreeElem):
             song = Library.instance().songFromId( elem.uid )
-            content = SongInfo( song, action_label="play next" )
+            content = SongInfo( song,
+                                font_size=Settings.instance().font_size,
+                                action_label="play next" )
 
             popup = Popup(title='Song Information',
                           content=content,
