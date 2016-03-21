@@ -88,7 +88,7 @@ class SoundManager(object):
         #SoundManager.__instance = VlcSoundManager( libpath )
         #SoundManager.__instance = KivySoundDevice( libpath )
         if info is not None:
-            SoundManager.__instance = ClientSoundDevice( info )
+            SoundManager.__instance = ClientSoundDevice( playlist, info, KivyCallbackSlot )
         else:
             SoundManager.__instance = BassSoundDevice( playlist, libpath, True, KivyCallbackSlot )
 

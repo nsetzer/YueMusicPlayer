@@ -1,9 +1,8 @@
 
-# todo: bass syncproc
-from kivy.logger import Logger
+#from kivy.logger import Logger
 from kivy.lib import osc
 
-from .device import SoundDevice, MediaState
+from yue.core.sound.device import SoundDevice
 
 from collections import namedtuple
 
@@ -12,8 +11,8 @@ ServiceInfo = namedtuple("ServiceInfo",['oscid', 'hostname','clientport','servic
 class ClientSoundDevice(SoundDevice):
     """Playback implementation of SoundManager for a remote provider"""
     __instance = None
-    def __init__(self, info):
-        super(ClientSoundDevice, self).__init__()
+    def __init__(self, playlist, info, cbkfactory=None):
+        super(ClientSoundDevice, self).__init__(playlist, cbkfactory)
         self.volume = 0.5
         self.info = info
 
@@ -22,8 +21,6 @@ class ClientSoundDevice(SoundDevice):
 
     def load(self, song):
         osc.sendMsg('/audio_action', dataArray=["load",song['path'],], port=self.info.serviceport)
-        Logger.info("client: send load ")
-        #self.dispatch('on_load',song)
 
     def play(self):
         osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)

@@ -91,8 +91,8 @@ class NowPlayingScreen(Screen):
         self.vbox.add_widget( self.timebar )
 
         self.timebar.bind(on_seek=self.change_position)
-        SoundManager.instance().bind(on_load=self.update)
-        SoundManager.instance().bind(on_song_tick=self.on_tick)
+        SoundManager.instance().on_load.connect(self.update)
+        SoundManager.instance().on_song_tick.connect(self.on_tick)
 
         self.sld_vol.value_normalized = SoundManager.instance().getVolume()
         self.sld_vol.bind( value_normalized=self.set_volume )
