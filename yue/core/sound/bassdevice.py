@@ -18,7 +18,7 @@ except ImportError as e:
 bass_states = {
     BassPlayer.PLAYING : MediaState.play,
     BassPlayer.PAUSED  : MediaState.pause,
-    BassPlayer.STOPPED  : MediaState.pause,
+    BassPlayer.STOPPED  : MediaState.end,
     BassPlayer.UNKNOWN  : MediaState.error,
     }
 
@@ -140,7 +140,7 @@ class BassSoundDevice(SoundDevice):
                 self.voleq.setEnabled(False);
 
     def play(self):
- 
+
         if self.device.play():
             try:
                 idx,key = self.playlist.current()

@@ -12,6 +12,16 @@ class MediaState(Enum):
     pause = 3
     end = 4
 
+    @staticmethod
+    def toString(s):
+        return {
+            MediaState.not_ready: "Not Ready",
+            MediaState.error: "Error",
+            MediaState.play: "Play",
+            MediaState.pause: "Pause",
+            MediaState.end: "Ended",
+        }[ s ]
+
 class CallbackSlot(object):
     def __init__(self):
         super(CallbackSlot, self).__init__()

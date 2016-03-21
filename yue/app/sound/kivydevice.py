@@ -4,7 +4,7 @@ from kivy.clock import Clock, mainthread
 from kivy.event import EventDispatcher
 from kivy.logger import Logger
 
-from .device import SoundDevice, MediaState
+from yue.core.sound.device import SoundDevice, MediaState
 
 class KivySoundDevice(SoundDevice):
     """Playback implementation of SoundManager using Kivy"""

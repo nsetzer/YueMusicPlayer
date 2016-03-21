@@ -1,8 +1,9 @@
 
-#from kivy.logger import Logger
+from kivy.logger import Logger
 from kivy.lib import osc
 
 from yue.core.sound.device import SoundDevice
+from yue.core.song import Song
 
 from collections import namedtuple
 
@@ -21,7 +22,7 @@ class ClientSoundDevice(SoundDevice):
 
     def load(self, song):
         osc.sendMsg('/audio_action', dataArray=["load",song['path'],], port=self.info.serviceport)
-
+        Logger.info("Load Song: %s"%Song.toString(song))
     def play(self):
         osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)
 

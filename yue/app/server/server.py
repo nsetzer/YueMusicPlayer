@@ -8,7 +8,7 @@ from kivy.lib import osc
 from kivy.logger import Logger
 
 from yue.app.sound.manager import SoundManager
-from yue.app.sound.device import MediaState
+from yue.core.sound.device import MediaState
 from yue.core.bass.pybass import get_platform_path
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
@@ -99,6 +99,7 @@ class YueServer(object):
             inst.setVolume(volume)
 
         with self.cv_tick:
+            Logger.info("service: notify song tick thread")
             self.cv_tick.notify()
 
     def on_state_change(self,*args):
@@ -184,7 +185,7 @@ class SongTick(Thread):
                     # checking not_ready is a temporary patch where after seeking
                     # bass will be not_ready for a moment on android (uncertain why).
                     while state != MediaState.play and state != MediaState.not_ready:
-                        Logger.info("service: song tick thread going to sleep %s"%state)
+                        Logger.info("service: song tick thread going to sleep %s"%MediaState.toString(state))
                         self.cv_tick.wait()
                         state = SoundManager.instance().state()
                         Logger.info("service: song tick thread waking up")

@@ -90,7 +90,7 @@ class SoundManager(object):
         if info is not None:
             SoundManager.__instance = ClientSoundDevice( playlist, info, KivyCallbackSlot )
         else:
-            SoundManager.__instance = BassSoundDevice( playlist, libpath, True, KivyCallbackSlot )
+            SoundManager.__instance = BassSoundDevice( playlist, libpath, False, KivyCallbackSlot )
 
     @staticmethod
     def instance():

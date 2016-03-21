@@ -29,7 +29,8 @@ class SongInfo(Widget):
             row_height = 3*lblheight
         self.row_height = row_height
 
-        self.songedit = SongEdit( song , row_height = lblheight)
+        self.songedit = SongEdit( song , font_size=font_size,
+                                  row_height = lblheight)
 
         self.vbox = BoxLayout(orientation='vertical')
         self.hbox = BoxLayout(orientation='horizontal')
@@ -48,7 +49,7 @@ class SongInfo(Widget):
         self.hbox.height = self.row_height
 
         if action_label is not None:
-            btn = Button(text=action_label)
+            btn = Button(text=action_label,font_size=font_size)
             btn.size_hint = (1.0,None)
             btn.bind(on_press=lambda *x : self.dispatch('on_action'))
             btn.height = self.row_height

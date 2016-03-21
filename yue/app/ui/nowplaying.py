@@ -15,7 +15,7 @@ from yue.app.widgets.timebar import TimeBar
 from yue.app.settings import Settings
 from yue.core.playlist import PlaylistManager
 from yue.app.sound.manager import SoundManager
-from yue.app.sound.device import MediaState
+from yue.core.sound.device import MediaState
 from yue.core.song import ArtNotFound, get_album_art
 
 class NowPlayingScreen(Screen):
