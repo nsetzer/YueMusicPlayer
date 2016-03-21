@@ -28,6 +28,11 @@ def format_delta(t):
         return "%d:%02d:%02d"%(h,m,s)
     return "%d:%02d"%(m,s)
 
+def days_elapsed( epochtime ):
+    t1 = datetime.utcfromtimestamp( epochtime )
+    delta = datetime.now() - t1
+    return delta.days
+
 def string_escape(string):
     """escape special characters in a string for use in search"""
     return string.replace("\\","\\\\").replace("\"","\\\"")
@@ -78,5 +83,6 @@ def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
         # record name of most recent backup, one backup per day unless forced
         newestbu = existing_backups[0]
 
+    # todo: compare newestbu path to current
     # save a new backup
     sqlstore.backup( fullpath )

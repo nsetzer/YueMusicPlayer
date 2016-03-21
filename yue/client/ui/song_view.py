@@ -8,17 +8,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from yue.core.song import Song
-from yue.core.util import format_date
+from yue.core.util import format_date, format_time, days_elapsed
 
 from ..widgets.slider import PositionSlider
-
-def fmt_seconds( t ):
-    m,s = divmod( t, 60)
-    if m > 60:
-        h,m = divmod(m,60)
-        return "%d:%02d:%02d"%(h,m,s)
-    else:
-        return "%d:%02d"%(m,s)
 
 class CurrentSongView(QWidget):
 
@@ -89,9 +81,9 @@ class CurrentSongView(QWidget):
         remaining = length - position
 
         self.text_time = "%s/%s - %s"%(
-                fmt_seconds(position),
-                fmt_seconds(length),
-                fmt_seconds(remaining) )
+                format_time(position),
+                format_time(length),
+                format_time(remaining) )
 
         self.update()
 
@@ -108,6 +100,8 @@ class CurrentSongView(QWidget):
         self.scroll_index = 0
 
         self.text_date = format_date( self.song[Song.last_played] )
+
+        self.text_date += " {%d}"%days_elapsed( song[Song.last_played] )
         self.text_eq = "%d%%"%int(100.0*Song.getEqFactor(song))
         self.setPosition( 0 )
 
