@@ -17,6 +17,7 @@ from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
 from ..core.sound.dummydevice import DummySoundDevice
+#from yue.core.sound.vlcdevice import VlcSoundDevice
 
 try:
     from ..core.sound.bassdevice import BassSoundDevice
@@ -50,6 +51,8 @@ class QtCallbackSlot(QObject):
 def newDevice( playlist, libpath, kind="default" ):
     if kind in ("bass","default") and BassSoundDevice is not None:
         return BassSoundDevice(playlist, libpath,True, QtCallbackSlot)
+    #elif kind == 'vlc':
+    #    return VlcSoundDevice(playlist,libpath, QtCallbackSlot)
     return DummySoundDevice(playlist, libpath,True, QtCallbackSlot)
 
 class PlaybackThread(QThread):

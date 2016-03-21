@@ -1,23 +1,21 @@
 
-from kivy.core.audio import SoundLoader
-from kivy.clock import Clock, mainthread
-from kivy.event import EventDispatcher
-from kivy.logger import Logger
 
-from .device import SoundDevice, MediaState
+"""
+TODO: this requires a secondary thread for on_tick and on_song_end
 
-from . import vlc
+UnicodeDecoeError mcbs encoding error on song load for unicode paths
+"""
+from yue.core.sound.device import SoundDevice, MediaState
+
+from yue.core.vlc import vlc
 
 class VlcSoundDevice(SoundDevice):
     """Playback implementation of SoundManager using Kivy"""
     __instance = None
-    def __init__(self, libpath):
-        super(VlcSoundManager, self).__init__()
+    def __init__(self, playlist, libpath, cbkfactory=None):
+        super(VlcSoundDevice, self).__init__(playlist, cbkfactory)
         self.volume = 0.5
         self.media_duration = 100 # updated on load
-
-        self.clock_scheduled = False
-        self.clock_interval = 0.5 # in seconds
 
         self.invoke();
 
@@ -30,11 +28,11 @@ class VlcSoundDevice(SoundDevice):
         """
         try:
             self.__instance__ = None;
-            if isPosix:
-                #'--plugin-path=/usr/lib/vlc'
-                self.__instance__ = vlc.Instance('--plugin-path=%s'%Settings.POSIX_VLC_MODULE_PATH)
-            else:
-                self.__instance__ = vlc.Instance()
+            #if isPosix:
+            #    #'--plugin-path=/usr/lib/vlc'
+            #    self.__instance__ = vlc.Instance('--plugin-path=%s'%Settings.POSIX_VLC_MODULE_PATH)
+            #else:
+            self.__instance__ = vlc.Instance()
         except Exception as e:
             print("VLC instance Error: %s"%(e.args))
 
@@ -49,9 +47,13 @@ class VlcSoundDevice(SoundDevice):
 
             self.setVolume( self.volume )
 
-
-
         self.__media__ = None
+
+    def name(self):
+        return "VLC"
+
+    def on_stop(self,vlcEvent):
+        self.on_song_end.emit()
 
     def destroy(self):
 
@@ -66,7 +68,6 @@ class VlcSoundDevice(SoundDevice):
         if self.__media__ is not None:
             self.__media__.release()
             self.__media__ = None
-            self.setClock(False)
 
     def load(self, song):
 
@@ -82,14 +83,13 @@ class VlcSoundDevice(SoundDevice):
             self.__player__.set_media(self.__media__)
             eventmgr = self.__player__.event_manager()
             eventmgr.event_attach(vlc.EventType.MediaPlayerEndReached,self.on_stop)
-            self.dispatch('on_load',song)
+            self.on_load.emit(song)
         else:
             print("error loading")
 
     def play(self):
         if self.__media__ is not None:
             self.__player__.play()
-            self.setClock(True)
 
     def pause(self):
         """
@@ -98,7 +98,6 @@ class VlcSoundDevice(SoundDevice):
         """
         if self.__media__ is not None:
             self.__player__.pause()
-            self.setClock(False)
 
     #def stop(self):
     #    if self.sound is not None:
@@ -152,20 +151,6 @@ class VlcSoundDevice(SoundDevice):
         elif s == vlc.State.Error:
             return MediaState.not_ready
         return MediaState.not_ready
-
-    def setClock(self,state):
-
-        if self.clock_scheduled == False and state == True:
-            self.clock_scheduled = True
-            Clock.schedule_interval( self.on_song_tick_callback, self.clock_interval )
-        elif self.clock_scheduled == True and state == False:
-            self.clock_scheduled = False
-            Clock.unschedule( self.on_song_tick_callback )
-
-    @mainthread
-    def on_stop(self,vlcEvent):
-        print("on stop", vlcEvent)
-        self.dispatch('on_song_end')
 
 
 
