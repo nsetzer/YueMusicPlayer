@@ -214,7 +214,7 @@ class Song(object):
 
     @staticmethod
     def getEqFactor(song):
-        value = song[Song.equalizer]
+        value = song.get(Song.equalizer,0)
         if value == 0:
             return 0
         ivalue = min(500,value);

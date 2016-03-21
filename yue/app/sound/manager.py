@@ -34,8 +34,10 @@ TODO:
 
 from yue.app.settings import Settings
 
-from .kivydevice import KivySoundDevice
-from .bassdevice import BassSoundDevice, ServerBassSoundDevice
+from kivy.event import EventDispatcher
+
+#from .kivydevice import KivySoundDevice
+from yue.core.sound.bassdevice import BassSoundDevice
 from .clientdevice import ClientSoundDevice
 
 class PlayList(object):
@@ -47,21 +49,48 @@ class PlayList(object):
     def __getitem__(self,index):
         return self.list[index]
 
+class KivyCallbackSlot(EventDispatcher):
+    """
+    the playback device callback slot, this version
+    emits signals so that functions are always run from
+    the main thread.
+    """
+
+    def __init__(self):
+        super(KivyCallbackSlot, self).__init__()
+        self.callbacks = []
+
+        self.register_event_type('on_custom_signal')
+        #self.bind(on_custom_signal=self.execute_callback)
+
+    def connect(self,cbk):
+        self.callbacks.append(cbk)
+
+    def emit(self,*args,**kwargs):
+        for cbk in self.callbacks:
+            self.dispatch('on_custom_signal',cbk,args,kwargs)
+
+    def on_custom_signal(self, *args):
+        print("on custom signal",args)
+        cbk, args, kwargs = args
+        cbk(*args,**kwargs)
+
+
 class SoundManager(object):
     __instance = None
 
     supported_types = [".mp3", ".flac"]
 
     @staticmethod
-    def init( libpath, info = None ):
+    def init( playlist, libpath, info = None ):
         """ instanciate a client device if info is not none
         """
         #SoundManager.__instance = VlcSoundManager( libpath )
         #SoundManager.__instance = KivySoundDevice( libpath )
         if info is not None:
-            SoundManager.__instance = ClientSoundDevice( libpath, info )
+            SoundManager.__instance = ClientSoundDevice( info )
         else:
-            SoundManager.__instance = ServerBassSoundDevice( libpath )
+            SoundManager.__instance = BassSoundDevice( playlist, libpath, True, KivyCallbackSlot )
 
     @staticmethod
     def instance():

@@ -1,10 +1,11 @@
 
 import os,sys
 
-from yue.core.song import Song
-from .device import SoundDevice, MediaState
 
-from ..bass.bassplayer import BassPlayer, BassException
+from yue.core.sound.device import SoundDevice, MediaState
+
+from yue.core.song import Song
+from yue.core.bass.bassplayer import BassPlayer, BassException
 
 try:
     from ..bass.pybassdsp import ZBPEQ, ZBVIS, VOLEQ
@@ -139,7 +140,7 @@ class BassSoundDevice(SoundDevice):
                 self.voleq.setEnabled(False);
 
     def play(self):
-        #self.device.channelIsValid():
+ 
         if self.device.play():
             try:
                 idx,key = self.playlist.current()

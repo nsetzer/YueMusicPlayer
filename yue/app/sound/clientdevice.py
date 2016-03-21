@@ -12,7 +12,7 @@ ServiceInfo = namedtuple("ServiceInfo",['oscid', 'hostname','clientport','servic
 class ClientSoundDevice(SoundDevice):
     """Playback implementation of SoundManager for a remote provider"""
     __instance = None
-    def __init__(self, libpath, info):
+    def __init__(self, info):
         super(ClientSoundDevice, self).__init__()
         self.volume = 0.5
         self.info = info
@@ -35,10 +35,6 @@ class ClientSoundDevice(SoundDevice):
         """ toggle state of audio
         """
         osc.sendMsg('/audio_action', dataArray=["playpause"], port=self.info.serviceport)
-
-    #def stop(self):
-    #    if self.sound is not None:
-    #        self.sound.stop()
 
     def seek(self,seconds):
         osc.sendMsg('/audio_action', dataArray=["seek",seconds], port=self.info.serviceport)

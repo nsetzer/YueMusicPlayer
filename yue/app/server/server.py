@@ -40,13 +40,14 @@ class YueServer(object):
         self.sqlstore = SQLStore( self.db_path )
         Library.init( self.sqlstore )
         PlaylistManager.init( self.sqlstore )
+        pl = PlaylistManager.instance().openCurrent()
         libpath = get_platform_path()
         Logger.info("service: lib path: %s"%libpath)
-        SoundManager.init( libpath )
+        SoundManager.init( pl, libpath )
 
-        SoundManager.instance().bind(on_state_changed=self.on_state_change)
-        SoundManager.instance().bind(on_song_end=self.on_song_end_event)
-        SoundManager.instance().bind(on_playlist_end=self.on_playlist_end)
+        SoundManager.instance().on_state_changed.connect(self.on_state_change)
+        SoundManager.instance().on_song_end.connect(self.on_song_end_event)
+        SoundManager.instance().on_playlist_end.connect(self.on_playlist_end)
 
         self.event_queue = Queue.Queue()
         self.cv_wait = Condition()
@@ -114,7 +115,7 @@ class YueServer(object):
         Logger.info("service: song finished ")
         sm = SoundManager.instance()
         if not sm.next():
-            sm.dispatch('on_playlist_end')
+            sm.on_playlist_end.emit()
         else:
             self.sendCurrent()
 

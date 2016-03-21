@@ -189,9 +189,14 @@ class YueApp(App):
 
         Settings.service_info = info
 
-        SoundManager.init( Settings.instance().platform_libpath, info = info )
+        pl = PlaylistManager.instance().openCurrent()
+        libpath=Settings.instance().platform_libpath
+        SoundManager.init( pl, libpath , info = info )
 
         #TODO: set SoundManager volume here from the settings, to properly initialize
+        # android should always be 1.0,
+        # other platforms should store value
+        SoundManager.instance().setVolume(1.0)
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
@@ -238,7 +243,10 @@ class YueApp(App):
 
         Window.bind(on_keyboard=self.on_key_event)
 
-        SoundManager.instance().load_current( )
+        try:
+            SoundManager.instance().load_current( )
+        except IndexError:
+            Logger.error("error: No Current Song\n")
 
     def on_key_event(self, window, keycode1, keycode2, text, modifiers):
         if keycode1 in [Keyboard.keycodes['escape'], ]:
