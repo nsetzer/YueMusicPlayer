@@ -16,6 +16,7 @@ if isPython3:
 import yue
 from yue.client.widgets.TableEditColumn import EditColumn
 from yue.client.widgets.SongTable import SongTable
+from yue.client.widgets.LibraryTree import LibraryTree
 from yue.client.widgets.LineEdit import LineEdit
 
 from yue.core.song import Song
@@ -78,6 +79,9 @@ class LibraryTable(SongTable):
         menu.addAction("Play next",lambda:self.action_play_next(items))
         act.setDisabled( len(items) == 0 )
 
+        act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
+        act.setDisabled( len(items) != 1 )
+
         if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
             menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
                 lambda:self.action_edit_column(row,cur_c))
@@ -124,12 +128,56 @@ class LibraryTable(SongTable):
 
     def action_play_next(self, songs, play=False):
         uids = [ song[Song.uid] for song in songs ]
-        self.parent().set_playlist.emit(uids,play)
+        self.parent().insert_playlist.emit(uids,play)
 
     def action_edit_column(self, row, col):
         opts = self.columns[col].get_default_opts(row)
         if opts:
             self.columns[col].editor_start(*opts)
+
+    def action_show_in_tree_view(self, song):
+        self.parent().tree_lib.showArtist(song[Song.artist])
+
+class LibTree(LibraryTree):
+
+    def __init__(self,parent):
+        super(LibTree,self).__init__(parent)
+
+        self.selection_changed.connect(self.on_selection_change)
+
+    def mouseReleaseRight(self,event):
+
+        mx = event.x()
+        my = event.y()
+        cx,cy = self._mousePosToCellPos(mx,my)
+        row,cur_c = self.positionToRowCol(mx,my)
+
+        menu = QMenu(self)
+
+        act = menu.addAction("Create Playlist",self.action_create_playlist)
+        act = menu.addAction("Clear Checked", self.clear_checked)
+
+        menu.addSeparator()
+
+        act = menu.addAction("Expand All",self.expand_all)
+        act = menu.addAction("Collapse All",self.collapse_all)
+
+        menu.addSeparator()
+
+        act = menu.addAction("Refresh",self.refreshData)
+
+        action = menu.exec_( event.globalPos() )
+
+    def action_create_playlist(self):
+        rule = self.formatCheckedAsQueryRule()
+        songs = Library.instance().search(rule)
+        uids = [ song[Song.uid] for song in songs ]
+        self.parent().set_playlist.emit( uids )
+
+
+    def on_selection_change(self,event=None):
+        q = self.formatSelectionAsQueryString()
+        self.parent().run_search(q,True)
 
 class LibraryView(QWidget):
     """docstring for MainWindow"""
@@ -137,17 +185,25 @@ class LibraryView(QWidget):
     # emit this signal to create a new playlist from a given query string
     create_playlist = pyqtSignal(str)
 
-
-    set_playlist = pyqtSignal(list,bool)
+    insert_playlist = pyqtSignal(list,bool)
+    set_playlist = pyqtSignal(list)
 
     notify = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(LibraryView, self).__init__(parent)
 
-        #self.cwidget = QWidget()
-        #self.setCentralWidget(self.cwidget);
-        self.vbox = QVBoxLayout(self)
+        self.vbox_main = QVBoxLayout(self)
+        self.splitter = QSplitter(Qt.Horizontal, self)
+        self.tree_lib = LibTree( self )
+        self.tree_lib.showColumnHeader( False )
+        self.tree_lib.showRowHeader( False )
+
+        self.cwidget = QWidget()
+        self.splitter.addWidget( self.tree_lib.container )
+        self.splitter.addWidget( self.cwidget )
+        self.vbox_main.addWidget(self.splitter)
+        self.vbox = QVBoxLayout(self.cwidget)
         self.vbox.setContentsMargins(0,0,0,0)
 
         self.hbox = QHBoxLayout()

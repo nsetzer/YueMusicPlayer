@@ -818,7 +818,6 @@ class LargeTableCore(QWidget):
             self.mouse_move_col = -1
             self.mouse_move_col_target = -1
 
-
         if self.mouse_resize_col >= 0 and event.buttons() == Qt.LeftButton:
             self.mouse_pos_drag_start_x = event.x()
             self.mouse_pos_drag_start_y = event.y()
@@ -833,7 +832,7 @@ class LargeTableCore(QWidget):
             cx,cy = self._mousePosToCellPos(mx,my)
             row,col = self.positionToRowCol(mx,my)
 
-            if col != -1 and row < len(self.data):
+            if col != -1 and row < len(self.data) and event.button()==Qt.LeftButton:
                 # end this function if the cell captured the click
                 if self.columns[col].mouseClick(row,cx,cy):
                     return

@@ -328,9 +328,11 @@ class MainWindow(QMainWindow):
         # init primary views
         self.libview = LibraryView(self);
         self.libview.create_playlist.connect(self.createNewPlaylist)
-        self.libview.set_playlist.connect(self.setCurrentPlaylist)
+        self.libview.insert_playlist.connect(self.setCurrentPlaylist)
+        self.libview.set_playlist.connect(self.setNewPlaylist)
         self.libview.setMenuCallback( self.addSongActions )
         self.libview.notify.connect( self.update_statusbar_message )
+        self.libview.tree_lib.refreshData()
 
         self.quickview = QuickSelectView(self);
         self.quickview.create_playlist.connect(self.createQuickPlaylist)
@@ -787,12 +789,6 @@ class MainWindow(QMainWindow):
         self.controller.play_index( 0 )
         self.plview.updateData()
 
-    def setNewPlaylist(self,uids):
-        pl = PlaylistManager.instance().openCurrent()
-        pl.set( uids )
-        self.controller.play_index( 0 )
-        self.plview.updateData()
-
     def createNewPlaylist(self,query=""):
 
         s = Settings.instance();
@@ -819,6 +815,16 @@ class MainWindow(QMainWindow):
         dialog.import_settings( Settings.instance() )
         if dialog.exec_():
             dialog.export_settings( Settings.instance() )
+
+    #
+    # TODO: what is the difference?
+    # not obvious from the names
+
+    def setNewPlaylist(self,uids):
+        pl = PlaylistManager.instance().openCurrent()
+        pl.set( uids )
+        self.controller.play_index( 0 )
+        self.plview.updateData()
 
     def setCurrentPlaylist(self, uids,play=False):
         # TODO: this is poorly named

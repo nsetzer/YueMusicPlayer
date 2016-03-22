@@ -23,7 +23,6 @@ class LargeTree(LargeTable):
         self.columns[0].setWidthByCharCount(48)
 
         self.setSelectionRule(LargeTree.SELECT_ONE)
-        print (self.selection_rule)
 
         self.setRowHeight(19)
         self.showRowHeader(False)

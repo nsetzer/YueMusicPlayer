@@ -24,10 +24,10 @@ class LibraryTree(LargeTree):
         self.checkable = True
 
     def refreshData(self):
-        song_list = list(Library.instance().iter())
+        song_list = list(Library.instance().search(""))
         toString = lambda x : x[Song.album]
         root = Leaf.list_to_idx_tree([Song.artist,],toString,song_list)
-        root.text="Library"
+        root.text="Library (%d)"%(len(root.children))
         root.checkable = True
         root.collapsed = False
         root.collapsible = False
@@ -114,11 +114,11 @@ class LibraryTree(LargeTree):
             return ""
         elif item.parent != None and item.parent == self.root:
             text = str(item)
-            s = u"artist=%s; "%string_quote(text)
+            return "artist=%s"%string_quote(text)
         else:
             text1 = str(item.parent)
             text2 = str(item)
-            s = u"artist=%s album=%s"%(string_quote(text1),string_quote(text2))
+            return "artist=%s album=%s"%(string_quote(text1),string_quote(text2))
 
     def formatSelectionAsQueryString(self):
 
@@ -144,6 +144,7 @@ class LibraryTree(LargeTree):
 
     def formatCheckedAsQueryRule(self):
         checked = self.root.getChecked()
+        sys.stdout.write("create query with %d terms\n"%len(checked))
         rule = OrSearchRule([ self.formatItemAsQueryRule(x) for x in checked ])
         return rule
 
@@ -160,6 +161,22 @@ class LibraryTree(LargeTree):
                 self.scrollTo(index,len(child.children)+1)
                 self.setSelection([index,])
                 self.update()
+
+    def clear_checked(self):
+        for leaf in self.root.getChecked():
+            leaf.setCheckState(False)
+            self.update();
+
+    def collapse_all(self):
+        self.root.collapse_all();
+        self.root.collapsed = False
+        self.setData( self.root.toList() )
+        self.update();
+
+    def expand_all(self):
+        self.root.expand_all();
+        self.setData( self.root.toList() )
+        self.update();
 
 def main():
     app = QApplication(sys.argv)
