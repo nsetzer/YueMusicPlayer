@@ -337,7 +337,7 @@ class MainWindow(QMainWindow):
 
         self.expview = ExplorerView(self);
         self.expview.play_file.connect(self.controller.playOneShot)
-        self.expview.execute_search.connect(self.executeSearch)
+        self.expview.ingest_finished.connect(self.ingestFinished)
 
         self.plview = PlayListViewWidget(self);
         self.plview.setMenuCallback( self.addSongActions )
@@ -656,20 +656,24 @@ class MainWindow(QMainWindow):
         """
         paths: list of files or directories.
         """
+        def onIngestExit():
+            self.dialog_ingest = None
+            self.ingestFinished()
         self.dialog_ingest = IngestProgressDialog( paths, self)
-        self.dialog_ingest.setOnCloseCallback(self.onIngestExit)
+        self.dialog_ingest.setOnCloseCallback(onIngestExit)
         self.dialog_ingest.start()
         self.dialog_ingest.show()
-
-    def onIngestExit(self):
-        self.dialog_ingest = None
-        self.libview.run_search("added = today",True)
-        print("ingest complete")
 
     def setVolume(self, vol):
 
         #Settings.instance()["volume"] = vol
         self.controller.device.setVolume( vol/100.0 )
+
+    def ingestFinished(self):
+
+        # TODO: update treeview
+
+        self.executeSearch("added = today",False)
 
     def executeSearch(self,query,switch=True):
         #idx = self.tabIndex( self.libview )

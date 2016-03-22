@@ -1,4 +1,4 @@
-#! python34 $this
+#! python34 ../../../test/test_client.py $this
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -236,7 +236,7 @@ class ExplorerView(QWidget):
     """docstring for MainWindow"""
 
     play_file = pyqtSignal(str)
-    execute_search = pyqtSignal(str,bool)
+    ingest_finished = pyqtSignal()
 
     def __init__(self, parent=None):
 
@@ -289,7 +289,6 @@ class ExplorerView(QWidget):
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
 
-
     def supportedExtension(self,ext):
         return ext in Song.supportedExtensions()
 
@@ -331,7 +330,8 @@ class ExplorerView(QWidget):
 
     def onDialogExit(self):
         if isinstance(self.dialog,IngestProgressDialog):
-            self.execute_search.emit("added = today",False)
+            self.ingest_finished.emit()
+
         self.dialog = None
         # reload current directory
         self.chdir( self.view.pwd() )
@@ -359,3 +359,17 @@ class ExplorerView(QWidget):
 
     def canPaste( self ):
         return self.cut_items is not None and self.cut_root != self.view.pwd()
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(True)
+    window = ExplorerView()
+    window.show()
+    window.resize(640,480)
+
+    sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()

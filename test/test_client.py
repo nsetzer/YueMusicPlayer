@@ -24,6 +24,7 @@ from yue.client.ui.updatetags_dialog import main as ut_main
 from yue.client.ui.sync_dialog import main as sync_main
 from yue.client.ui.settings import main as settings_main
 from yue.client.ui.song_view import main as sv_main
+from yue.client.ui.explorer_view import main as explorer_main
 from yue.client.widgets.playbutton import main as pb_main
 from yue.core.sync import main as sync_core_main
 
@@ -111,6 +112,7 @@ if __name__ == '__main__':
         "newpl_dialog.py" : newpl_main,
         "playbutton.py" : pb_main,
         "client" : client_main,
+        "explorer_view.py" : explorer_main,
     }
     print("key: %s"%key)
     main = programs.get(key,client_main)
