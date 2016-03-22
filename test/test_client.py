@@ -26,6 +26,8 @@ from yue.client.ui.settings import main as settings_main
 from yue.client.ui.song_view import main as sv_main
 from yue.client.ui.explorer_view import main as explorer_main
 from yue.client.widgets.playbutton import main as pb_main
+from yue.client.widgets.LargeTree import main as ltree_main
+from yue.client.widgets.LibraryTree import main as libtree_main
 from yue.core.sync import main as sync_core_main
 
 def convert():
@@ -113,6 +115,8 @@ if __name__ == '__main__':
         "playbutton.py" : pb_main,
         "client" : client_main,
         "explorer_view.py" : explorer_main,
+        "LargeTree.py" : ltree_main,
+        "LibraryTree.py" : libtree_main,
     }
     print("key: %s"%key)
     main = programs.get(key,client_main)

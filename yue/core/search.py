@@ -38,6 +38,9 @@ class SearchRule(object):
     def __eq__(self,othr):
         return repr(self) == repr(othr)
 
+    def sql(self):
+        raise NotImplementedError()
+
 class BlankSearchRule(SearchRule):
     """a rule that match all values"""
 
