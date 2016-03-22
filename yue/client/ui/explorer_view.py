@@ -29,40 +29,20 @@ from yue.core.explorer.source import DirectorySource,SourceListView
 
 """
 TODO:
-    ability for smart file renaming / moving
 
-    changing the name of a directory, or renaming a file
-    requires updating the database if the file is in the data base
-
-    on linux this is easy since paths are case sensitive, and slashes
-    always go one direciton
-
-    on windows paths are not case sensitive and slashes can go either
-    direction
-
-    in sql, i can run a wildcard search by executing, for example:
-        SELECT * FROM table WHERE 'D:_Music%'
-
-        % : 0 or more characters
-        _ : 1 character
-        [\\/] : match a set of characters
-
-    I need to introduce a Library search function which queries files
-    that have paths which match a string. The semantics are different
-    per platform.
-
-    there is an additional filter, files exactly in a directory,
-    or paths that start with a directory prefix. this could mean a total
-    of one or two functions, depending on implementation
+    model should not make reference to parent(), possible pass in a
+    controller. - would improve re-useability, possibly allow
+    multiple floating explorer-dialogs
 
 """
 
 byte_labels = ['B','KB','MB','GB']
 def format_bytes(b):
+    kb=1024
     for label in byte_labels:
-        if b < 1024:
+        if b < kb:
             return "%d%s"%(b,label)
-        b /= 2014
+        b /= kb
     return "%d%s"%(b,byte_labels[-1])
 
 def explorerOpen( url ):
@@ -90,6 +70,7 @@ class LineEdit_Path(LineEdit):
             self.table.setFocus()
 
     def keyReleaseEnter(self,text):
+        self.table.scrollTo(0)
         self.parent().chdir( self.text(), True )
 
 class ResourceManager(object):
@@ -184,6 +165,11 @@ class FileTable(LargeTable):
         contextMenu.addSeparator()
         contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",self.parent().action_open)
 
+        if self.parent().secondaryHidden():
+            act = contextMenu.addAction("Open Secondary View", self.parent().action_open_view)
+        else:
+            act = contextMenu.addAction("Close Secondary View", self.parent().action_close_view)
+
         action = contextMenu.exec_( event.globalPos() )
 
     def mouseReleaseOther(self,event=None):
@@ -232,15 +218,14 @@ class FileTable(LargeTable):
             return self.rm.get(ResourceManager.SONG)
         return self.rm.get(ResourceManager.FILE)
 
-class ExplorerView(QWidget):
+class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
-    play_file = pyqtSignal(str)
-    ingest_finished = pyqtSignal()
+    do_ingest = pyqtSignal(object, list) # list of absolute paths
+    do_move   = pyqtSignal(object,object,object)
 
     def __init__(self, parent=None):
-
-        super(ExplorerView, self).__init__(parent)
+        super(ExplorerModel, self).__init__(parent)
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
 
@@ -258,10 +243,6 @@ class ExplorerView(QWidget):
 
         self.tbl_file.setData(self.view)
         self.txt_path.setText(self.view.pwd())
-
-        self.dialog = None
-        self.cut_items = None
-        self.cut_root = ""
 
         self.list_library_files = set()
 
@@ -305,52 +286,36 @@ class ExplorerView(QWidget):
                 return
             src = self.view.join( self.view.pwd(), name)
             tgt = self.view.join( self.view.pwd(), new_name)
-            self.dialog = MoveFileProgressDialog(self.view, tgt, src, self)
-            self.dialog.setOnCloseCallback(self.onDialogExit)
-            self.dialog.start()
-            self.dialog.show()
+            self.do_move.emit(self, tgt, src)
         return
 
     def action_newfolder(self):
 
         diag = RenameDialog("New Folder","Create Folder",parent=self)
         if diag.exec_():
-            print(diag.text())
+            path = self.view.join(self.view.pwd(),diag.text())
+            self.view.mkdir( path )
+            self.chdir(self.view.pwd())
 
-    def action_ingest(self, items):
-
+    def action_ingest(self,items):
         paths = [ self.view.realpath(item['name']) for item in items ]
-        self.dialog = IngestProgressDialog(paths, self)
-        self.dialog.setOnCloseCallback(self.onDialogExit)
-        self.dialog.start()
-        self.dialog.show()
+        self.do_ingest.emit( self, paths )
 
     def action_play(self, item):
-        self.play_file.emit( self.view.realpath(item['name']) )
-
-    def onDialogExit(self):
-        if isinstance(self.dialog,IngestProgressDialog):
-            self.ingest_finished.emit()
-
-        self.dialog = None
-        # reload current directory
-        self.chdir( self.view.pwd() )
+        self.parent().play_file.emit( self.view.realpath(item['name']) )
 
     def canIngest( self ):
-        return self.dialog is None
+        return self.parent().dialog is None
 
     def action_cut(self, items):
-        self.cut_items = [ self.view.realpath(item['name']) for item in items ]
-        self.cut_root = self.view.pwd()
+        self.parent().cut_items = [ self.view.realpath(item['name']) for item in items ]
+        self.parent().cut_root = self.view.pwd()
 
     def action_paste(self):
-        # TODO: create a progress dialog to initiate the move
-
         if self.canPaste():
-            self.dialog = MoveFileProgressDialog(self.view, self.view.pwd(), self.cut_items, self)
-            self.dialog.setOnCloseCallback(self.onDialogExit)
-            self.dialog.start()
-            self.dialog.show()
+            tgt = self.view.pwd()
+            src = self.parent().cut_items
+            self.do_move.emit(self, tgt, src)
 
     def action_refresh(self):
         self.chdir( self.view.pwd() )
@@ -358,8 +323,65 @@ class ExplorerView(QWidget):
         self.tbl_file.setSelection([])
 
     def canPaste( self ):
-        return self.cut_items is not None and self.cut_root != self.view.pwd()
+        return self.parent().cut_items is not None and self.parent().cut_root != self.view.pwd()
 
+    def secondaryHidden(self):
+        return self.parent().ex_secondary.isHidden()
+
+    def action_open_view(self):
+        self.parent().ex_secondary.show()
+        # self.parent().ex_secondary.chdir( self.view.pwd() )
+
+    def action_close_view(self):
+        self.parent().ex_secondary.hide()
+
+class ExplorerView(QWidget):
+    """docstring for ExplorerView"""
+
+    play_file = pyqtSignal(str)
+    ingest_finished = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(ExplorerView, self).__init__(parent)
+        self.ex_main = ExplorerModel( self )
+        self.ex_secondary = ExplorerModel( self )
+        self.hbox = QHBoxLayout(self)
+        self.hbox.setContentsMargins(0,0,0,0)
+        self.hbox.addWidget(self.ex_main)
+        self.hbox.addWidget(self.ex_secondary)
+
+        self.ex_secondary.hide()
+
+        self.ex_main.do_ingest.connect(self.showIngestDialog)
+        self.ex_secondary.do_ingest.connect(self.showIngestDialog)
+
+        self.ex_main.do_move.connect(self.showMoveFileDialog)
+        self.ex_secondary.do_move.connect(self.showMoveFileDialog)
+
+        self.dialog = None
+        self.cut_items = None
+        self.cut_root = ""
+
+    def showMoveFileDialog(self, mdl,tgt,src):
+        self.dialog = MoveFileProgressDialog(mdl.view, tgt, src, self)
+        self.dialog.setOnCloseCallback(self.onDialogExit)
+        self.dialog.start()
+        self.dialog.show()
+        self.dialog_model = mdl
+
+    def showIngestDialog(self, mdl, paths):
+        self.dialog = IngestProgressDialog(paths, self)
+        self.dialog.setOnCloseCallback(self.onDialogExit)
+        self.dialog.start()
+        self.dialog.show()
+        self.dialog_model = mdl
+
+    def onDialogExit(self):
+        if isinstance(self.dialog,IngestProgressDialog):
+            self.ingest_finished.emit()
+        self.dialog = None
+        # reload current directory
+        self.dialog_model.chdir( self.dialog_model.view.pwd() )
 
 def main():
     app = QApplication(sys.argv)
