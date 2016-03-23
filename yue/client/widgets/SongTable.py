@@ -460,6 +460,7 @@ class PathEditColumn(SongEditColumn):
             # if plat lin \ -> \
             song = self.parent.data[row]
             song[Song.path] =  new_value
+            Library.instance().update(song[Song.uid],**{Song.path:new_value})
 
 if __name__ == "__main__":
 
