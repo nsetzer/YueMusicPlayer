@@ -174,7 +174,7 @@ class FileTable(LargeTable):
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
-    do_ingest = pyqtSignal(object, list) # list of absolute paths
+    do_ingest = pyqtSignal(list) # list of absolute paths
     do_move   = pyqtSignal(object,object,object)
 
     def __init__(self, view, controller, parent=None):
@@ -201,6 +201,9 @@ class ExplorerModel(QWidget):
 
     def indexInLibrary(self,idx):
         return self.view[idx]['name'] in self.list_library_files
+
+    def refresh(self):
+        self.chdir( self.view.pwd() )
 
     def chdir(self,path, clear_stack=False):
         pwd = self.view.pwd()
@@ -252,7 +255,7 @@ class ExplorerModel(QWidget):
 
     def action_ingest(self,items):
         paths = [ self.view.realpath(item['name']) for item in items ]
-        self.do_ingest.emit( self, paths )
+        self.do_ingest.emit( paths )
 
     def action_play(self, item):
         self.controller.action_play( self.view.realpath(item['name']) )
@@ -303,7 +306,7 @@ class DummyController(object):
         pass
     def showMoveFileDialog(self, mdl,tgt,src):
         pass
-    def showIngestDialog(self, mdl, paths):
+    def showIngestDialog(self, paths):
         pass
     def onDialogExit(self):
         pass
@@ -374,26 +377,25 @@ class ExplorerController(DummyController):
 
         action = contextMenu.exec_( event.globalPos() )
 
-    def showMoveFileDialog(self, mdl,tgt,src):
+    def showMoveFileDialog(self, mdl, tgt,src):
         self.dialog = MoveFileProgressDialog(mdl.view, tgt, src, self.parent)
         self.dialog.setOnCloseCallback(self.onDialogExit)
         self.dialog.start()
         self.dialog.show()
-        self.dialog_model = mdl
 
-    def showIngestDialog(self, mdl, paths):
+    def showIngestDialog(self, paths):
         self.dialog = IngestProgressDialog(paths, self.parent)
         self.dialog.setOnCloseCallback(self.onDialogExit)
         self.dialog.start()
         self.dialog.show()
-        self.dialog_model = mdl
 
     def onDialogExit(self):
         if isinstance(self.dialog,IngestProgressDialog):
             self.parent.ingest_finished.emit()
         self.dialog = None
         # reload current directory
-        self.dialog_model.chdir( self.dialog_model.view.pwd() )
+        self.parent.ex_main.refresh()
+        self.parent.ex_secondary.refresh()
 
     def canPaste( self, dirpath):
         """ return true if we can paste into the given directory """
@@ -421,10 +423,9 @@ class ExplorerView(QWidget):
         self.controller = ExplorerController( self )
 
         self.source = DirectorySource()
-        self.fsview = SourceListView(self.source,self.source.root())
 
-        self.ex_main = ExplorerModel( self.fsview, self.controller, self )
-        self.ex_secondary = ExplorerModel( self.fsview, self.controller, self )
+        self.ex_main = ExplorerModel( SourceListView(self.source,self.source.root()), self.controller, self )
+        self.ex_secondary = ExplorerModel( SourceListView(self.source,self.source.root()), self.controller, self )
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
         self.hbox.addWidget(self.ex_main)
@@ -441,6 +442,10 @@ class ExplorerView(QWidget):
 
         self.ex_main.do_move.connect(self.controller.showMoveFileDialog)
         self.ex_secondary.do_move.connect(self.controller.showMoveFileDialog)
+
+    def chdir(self, path):
+
+        self.ex_main.chdir(path,True)
 
     def openFtp(self):
 

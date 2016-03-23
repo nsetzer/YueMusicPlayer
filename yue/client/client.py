@@ -699,7 +699,7 @@ class MainWindow(QMainWindow):
             print(e)
 
     def exploreDirectory(self, path):
-        self.expview.chdir(path, True)
+        self.expview.chdir(path)
         self.tabview.setCurrentWidget(self.expview)
 
     def toggleEQ(self):
