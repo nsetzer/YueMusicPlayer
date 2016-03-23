@@ -109,5 +109,4 @@ class MoveFileProgressDialog(ProgressDialog):
         print("update %d songs"%len(songs))
 
     def closeOnFinish(self):
-        # TODO: only if there are no errors
-        return False
+        return self.updated_count==0

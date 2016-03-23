@@ -26,13 +26,15 @@ from yue.client.ui.ingest_dialog import IngestProgressDialog
 from yue.client.ui.movefile_dialog import MoveFileProgressDialog
 from yue.client.ui.rename_dialog import RenameDialog
 from yue.core.explorer.source import DirectorySource,SourceListView
+from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 
 """
 TODO:
 
-    model should not make reference to parent(), possible pass in a
-    controller. - would improve re-useability, possibly allow
-    multiple floating explorer-dialogs
+    model/controller needs better separation
+
+    there is no reason to have an aciton_* methods on the model
+    but then each controller.action_* must be passed the acting view.
 
 """
 
@@ -121,56 +123,7 @@ class FileTable(LargeTable):
         self.columns[-1].setSecondaryTextTransform(lambda r,item : format_bytes(r['size']))
 
     def mouseReleaseRight(self,event):
-
-        items = self.getSelection()
-
-        is_files = all(not item['isDir'] for item in items)
-
-
-        contextMenu = QMenu(self)
-
-        # file manipulation options
-
-        act = contextMenu.addAction("Rename", lambda : self.parent().action_rename( items[0] ))
-        act.setDisabled( len(items)!=1 )
-
-        act = contextMenu.addAction("New Folder", lambda : self.parent().action_newfolder())
-        act.setDisabled( len(items)!=1 )
-
-
-        contextMenu.addAction("Cut", lambda : self.parent().action_cut( items ))
-        act = contextMenu.addAction("Paste", lambda : self.parent().action_paste( ))
-        act.setDisabled( not self.parent().canPaste() )
-
-        contextMenu.addSeparator()
-        act = contextMenu.addAction("Refresh",self.parent().action_refresh)
-        contextMenu.addSeparator()
-
-        # library options
-
-        if len(items) == 1 and not is_files:
-            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import Directory", lambda : self.parent().action_ingest( items ))
-            act.setDisabled( not self.parent().canIngest() )
-        else:
-            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import", lambda : self.parent().action_ingest( items ))
-            act.setDisabled( not is_files or not self.parent().canIngest())
-
-
-        if len(items) == 1:
-            act = contextMenu.addAction("Play Song", lambda : self.parent().action_play( items[0] ))
-            ext = os.path.splitext(items[0]['name'])[1].lower()
-            if not self.parent().supportedExtension( ext ):
-                act.setDisabled( True )
-
-        contextMenu.addSeparator()
-        contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",self.parent().action_open)
-
-        if self.parent().secondaryHidden():
-            act = contextMenu.addAction("Open Secondary View", self.parent().action_open_view)
-        else:
-            act = contextMenu.addAction("Close Secondary View", self.parent().action_close_view)
-
-        action = contextMenu.exec_( event.globalPos() )
+        self.parent().controller.contextMenu( event, self.parent(), self.getSelection() )
 
     def mouseReleaseOther(self,event=None):
 
@@ -224,13 +177,13 @@ class ExplorerModel(QWidget):
     do_ingest = pyqtSignal(object, list) # list of absolute paths
     do_move   = pyqtSignal(object,object,object)
 
-    def __init__(self, parent=None):
+    def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
 
-        self.source = DirectorySource()
-        self.view = SourceListView(self.source,self.source.root())
+        self.view = view
+        self.controller = controller
 
         self.tbl_file = FileTable( self.view, self )
         self.brush_library = self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
@@ -302,19 +255,19 @@ class ExplorerModel(QWidget):
         self.do_ingest.emit( self, paths )
 
     def action_play(self, item):
-        self.parent().play_file.emit( self.view.realpath(item['name']) )
+        self.controller.action_play( self.view.realpath(item['name']) )
 
     def canIngest( self ):
-        return self.parent().dialog is None
+        return self.controller.dialog is None
 
     def action_cut(self, items):
-        self.parent().cut_items = [ self.view.realpath(item['name']) for item in items ]
-        self.parent().cut_root = self.view.pwd()
+        self.controller.cut_items = [ self.view.realpath(item['name']) for item in items ]
+        self.controller.cut_root = self.view.pwd()
 
     def action_paste(self):
         if self.canPaste():
             tgt = self.view.pwd()
-            src = self.parent().cut_items
+            src = self.controller.cut_items
             self.do_move.emit(self, tgt, src)
 
     def action_refresh(self):
@@ -323,17 +276,138 @@ class ExplorerModel(QWidget):
         self.tbl_file.setSelection([])
 
     def canPaste( self ):
-        return self.parent().cut_items is not None and self.parent().cut_root != self.view.pwd()
+        return self.controller.canPaste( self.view.pwd() )
 
     def secondaryHidden(self):
         return self.parent().ex_secondary.isHidden()
 
+class ExplorerDialog(QDialog):
+    # display an explorer model inside a popup dialog
+    def __init__(self, widget, parent=None):
+        super(ExplorerDialog,self).__init__(parent);
+        self.setWindowTitle("Explorer")
+        self.vbox = QVBoxLayout(self)
+        self.vbox.addWidget( widget )
+
+class DummyController(object):
+    """ Dummy Controller takes no action
+    """
+    def __init__(self):
+        super(DummyController, self).__init__()
+
+        self.dialog = None
+        self.cut_items = None
+        self.cut_root = ""
+
+    def contextMenu(self, event, model, items):
+        pass
+    def showMoveFileDialog(self, mdl,tgt,src):
+        pass
+    def showIngestDialog(self, mdl, paths):
+        pass
+    def onDialogExit(self):
+        pass
+    def canPaste( self, dirpath):
+        return False
     def action_open_view(self):
-        self.parent().ex_secondary.show()
+        pass
+    def action_close_view(self):
+        pass
+    def action_play(self, item):
+        pass
+
+class ExplorerController(DummyController):
+
+    def __init__(self, parent):
+        super(ExplorerController, self).__init__()
+
+        self.dialog = None
+        self.cut_items = None
+        self.cut_root = ""
+        self.parent = parent
+
+    def contextMenu(self, event, model, items):
+
+        is_files = all(not item['isDir'] for item in items)
+
+        contextMenu = QMenu(model)
+
+        # file manipulation options
+
+        act = contextMenu.addAction("Rename", lambda : model.action_rename( items[0] ))
+        act.setDisabled( len(items)!=1 )
+
+        act = contextMenu.addAction("New Folder", lambda : model.action_newfolder())
+        act.setDisabled( len(items)!=1 )
+
+
+        contextMenu.addAction("Cut", lambda : model.action_cut( items ))
+        act = contextMenu.addAction("Paste", lambda : model.action_paste( ))
+        act.setDisabled( not model.canPaste() )
+
+        contextMenu.addSeparator()
+        act = contextMenu.addAction("Refresh",model.action_refresh)
+        contextMenu.addSeparator()
+
+        # library options
+
+        if len(items) == 1 and not is_files:
+            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import Directory", lambda : model.action_ingest( items ))
+            act.setDisabled( not model.canIngest() )
+        else:
+            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import", lambda : model.action_ingest( items ))
+            act.setDisabled( not is_files or not model.canIngest())
+
+        if len(items) == 1:
+            act = contextMenu.addAction("Play Song", lambda : model.action_play( items[0] ))
+            ext = os.path.splitext(items[0]['name'])[1].lower()
+            if not model.supportedExtension( ext ):
+                act.setDisabled( True )
+
+        contextMenu.addSeparator()
+        contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
+
+        if model.secondaryHidden():
+            act = contextMenu.addAction("Open Secondary View", self.action_open_view)
+        else:
+            act = contextMenu.addAction("Close Secondary View", self.action_close_view)
+
+        action = contextMenu.exec_( event.globalPos() )
+
+    def showMoveFileDialog(self, mdl,tgt,src):
+        self.dialog = MoveFileProgressDialog(mdl.view, tgt, src, self.parent)
+        self.dialog.setOnCloseCallback(self.onDialogExit)
+        self.dialog.start()
+        self.dialog.show()
+        self.dialog_model = mdl
+
+    def showIngestDialog(self, mdl, paths):
+        self.dialog = IngestProgressDialog(paths, self.parent)
+        self.dialog.setOnCloseCallback(self.onDialogExit)
+        self.dialog.start()
+        self.dialog.show()
+        self.dialog_model = mdl
+
+    def onDialogExit(self):
+        if isinstance(self.dialog,IngestProgressDialog):
+            self.parent.ingest_finished.emit()
+        self.dialog = None
+        # reload current directory
+        self.dialog_model.chdir( self.dialog_model.view.pwd() )
+
+    def canPaste( self, dirpath):
+        """ return true if we can paste into the given directory """
+        return self.cut_items is not None and self.cut_root != dirpath
+
+    def action_open_view(self):
+        self.parent.ex_secondary.show()
         # self.parent().ex_secondary.chdir( self.view.pwd() )
 
     def action_close_view(self):
-        self.parent().ex_secondary.hide()
+        self.parent.ex_secondary.hide()
+
+    def action_play(self, path):
+        self.parent.play_file.emit( path )
 
 class ExplorerView(QWidget):
     """docstring for ExplorerView"""
@@ -343,45 +417,47 @@ class ExplorerView(QWidget):
 
     def __init__(self, parent=None):
         super(ExplorerView, self).__init__(parent)
-        self.ex_main = ExplorerModel( self )
-        self.ex_secondary = ExplorerModel( self )
+
+        self.controller = ExplorerController( self )
+
+        self.source = DirectorySource()
+        self.fsview = SourceListView(self.source,self.source.root())
+
+        self.ex_main = ExplorerModel( self.fsview, self.controller, self )
+        self.ex_secondary = ExplorerModel( self.fsview, self.controller, self )
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
         self.hbox.addWidget(self.ex_main)
         self.hbox.addWidget(self.ex_secondary)
 
+        #self.btn = QPushButton("...")
+        #self.btn.clicked.connect(self.openFtp)
+        #self.ex_main.vbox.insertWidget(0,self.btn)
+
         self.ex_secondary.hide()
 
-        self.ex_main.do_ingest.connect(self.showIngestDialog)
-        self.ex_secondary.do_ingest.connect(self.showIngestDialog)
+        self.ex_main.do_ingest.connect(self.controller.showIngestDialog)
+        self.ex_secondary.do_ingest.connect(self.controller.showIngestDialog)
 
-        self.ex_main.do_move.connect(self.showMoveFileDialog)
-        self.ex_secondary.do_move.connect(self.showMoveFileDialog)
+        self.ex_main.do_move.connect(self.controller.showMoveFileDialog)
+        self.ex_secondary.do_move.connect(self.controller.showMoveFileDialog)
 
-        self.dialog = None
-        self.cut_items = None
-        self.cut_root = ""
+    def openFtp(self):
 
-    def showMoveFileDialog(self, mdl,tgt,src):
-        self.dialog = MoveFileProgressDialog(mdl.view, tgt, src, self)
-        self.dialog.setOnCloseCallback(self.onDialogExit)
-        self.dialog.start()
-        self.dialog.show()
-        self.dialog_model = mdl
+        url = "ftp://nsetzer:password@192.168.0.9:2121//Music"
+        p = parseFTPurl(url)
+        try:
+            src=FTPSource(p['hostname'],p['port'],p['username'],p['password'])
+        except ConnectionRefusedError as e:
+            sys.stderr.write("error: %s\n"%e)
+        else:
+            print("...")
+            view=SourceListView(src,p['path'])
+            mdl = ExplorerModel( view , DummyController(), self )
 
-    def showIngestDialog(self, mdl, paths):
-        self.dialog = IngestProgressDialog(paths, self)
-        self.dialog.setOnCloseCallback(self.onDialogExit)
-        self.dialog.start()
-        self.dialog.show()
-        self.dialog_model = mdl
+            self.ftpdialog = ExplorerDialog( mdl, self )
+            self.ftpdialog.show()
 
-    def onDialogExit(self):
-        if isinstance(self.dialog,IngestProgressDialog):
-            self.ingest_finished.emit()
-        self.dialog = None
-        # reload current directory
-        self.dialog_model.chdir( self.dialog_model.view.pwd() )
 
 def main():
     app = QApplication(sys.argv)

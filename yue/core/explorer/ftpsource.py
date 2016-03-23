@@ -178,7 +178,11 @@ class FTPSource(DataSource):
 
     def stat_fast(self,path):
         # not fast for thus file system :(
-        size = self.ftp.size(path)
+        try:
+            size = self.ftp.size(path)
+        except error_perm:
+            size = None
+
         result = {
             "size"  : size or 0,
             "isDir" : size is None ,
