@@ -498,7 +498,6 @@ def parserFormatDays( days ):
 #@lru_cache(maxsize=16)
 def parserFormatDate( value ):
 
-
     sy,sm,sd = value.split('/')
 
     y = int(sy)
@@ -524,6 +523,16 @@ def parserNLPDate( value ):
         return cf,rf
     return None
 
+def parserDuration( value ):
+    # input as "123" or "3:21"
+    # convert hours:minutes:seconds to seconds
+    m=1
+    t = 0
+    for x in reversed(value.split(":")):
+        t += int(x)*m
+        m *= 60
+    return t
+
 def parserRule(colid, rule ,value):
 
     try:
@@ -536,17 +545,21 @@ def parserRule(colid, rule ,value):
         if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
             meta = AndSearchRule
         return allTextRule(meta, rule, value)
-    elif col in Song.textFields():
+    elif col in Song.textFields() or col == Song.path:
         return rule( col, value )
     elif col in Song.dateFields(): # is number (or date, todo)
         return parserDateRule(rule, col, value)
     else:
         # numeric field
         # partial rules don't make sense, convert to exact rules
+        if col==col == Song.length:
+            value = parserDuration( value )
+
         if rule is PartialStringSearchRule:
             return ExactSearchRule(col, value)
         if rule is InvertedPartialStringSearchRule:
             return InvertedExactSearchRule(col, value)
+
         return rule( col, value )
 
 def parserDateRule(rule , col, value):
