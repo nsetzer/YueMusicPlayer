@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from yue.core.song import Song
-from yue.core.library import Library
+from yue.core.library import Library, getSortKey
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.util import string_quote
@@ -27,6 +27,7 @@ class LibraryTree(LargeTree):
         song_list = list(Library.instance().search(""))
         toString = lambda x : x[Song.album]
         root = Leaf.list_to_idx_tree([Song.artist,],toString,song_list)
+        root.children.sort(key=lambda x:getSortKey(x.text))
         root.text="Library (%d)"%(len(root.children))
         root.checkable = True
         root.collapsed = False

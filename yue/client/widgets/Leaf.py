@@ -186,7 +186,8 @@ class Leaf(object):
         if self.collapsed:
            self.fold |= 1<<Leaf.fold_COLLAPSED
         else:
-            children = sorted(self.children,key=self.__sort_key__)
+            #children = sorted(self.children,key=self.__sort_key__)
+            children = self.children#,key=self.__sort_key__
             for child in children:
                 for item in child._toList():
                     yield item
