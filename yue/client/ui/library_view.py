@@ -259,7 +259,10 @@ class LibraryView(QWidget):
     def onTextChanged(self,text,update=0):
         self.run_search(text)
 
-    def run_search(self, text, setText=False):
+    def refresh(self):
+        self.run_search( self.txt_search.text() , refresh=True)
+
+    def run_search(self, text, setText=False, refresh = False):
         """
         setText: if true set the text box to contain text
         """
@@ -278,8 +281,9 @@ class LibraryView(QWidget):
             if setText:
                 self.txt_search.setText( text )
 
-            self.tbl_song.scrollTo( 0 )
-            self.tbl_song.setSelection([])
+            if not refresh:
+                self.tbl_song.scrollTo( 0 )
+                self.tbl_song.setSelection([])
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)

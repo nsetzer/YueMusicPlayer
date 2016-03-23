@@ -124,6 +124,8 @@ class PlaybackController(object):
             if s["volume_equalizer"]:
                 self.device.setEQEnabled( True )
 
+        self.last_tick = 0
+
     def play_index(self,idx):
         self.one_shot = False
         self.device.play_index( idx )
@@ -166,6 +168,7 @@ class PlaybackController(object):
         if pos >= 0:
             self.root.posview.setValue(pos)
             self.root.songview.setPosition(pos)
+            self.last_tick = pos
 
     def on_state_changed(self,idx,key,state):
         # this can be used to start/stop a thread which updates
@@ -186,10 +189,9 @@ class PlaybackController(object):
             self.device.pause();
             self.one_shot = False
         else:
-            # TODO: the library view should be refreshed, without
-            # moving the scroll bar in some way to reflect this change
 
             Library.instance().incrementPlaycount(song[Song.uid])
+            self.duration_fix( song, self.last_tick )
             # return to the first song in the playlist if the current
             # song does not match the song that just finished.
             # for example, when the user makes a new playlist
@@ -198,6 +200,9 @@ class PlaybackController(object):
                 self.device.play_index( 0 )
             else:
                 self.device.next()
+
+            # todo: only if song matches current query?
+            self.root.libview.refresh()
 
         if idx == self.stop_index:
             self.root.btn_playpause.setStopState(False)
@@ -310,3 +315,11 @@ class PlaybackController(object):
         else:
             sys.stderr.write("Equalizer not supported.\n")
         return False;
+
+    def duration_fix( self, song, new_length):
+        new_length = int(new_length)
+        if int(song[Song.length]) != new_length:
+            sys.stdout.write("%s length: %d new_length:%d\n"%(
+                Song.toString(song),
+                song[Song.length],self.last_tick))
+            Library.instance().update(song[Song.uid],**{Song.length:new_length})

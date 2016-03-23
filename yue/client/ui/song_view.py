@@ -80,10 +80,13 @@ class CurrentSongView(QWidget):
         length = self.song[Song.length]
         remaining = length - position
 
-        self.text_time = "%s/%s - %s"%(
-                format_time(position),
-                format_time(length),
-                format_time(remaining) )
+        self.text_time = "%s/%s"%(
+                            format_time(position),
+                            format_time(length) )
+        if remaining < 0:
+            self.text_time += " + %s"%(format_time(-remaining))
+        else:
+            self.text_time += " - %s"%(format_time(remaining))
 
         self.update()
 
