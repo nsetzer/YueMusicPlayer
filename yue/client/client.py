@@ -447,6 +447,9 @@ class MainWindow(QMainWindow):
         if not s['ui_show_error_log']:
             self.dock_diag.hide()
 
+        if not s['ui_show_treeview']:
+            self.libview.tree_lib.container.hide()
+
         if self.controller.dspSupported():
             if not s['ui_show_visualizer']:
                 self.audioview.hide()
@@ -521,8 +524,11 @@ class MainWindow(QMainWindow):
             else:
                 self.action_view_visualizer.setText("Show Visualizer")
 
-        self.action_view_tree    = menu.addAction("Show Tree View")
-        self.action_view_tree.setDisabled(True)
+        self.action_view_tree    = menu.addAction("",self.toggleTreeViewVisible)
+        if s['ui_show_treeview']:
+            self.action_view_tree.setText("Hide Tree View")
+        else:
+            self.action_view_tree.setText("Show Tree View")
 
         self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
         if s['ui_show_error_log']:
@@ -554,6 +560,8 @@ class MainWindow(QMainWindow):
 
         s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
         s['ui_show_console'] = int(not self.edit_cmd.isHidden())
+        s['ui_show_treeview'] = int(not self.libview.tree_lib.container.isHidden())
+        print("ui tree",s['ui_show_treeview'])
         if self.controller.dspSupported():
             s['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
@@ -673,9 +681,9 @@ class MainWindow(QMainWindow):
 
     def ingestFinished(self):
 
-        # TODO: update treeview
 
         self.executeSearch("added = today",False)
+        self.libview.tree_lib.refreshData()
 
     def executeSearch(self,query,switch=True):
         #idx = self.tabIndex( self.libview )
@@ -742,6 +750,14 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         q5 = os.path.split(song[Song.path])[0]
         menu.addAction("Explore Containing Folder", lambda: self.exploreDirectory(q5))
+
+    def toggleTreeViewVisible(self):
+        if self.libview.tree_lib.container.isHidden():
+            self.action_view_tree.setText("Hide Tree View")
+            self.libview.tree_lib.container.show()
+        else:
+            self.action_view_tree.setText("Show Tree View")
+            self.libview.tree_lib.container.hide()
 
     def toggleVisualizerVisible(self):
         if self.audioview.isHidden():
@@ -953,7 +969,8 @@ class MainWindow(QMainWindow):
         # table highlight rules
         #self.plview.tbl.setRowHighlightComplexRule(0,None,qdct["color_special1"])
         self.plview.brush_current.setColor(qdct["color_special1"])
-        self.expview.brush_library.setColor(qdct["color_special1"])
+        self.expview.ex_main.brush_library.setColor(qdct["color_special1"])
+        self.expview.ex_secondary.brush_library.setColor(qdct["color_special1"])
 
         # manually update all SongTable instances in the app
         songtables = [self.libview.tbl_song,]
@@ -1007,9 +1024,10 @@ def setSettingsDefaults():
     s.setDefault("volume",50)
     s.setDefault("volume_equalizer",0) # off
 
-    s.setDefault("ui_show_console",0) # off
-    s.setDefault("ui_show_error_log",0) # off
+    s.setDefault("ui_show_console",0)    # off
+    s.setDefault("ui_show_error_log",0)  # off
     s.setDefault("ui_show_visualizer",1) # on
+    s.setDefault("ui_show_treeview",1)   # on
 
     s.setDefault("enable_keyboard_hook",1) # on by default
 
