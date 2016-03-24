@@ -64,7 +64,7 @@ class LibraryScreen(Screen):
         self.add_widget(self.vbox)
 
         row_height = Settings.instance().row_height()
-
+        fs = Settings.instance().font_size
         self.treeview = TreeViewWidget(font_size = fs)
 
         self.btn_query = Button(text="search")
