@@ -21,7 +21,7 @@ from yue.core.playlist import PlaylistManager
 from yue.core.library import Library
 from yue.core.song import Song
 
-from yue.app.ui.library import LibraryScreen
+from yue.app.ui.library2 import LibraryScreen
 from yue.app.ui.home import HomeScreen
 from yue.app.ui.nowplaying import NowPlayingScreen
 from yue.app.ui.current import CurrentPlaylistScreen
@@ -73,7 +73,7 @@ class BackgroundDataLoad(Thread):
         library.loadTestData( os.path.join( \
             Settings.instance().platform_path,"library.ini") );
 
-        tree = libraryToTree( library )
+        #tree = libraryToTree( library )
 
         if len(plcur)==0:
             # build a dummy playlist until it can be stored in the db
@@ -89,7 +89,7 @@ class BackgroundDataLoad(Thread):
             viewlst = PlayListToViewList( library, uids )
             scr_cur.setPlayList( viewlst )
 
-        scr_lib.setLibraryTree( tree )
+        scr_lib.executeQuery( ) # run a default blank search
 
         Logger.info("data: background load thread finished")
 
@@ -196,13 +196,18 @@ class YueApp(App):
         #TODO: set SoundManager volume here from the settings, to properly initialize
         # android should always be 1.0,
         # other platforms should store value
-        SoundManager.instance().setVolume(1.0)
+        if Settings.instance().platform == "android":
+            SoundManager.instance().setVolume(1.0)
+        else:
+            print("boo")
+            SoundManager.instance().setVolume(0.5)
+
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
         lb_scr = LibraryScreen(name=Settings.instance().screen_library)
-        pr_scr = PresetScreen(name=Settings.instance().screen_presets)
+        #pr_scr = PresetScreen(name=Settings.instance().screen_presets)
         mp_scr = ModifyPresetScreen(name=Settings.instance().screen_modify_preset)
         in_scr = IngestScreen(name=Settings.instance().screen_ingest)
         se_scr = SettingsScreen(name=Settings.instance().screen_settings)
@@ -212,11 +217,11 @@ class YueApp(App):
         osc.bind(info.oscid, self.ingest_update , '/ingest_update')
         osc.bind(info.oscid, self.ingest_finished , '/ingest_finished')
 
+        sm.add_widget(lb_scr)
         sm.add_widget(np_scr)
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)
-        sm.add_widget(lb_scr)
-        sm.add_widget(pr_scr)
+        #sm.add_widget(pr_scr)
         sm.add_widget(mp_scr)
         sm.add_widget(in_scr)
         sm.add_widget(se_scr)

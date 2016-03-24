@@ -72,9 +72,9 @@ class NowPlayingScreen(Screen):
 
         # use value_normalized, set a small range here to prevent the
         # number of signals that are sent to the backend
-        self.sld_vol = Slider(orientation='horizontal',min=0, max=25)
-        self.sld_vol.size_hint=(1.0,None)
-        self.sld_vol.height=row_height
+        #self.sld_vol = Slider(orientation='horizontal',min=0, max=25)
+        #self.sld_vol.size_hint=(1.0,None)
+        #self.sld_vol.height=row_height
 
         self.hbox_btns.add_widget( self.btn_prev )
         self.hbox_btns.add_widget( self.btn_playpause )
@@ -82,7 +82,7 @@ class NowPlayingScreen(Screen):
 
         self.add_widget( self.vbox )
         self.vbox.add_widget( self.hbox )
-        self.vbox.add_widget( self.sld_vol )
+        #self.vbox.add_widget( self.sld_vol )
         self.vbox.add_widget( self.lbl_title )
         self.vbox.add_widget( self.lbl_artist )
         self.vbox.add_widget( self.lbl_index ) # for lack of a better place for now
@@ -94,8 +94,8 @@ class NowPlayingScreen(Screen):
         SoundManager.instance().on_load.connect(self.update)
         SoundManager.instance().on_song_tick.connect(self.on_tick)
 
-        self.sld_vol.value_normalized = SoundManager.instance().getVolume()
-        self.sld_vol.bind( value_normalized=self.set_volume )
+        #self.sld_vol.value_normalized = SoundManager.instance().getVolume()
+        #self.sld_vol.bind( value_normalized=self.set_volume )
 
         self.bind(size=self.resize)
 

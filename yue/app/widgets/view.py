@@ -582,13 +582,13 @@ class ViewWidget(Widget):
                 self._touch_token.setData( self.data[idx+self.offset_idx] )
                 self.add_widget( self._touch_token, canvas=self.canvas, index=0 )
 
-
             if not self._touch_drag:
                 o = self.offset + round(touch.dy)
                 self.offset = max(0,min(self.offset_max,o))
                 idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
+                t = time.clock() - self._touch_t_s
 
-                if 0 <= idx < len(self.nodes):
+                if 0 <= idx < len(self.nodes) and t < .2:
                     if self.nodes[idx].parent is not None:
                         if self.nodes[idx].swipe(self.offset_idx+idx,touch.dx):
                             self._touch_swipe = True
@@ -607,7 +607,7 @@ class ViewWidget(Widget):
 
     def swipeEvent(self,elem_idx, elem, direction):
         """ direction is one of : "left", "right" """
-        Logger.info("swipe right event no implemented")
+        Logger.info("view: swipe right event not implemented")
 
     def setScrollDisabled(self,b):
         self.scroll_disabled = b
