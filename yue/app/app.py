@@ -199,9 +199,7 @@ class YueApp(App):
         if Settings.instance().platform == "android":
             SoundManager.instance().setVolume(1.0)
         else:
-            print("boo")
             SoundManager.instance().setVolume(0.5)
-
 
         hm_scr = HomeScreen(name=Settings.instance().screen_home)
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)

@@ -65,32 +65,7 @@ class LibraryScreen(Screen):
 
         row_height = Settings.instance().row_height()
 
-        kind_map = { QueryKind.LIKE : "~",
-                     QueryKind.NOTLIKE : "!~",
-                     QueryKind.EQ : "==",
-                     QueryKind.NE : "!=",
-                     QueryKind.LT : "<",
-                     QueryKind.LE : "<=",
-                     QueryKind.GT : ">",
-                     QueryKind.GE : ">=",
-                     QueryKind.BETWEEN : "<->",
-                     QueryKind.NOTBETWEEN : "-><-",
-                     QueryKind.AND : "&",
-                     QueryKind.OR : "||", }
-        columns = {'all-text':str, 'artist':str, 'album':str, 'title':str,
-         'playcount':int, 'year':int, 'last_played':int }
-
-        fs = Settings.instance().font_size
-        #self.queryview = QueryBuilder( columns, kind_map, default_column = 'all-text', font_size=fs )
-        #self.queryview.bind(on_children_change=self.on_terms_change)
-        #self.queryview.newTerm()
-
         self.treeview = TreeViewWidget(font_size = fs)
-
-        #self.btn_new = Button(text="+")
-        #self.btn_new.bind(on_press= lambda *x : self.queryview.newTerm() )
-        #self.btn_new.size_hint = (None,None)
-        #self.btn_new.size = (row_height,row_height)
 
         self.btn_query = Button(text="search")
         self.btn_query.bind(on_press=self.executeQuery)
@@ -100,17 +75,20 @@ class LibraryScreen(Screen):
         self.hbox_mid = BoxLayout(orientation='horizontal')
         self.hbox_mid.size_hint = (1.0,None)
         self.hbox_mid.height = row_height
-        #self.hbox_mid.add_widget( self.btn_new )
         self.hbox_mid.add_widget( self.btn_query )
 
         self.btn_home = Button(text="home")
         self.btn_home.bind(on_press=Settings.instance().go_home)
+        self.btn_tglchk = Button(text="chk")
+        self.btn_tglchk.bind(on_press=lambda *x:self.toggleSelection())
+
         self.btn_save   = Button(text='save')
         self.btn_create = Button(text='Create Playlist')
         self.hbox_bot = BoxLayout(orientation='horizontal')
         self.hbox_bot.size_hint = (1.0,None)
         self.hbox_bot.height = row_height
         self.hbox_bot.add_widget(self.btn_home)
+        self.hbox_bot.add_widget(self.btn_tglchk)
         self.hbox_bot.add_widget(self.btn_save)
         self.hbox_bot.add_widget(self.btn_create)
 
@@ -134,28 +112,10 @@ class LibraryScreen(Screen):
     @mainthread
     def executeQuery(self,*args):
 
-        #query = self.queryview.toQuery()
-        #rule = queryParamToRule( Library.instance(), query )
-        #if rule is None:
-        # execute blank search
         result = Library.instance().search( self.txt_filter.text, \
             orderby=[Song.artist,Song.album,Song.title] )
         tree =  libraryToTreeFromIterable( result )
         self.setData( tree)
-        #tree = libraryToTree( Library.instance() )
-        #self.setData( tree)
-        #return
-
-        # sql,values = rule.sql()
-        #try:
-        #    Logger.info("sql: %s"%sql)
-        #    Logger.info("sql: %s"%values)
-        #    result = Library.instance().search( rule, orderby=[Song.artist,Song.album,Song.title] )
-        #    tree =  libraryToTreeFromIterable( result )
-        #    self.setData( tree)
-        #
-        #except OperationalError as e:
-        #    Logger.error("sql: %s"%e)
 
     def setData(self, tree):
         self.treeview.setData( tree )
