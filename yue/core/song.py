@@ -11,11 +11,13 @@ from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4
 from mutagen.asf import ASF # *.wma
+from mutagen.oggvorbis import OggVorbis
 
 ext_mp3  = (".mp3",)
 ext_mp4  = ('.m4a', '.m4b', '.m4p', '.mpeg4', '.aac')
 ext_asf  = ('.asf','.wma')
 ext_flac = ('.flac',)
+ext_ogg  = ('.ogg',)
 
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -190,7 +192,7 @@ class Song(object):
 
     @staticmethod
     def supportedExtensions():
-        return ext_mp3+ext_mp4+ext_asf+ext_flac
+        return ext_mp3+ext_mp4+ext_asf+ext_flac+ext_ogg
 
     @staticmethod
     def toString(song):
@@ -241,6 +243,8 @@ def read_tags( path ):
         read_mp4_tags( song, path )
     elif ext in ext_asf:
         read_asf_tags( song, path )
+    elif ext in ext_ogg:
+        read_ogg_tags( song, path )
     else:
         raise UnsupportedFormatError(ext)
 
@@ -315,6 +319,17 @@ def read_asf_tags( song, path):
     song[Song.genre]  = get_str(audio,"WM/Genre","unkown genre")
     song[Song.album_index]  = get_int(audio,'WM/TrackNumber')
     song[Song.year]   = get_int(audio,"WM/Year",'-')
+    song[Song.length] = int(audio.info.length)
+
+def read_ogg_tags( song, path):
+
+    audio = OggVorbis( path )
+    song[Song.artist] = get_str(audio,"artist","unkown artist")
+    song[Song.album]  = get_str(audio,"album","unkown album")
+    song[Song.title]  = get_str(audio,"title","unkown title")
+    song[Song.genre]  = get_str(audio,"genre","unkown genre")
+    song[Song.album_index]  = get_int(audio,'tracknumber')
+    song[Song.year]   = get_int(audio,"date",'-')
     song[Song.length] = int(audio.info.length)
 
 def get_str(audio,tag,unkown=None):
