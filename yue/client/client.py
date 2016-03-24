@@ -938,13 +938,22 @@ class MainWindow(QMainWindow):
             app.setPalette(self.default_palette)
             qdct = {"font_family":"",
                     "font_size":"10",
-                    "color_special1":QColor(220,220,120),
+                    #color_special1":QColor(220,220,120),
+                    "color_special1":QColor(16,128,32),
                     "text_important1":QColor(125,50,100),
                     "text_important2":QColor(255,5,15),
                     "theme_s_mid":QColor(60,60,200),
                     "theme_p_mid":QColor(60,60,200),
                     "theme_s_vdark":QColor(160,175,220)}
             app.setFont(self.default_font)
+            css="""
+            QSlider#TimeSlider::handle:horizontal {
+                background:rgb(214,120,  0);
+                border: 2px solid black;
+                border-radius: 1px;
+            }
+            """
+            app.setStyleSheet(css)
         else:
             try:
                 css,cdct = style_set_custom_theme(os.getcwd()+"/theme",theme)
@@ -968,7 +977,8 @@ class MainWindow(QMainWindow):
 
         # table highlight rules
         #self.plview.tbl.setRowHighlightComplexRule(0,None,qdct["color_special1"])
-        self.plview.brush_current.setColor(qdct["color_special1"])
+        #self.plview.brush_current.setColor(qdct["color_special1"])
+        self.plview.color_current.setRgb(qdct["color_special1"].rgb())
         self.expview.ex_main.brush_library.setColor(qdct["color_special1"])
         self.expview.ex_secondary.brush_library.setColor(qdct["color_special1"])
 

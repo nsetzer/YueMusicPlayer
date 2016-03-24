@@ -139,8 +139,10 @@ class PlayListViewWidget(QWidget):
         self.tbl = PlaylistTable(self)
 
         # set the color of the brush that is returned to change the rule
-        color_current = QColor(220,220,120)
-        self.brush_current = self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , color_current)
+        self.color_current = QColor(220,220,120)
+        self.brush_current = QBrush()
+        #self.brush_current = self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , self.color_current)
+        self.tbl.addRowTextColorComplexRule(self.rowIsCurrentSong, self.color_current)
 
         self.vbox.addWidget( self.tbl.container )
 
