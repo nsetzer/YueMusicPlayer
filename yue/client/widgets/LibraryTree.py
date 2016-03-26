@@ -58,6 +58,7 @@ class LibraryTree(LargeTree):
                 item = self.data[(offset+idx)%len(self.data)]
                 # only scroll to artists.
                 if not self.index_is_album(idx):
+                    # getSortKey(str(item))
                     if str(item).upper().replace("THE ","").startswith(key):
                         idx=(offset+idx)%len(self.data)
                         self.setSelection([idx,])
@@ -115,11 +116,11 @@ class LibraryTree(LargeTree):
             return ""
         elif item.parent != None and item.parent == self.root:
             text = str(item)
-            return "artist=%s"%string_quote(text)
+            return "artist==%s"%string_quote(text)
         else:
             text1 = str(item.parent)
             text2 = str(item)
-            return "artist=%s album=%s"%(string_quote(text1),string_quote(text2))
+            return "artist==%s album==%s"%(string_quote(text1),string_quote(text2))
 
     def formatSelectionAsQueryString(self):
 
