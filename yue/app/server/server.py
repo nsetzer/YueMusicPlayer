@@ -125,9 +125,10 @@ class YueServer(object):
 
     def sendCurrent(self):
         sm = SoundManager.instance()
-        pl = PlaylistManager.instance().openPlaylist('current')
+        pl = PlaylistManager.instance().openCurrent()
         try:
             idx,key = pl.current()
+            Logger.info("send current: uid=%d"%key)
             osc.sendMsg('/song_state', dataArray=(idx,key,sm.state()), port=activityport)
         except IndexError as e:
             Logger.error("Playlist index error (%s)"%e)

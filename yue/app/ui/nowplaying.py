@@ -98,6 +98,7 @@ class NowPlayingScreen(Screen):
         #self.sld_vol.bind( value_normalized=self.set_volume )
 
         self.bind(size=self.resize)
+        self.bind(pos=self.resize)
 
 
     def resize( self, *args):
@@ -112,6 +113,7 @@ class NowPlayingScreen(Screen):
 
 
         if song is None:
+            Logger.warning("now playing: update(none)")
             return
 
         if song['uid'] != self.current_song['uid']:
@@ -121,10 +123,11 @@ class NowPlayingScreen(Screen):
             self.update_albumart(song)
             self.lbl_title.text = song['title']
             self.lbl_artist.text = song['artist']
-            pl = PlaylistManager.instance().openPlaylist('current')
+            pl = PlaylistManager.instance().openCurrent()
             idx,_ = pl.current()
             sz = pl.size()
             self.lbl_index.text = "%d/%d"%(idx+1,sz)
+            Logger.info("update now playing")
 
     @mainthread
     def update_statechange(self, obj, state):

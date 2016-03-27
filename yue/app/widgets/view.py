@@ -315,7 +315,7 @@ class TreeNodeWidget(NodeWidget):
 
         self.btn1.x = xoff
         self.btn1.y = self.y
-        self.btn1.size = (self.height//2,self.height)
+        self.btn1.size = (self.height*2//3,self.height)
 
         x = self.btn1.x + self.btn1.width
         xsz = self.width - (x - self.x)
