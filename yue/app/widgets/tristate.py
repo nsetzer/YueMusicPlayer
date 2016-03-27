@@ -1,4 +1,4 @@
-#! python2.7 ../../test/test_widget.py tri
+#! python2.7 ../../../test/test_widget.py tri
 
 """
 a TriState CheckBox
@@ -14,8 +14,8 @@ TODO:
 """
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import ObjectProperty, NumericProperty
-from kivy.graphics import Color, Rectangle,Line
+from kivy.properties import ObjectProperty, NumericProperty, BooleanProperty
+from kivy.graphics import Color, Ellipse, Line, Rectangle
 
 from enum import Enum
 
@@ -84,3 +84,64 @@ class TriStateCheckBox(Widget):
             return True
         return super(TriStateCheckBox, self).on_touch_down(touch)
 
+
+class TriStateExpander(Widget):
+    """
+    expandable: true/False
+        draw a background indicating 'expanded state'
+    if true: expanded: true/flase
+        determines background color
+    check state:
+        unchecked/partial/checked
+    """
+    expandable = BooleanProperty(True)
+    expanded = BooleanProperty(False)
+    state = ObjectProperty(TriState.unchecked)
+
+    def __init__(self, **kwargs):
+        super(TriStateExpander, self).__init__(**kwargs)
+        self.bind(pos=self.update_canvas)
+        self.bind(size=self.update_canvas)
+        self.bind(state=self.update_canvas)
+
+        self.register_event_type('on_user')
+
+    def update_canvas(self,*args):
+        self.canvas.clear()
+        with self.canvas:
+
+            size = min(self.height,self.width)
+            pad = 0
+            size -= 2*pad # outer rectangle size
+
+            if self.expandable:
+                if self.expanded:
+                    Color(.75,.75,.75,1.0)
+                else:
+                    Color(.33,.33,.33,1.0)
+
+                Rectangle(pos=(self.x,self.y),
+                          size=(self.width,self.height))
+
+            if self.state == TriState.checked:
+                Color(.75,.10,.10,1.0)
+            elif self.state == TriState.partial:
+                Color(.10,.75,.10,1.0)
+            else:
+                Color(.10,.10,.75,1.0)
+
+            m = self.y + self.height//2 - self.width//2
+            Ellipse(pos=(self.x,m),
+                      size=(self.width,self.width))
+
+    def on_user(self,*args):
+        pass
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.expanded = not self.expanded
+            self.dispatch('on_user', None)
+            self.update_canvas()
+
+            return True
+        return super(TriStateExpander, self).on_touch_down(touch)

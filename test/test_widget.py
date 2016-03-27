@@ -19,15 +19,15 @@ print(dirpath)
 
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
-from yue.custom_widgets.expander import Expander
-from yue.custom_widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
-from yue.custom_widgets.tristate import TriStateCheckBox
-from yue.custom_widgets.playlist import PlayListElem, PlayListViewWidget
-from yue.custom_widgets.timebar import TimeBar
-from yue.custom_widgets.querybuilder import QueryBuilder, QueryKind
-from yue.custom_widgets.songedit import SongEdit
-from yue.custom_widgets.songinfo import SongInfo
-from yue.ui.util import TrackTreeElem
+from yue.app.widgets.expander import Expander
+from yue.app.widgets.view import TreeViewWidget, ListViewWidget, TreeElem, ListElem
+from yue.app.widgets.tristate import TriStateExpander
+from yue.app.widgets.playlist import PlayListElem, PlayListViewWidget
+from yue.app.widgets.timebar import TimeBar
+from yue.app.widgets.querybuilder import QueryBuilder, QueryKind
+from yue.app.widgets.songedit import SongEdit
+from yue.app.widgets.songinfo import SongInfo
+from yue.app.ui.util import TrackTreeElem
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
@@ -38,7 +38,8 @@ def build_expander():
     return Expander()
 
 def build_tristatecheckbox():
-    return TriStateCheckBox()
+    w = TriStateExpander()
+    return w
 
 def build_timebar():
     return TimeBar()

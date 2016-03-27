@@ -1,4 +1,4 @@
-#! python2.7 ../../test/test_widget.py tree
+#! python2.7 ../../../test/test_widget.py tree
 """
 
 a Tree View data structure
@@ -90,7 +90,7 @@ from kivy.logger import Logger
 import kivy.metrics
 
 from expander import Expander
-from tristate import TriState, TriStateCheckBox
+from tristate import TriState, TriStateCheckBox, TriStateExpander
 
 import time
 
@@ -272,7 +272,11 @@ class TreeNodeWidget(NodeWidget):
         #    self.rect_grad = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
 
         # create a button for expanding / contracting the tree
-        self.btn1 = Expander()
+        #self.btn1 = Expander()
+        #self.add_widget(self.btn1,canvas=self.canvas)
+        #self.btn1.bind(on_user=self.on_expand)
+
+        self.btn1 = TriStateExpander()
         self.add_widget(self.btn1,canvas=self.canvas)
         self.btn1.bind(on_user=self.on_expand)
 
@@ -282,9 +286,9 @@ class TreeNodeWidget(NodeWidget):
         #self.add_widget(self.btn2,canvas=self.canvas)
 
         # Checkbox to select artists, albums or individual tracks
-        self.chk1 = TriStateCheckBox()
-        self.add_widget(self.chk1,canvas=self.canvas)
-        self.chk1.bind(on_user=self.on_select)
+        #self.chk1 = TriStateCheckBox()
+        #self.add_widget(self.chk1,canvas=self.canvas)
+        #self.chk1.bind(on_user=self.on_select)
 
         # TODO: need to use a japanese font for japanese characters,
         # e.g. DroidSansJapanese.ttf
@@ -305,50 +309,55 @@ class TreeNodeWidget(NodeWidget):
 
     def resizeEvent(self,*args):
 
-        third = self.height//4
+        third = self.height//3
 
-        xoff = self.depth * third
+        xoff = (self.depth-1) * third
 
-        lpad = xoff + 2*self.height + 2*third
+        lpad = xoff
         rpad = third + self.height
 
-        if self.expandable :
-            self.btn1.x = xoff
-            self.btn1.y = self.y
-            self.btn1.size = (self.height,self.height)
+        #if self.expandable :
+        self.btn1.x = xoff
+        self.btn1.y = self.y
+        self.btn1.size = (self.height//2,self.height)
 
-        else:
+        x = self.btn1.x + self.btn1.width
 
+        #else:
+        if not self.expandable:
             #self.btn2.x = xoff + third + self.height
             #self.btn2.y = self.y
-            self.btn2.x = self.width - self.chk1.width
+            self.btn2.x = self.width - self.btn2.width
             self.btn2.y = self.y
             self.btn2.size = (self.height,self.height)
 
         #self.chk1.x = self.width - self.chk1.width
         #self.chk1.y = self.y
-        self.chk1.x = xoff + third + self.height
-        self.chk1.y = self.y
-        self.chk1.size = (self.height,self.height)
+        #self.chk1.x = xoff + third + self.height
+        #self.chk1.y = self.y
+        #self.chk1.size = (self.height,self.height)
 
-        self.lbl1.pos = (self.x + lpad,self.y)
+        self.lbl1.pos = (x+lpad,self.y)
         self.lbl1.size = (self.width - lpad - rpad,self.height)
         self.lbl1.text_size = self.lbl1.size
 
         #self.rect_grad.size = self.size
         #self.rect_grad.pos  = self.pos
 
-        self.pad_left = self.x + lpad
+        self.pad_left = self.btn1.x + self.btn1.width
         self.pad_right = self.x + self.width - rpad
+
 
     def setExpandable(self,b):
         """ set that this node (TreeElem) should display the expansion btn """
         if not b:
-            self.remove_widget(self.btn1)
+            #self.remove_widget(self.btn1 )
             if self.btn2.parent is None:
                 self.add_widget(self.btn2,canvas=self.canvas)
+            self.btn1.expandable = False
         elif self.expandable != b:
-            self.add_widget(self.btn1,canvas=self.canvas)
+            #self.add_widget(self.btn1,canvas=self.canvas)
+            self.btn1.expandable = True
             if self.btn2.parent is not None:
                 self.remove_widget(self.btn2)
 
@@ -374,7 +383,7 @@ class TreeNodeWidget(NodeWidget):
             self.setText(text)
 
         self.btn1.expanded = elem.expanded
-        self.chk1.state = elem.check_state
+        self.btn1.state = elem.check_state
         self.elem = elem
 
         self.resizeEvent()
@@ -389,10 +398,19 @@ class TreeNodeWidget(NodeWidget):
 
     def on_select(self,*args):
         """ user clicked the tristate button """
-        state = self.chk1.state
+        state = self.btn1.state
         if self.parent is not None and self.elem is not None:
             #self.parent.select(self.elem,state)
             self.elem.setChecked(state)
+            self.parent.update_labels()
+
+    def select(self,*args):
+        if self.parent is not None and self.elem is not None:
+            state=self.btn1.state
+            new_state = TriState.unchecked
+            if state == TriState.unchecked:
+                new_state = TriState.checked
+            self.elem.setChecked( new_state )
             self.parent.update_labels()
 
     def on_press_aux(self,*args):
@@ -508,7 +526,12 @@ class ViewWidget(Widget):
                 Animation.cancel_all(self)
             self._touch_begin_x = self.offset
 
-            if self.nodes[0].pad_left < touch.x < self.nodes[0].pad_right and \
+            idx = self.pos_to_row_index(*self.to_widget(*touch.pos))
+            if idx < 0 or idx >= len(self.nodes):
+                idx = 0
+            nd = self.nodes[idx]
+
+            if nd.pad_left < touch.x < nd.pad_right and \
                not self.scroll_disabled:
                 touch.grab(self)
                 self._touch_last_index = -1 # see on_touch_move for usage
@@ -523,7 +546,7 @@ class ViewWidget(Widget):
             # event is contained within this widget, but is not a scroll
             # event, so pass the even on to a child widget
             return super(ViewWidget, self).on_touch_down(touch)
-        # event is not contained within THIS widget, do not propogate
+        # event is not contained within THIS widget, do not propogateTriStateExpander
         # event to children
         return False
 
@@ -550,7 +573,10 @@ class ViewWidget(Widget):
                 if touch.is_double_tap:
                     self.dispatch('on_double_tap',idx+self.offset_idx, elem)
                 else:
-                    self.dispatch('on_tap',idx+self.offset_idx, elem)
+                    if touch.button in ("scrolldown","scrollup"):
+                        print(touch.button)
+                    else:
+                        self.dispatch('on_tap',idx+self.offset_idx, elem)
             else:
                 # create a momentum effect,
                 # parameters need to be played with.
@@ -687,6 +713,17 @@ class TreeViewWidget(ViewWidget):
 
         self.enable_drag_and_drop = False
         self.enable_swipe = False
+
+    def on_tap(self,index,*args):
+        """ index into self.data where a tap occurred """
+
+        print('idx',index,index-self.offset_idx)
+        index=index-self.offset_idx
+        if 0 <= index < len(self.nodes):
+            nd = self.nodes[index]
+            elem = nd.elem
+            Logger.info("tap: %s"%elem)
+            nd.select()
 
     def update_labels(self):
         # walk the tree and determine visible elements
