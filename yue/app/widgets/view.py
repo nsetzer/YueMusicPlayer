@@ -310,42 +310,28 @@ class TreeNodeWidget(NodeWidget):
     def resizeEvent(self,*args):
 
         third = self.height//3
-
         xoff = (self.depth-1) * third
-
-        lpad = xoff
         rpad = third + self.height
 
-        #if self.expandable :
         self.btn1.x = xoff
         self.btn1.y = self.y
         self.btn1.size = (self.height//2,self.height)
 
         x = self.btn1.x + self.btn1.width
+        xsz = self.width - (x - self.x)
 
-        #else:
         if not self.expandable:
-            #self.btn2.x = xoff + third + self.height
-            #self.btn2.y = self.y
             self.btn2.x = self.width - self.btn2.width
             self.btn2.y = self.y
             self.btn2.size = (self.height,self.height)
+            xsz -= self.btn2.width
 
-        #self.chk1.x = self.width - self.chk1.width
-        #self.chk1.y = self.y
-        #self.chk1.x = xoff + third + self.height
-        #self.chk1.y = self.y
-        #self.chk1.size = (self.height,self.height)
-
-        self.lbl1.pos = (x+lpad,self.y)
-        self.lbl1.size = (self.width - lpad - rpad,self.height)
+        self.lbl1.pos = (x,self.y)
+        self.lbl1.size = (xsz,self.height)
         self.lbl1.text_size = self.lbl1.size
 
-        #self.rect_grad.size = self.size
-        #self.rect_grad.pos  = self.pos
-
         self.pad_left = self.btn1.x + self.btn1.width
-        self.pad_right = self.x + self.width - rpad
+        self.pad_right = self.lbl1.x + self.lbl1.width
 
 
     def setExpandable(self,b):
@@ -573,10 +559,12 @@ class ViewWidget(Widget):
                 if touch.is_double_tap:
                     self.dispatch('on_double_tap',idx+self.offset_idx, elem)
                 else:
-                    if touch.button in ("scrolldown","scrollup"):
-                        print(touch.button)
-                    else:
-                        self.dispatch('on_tap',idx+self.offset_idx, elem)
+
+                    # this does not exist on android
+                    #if touch.button in ("scrolldown","scrollup"):
+                    #    print(touch.button)
+                    #else:
+                    self.dispatch('on_tap',idx+self.offset_idx, elem)
             else:
                 # create a momentum effect,
                 # parameters need to be played with.
