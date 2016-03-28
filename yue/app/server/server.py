@@ -16,6 +16,8 @@ from yue.core.sqlstore import SQLStore
 
 from yue.app.server.ingest import Ingest
 
+from plyer.utils import platform
+
 serviceport = 15123
 activityport = 15124
 
@@ -48,6 +50,7 @@ class YueServer(object):
         SoundManager.instance().on_state_changed.connect(self.on_state_change)
         SoundManager.instance().on_song_end.connect(self.on_song_end_event)
         SoundManager.instance().on_playlist_end.connect(self.on_playlist_end)
+        SoundManager.instance().on_load.connect(self.on_load)
 
         self.event_queue = Queue.Queue()
         self.cv_wait = Condition()
@@ -59,6 +62,11 @@ class YueServer(object):
         self.ingestthread = None
 
         self.alive = True
+
+        if platform == 'android':
+            self.notification = ServiceNotification()
+        else:
+            self.notification = None
 
     def main(self):
         while self.alive:
@@ -81,7 +89,9 @@ class YueServer(object):
 
         inst = SoundManager.instance()
         if action == 'load':
-            inst.load( {'path':message[3],} )
+            uid = message[3]
+            song = Library.instance().songFromId( uid )
+            inst.load( song )
             self.sendCurrent()
         elif action == 'play':
             inst.play()
@@ -101,6 +111,12 @@ class YueServer(object):
         with self.cv_tick:
             Logger.info("service: notify song tick thread")
             self.cv_tick.notify()
+
+    def on_load(self,song):
+        if self.notification is not None:
+            self.notification.setText(song[Song.artist])
+            self.notification.setMessage(song[Song.title])
+            self.notification.update()
 
     def on_state_change(self,*args):
         osc.sendMsg('/song_state', dataArray=args, port=activityport)

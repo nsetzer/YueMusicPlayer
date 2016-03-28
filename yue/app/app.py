@@ -263,7 +263,17 @@ class YueApp(App):
         return True # prevent on_stop when in background
 
     def on_resume(self):
-        pass # not guaranteed after an on_pause
+         # not guaranteed after an on_pause
+
+        # update the UI, since the app was paused, the now
+        # playing dialog has not changed.
+        sm = SoundManager.instance()
+        pl = PlaylistManager.instance().openCurrent()
+        try:
+            idx,key = pl.current()
+            self.on_state_changed(idx,key,sm.state())
+        except IndexError as e:
+            Logger.error("Playlist index error (%s)"%e)
 
     def on_start(self):
         Logger.info('Yue: start')

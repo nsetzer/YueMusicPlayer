@@ -21,8 +21,9 @@ class ClientSoundDevice(SoundDevice):
         osc.sendMsg('/audio_action', dataArray=["unload"], port=self.info.serviceport)
 
     def load(self, song):
-        osc.sendMsg('/audio_action', dataArray=["load",song['path'],], port=self.info.serviceport)
+        osc.sendMsg('/audio_action', dataArray=["load",song[Song.uid],], port=self.info.serviceport)
         Logger.info("Load Song: %s"%Song.toString(song))
+
     def play(self):
         osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)
 
