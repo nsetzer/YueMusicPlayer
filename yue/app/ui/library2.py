@@ -98,6 +98,7 @@ class LibraryScreen(Screen):
         self.txt_filter = TextInput(multiline=False)
         self.txt_filter.size_hint = (1.0,None)
         self.txt_filter.height = row_height
+        self.txt_filter.bind(on_text_validate=self.executeQuery)
 
         self.vbox.add_widget( self.txt_filter )
         self.vbox.add_widget( self.hbox_mid )
