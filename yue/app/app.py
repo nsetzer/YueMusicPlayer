@@ -215,8 +215,8 @@ class YueApp(App):
         osc.bind(info.oscid, self.ingest_update , '/ingest_update')
         osc.bind(info.oscid, self.ingest_finished , '/ingest_finished')
 
-        sm.add_widget(lb_scr)
         sm.add_widget(np_scr)
+        sm.add_widget(lb_scr)
         sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)
         #sm.add_widget(pr_scr)

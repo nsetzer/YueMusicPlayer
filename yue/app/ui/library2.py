@@ -19,6 +19,7 @@ TODO:
         or throw an error.
 
 """
+import random
 from sqlite3 import OperationalError
 
 from kivy.uix.screenmanager import Screen
@@ -153,6 +154,7 @@ class LibraryScreen(Screen):
 
         self.toggleSelection(TriState.unchecked)
 
+        random.shuffle(lst)
         viewlst = PlayListToViewList( Library.instance(), lst )
 
         settings = Settings.instance()
