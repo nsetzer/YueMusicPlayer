@@ -376,7 +376,7 @@ class Library(object):
         """
         m = {}
         for song in self.song_view.iter():
-            m[song['path']] = song['uid']
+            m[song[Song.path]] = song[Song.uid]
         return m
 
     def iter(self):
@@ -392,7 +392,7 @@ class Library(object):
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
                 orderby = [ orderby, ]
-            # these three columns have special columns used in sorting songs.
+            # this column has a special column used in sorting.
             for i,v in enumerate(orderby):
                 if v in [Song.artist,]:
                     orderby[i]+="_key"

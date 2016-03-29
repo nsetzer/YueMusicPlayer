@@ -127,7 +127,10 @@ class FTPSource(DataSource):
         path = utf8_fix(path)
         if self.exists( path ):
             if self.isdir(path):
-                self.ftp.rmd(path)
+                try:
+                    self.ftp.rmd(path)
+                except Exception as e:
+                    print("ftp delete error: %s"%e)
             else:
                 try:
                     self.ftp.delete(path)
@@ -166,9 +169,13 @@ class FTPSource(DataSource):
         path = utf8_fix(path)
         if not self.exists(path):
             p = self.parent( path )
-            if not self.exists(p):
-                self.ftp.mkd( p )
-            self.ftp.mkd(path)
+            try:
+                if not self.exists(p):
+                    self.ftp.mkd( p )
+                self.ftp.mkd(path)
+            except Exception as e:
+                print("ftp mkd error: %s"%e)
+
 
     def split(self,path):
         return posixpath.split(path)
