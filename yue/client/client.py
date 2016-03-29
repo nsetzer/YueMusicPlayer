@@ -22,6 +22,7 @@ from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
 from ..core.library import Library
 from ..core.playlist import PlaylistManager
+from ..core.history import History
 from ..core.sound.device import MediaState
 from ..core.song import Song , get_album_art_data, ArtNotFound
 from ..core.util import string_quote, backupDatabase, format_delta
@@ -1087,6 +1088,9 @@ def main(version="0.0.0"):
         Settings.init( sqlstore )
         Library.init( sqlstore )
         PlaylistManager.init( sqlstore )
+        History.init( sqlstore )
+        #History.instance().setEnabled(True)
+        Library.instance().history = History.instance()
 
         setSettingsDefaults()
 

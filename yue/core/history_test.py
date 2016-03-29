@@ -1,4 +1,5 @@
-#! cd ../.. && python2.7 setup.py test
+#! cd ../.. && python2.7 setup.py test --test=history
+#! cd ../.. && python2.7 setup.py cover
 import unittest
 
 import os
@@ -46,9 +47,36 @@ class TestHistory(unittest.TestCase):
             c = h.sqlstore.conn.cursor()
             h.incrementPlaycount(c,uid,date)
 
-        record = list(h.export())[0]
+        records = list(h.export())
+        self.assertEqual(len(records),1)
+        record = records[0]
         self.assertEqual(record['uid'],uid)
         self.assertEqual(record['date'],date)
+        self.assertEqual(record['column'],Song.playtime)
+
+    def test_history_export2(self):
+
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+
+        sqlstore = SQLStore( DB_PATH )
+
+        h = History( sqlstore )
+        h.setEnabled(True)
+        lib = Library( sqlstore )
+        lib.history = h
+
+        uid = lib.insert(artist="artist1",
+                         album='album1',
+                         title='title1',
+                         path='/path')
+
+        lib.incrementPlaycount(uid)
+
+        records = list(h.export())
+        self.assertEqual(len(records),1)
+        record = records[0]
+        self.assertEqual(record['uid'],uid)
         self.assertEqual(record['column'],Song.playtime)
 
     def test_history_import(self):
