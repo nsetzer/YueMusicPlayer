@@ -36,6 +36,8 @@ class History(object):
     def setEnabled(self, b):
         self.enabled = b
 
+    def size(self):
+        return self.db.count()
 
     def update(self,c, uid,**kwargs):
 

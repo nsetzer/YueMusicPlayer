@@ -10,6 +10,16 @@ TODO:
     these errors are related to calling ftplib functions from another thread
         ftplib.error_reply: 200 TYPE is now ASCII
         ftplib.error_reply: 226 15 matches total
+
+    TODO: sync overwrites the remote DB
+        import history clones the remote db locally
+        settings from the cloned db should be copied to the remote db
+        provide a way to clone a table between two databases
+        preferibly under sqlstore.py as a util funciton, provide
+        two sqlstyore instances and the name of the table
+            drop from b if exists
+            select * from a
+            insert item into b
 """
 try:
     # TODO: i don't need PIL with PyQT
@@ -25,6 +35,7 @@ import tempfile, shutil
 
 from yue.core.song import Song
 from yue.core.library import Library
+from yue.core.history import History
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 
@@ -73,8 +84,6 @@ def run_async(func):
         return func_hl
 
     return async_func
-
-
 
 class FFmpegEncoder(object):
     def __init__(self,ffmpeg_path,logger=None,no_exec=False):
@@ -246,6 +255,61 @@ class TranscodeProcess(IterativeProcess):
 
     def end(self):
         return
+
+class ImportHistoryProcess(IterativeProcess):
+    """import history from a library"""
+
+    def __init__(self, parent=None, no_exec=False):
+        super(ImportHistoryProcess,self).__init__( parent )
+        self.no_exec = no_exec
+
+    def begin(self):
+        return 1
+
+    def step(self,idx):
+
+        dbpath = os.path.join(os.getcwd(),"remote.db")
+        if not isinstance(self.parent.target_source,DirectorySource):
+            # target is not a local directory
+            tgtdb = self.parent.getTargetLibraryPath()
+            if self.parent.target_source.exists(tgtdb):
+                with self.parent.target_source.open(tgtdb,"rb") as rb:
+                    with self.parent.local_source.open(dbpath,"wb") as wb:
+                        wb.write(rb.read())
+        else:
+            dbpath = self.parent.getTargetLibraryPath()
+
+        self.parent.log("db local path: %s %s"%(dbpath,os.path.exists(dbpath)))
+
+        if not self.parent.local_source.exists(dbpath):
+            self.parent.log("import history: no database")
+            return
+
+        remote_store = SQLStore( dbpath )
+        remote_history = History( remote_store )
+        local_history = History( self.parent.library.sqlstore )
+
+        size = remote_history.size()
+        self.parent.log("import history: num records %d"%size)
+
+        if self.no_exec or size==0:
+            self.parent.log("import history: nothing to do")
+            return
+
+        self.execute = self.parent.getYesOrNo("Import %d records?"%size)
+
+        if not self.execute:
+            return
+
+        conn = self.parent.library.sqlstore.conn
+        with conn:
+            c = conn.cursor()
+            for record in remote_history.export():
+                local_history.import_record( c, record )
+
+    def end(self):
+        return
+
 
 @run_async
 def async_transcode(obj,src,dst):
@@ -528,6 +592,9 @@ class SyncManager(object):
             count+=1
         self.setOperationsCount(count)
 
+        proc = ImportHistoryProcess(parent=self,no_exec=self.no_exec)
+        self.run_proc( proc )
+
         self.message("Delete Files")
         if d>0:
             proc = DeleteProcess(parent=self,filelist=delete_list,no_exec=self.no_exec)
@@ -555,11 +622,25 @@ class SyncManager(object):
                         fmt,self,no_exec=self.no_exec)
             self.run_proc( proc )
 
-        # close the target library, then copy to remove device
+        # close the target library, then copy to remote device
+        # TODO: copy settings from remote db to target library
+
+        db_path = os.path.join(os.getcwd(),"remote.db")
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
         target_library.sqlstore.close()
         libpath=self.getTargetLibraryPath()
-        source_copy_file(self.local_source,target_library.sqlstore.filepath,
+        if not self.no_exec:
+            source_copy_file(self.local_source,target_library.sqlstore.filepath,
                          self.target_source, libpath, 1<<15)
+        else:
+            self.log("no_exec: not copying target library")
+
+        db_path = os.path.join(os.getcwd(),"target.db")
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
 
         self.message("Finished %d/%d/%d"%(d,c,t))
 
@@ -732,7 +813,11 @@ class SyncManager(object):
         #drive = os.path.splitdrive(self.target)[0] + os.sep
         #player_path = self.player_directory or \
         #              os.path.join(drive,"Player","user","");
-        libpath = self.target_source.join(self.target_path,"library.db")
+        name = "library.db"
+        if isinstance(self.target_source,DirectorySource):
+            name = "yue.db"
+
+        libpath = self.target_source.join(self.target_path,name)
         #if os.path.exists(player_path):
         #    libpath = os.path.join(player_path,"music.xml")
         return libpath
