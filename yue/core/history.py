@@ -34,7 +34,10 @@ class History(object):
         return History.__instance
 
     def setEnabled(self, b):
-        self.enabled = b
+        self.enabled = bool(b)
+
+    def isEnabled(self):
+        return self.enabled
 
     def size(self):
         return self.db.count()
