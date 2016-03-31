@@ -622,13 +622,9 @@ class SyncManager(object):
                         fmt,self,no_exec=self.no_exec)
             self.run_proc( proc )
 
+        self.copy_remote_settings( target_library )
+
         # close the target library, then copy to remote device
-        # TODO: copy settings from remote db to target library
-
-        db_path = os.path.join(os.getcwd(),"remote.db")
-        if os.path.exists(db_path):
-            os.remove(db_path)
-
         target_library.sqlstore.close()
         libpath=self.getTargetLibraryPath()
         if not self.no_exec:
@@ -641,7 +637,6 @@ class SyncManager(object):
         if os.path.exists(db_path):
             os.remove(db_path)
 
-
         self.message("Finished %d/%d/%d"%(d,c,t))
 
     def run_proc(self,proc):
@@ -651,7 +646,19 @@ class SyncManager(object):
                 proc.step(i)
             proc.end()
 
-    # functions to reimplement in UI
+    def copy_remote_settings(self, target_library ):
+        # if a remote database was copied locally, copy
+        # the settings from that database to the new database
+        # the nexty step will copy the new database back
+        # to the target directory.
+        db_path = os.path.join(os.getcwd(),"remote.db")
+        if os.path.exists(db_path):
+            remote_sqlstore = SQLStore( db_path )
+            remote_settings = Settings( remote_sqlstore )
+            target_settings = Settings( target_library.sqlstore )
+            for key,value in remote_settings.items():
+                target_settings[key] = value
+            os.remove(db_path)
 
     def setOperationsCount(self,count):
         """ reimplement this """
