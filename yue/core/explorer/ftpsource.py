@@ -54,6 +54,38 @@ class FTPWriter(object):
         if typ is None:
             self.close()
 
+class FTPReader(object):
+    """docstring for FTPWriter"""
+    def __init__(self, ftp, path):
+        super(FTPWriter, self).__init__()
+        self.ftp = ftp
+        self.path = path
+        self.file = BytesIO()
+
+        # open the file
+        text = "RETR " + utf8_fix(self.path)
+        self.ftp.retrbinary(text, self.file.write)
+        self.file.seek(0)
+
+    def read(self,n=None):
+        return self.file.read(n)
+
+    def seek(self,pos,whence=SEEK_SET):
+        return self.file.seek(pos,whence)
+
+    def tell(self):
+        return self.file.tell()
+
+    def close(self):
+        self.file.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self,typ,val,tb):
+        if typ is None:
+            self.close()
+
 class FTPSource(DataSource):
     """
     there is some sort of problem with utf-8/latin-1 and ftplib
@@ -127,7 +159,10 @@ class FTPSource(DataSource):
         path = utf8_fix(path)
         if self.exists( path ):
             if self.isdir(path):
-                self.ftp.rmd(path)
+                try:
+                    self.ftp.rmd(path)
+                except Exception as e:
+                    print("ftp delete error: %s"%e)
             else:
                 try:
                     self.ftp.delete(path)
@@ -137,6 +172,8 @@ class FTPSource(DataSource):
     def open(self,path,mode):
         if mode=="wb":
             return FTPWriter(self.ftp,path)
+        elif mode=="rb":
+            return FTPReader(self.ftp,path)
         raise NotImplementedError(mode)
 
     def exists(self,path):
@@ -166,9 +203,13 @@ class FTPSource(DataSource):
         path = utf8_fix(path)
         if not self.exists(path):
             p = self.parent( path )
-            if not self.exists(p):
-                self.ftp.mkd( p )
-            self.ftp.mkd(path)
+            try:
+                if not self.exists(p):
+                    self.ftp.mkd( p )
+                self.ftp.mkd(path)
+            except Exception as e:
+                print("ftp mkd error: %s"%e)
+
 
     def split(self,path):
         return posixpath.split(path)

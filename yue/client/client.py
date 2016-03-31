@@ -22,6 +22,7 @@ from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
 from ..core.library import Library
 from ..core.playlist import PlaylistManager
+from ..core.history import History
 from ..core.sound.device import MediaState
 from ..core.song import Song , get_album_art_data, ArtNotFound
 from ..core.util import string_quote, backupDatabase, format_delta
@@ -59,7 +60,6 @@ from .ui.song_view import CurrentSongView
 from .ui.art_view import AlbumArtView
 from .ui.volume import VolumeController
 
-
 from .widgets.logview import LogView
 from .widgets.LineEdit import LineEditRepl
 from .widgets.playbutton import PlayButton, AdvanceButton
@@ -89,6 +89,7 @@ class ClientRepl(object):
         self.actions["explorer"] = self.exexplorer
         self.actions["diag"] = self.exdiag
         self.actions["theme"] = self.extheme
+        self.actions["history"] = self.exhistory
         if CodeEditor is not None:
             self.actions["editor"] = self.exeditor
 
@@ -215,6 +216,18 @@ class ClientRepl(object):
     def exbackup(self, args):
         """ backup the database """
         self.client.backup_database()
+
+    def exhistory(self,args):
+
+        args = ReplArgumentParser(args)
+        args.assertMinArgs( 1 )
+
+        enable = int(args[0]) != 0
+
+        History.instance().setEnabled( enable )
+
+        print("history: %d"%(enable))
+
 
     def exexplorer(self, args):
         """ open directory of the database in explorer """
@@ -1087,6 +1100,9 @@ def main(version="0.0.0"):
         Settings.init( sqlstore )
         Library.init( sqlstore )
         PlaylistManager.init( sqlstore )
+        History.init( sqlstore )
+        History.instance().setEnabled(True)
+        Library.instance().history = History.instance()
 
         setSettingsDefaults()
 

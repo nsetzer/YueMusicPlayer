@@ -61,6 +61,9 @@ class Song(object):
     asc = "ASC"
     desc = "DESC"
 
+    # used by history to mark playback time
+    playtime = "playtime"
+
     eqfactor = 250.0
 
     abbreviations = {
@@ -160,7 +163,7 @@ class Song(object):
         }
 
     @staticmethod
-    def calculateFrequency(playcount, frequency, last_played):
+    def calculateFrequency(playcount, frequency, last_played, t=None):
         """ return the new frequency given the current freuquency and the
             last time the song was played
 
@@ -169,7 +172,11 @@ class Song(object):
         """
         N=4 # rough average over this many plays
 
-        t1 = time.localtime(time.time())
+        if t is None:
+            t1 = time.localtime(time.time())
+        else:
+            t1 = time.localtime(t)
+
         t2 = time.localtime(last_played)
 
         d1 = datetime.datetime(*t1[:6])
@@ -222,7 +229,6 @@ class Song(object):
         ivalue = min(500,value);
         fvalue = ivalue/Song.eqfactor;
         return fvalue
-
 
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )

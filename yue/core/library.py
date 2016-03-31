@@ -41,6 +41,7 @@ from .search import sql_search, ruleFromString, BlankSearchRule, RegExpSearchRul
 
 #from yue.settings import Settings
 from .song import Song
+from .history import History
 from .sqlstore import SQLTable, SQLView
 
 try:
@@ -161,6 +162,8 @@ class Library(object):
         sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
 
         self.song_view = SQLView( sqlstore, "library", sql, colnames)
+        #instance of History() for recording events
+        self.history = None
 
     @staticmethod
     def init( sqlstore ):
@@ -232,6 +235,8 @@ class Library(object):
             last_played, freq = Song.calculateFrequency(*item);
             c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?", \
                       (freq, last_played, uid))
+            if self.history is not None:
+                self.history.incrementPlaycount(c,uid,last_played)
 
     def incrementSkipcount(self, uid):
 
@@ -376,7 +381,7 @@ class Library(object):
         """
         m = {}
         for song in self.song_view.iter():
-            m[song['path']] = song['uid']
+            m[song[Song.path]] = song[Song.uid]
         return m
 
     def iter(self):
@@ -392,7 +397,7 @@ class Library(object):
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
                 orderby = [ orderby, ]
-            # these three columns have special columns used in sorting songs.
+            # this column has a special column used in sorting.
             for i,v in enumerate(orderby):
                 if v in [Song.artist,]:
                     orderby[i]+="_key"
