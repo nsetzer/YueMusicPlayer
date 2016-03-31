@@ -248,6 +248,8 @@ class ClientRepl(object):
             self.editor.setVariable("Client",self)
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
+            self.editor.setVariable("Settings",Settings.instance())
+            self.editor.setVariable("History",History.instance())
             self.editor.setVariable("Song",Song)
             self.editor.setText("help()\nfor song in Library.search('title=fizzbuzz'):"+\
                 "\n    Library.update(song[Song.uid],**{Song.title:'foobar'}")
