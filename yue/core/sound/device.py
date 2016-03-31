@@ -1,9 +1,12 @@
 
 import sys
 from ..library import Library
+from ..util import check_path_alternatives
 #from ..playlist import PlaylistManager
 
 from enum import Enum
+
+import os
 
 class MediaState(Enum):
     not_ready = 0
@@ -50,6 +53,9 @@ class SoundDevice(object):
 
         # TODO: not current implemented in any way
         self.on_song_tick = cbkfactory() # position
+
+        self.path_alternatives = []
+        self.last_alt = None
 
     # playback controls
 
@@ -112,7 +118,6 @@ class SoundDevice(object):
         print(idx,key)
         song = Library.instance().songFromId( key )
         self.load( song )
-
 
     # current playlist management
 
@@ -177,7 +182,13 @@ class SoundDevice(object):
         song = Library.instance().songFromId( key )
         return song
 
+    def setAlternatives(self,a):
+        self.path_alternatives = a
 
+    def check_path( self, path ):
+        self.last_alt,path = check_path_alternatives( \
+            self.path_alternatives, path, self.last_alt)
+        return path
 
 
 

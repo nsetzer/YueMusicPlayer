@@ -98,6 +98,7 @@ class BassSoundDevice(SoundDevice):
 
     def load(self, song):
         path = song[Song.path]
+        path = self.check_path( path )
         self.current_song = song
         try:
             self.device.unload()
