@@ -155,6 +155,18 @@ class YueApp(App):
         scr = settings.manager.get_screen( settings.screen_current_playlist )
         scr.view.setHighlight(idx)
 
+    def on_resume_event(self,idx,uid):
+        #Logger.info("now playing: state changed idx:%d uid:%d state:%d"%(idx,uid,state))
+        song = Library.instance().songFromId(uid)
+        settings = Settings.instance()
+        scr = settings.manager.get_screen( settings.screen_now_playing )
+        scr.update( None, song )
+        #scr.update_statechange( None, state )
+
+        scr = settings.manager.get_screen( settings.screen_current_playlist )
+        scr.view.setHighlight(idx)
+
+
     def ingest_update(self,message,*args):
 
         settings = Settings.instance()
@@ -267,11 +279,10 @@ class YueApp(App):
 
         # update the UI, since the app was paused, the now
         # playing dialog has not changed.
-        sm = SoundManager.instance()
         pl = PlaylistManager.instance().openCurrent()
         try:
             idx,key = pl.current()
-            self.on_state_changed(idx,key,sm.state())
+            self.on_resume_event(idx,key)
         except IndexError as e:
             Logger.error("Playlist index error (%s)"%e)
 

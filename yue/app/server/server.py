@@ -10,11 +10,13 @@ from kivy.logger import Logger
 from yue.app.sound.manager import SoundManager
 from yue.core.sound.device import MediaState
 from yue.core.bass.pybass import get_platform_path
+from yue.core.song import Song
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 
 from yue.app.server.ingest import Ingest
+from yue.app.server.notification  import ServiceNotification
 
 from plyer.utils import platform
 
@@ -63,10 +65,9 @@ class YueServer(object):
 
         self.alive = True
 
+        self.notification = None
         if platform == 'android':
             self.notification = ServiceNotification()
-        else:
-            self.notification = None
 
     def main(self):
         while self.alive:
