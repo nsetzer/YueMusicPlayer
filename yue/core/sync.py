@@ -38,6 +38,7 @@ from yue.core.library import Library
 from yue.core.history import History
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
+from yue.core.settings import Settings
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -279,6 +280,8 @@ class ImportHistoryProcess(IterativeProcess):
         else:
             dbpath = self.parent.getTargetLibraryPath()
 
+        self.remote_path = dbpath
+
         self.parent.log("db local path: %s %s"%(dbpath,os.path.exists(dbpath)))
 
         if not self.parent.local_source.exists(dbpath):
@@ -306,6 +309,7 @@ class ImportHistoryProcess(IterativeProcess):
             c = conn.cursor()
             for record in remote_history.export():
                 local_history.import_record( c, record )
+
 
     def end(self):
         return
@@ -594,6 +598,7 @@ class SyncManager(object):
 
         proc = ImportHistoryProcess(parent=self,no_exec=self.no_exec)
         self.run_proc( proc )
+        remote_path = proc.remote_path # TODO
 
         self.message("Delete Files")
         if d>0:
@@ -622,7 +627,7 @@ class SyncManager(object):
                         fmt,self,no_exec=self.no_exec)
             self.run_proc( proc )
 
-        self.copy_remote_settings( target_library )
+        self.copy_remote_settings( remote_path, target_library )
 
         # close the target library, then copy to remote device
         target_library.sqlstore.close()
@@ -646,19 +651,22 @@ class SyncManager(object):
                 proc.step(i)
             proc.end()
 
-    def copy_remote_settings(self, target_library ):
+    def copy_remote_settings(self, dbpath, target_library ):
         # if a remote database was copied locally, copy
         # the settings from that database to the new database
-        # the nexty step will copy the new database back
+        # the next step will copy the new database back
         # to the target directory.
-        db_path = os.path.join(os.getcwd(),"remote.db")
-        if os.path.exists(db_path):
-            remote_sqlstore = SQLStore( db_path )
+        #db_path = os.path.join(os.getcwd(),"remote.db")
+        self.log("remote path: %s %s"%(dbpath,os.path.exists(dbpath)))
+        if os.path.exists(dbpath):
+            remote_sqlstore = SQLStore( dbpath )
             remote_settings = Settings( remote_sqlstore )
+            remote_settings['_sync']=1 # token setting
             target_settings = Settings( target_library.sqlstore )
             for key,value in remote_settings.items():
                 target_settings[key] = value
-            os.remove(db_path)
+            remote_sqlstore.close()
+            os.remove(dbpath)
 
     def setOperationsCount(self,count):
         """ reimplement this """
