@@ -1,5 +1,5 @@
-#! cd ../.. && python2.7 setup.py test --test=parse
 #! cd ../.. && python2.7 setup.py cover
+#! cd ../.. && python2.7 setup.py test --test=parse
 import unittest
 
 from yue.core.song import Song
@@ -15,6 +15,7 @@ from yue.core.search import PartialStringSearchRule, \
                        NotRangeSearchRule, \
                        AndSearchRule, \
                        OrSearchRule, \
+                       BlankSearchRule, \
                        allTextRule, \
                        tokenizeString, \
                        ruleFromString, \
@@ -115,6 +116,10 @@ class TestSearchParse(unittest.TestCase):
 
     def test_parser_new_style(self):
 
+        expected = BlankSearchRule()
+        actual = ruleFromString("  ")
+        self.assertEqual(expected,actual)
+
         expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
         actual = ruleFromString(" = foo")
         self.assertEqual(expected,actual)
@@ -197,10 +202,9 @@ class TestSearchParse(unittest.TestCase):
         actual = ruleFromString(".art foo (.abm bar || .abm baz)")
         self.assertEqual(expected,actual)
 
-
     def test_parser_errors(self):
 
-        # the lhs is optinal for this token
+        # the lhs is optional for this token
         with self.assertRaises(RHSError):
             ruleFromString(" = ")
 
@@ -214,6 +218,9 @@ class TestSearchParse(unittest.TestCase):
 
         with self.assertRaises(RHSError):
             ruleFromString("x &&")
+
+        with self.assertRaises(LHSError):
+            ruleFromString("&& y")
 
         with self.assertRaises(LHSError):
             ruleFromString("|| y")
