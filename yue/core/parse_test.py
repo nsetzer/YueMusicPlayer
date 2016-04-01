@@ -239,6 +239,15 @@ class TestSearchParse(unittest.TestCase):
         with self.assertRaises(TokenizeError):
             ruleFromString(" \" foo ")
 
+        with self.assertRaises(RHSError):
+            ruleFromString("one = &&")
+
+        with self.assertRaises(RHSError):
+            ruleFromString("one < &&")
+
+        with self.assertRaises(RHSError):
+            ruleFromString("one && &&")
+
         # || = foo
         # foo = ||
         # old syle queries:

@@ -680,6 +680,8 @@ def parseTokens( tokens ):
             r = tokens.pop(i+1)
             if not isinstance(r,(str,unicode)):
                 raise RHSError(tok, "expected string [S01]")
+            if r in flow:
+                raise RHSError(tok, "unexpected operator [U01]")
             # left side is optional, defaults to all text
             if not hasl:
                 tokens[i] = parserRule(Song.all_text,operators[tok],r)
@@ -701,6 +703,8 @@ def parseTokens( tokens ):
             r = tokens.pop(i+1)
             if not isinstance(r,(str,unicode)):
                 raise RHSError(tok, "expected string [S02]")
+            if r in flow:
+                raise RHSError(tok, "unexpected operator [U02]")
             i-=1
             l = tokens.pop(i)
             if not isinstance(l,(str,unicode)):
@@ -719,10 +723,12 @@ def parseTokens( tokens ):
         if isinstance(tok, (str, unicode)):
             if tok in flow:
                 if not hasr:
-                    raise RHSError(tok, "expected value")
+                    raise RHSError(tok, "expected value [V04]")
                 if not hasl:
-                    raise LHSError(tok, "expected value")
+                    raise LHSError(tok, "expected value [V05]")
                 r = tokens.pop(i+1)
+                if r in flow:
+                    raise RHSError(tok, "unexpected operator [U03]")
                 i-=1
                 l = tokens.pop(i)
                 tokens[i] = flow[tok]([l,r])
