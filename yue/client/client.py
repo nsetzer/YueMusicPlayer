@@ -248,6 +248,8 @@ class ClientRepl(object):
             self.editor.setVariable("Client",self)
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
+            self.editor.setVariable("Settings",Settings.instance())
+            self.editor.setVariable("History",History.instance())
             self.editor.setVariable("Song",Song)
             self.editor.setText("help()\nfor song in Library.search('title=fizzbuzz'):"+\
                 "\n    Library.update(song[Song.uid],**{Song.title:'foobar'}")
@@ -309,6 +311,12 @@ class MainWindow(QMainWindow):
 
         s = Settings.instance()
         self.set_style(s["current_theme"])
+
+        History.instance().setEnabled( s['enable_history'] )
+        self.device.setAlternatives(s['path_alternatives'])
+
+        sys.stdout.write("record history: %s\n"%bool(s['enable_history']))
+        sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
 
         try:
             self.device.load_current( )
@@ -582,6 +590,8 @@ class MainWindow(QMainWindow):
 
         if self.remotethread is not None:
             self.remotethread.join()
+
+        s['enable_history'] = int(History.instance().isEnabled())
 
         s['current_position'] = int(self.device.position())
 
@@ -1054,6 +1064,9 @@ def setSettingsDefaults():
 
     s.setDefault("enable_keyboard_hook",1) # on by default
 
+    s.setDefault("enable_history",0)
+    s.setDefault("path_alternatives",[])
+
     # when empty, default order is used
     s.setDefault("ui_library_column_order",[])
     s.setDefault("ui_quickselect_favorite_artists",[])
@@ -1101,7 +1114,7 @@ def main(version="0.0.0"):
         Library.init( sqlstore )
         PlaylistManager.init( sqlstore )
         History.init( sqlstore )
-        History.instance().setEnabled(True)
+        #History.instance().setEnabled(True)
         Library.instance().history = History.instance()
 
         setSettingsDefaults()

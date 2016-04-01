@@ -87,3 +87,5 @@ class TestSettings(unittest.TestCase):
         s.setDefault(key,"new value")
         self.assertEqual( s[key], val)
 
+        self.assertEqual( len(list(s.keys())), 4 )
+

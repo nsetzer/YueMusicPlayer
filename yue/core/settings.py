@@ -155,7 +155,6 @@ class Settings(object):
             for idx, item in enumerate(data):
                 c.execute("INSERT INTO setcsv (uid,idx,value)  VALUES (?,?,?)",(uid,idx,item))
 
-
     def setDefault(self,key,value):
         """ set the value iff it does not exist"""
 
@@ -168,3 +167,36 @@ class Settings(object):
         else:
             raise TypeError(key)
 
+    def keys(self):
+        """ generator function returns all settings keys """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            c.execute("SELECT key FROM settings")
+            results = c.fetchmany()
+            while results:
+                for item in results:
+                    yield item[0]
+                results = c.fetchmany()
+
+    def items(self):
+        """ generator function returns all settings keys, values """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            c2 = self.sqlstore.conn.cursor()
+            c.execute("SELECT uid,key,kind FROM settings")
+            results = c.fetchmany()
+            while results:
+                for item in results:
+                    uid,key,kind = item
+                    value = None
+
+                    if kind == K_STR:
+                        value = self._get(c2,"setstr",uid)
+                    elif kind == K_INT:
+                        value = self._get(c2,"setint",uid)
+                    elif kind == K_CSV:
+                        value = self._get_list(c2,uid)
+
+                    yield (key,value)
+
+                results = c.fetchmany()

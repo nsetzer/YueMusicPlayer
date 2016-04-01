@@ -86,3 +86,26 @@ def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
     # todo: compare newestbu path to current
     # save a new backup
     sqlstore.backup( fullpath )
+
+def check_path_alternatives( alternatives, path, last=None ):
+    """
+    enable alternative locations
+
+    The library stores an absolute path.
+    on some media (usb drive) the drive letter
+    may change computer to computer
+    """
+    if last is not None:
+        b,a = last
+        new_path = b + path[:len(a)]
+        if os.path.exists( new_path ):
+            return (b,a), new_path
+    for a in alternatives:
+        if path.startswith(a):
+            for b in alternatives:
+                if a == b:
+                    continue
+                new_path = b + path[len(a):]
+                if os.path.exists( new_path ):
+                    return (b,a), new_path
+    return None, path
