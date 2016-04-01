@@ -51,9 +51,12 @@ class QtSyncManager(SyncManager):
         with proc:
             n = proc.begin()
             for i in range(n):
+                if self.parent.alive == False:
+                    return
                 proc.step(i)
                 self.step_count += 1
                 self.parent.valueChanged.emit(self.step_count)
+
                 if self.no_exec:
                     QThread.usleep(25000);
             proc.end()

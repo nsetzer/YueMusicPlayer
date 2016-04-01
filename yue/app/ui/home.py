@@ -40,7 +40,7 @@ class HomeScreen(Screen):
         self.btn_library    = Button(text="Library")
         self.btn_presets    = Button(text="Dynamic Playlists")
         self.btn_settings   = Button(text="Settings")
-        self.btn_ingest   = Button(text="Ingest")
+        self.btn_ingest     = Button(text="Ingest")
 
         self.vbox.add_widget(self.btn_nowplaying)
         self.vbox.add_widget(self.btn_current)

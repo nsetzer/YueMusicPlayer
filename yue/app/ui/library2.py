@@ -46,6 +46,25 @@ from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.song import Song
 
+class PresetElem(ListElem):
+    def __init__(self, name, query):
+        super(PresetElem, self).__init__(name)
+        self.query = query
+
+class PresetViewWidget(ListViewWidget):
+
+    def on_tap(self,idx,elem,*args):
+        print(idx,elem)
+
+        settings = Settings.instance()
+
+        settings.go_library()
+
+        scr = settings.manager.get_screen( settings.screen_library )
+        scr.txt_filter.text = elem.query
+        scr.executeQuery()
+
+
 class PresetScreen(Screen):
     def __init__(self,**kwargs):
         super(PresetScreen,self).__init__(**kwargs)
@@ -55,9 +74,14 @@ class PresetScreen(Screen):
 
         row_height = Settings.instance().row_height()
         fs = Settings.instance().font_size
-        self.listview = ListViewWidget(font_size = fs)
+        self.listview = PresetViewWidget(font_size = fs)
 
-        self.listview.setData([ ListElem("aaa"), ListElem("bbbb") ] )
+        self.listview.setData([ \
+            PresetElem("Not Recent", "date>14"),
+            PresetElem("Album: Gothic Emily","album=\"gothic emily\""),
+            PresetElem("Best: Grunge","genre=grunge rating>5"),
+            PresetElem("Best: Japanese","county=japan rating>2"),
+            PresetElem("Best: Visual Kei","(genre=j-metal || genre=visual) && rating>2") ] )
 
         self.btn_home = Button(text="home")
         self.btn_home.bind(on_press=Settings.instance().go_home)

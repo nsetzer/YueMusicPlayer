@@ -84,7 +84,6 @@ class TriStateCheckBox(Widget):
             return True
         return super(TriStateCheckBox, self).on_touch_down(touch)
 
-
 class TriStateExpander(Widget):
     """
     expandable: true/False
@@ -114,15 +113,6 @@ class TriStateExpander(Widget):
             pad = 0
             size -= 2*pad # outer rectangle size
 
-            if self.expandable:
-                if self.expanded:
-                    Color(.75,.75,.75,1.0)
-                else:
-                    Color(.33,.33,.33,1.0)
-
-                Rectangle(pos=(self.x,self.y),
-                          size=(self.width,self.height))
-
             if self.state == TriState.checked:
                 Color(.75,.10,.10,1.0)
             elif self.state == TriState.partial:
@@ -133,6 +123,27 @@ class TriStateExpander(Widget):
             m = self.y + self.height//2 - self.width//2
             Ellipse(pos=(self.x,m),
                       size=(self.width,self.width))
+
+            if self.expandable:
+                #if self.expanded:
+                Color(.75,.75,.75,1.0)
+                #else:
+                #    Color(.33,.33,.33,1.0)
+
+                padx = self.width/16
+                padw = self.width-2*padx
+                if not self.expanded:
+                    m = self.x + self.width/2
+                    pady = self.height/16
+                    # |
+                    Rectangle(pos=(m - self.width/8,self.y+self.height/2 - padw/2),
+                              size=(self.width/4,padw))
+
+                m = self.y +self.height/2
+
+                # --
+                Rectangle(pos=(self.x+padx,m - self.width/8),
+                          size=(padw,self.width/4))
 
     def on_user(self,*args):
         pass
