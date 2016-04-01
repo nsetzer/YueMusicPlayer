@@ -21,11 +21,11 @@ from yue.core.playlist import PlaylistManager
 from yue.core.library import Library
 from yue.core.song import Song
 
-from yue.app.ui.library2 import LibraryScreen
+from yue.app.ui.library2 import LibraryScreen, PresetScreen
 from yue.app.ui.home import HomeScreen
 from yue.app.ui.nowplaying import NowPlayingScreen
 from yue.app.ui.current import CurrentPlaylistScreen
-from yue.app.ui.preset import PresetScreen, ModifyPresetScreen
+#from yue.app.ui.preset import PresetScreen, ModifyPresetScreen
 from yue.app.ui.ingest import IngestScreen
 from yue.app.ui.settings import SettingsScreen
 from yue.app.ui.util import libraryToTree, PlayListToViewList
@@ -217,8 +217,8 @@ class YueApp(App):
         np_scr = NowPlayingScreen(name=Settings.instance().screen_now_playing)
         cu_scr = CurrentPlaylistScreen(name=Settings.instance().screen_current_playlist)
         lb_scr = LibraryScreen(name=Settings.instance().screen_library)
-        #pr_scr = PresetScreen(name=Settings.instance().screen_presets)
-        mp_scr = ModifyPresetScreen(name=Settings.instance().screen_modify_preset)
+        pr_scr = PresetScreen(name=Settings.instance().screen_presets)
+        #mp_scr = ModifyPresetScreen(name=Settings.instance().screen_modify_preset)
         in_scr = IngestScreen(name=Settings.instance().screen_ingest)
         se_scr = SettingsScreen(name=Settings.instance().screen_settings)
 
@@ -227,12 +227,12 @@ class YueApp(App):
         osc.bind(info.oscid, self.ingest_update , '/ingest_update')
         osc.bind(info.oscid, self.ingest_finished , '/ingest_finished')
 
+        sm.add_widget(hm_scr)
         sm.add_widget(np_scr)
         sm.add_widget(lb_scr)
-        sm.add_widget(hm_scr)
         sm.add_widget(cu_scr)
-        #sm.add_widget(pr_scr)
-        sm.add_widget(mp_scr)
+        sm.add_widget(pr_scr)
+        #sm.add_widget(mp_scr)
         sm.add_widget(in_scr)
         sm.add_widget(se_scr)
 

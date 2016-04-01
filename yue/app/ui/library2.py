@@ -33,7 +33,7 @@ from kivy.clock import mainthread
 
 #from kivy.uix.gridlayout import GridLayout
 
-from yue.app.widgets.view import TreeViewWidget
+from yue.app.widgets.view import TreeViewWidget, ListViewWidget, ListElem
 from yue.app.widgets.querybuilder import QueryBuilder, QueryKind
 
 from yue.app.ui.util import libraryToTree, libraryToTreeFromIterable, queryParamToRule
@@ -53,9 +53,19 @@ class PresetScreen(Screen):
         self.vbox = BoxLayout(orientation='vertical')
         self.add_widget(self.vbox)
 
+        row_height = Settings.instance().row_height()
+        fs = Settings.instance().font_size
+        self.listview = ListViewWidget(font_size = fs)
+
+        self.listview.setData([ ListElem("aaa"), ListElem("bbbb") ] )
+
         self.btn_home = Button(text="home")
         self.btn_home.bind(on_press=Settings.instance().go_home)
+        self.btn_home.size_hint = (1.0,None)
+        self.btn_home.height = row_height
+
         self.vbox.add_widget( self.btn_home )
+        self.vbox.add_widget( self.listview )
 
 class LibraryScreen(Screen):
     def __init__(self,**kwargs):
