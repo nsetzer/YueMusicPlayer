@@ -45,6 +45,7 @@ from yue.app.settings import Settings
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.song import Song
+from yue.core.search import ParseError
 
 class PresetElem(ListElem):
     def __init__(self, name, query):
@@ -64,7 +65,6 @@ class PresetViewWidget(ListViewWidget):
         scr.txt_filter.text = elem.query
         scr.executeQuery()
 
-
 class PresetScreen(Screen):
     def __init__(self,**kwargs):
         super(PresetScreen,self).__init__(**kwargs)
@@ -80,7 +80,7 @@ class PresetScreen(Screen):
             PresetElem("Not Recent", "date>14"),
             PresetElem("Album: Gothic Emily","album=\"gothic emily\""),
             PresetElem("Best: Grunge","genre=grunge rating>5"),
-            PresetElem("Best: Japanese","county=japan rating>2"),
+            PresetElem("Best: Japanese","country=japan rating>2"),
             PresetElem("Best: Visual Kei","(genre=j-metal || genre=visual) && rating>2") ] )
 
         self.btn_home = Button(text="home")
@@ -148,10 +148,14 @@ class LibraryScreen(Screen):
     @mainthread
     def executeQuery(self,*args):
 
-        result = Library.instance().search( self.txt_filter.text, \
-            orderby=[Song.artist,Song.album,Song.title] )
-        tree =  libraryToTreeFromIterable( result )
-        self.setData( tree)
+        try:
+            result = Library.instance().search( self.txt_filter.text, \
+                orderby=[Song.artist,Song.album,Song.title] )
+            tree =  libraryToTreeFromIterable( result )
+            self.setData(tree)
+        except ParseError as e:
+            Logger.error("search error: %s"%e)
+            self.setData([])
 
     def setData(self, tree):
         self.treeview.setData( tree )
