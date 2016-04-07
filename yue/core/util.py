@@ -4,6 +4,23 @@ import os
 import sys
 from datetime import datetime
 
+try:
+    from functools import lru_cache
+except:
+    def lru_cache(maxsize=128):
+        def lru_cache_decorator(func):
+            cache = dict()
+            def lru_cache_wrapper(*args):
+                if args in cache:
+                    return cache[args]
+                result = func(*args);
+                cache[args] = result
+                while len(cache)>maxsize:
+                    del cache[cache.keys()[0]]
+                return result
+            return lru_cache_wrapper
+        return lru_cache_decorator
+
 def format_date( unixTime ):
     """ format epoch time stamp as string """
     return time.strftime("%Y/%m/%d %H:%M", time.gmtime(unixTime))

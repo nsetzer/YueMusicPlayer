@@ -57,7 +57,7 @@ class FTPWriter(object):
 class FTPReader(object):
     """docstring for FTPWriter"""
     def __init__(self, ftp, path):
-        super(FTPWriter, self).__init__()
+        super(FTPReader, self).__init__()
         self.ftp = ftp
         self.path = path
         self.file = BytesIO()

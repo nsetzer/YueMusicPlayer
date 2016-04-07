@@ -1,24 +1,10 @@
 from .song import Song
 from .sqlstore import regexp
-try:
-    from functools import lru_cache
-except:
-    def lru_cache(maxsize=128):
-        def lru_cache_decorator(func):
-            cache = dict()
-            def lru_cache_wrapper(*args):
-                if args in cache:
-                    return cache[args]
-                result = func(*args);
-                cache[args] = result
-                while len(cache)>maxsize:
-                    del cache[cache.keys()[0]]
-                return result
-            return lru_cache_wrapper
-        return lru_cache_decorator
+#from .util import lru_cache
 
 import calendar
 from datetime import datetime, timedelta
+import time
 
 from .nlpdatesearch import NLPDateRange
 
@@ -51,7 +37,7 @@ class BlankSearchRule(SearchRule):
         return "", tuple()
 
     def __repr__(self):
-        return "<all>"%(self.value, self.column)
+        return "<all>"
 
 class ColumnSearchRule(SearchRule):
     """docstring for SearchRule"""
@@ -246,8 +232,6 @@ def naive_search( sqldb, rule ):
     for song in sqldb.iter():
         if rule.check(song):
             yield song
-
-import time
 
 def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, echo=False):
     """ convert a rule to a sql query and yield matching songs
@@ -727,7 +711,7 @@ def parseTokens( tokens ):
                 if not hasl:
                     raise LHSError(tok, "expected value [V05]")
                 r = tokens.pop(i+1)
-                if r in flow:
+                if isinstance(r, (str, unicode)) and r in flow:
                     raise RHSError(tok, "unexpected operator [U03]")
                 i-=1
                 l = tokens.pop(i)

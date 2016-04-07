@@ -77,7 +77,7 @@ class Library(object):
             ("uid","INTEGER PRIMARY KEY AUTOINCREMENT"),
             ("artist","INTEGER"),
             ("album","text"),
-            ("sortkey","text"),
+            ("sortkey","text"), # TODO: deprecated
             ("count","INTEGER DEFAULT 0")
         ]
         album_foreign_keys = [
