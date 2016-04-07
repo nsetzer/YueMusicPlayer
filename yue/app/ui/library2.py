@@ -78,6 +78,7 @@ class PresetScreen(Screen):
 
         self.listview.setData([ \
             PresetElem("Not Recent", "date>14"),
+            PresetElem("Genre: Stoner","gen=stoner"),
             PresetElem("Album: Gothic Emily","album=\"gothic emily\""),
             PresetElem("Best: Grunge","genre=grunge rating>5"),
             PresetElem("Best: Japanese","country=japan rating>2"),
