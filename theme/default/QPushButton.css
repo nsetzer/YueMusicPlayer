@@ -55,6 +55,24 @@ QPushButton:pressed#NewPlaylistButton {
     margin-left: 2px;
 }
 
+QPushButton#SplitViewButton {
+    background-color: transparent;
+    padding-right: 0px;
+    padding-left: 0px;
+    min-width: 16px;
+    min-height: 16px;
+}
+QPushButton:hover#SplitViewButton {
+    background-color: %color_special2%;
+    margin-top: -2px; /*animate the button*/
+    margin-left: -2px;
+}
+QPushButton:pressed#SplitViewButton {
+    background-color: %color_special2%;
+    margin-top: 2px;
+    margin-left: 2px;
+}
+
 QPushButton {
     border: 2px solid %theme_very_dark%;
     border-radius: 2px;
