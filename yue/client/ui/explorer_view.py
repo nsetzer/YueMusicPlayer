@@ -182,6 +182,9 @@ class ExplorerModel(QWidget):
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
 
+        self.hbox = QHBoxLayout()
+        self.hbox.setContentsMargins(0,0,0,0)
+
         self.view = view
         self.controller = controller
 
@@ -191,13 +194,25 @@ class ExplorerModel(QWidget):
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
 
-        self.vbox.addWidget( self.txt_path )
+        self.btn_split = QPushButton(self)
+        self.btn_split.setIcon(QIcon(":/img/app_newlist.png"))
+        self.btn_split.setObjectName("SplitViewButton")
+        self.btn_split.clicked.connect(self.on_splitButton_clicked)
+        self.btn_split.setFlat(True)
+        self.btn_split.setHidden(True)
+
+        self.hbox.addWidget(self.txt_path)
+        self.hbox.addWidget(self.btn_split)
+        self.vbox.addLayout( self.hbox )
         self.vbox.addWidget( self.tbl_file.container )
 
         self.tbl_file.setData(self.view)
         self.txt_path.setText(self.view.pwd())
 
         self.list_library_files = set()
+
+    def showSplitButton(self):
+        self.btn_split.setHidden(False)
 
     def indexInLibrary(self,idx):
         return self.view[idx]['name'] in self.list_library_files
@@ -278,11 +293,16 @@ class ExplorerModel(QWidget):
         self.tbl_file.scrollTo(0)
         self.tbl_file.setSelection([])
 
+    def on_splitButton_clicked(self):
+
+        #self.btn_split.setHidden( !self.secondaryHidden() )
+        if self.controller.secondaryHidden():
+            self.controller.action_open_view()
+        else:
+            self.controller.action_close_view()
+
     def canPaste( self ):
         return self.controller.canPaste( self.view.pwd() )
-
-    def secondaryHidden(self):
-        return self.parent().ex_secondary.isHidden()
 
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
@@ -318,6 +338,9 @@ class DummyController(object):
         pass
     def action_play(self, item):
         pass
+
+    def secondaryHidden(self):
+        return True
 
 class ExplorerController(DummyController):
 
@@ -370,7 +393,7 @@ class ExplorerController(DummyController):
         contextMenu.addSeparator()
         contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
 
-        if model.secondaryHidden():
+        if self.secondaryHidden():
             act = contextMenu.addAction("Open Secondary View", self.action_open_view)
         else:
             act = contextMenu.addAction("Close Secondary View", self.action_close_view)
@@ -411,6 +434,9 @@ class ExplorerController(DummyController):
     def action_play(self, path):
         self.parent.play_file.emit( path )
 
+    def secondaryHidden(self):
+        return self.parent.ex_secondary.isHidden()
+
 class ExplorerView(QWidget):
     """docstring for ExplorerView"""
 
@@ -431,6 +457,7 @@ class ExplorerView(QWidget):
         self.hbox.addWidget(self.ex_main)
         self.hbox.addWidget(self.ex_secondary)
 
+        self.ex_main.showSplitButton()
         #self.btn = QPushButton("...")
         #self.btn.clicked.connect(self.openFtp)
         #self.ex_main.vbox.insertWidget(0,self.btn)
