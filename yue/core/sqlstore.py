@@ -23,6 +23,15 @@ class SQLStore(object):
 
         self.conn.create_function("REGEXP", 2, regexp)
 
+        with self.conn:
+            c = self.conn.cursor()
+            sql = 'CREATE TABLE if not exists yue_version (name text, version integer)'
+            c.execute(sql)
+            c.execute("SELECT version from yue_version WHERE name==?",("schema",))
+            results = c.fetchone()
+            if results is None:
+                c.execute("INSERT INTO yue_version (name,version) VALUES (?,?)",("schema",1))
+
     def close(self):
         self.conn.close()
 
