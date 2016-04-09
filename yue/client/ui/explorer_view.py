@@ -16,6 +16,7 @@ if isPython3:
 import yue
 from yue.client.widgets.LargeTable import LargeTable, TableDualColumn, TableColumnImage
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.FlatPushButton import FlatPushButton
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -194,11 +195,7 @@ class ExplorerModel(QWidget):
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
 
-        self.btn_split = QPushButton(self)
-        self.btn_split.setIcon(QIcon(":/img/app_newlist.png"))
-        self.btn_split.setObjectName("SplitViewButton")
-        self.btn_split.clicked.connect(self.on_splitButton_clicked)
-        self.btn_split.setFlat(True)
+        self.btn_split = FlatPushButton(QIcon(":/img/app_split.png"),self)
         self.btn_split.setHidden(True)
 
         self.hbox.addWidget(self.txt_path)

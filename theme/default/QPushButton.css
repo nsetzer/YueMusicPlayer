@@ -37,42 +37,6 @@ QToolButton:pressed {
     margin-left: 2px;
 }
 
-QPushButton#NewPlaylistButton {
-    background-color: transparent;
-    padding-right: 0px;
-    padding-left: 0px;
-    min-width: 16px;
-    min-height: 16px;
-}
-QPushButton:hover#NewPlaylistButton {
-    background-color: %color_special2%;
-    margin-top: -2px; /*animate the button*/
-    margin-left: -2px;
-}
-QPushButton:pressed#NewPlaylistButton {
-    background-color: %color_special2%;
-    margin-top: 2px;
-    margin-left: 2px;
-}
-
-QPushButton#SplitViewButton {
-    background-color: transparent;
-    padding-right: 0px;
-    padding-left: 0px;
-    min-width: 16px;
-    min-height: 16px;
-}
-QPushButton:hover#SplitViewButton {
-    background-color: %color_special2%;
-    margin-top: -2px; /*animate the button*/
-    margin-left: -2px;
-}
-QPushButton:pressed#SplitViewButton {
-    background-color: %color_special2%;
-    margin-top: 2px;
-    margin-left: 2px;
-}
-
 QPushButton {
     border: 2px solid %theme_very_dark%;
     border-radius: 2px;
@@ -94,6 +58,23 @@ QPushButton:flat {
     border: none; /* no border for a flat push button */
 }
 
+QPushButton#FlatPushButton {
+    background-color: transparent;
+    padding-right: 0px;
+    padding-left: 0px;
+    min-width: 16px;
+    min-height: 16px;
+}
+QPushButton:hover#FlatPushButton {
+    background-color: %color_special2%;
+    margin-top: -2px; /*animate the button*/
+    margin-left: -2px;
+}
+QPushButton:pressed#FlatPushButton {
+    background-color: %color_special2%;
+    margin-top: 2px;
+    margin-left: 2px;
+}
 
 QPushButton#CloseTabButton {
 	border: 0px solid transparent;

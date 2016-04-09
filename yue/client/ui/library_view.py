@@ -18,6 +18,7 @@ from yue.client.widgets.TableEditColumn import EditColumn
 from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LibraryTree import LibraryTree
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.FlatPushButton import FlatPushButton
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -220,15 +221,8 @@ class LibraryView(QWidget):
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
-        #self.btn_newlist = QToolButton(self)
-        self.btn_newlist = QPushButton(self)
-        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
-        self.btn_newlist.setObjectName("NewPlaylistButton")
-        self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
-        self.btn_newlist.setFlat(True)
-        #act = QAction(QIcon(":/img/app_newlist.png"),"Create Playlist",self)
-        #act.triggered.connect(lambda:sys.stdout.write("create\n"))
-        #self.btn_newlist.setDefaultAction(act)
+
+        self.btn_newlist = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
 
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )

@@ -417,6 +417,9 @@ class QuickTable(LargeTable):
         act.setDisabled( self.parent().display_index is Record.frq)
 
         submenu = contextMenu.addMenu("Sort Content")
+
+        act=submenu.addAction(self.parent().display_class.title(),lambda:self.parent().setSortIndex(Record.key))
+        act.setDisabled( self.parent().sort_index is Record.key)
         act=submenu.addAction("Song Count",lambda:self.parent().setSortIndex(Record.cnt))
         act.setDisabled( self.parent().sort_index is Record.cnt)
         act=submenu.addAction("Play Count",lambda:self.parent().setSortIndex(Record.ply))
