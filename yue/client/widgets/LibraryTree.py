@@ -27,7 +27,7 @@ class LibraryTree(LargeTree):
         song_list = list(Library.instance().search(""))
         toString = lambda x : x[Song.album]
         root = Leaf.list_to_idx_tree([Song.artist,],toString,song_list)
-        root.children.sort(key=lambda x:getSortKey(x.text))
+        root.children.sort(key=lambda x:getSortKey(x.text).lower())
         root.text="Library (%d)"%(len(root.children))
         root.checkable = True
         root.collapsed = False
