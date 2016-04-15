@@ -1085,10 +1085,15 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         sys.stderr.write(line)
 
-def main(version="0.0.0",datetime=""):
+def main(version="",buildtime=""):
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Yue Music Player - v%s"%(version))
+    if version == "":
+        version = "{:%H:%M}".format(datetime.now())
+        app.setApplicationName("Yue Debug %s"%(version))
+    else:
+        app.setApplicationName("Yue Music Player - v%s"%(version))
+
     app.setQuitOnLastWindowClosed(True)
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)
@@ -1124,7 +1129,7 @@ def main(version="0.0.0",datetime=""):
         device = newDevice(pl,plugin_path,kind=args.sound)
 
         sys.stdout.write("Initializing application\n")
-        window = MainWindow( diag, device, (version,datetime) )
+        window = MainWindow( diag, device, (version,buildtime) )
 
         window.showWindow()
 
