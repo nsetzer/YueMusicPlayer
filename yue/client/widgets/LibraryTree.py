@@ -58,8 +58,7 @@ class LibraryTree(LargeTree):
                 item = self.data[(offset+idx)%len(self.data)]
                 # only scroll to artists.
                 if not self.index_is_album(idx):
-                    # getSortKey(str(item))
-                    if str(item).upper().replace("THE ","").startswith(key):
+                    if getSortKey(str(item)).upper().startswith(key):
                         idx=(offset+idx)%len(self.data)
                         self.setSelection([idx,])
                         self.scrollTo(idx)

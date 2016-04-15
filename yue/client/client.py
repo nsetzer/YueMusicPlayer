@@ -265,11 +265,11 @@ class ClientRepl(object):
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
-    def __init__(self, errorlog_view, device, version):
+    def __init__(self, errorlog_view, device, version_info ):
         super(MainWindow, self).__init__()
 
         self.setAcceptDrops( True )
-        self.version = version
+        self.version,self.versiondate = version_info
         self.device = device
         self.controller = PlaybackController( device, self );
         self.repl = YueRepl( device )
@@ -563,7 +563,7 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: %s\n"%self.version
+        about_text += "Version: %s %s\n"%(self.version,self.versiondate)
         about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
         about_text += "Qt Version: %s\n"%QT_VERSION_STR
         about_text += "sip Version: %s\n"%SIP_VERSION_STR
@@ -1085,10 +1085,10 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         sys.stderr.write(line)
 
-def main(version="0.0.0"):
+def main(version="0.0.0",datetime=""):
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Yue Music Player - v%s"%version)
+    app.setApplicationName("Yue Music Player - v%s"%(version))
     app.setQuitOnLastWindowClosed(True)
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)
@@ -1124,7 +1124,7 @@ def main(version="0.0.0"):
         device = newDevice(pl,plugin_path,kind=args.sound)
 
         sys.stdout.write("Initializing application\n")
-        window = MainWindow( diag, device, version )
+        window = MainWindow( diag, device, (version,datetime) )
 
         window.showWindow()
 

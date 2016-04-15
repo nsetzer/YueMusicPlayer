@@ -1,5 +1,7 @@
 # -*- mode: python -*-
 import os,sys
+import subprocess
+
 from distutils.sysconfig import get_python_lib
 isPosix = os.name != 'nt'
 ROOT_PATH = os.path.join(os.getcwd(),"")
@@ -12,24 +14,48 @@ if isPosix:
 
 isDebug = ('--debug' in sys.argv)
 
+def getCommit():
+    commit="none"
+    date=""
+    time=""
+    args = ['git','log','--pretty=format:%h %ci','-1']
+    proc = subprocess.Popen(args,stdout=subprocess.PIPE)
+    try:
+        o,_ = proc.communicate()
+        o = o.decode('utf-8')
+        print(o)
+        commit,date,time,_  = o.split()
+    except (OSError,ValueError) as e:
+        print("%s"%e)
+    return commit,date,time
+
+commit,c_date,c_time = getCommit()
+
 if isDebug:
   EXT="-debug"+EXT
 
 version = '0.0.0'
 
 main_script = os.path.join(ROOT_PATH,'client-main.py')
+target_script = os.path.join(ROOT_PATH,'client-main-freeze.py')
 
-with open(main_script,"r") as rf:
-  for line in rf:
-    line = line.strip()
-    if line.startswith("__version__"):
-      version = line.split('=')[1].strip()[1:-1]
+with open(target_script,"w") as wf:
+  with open(main_script,"r") as rf:
+    for line in rf:
+      temp = line.strip()
+      if temp.startswith("__version__"):
+        version = temp.split('=')[1].strip()[1:-1] + commit
+        wf.write("__version__ = \"%s.%s\"\n"%(version,commit))
+      elif temp.startswith("__datetime__"):
+        wf.write("__datetime__ = \"%s %s\"\n"%(c_date,c_time))
+      else:
+        wf.write( line )
 
 FULL_NAME = 'YueMusicPlayer-%s-%s%s'%(os.name,version,EXT)
 
 #build a debug version and look for import errors,
 # add those import libraries to hidden imports list
-a = Analysis([main_script,],
+a = Analysis([target_script,],
              pathex=[os.path.join(os.getcwd(),"yue"),],
              hiddenimports=["pkg_resources","PyQt5"],
              hookspath=None,
@@ -92,3 +118,6 @@ exe = EXE(pyz,
           upx=False,
           console=isDebug,
           icon= os.path.join(ROOT_PATH,"img",'icon'+ICOEXT))
+
+if os.path.exists(target_script):
+  os.remove(target_script)

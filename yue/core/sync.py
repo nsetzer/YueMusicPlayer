@@ -273,6 +273,7 @@ class ImportHistoryProcess(IterativeProcess):
         if not isinstance(self.parent.target_source,DirectorySource):
             # target is not a local directory
             tgtdb = self.parent.getTargetLibraryPath()
+            self.parent.log("remote db path: %s"%tgtdb)
             if self.parent.target_source.exists(tgtdb):
                 with self.parent.target_source.open(tgtdb,"rb") as rb:
                     with self.parent.local_source.open(dbpath,"wb") as wb:
