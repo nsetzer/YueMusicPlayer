@@ -6,6 +6,11 @@ from .keyhook import cHook
 
 import sys
 
+# function keys are 0x70 to 0x7B
+# playpause : 0xB3
+# prev : 0xB1
+# next : 0xB0
+
 class HookThread(QThread):
     """docstring for HookThread"""
 
@@ -23,7 +28,7 @@ class HookThread(QThread):
             return 1
 
         if self.diag:
-            if 0x20<=ascii<0x80:
+            if 0x20<=ascii<0x80 or ascii == 0x0A:
                 sys.stdout.write("%c"%ascii);
             else:
                 sys.stdout.write("{%02X}"%vkCode);

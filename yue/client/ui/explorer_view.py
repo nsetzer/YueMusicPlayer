@@ -290,6 +290,9 @@ class ExplorerModel(QWidget):
         self.tbl_file.scrollTo(0)
         self.tbl_file.setSelection([])
 
+    def action_update_replace(self, item):
+        self.controller.action_update_replace( self.view.realpath(item['name']) )
+
     def on_splitButton_clicked(self):
 
         #self.btn_split.setHidden( !self.secondaryHidden() )
@@ -382,7 +385,7 @@ class ExplorerController(DummyController):
             act.setDisabled( not is_files or not model.canIngest())
 
         if len(items) == 1:
-            act = contextMenu.addAction("Play Song", lambda : model.action_play( items[0] ))
+            act = contextMenu.addAction("Play Song", lambda: model.action_play( items[0] ))
             ext = os.path.splitext(items[0]['name'])[1].lower()
             if not model.supportedExtension( ext ):
                 act.setDisabled( True )
@@ -394,6 +397,10 @@ class ExplorerController(DummyController):
             act = contextMenu.addAction("Open Secondary View", self.action_open_view)
         else:
             act = contextMenu.addAction("Close Secondary View", self.action_close_view)
+
+        if len(items) == 1 and is_files:
+            contextMenu.addSeparator()
+            act = contextMenu.addAction("update/replace *", lambda: model.action_update_replace(items[0]))
 
         action = contextMenu.exec_( event.globalPos() )
 
@@ -421,6 +428,27 @@ class ExplorerController(DummyController):
         """ return true if we can paste into the given directory """
         return self.cut_items is not None and self.cut_root != dirpath
 
+    def action_update_replace(self, path):
+
+        def strmatch(s1,s2,field):
+            return s1[field].lower().replace(" ","") == \
+                   s2[field].lower().replace(" ","")
+
+        p, n = os.path.split( path )
+        gp, _ = os.path.split( p )
+
+        songs = Library.instance().searchDirectory( gp, recursive=True )
+
+        temp = Song.fromPath( path );
+        sys.stdout.write(gp+"\n")
+        for song in songs:
+            match = strmatch(song,temp,Song.artist) and strmatch(song,temp,Song.title) or \
+                    (temp[Song.album_index]>0 and song[Song.album_index] == temp[Song.album_index])
+            sys.stdout.write( "[%d] %s\n"%(match,Song.toString(song)) )
+            if match:
+                Library.instance().update(song[Song.uid],**{Song.path:path})
+
+
     def action_open_view(self):
         self.parent.ex_secondary.show()
         # self.parent().ex_secondary.chdir( self.view.pwd() )
@@ -429,6 +457,7 @@ class ExplorerController(DummyController):
         self.parent.ex_secondary.hide()
 
     def action_play(self, path):
+        print(path)
         self.parent.play_file.emit( path )
 
     def secondaryHidden(self):

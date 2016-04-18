@@ -44,8 +44,9 @@ with open(target_script,"w") as wf:
     for line in rf:
       temp = line.strip()
       if temp.startswith("__version__"):
-        version = temp.split('=')[1].strip()[1:-1] + commit
+        version = temp.split('=')[1].strip()[1:-1]
         wf.write("__version__ = \"%s.%s\"\n"%(version,commit))
+        version += "." + commit
       elif temp.startswith("__datetime__"):
         wf.write("__datetime__ = \"%s %s\"\n"%(c_date,c_time))
       else:
