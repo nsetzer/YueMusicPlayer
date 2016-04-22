@@ -245,7 +245,8 @@ class ClientRepl(object):
 
         if not hasattr(self,'editor'):
             self.editor = CodeEditor()
-            self.editor.setVariable("Client",self)
+            self.editor.setVariable("Repl",self)
+            self.editor.setVariable("Client",self.client)
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
             self.editor.setVariable("Settings",Settings.instance())
@@ -287,6 +288,7 @@ class MainWindow(QMainWindow):
             self.keyhook.playpause.connect(self.device.playpause)
             self.keyhook.play_next.connect(self.controller.play_next)
             self.keyhook.play_prev.connect(self.controller.play_prev)
+            self.keyhook.stop.connect(self.controller.toggleStop)
         else:
             sys.stdout.write("Unable to initialize Keyboard Hook.\n")
         if SocketListen is not None:
@@ -1062,6 +1064,11 @@ def setSettingsDefaults():
     s.setDefault("ui_show_visualizer",1) # on
     s.setDefault("ui_show_treeview",1)   # on
 
+    s.setDefault("keyhook_playpause", 0xB3)
+    s.setDefault("keyhook_stop", 0xB2)
+    s.setDefault("keyhook_prev", 0xB1)
+    s.setDefault("keyhook_next", 0xB0)
+
     s.setDefault("enable_keyboard_hook",1) # on by default
 
     s.setDefault("enable_history",0)
@@ -1098,7 +1105,7 @@ def main(version="",buildtime=""):
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Audio Playback and Library Manager')
     parser.add_argument('--sound', default="default",
                    help='set sound device: default, bass, dummy')
     args = parser.parse_args()

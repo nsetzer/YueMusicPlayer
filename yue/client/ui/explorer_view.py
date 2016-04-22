@@ -352,6 +352,8 @@ class ExplorerController(DummyController):
         self.cut_root = ""
         self.parent = parent
 
+
+
     def contextMenu(self, event, model, items):
 
         is_files = all(not item['isDir'] for item in items)
@@ -448,7 +450,6 @@ class ExplorerController(DummyController):
             if match:
                 Library.instance().update(song[Song.uid],**{Song.path:path})
 
-
     def action_open_view(self):
         self.parent.ex_secondary.show()
         # self.parent().ex_secondary.chdir( self.view.pwd() )
@@ -496,9 +497,21 @@ class ExplorerView(QWidget):
         self.ex_main.do_move.connect(self.controller.showMoveFileDialog)
         self.ex_secondary.do_move.connect(self.controller.showMoveFileDialog)
 
+
+        self.xcut_exec = QShortcut(QKeySequence("F5"), self)
+        self.xcut_exec.activated.connect(self.refresh)
+
     def chdir(self, path):
 
         self.ex_main.chdir(path,True)
+
+    def refresh(self):
+        print(self.ex_main.view.pwd())
+        self.ex_main.refresh()
+        if self.ex_secondary.isVisible():
+            print(self.ex_secondary.view.pwd())
+            self.ex_secondary.refresh()
+
 
     def openFtp(self):
 

@@ -2,6 +2,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.settings import Settings
+
 from .keyhook import cHook
 
 import sys
@@ -17,10 +19,22 @@ class HookThread(QThread):
     playpause = pyqtSignal()
     play_prev = pyqtSignal()
     play_next = pyqtSignal()
+    stop      = pyqtSignal()
 
     def __init__(self, parent=None):
         super(HookThread, self).__init__(parent)
         self.diag = False
+
+        self.reload()
+
+    def reload(self):
+
+        s = Settings.instance()
+        self.key_playpause = s["keyhook_playpause"]
+        self.key_stop = s["keyhook_stop"]
+        self.key_next = s["keyhook_next"]
+        self.key_prev = s["keyhook_prev"]
+
 
     def keyproc(self,vkCode,scanCode,flags,time,ascii):
 
@@ -33,11 +47,13 @@ class HookThread(QThread):
             else:
                 sys.stdout.write("{%02X}"%vkCode);
 
-        if vkCode == 0xB3:
+        if vkCode ==self.key_playpause:
             self.playpause.emit()
-        elif vkCode == 0xB1:
+        if vkCode ==self.key_playpause:
+            self.stop.emit()
+        elif vkCode == self.key_prev:
             self.play_prev.emit()
-        elif vkCode == 0xB0:
+        elif vkCode == self.key_next :
             self.play_next.emit()
 
         return 1
