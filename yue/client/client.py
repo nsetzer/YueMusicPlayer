@@ -253,7 +253,7 @@ class ClientRepl(object):
             self.editor.setVariable("History",History.instance())
             self.editor.setVariable("Song",Song)
             self.editor.setText("help()\nfor song in Library.search('title=fizzbuzz'):"+\
-                "\n    Library.update(song[Song.uid],**{Song.title:'foobar'}")
+                "\n    pass # Library.update(song[Song.uid],**{Song.title:'foobar'}")
         self.editor.show()
 
     def extheme(self,args):

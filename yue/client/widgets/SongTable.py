@@ -437,11 +437,8 @@ class SongEditColumn(EditColumn):
         self.cell_modified.connect(self.editing_finished)
 
     def editing_finished(self,rows,new_value):
-
-        for row in rows:
-            song = self.parent.data[row]
-            #print(song[Song.uid], new_value)
-            Library.instance().update(song[Song.uid],**{self.index:new_value})
+        uids = [ self.parent.data[row][Song.uid] for row in rows ]
+        Library.instance().update_many(uids,**{self.index:new_value})
 
     def editor_insert(self,chara):
         # enable japanese character input
@@ -453,14 +450,17 @@ class SongEditColumn(EditColumn):
 
 class PathEditColumn(SongEditColumn):
     def editing_finished(self,rows,new_value):
+
+        new_value = new_value.replace('"','')
+        # fast update (this doesnt make sense from a user point of view)
+        uids = [ self.parent.data[row][Song.uid] for row in rows ]
+        Library.instance().update_many(uids,**{Song.path:new_value})
+
         for row in rows:
-            # yes the editor already updated the row, but he did it wrong!
-            new_value = new_value.replace('"','')
-            # if plat win / -> \
-            # if plat lin \ -> \
+            # the editor already updated the row, but did it wrong!!
             song = self.parent.data[row]
             song[Song.path] =  new_value
-            Library.instance().update(song[Song.uid],**{Song.path:new_value})
+
 
 if __name__ == "__main__":
 

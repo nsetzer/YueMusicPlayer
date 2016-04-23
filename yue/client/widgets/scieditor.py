@@ -142,7 +142,6 @@ class CodeEditor(QWidget):
             n = 79//l
             grps = [ items[i:i+n] for i in range(0,len(items)+n,n)]
             for grp in grps:
-                f
                 print(" ".join(f%s for s in grp))
         else:
             for k,v in self.locals.items():
