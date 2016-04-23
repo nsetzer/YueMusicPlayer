@@ -46,7 +46,8 @@ with open(target_script,"w") as wf:
       if temp.startswith("__version__"):
         version = temp.split('=')[1].strip()[1:-1]
         wf.write("__version__ = \"%s.%s\"\n"%(version,commit))
-        version += "." + commit
+        # adding commit is actually more annoying than you would believe
+        #version += "." + commit
       elif temp.startswith("__datetime__"):
         wf.write("__datetime__ = \"%s %s\"\n"%(c_date,c_time))
       else:

@@ -565,7 +565,7 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: %s %s\n"%(self.version,self.versiondate)
+        about_text += "Version: %s\nDate:%s\n"%(self.version,self.versiondate)
         about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
         about_text += "Qt Version: %s\n"%QT_VERSION_STR
         about_text += "sip Version: %s\n"%SIP_VERSION_STR

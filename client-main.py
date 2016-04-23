@@ -1,5 +1,5 @@
 #!python34 $this
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __datetime__ = ""
 import codecs,traceback
 try:
