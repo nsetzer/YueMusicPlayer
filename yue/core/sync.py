@@ -157,7 +157,7 @@ class FFmpegEncoder(object):
         if self.logger == sys.stderr:
             argstr = argstr.encode('utf-8')
         #self.logger.write( argstr )
-        self.logger.write("transcode: "+" ".join(args) + "\n")
+        self.logger.write("transcode-f: "+" ".join(args) + "\n")
         # when run under windows (under gui)
         # std in/out/err must be given a PIPE/nul
         # otherwise: '[WinError 6] The handle is invalid'
@@ -300,7 +300,7 @@ class ImportHistoryProcess(IterativeProcess):
             self.parent.log("import history: nothing to do")
             return
 
-        self.execute = self.parent.getYesOrNo("Import %d records?"%size)
+        self.execute = self.parent.getYesOrNo("Import %d records?"%size,btn2="import")
 
         if not self.execute:
             return
@@ -389,7 +389,7 @@ class ParallelTranscodeProcess(IterativeProcess):
         for t,trpath,tgtpath in tasks:
             if not self.no_exec:
                 t.join()
-                print("join %s\n"%trpath)
+                self.parent.log("join %s -> %s"%(trpath,tgtpath))
                 p = self.parent.target_source.parent(tgtpath)
                 self.parent.target_source.mkdir( p )
 
@@ -580,6 +580,12 @@ class SyncManager(object):
         self.message("Scanning Directory")
         self.target_source.mkdir(self.target_path)
 
+        # import history, so local library will be up-to-date
+        proc = ImportHistoryProcess(parent=self,no_exec=self.no_exec)
+        self.run_proc( proc )
+        remote_path = proc.remote_path # TODO
+
+        # build target lists
         self.data_init()
         delete_list = self.walk_target()
         copylist = list(self.data.items_copy())
@@ -596,10 +602,6 @@ class SyncManager(object):
         if not count:
             count+=1
         self.setOperationsCount(count)
-
-        proc = ImportHistoryProcess(parent=self,no_exec=self.no_exec)
-        self.run_proc( proc )
-        remote_path = proc.remote_path # TODO
 
         self.message("Delete Files")
         if d>0:
@@ -677,7 +679,7 @@ class SyncManager(object):
         """ reimplement this """
         self.log(msg)
 
-    def getYesOrNo(self,msg):
+    def getYesOrNo(self,msg,btn2="fixme"):
         """ reimplement this """
         if self.no_exec:
             return True
@@ -709,7 +711,10 @@ class SyncManager(object):
         for path in self.source_walk_ext(self.target_path,
                                          Song.supportedExtensions(),
                                          not self.no_exec):
-            if not self.data.exists(path):
+            res=not self.data.exists(path)
+            if 'candlebox' in path.lower() or 'tad' in path.lower():
+                print(res,path)
+            if res:
                 # need to remove this file as it is not on the list
                 lst_delete.append(path)
             else:
@@ -719,6 +724,7 @@ class SyncManager(object):
                 # will be deleted
                 #if not self.data.transcode(path):
                 self.data.delete(path)
+
         return lst_delete
 
     def source_walk_ext(self, dirpath, extensions, delete_dirs=False):
@@ -779,7 +785,7 @@ class SyncManager(object):
 
     def transcode_path(self, tgtpath):
         song, transcode = self.data.getValue( tgtpath )
-        self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
+        self.log("Transcode  : %s -> %s"%(song[Song.path],tgtpath))
         if not self.no_exec:
             p = self.target_source.parent(tgtpath)
             self.target_source.mkdir( p )
@@ -788,7 +794,7 @@ class SyncManager(object):
 
     def transcode_local(self, tgtpath, outpath):
         song, transcode = self.data.getValue( tgtpath )
-        self.log("transcode: %s -> %s"%(song[Song.path],tgtpath))
+        self.log("Transcode-l: %s -> %s"%(song[Song.path],tgtpath))
         self.transcode_song(song,outpath)
 
     def transcode_song(self,song,tgtpath):
@@ -920,26 +926,25 @@ class SyncData(object):
             path = ChangeExt(path,".mp3")
         self.data[path] = (song,transcode)
 
-    def exists(self,path):
+    def _exists(self,path):
         if path in self.data:
-            return True;
+            return path;
         for key in self.data.keys():
             if key.lower() == path.lower():
-                return True;
-        return False;
+                return key;
+        return None;
+
+    def exists(self,path):
+        return self._exists(path) is not None
 
     def delete(self,path):
         if self.data_copy == None:
             self.data_copy = dict(self.data)
-        if path in self.data:
-            del self.data[path]
-            return
-        rmkeys = []
-        for key in self.data.keys():
-            if key.lower() == path.lower():
-                rmkeys.append(key)
-        for key in rmkeys:
-            del self.data[key]
+        key = self._exists(path)
+        if key is not None:
+            del self.data[ key ]
+        else:
+            print("error deleteing: %s"%path)
         return
 
     def items_copy(self):
