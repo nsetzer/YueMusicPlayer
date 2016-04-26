@@ -161,7 +161,7 @@ class Library(object):
         where = "s.artist=a.uid AND s.album=b.uid"
         sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
 
-        self.song_view = SQLView( sqlstore, "library", sql, colnames)
+        self.song_view = SQLView( sqlstore, viewname, sql, colnames)
         #instance of History() for recording events
         self.history = None
 

@@ -45,6 +45,7 @@ except ImportError as e:
     SocketListen = None
 
 from .ui.library_view import LibraryView
+from .ui.history_view import HistoryView
 from .ui.quickselect_view import QuickSelectView
 from .ui.explorer_view import ExplorerView, explorerOpen
 from .ui.playlist_view import PlayListViewWidget
@@ -370,6 +371,8 @@ class MainWindow(QMainWindow):
         self.plview.playlist_duration.connect( self.update_statusbar_duration )
         self.plview.playlist_changed.connect( self.update_song_view )
 
+        self.historyview = HistoryView(self);
+
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
         self.songview.update_rating.connect(self.setRating)
@@ -412,6 +415,7 @@ class MainWindow(QMainWindow):
             self.peqview.gain_updated.connect( self.controller.setEQGain )
             self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
             self.plview.vbox.insertWidget(0, self.audioview)
+        self.tabview.addTab(self.historyview,"History")
         self.tabview.setCornerWidget( self.volcontroller )
 
         h=48

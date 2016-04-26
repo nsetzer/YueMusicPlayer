@@ -4,7 +4,7 @@
 # mimic update pattern
 
 from yue.core.song import Song
-from yue.core.sqlstore import SQLTable
+from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
 import time
 
@@ -22,6 +22,20 @@ class History(object):
 
         self.db = SQLTable( sqlstore ,"history", fields)
 
+
+        #SELECT s.uid, h.date, h.column, h.value, a.artist, b.album, s.title
+        #FROM songs s, artists a, albums b, history h
+        #WHERE s.uid=h.uid AND a.uid = s.artist AND b.uid = s.album
+
+        viewname = "history_view"
+        colnames = [ "uid", "date", "column", "value", "artist", "album", "title" ]
+        cols = [ 's.uid', 'h.date', 'h.column', 'h.value', 'a.artist', 'b.album', 's.title']
+        cols = ', '.join(cols)
+        tbls = "songs s, artists a, albums b, history h"
+        where = "s.uid=h.uid AND a.uid = s.artist AND b.uid = s.album"
+        sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
+
+        self.view = SQLView( sqlstore, viewname, sql, colnames)
         self.sqlstore = sqlstore
         self.enabled = False
 
@@ -117,3 +131,16 @@ class History(object):
     def import_update(self, c, record):
         # update column/value for uid given a record
         pass
+
+
+    def search(self,query):
+        _ = query
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+
+            c.execute("select * from history_view")
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    yield {k:v for k,v in zip(self.view.column_names,item)}
+                items = c.fetchmany()
