@@ -1112,6 +1112,7 @@ def main(version="",buildtime=""):
     parser = argparse.ArgumentParser(description='Audio Playback and Library Manager')
     parser.add_argument('--sound', default="default",
                    help='set sound device: default, bass, dummy')
+    parser.add_argument('--altdb', default=False, action="store_true",
     args = parser.parse_args()
 
     with LogView(trace=False,echo=True) as diag:
@@ -1122,11 +1123,22 @@ def main(version="",buildtime=""):
         if hasattr(sys,"_MEIPASS"):
             plugin_path = sys._MEIPASS
 
+        settings_db_path = "./settings.db"
         db_path = "./yue.db"
 
         sys.stdout.write("Loading database\n")
-        sqlstore = SQLStore(db_path)
-        Settings.init( sqlstore )
+
+        if os.path.exists(settings_db_path) or args.altdb:
+            sys.stdout.write("Separate Settings db found.\n")
+            settings_sqlstore = SQLStore(settings_db_path)
+            Settings.init( settings_sqlstore )
+            Settings.instance().setDefault("db_path","./yue.db")
+            db_path = Settings.instance()['db_path']
+            sqlstore = SQLStore(db_path)
+        else:
+            sqlstore = SQLStore(db_path)
+            Settings.init( sqlstore )
+
         Library.init( sqlstore )
         PlaylistManager.init( sqlstore )
         History.init( sqlstore )
