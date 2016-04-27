@@ -1,24 +1,22 @@
-#! cd ../.. && python2.7 setup.py cover
 #! cd ../.. && python2.7 setup.py test --test=parse
+#! cd ../.. && python2.7 setup.py cover
 import unittest
 
-from yue.core.song import Song
+from yue.core.song import Song, SongSearchGrammar
+
 from yue.core.search import PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \
                        ExactSearchRule, \
                        InvertedExactSearchRule, \
+                       RangeSearchRule, \
+                       NotRangeSearchRule, \
                        LessThanSearchRule, \
                        LessThanEqualSearchRule, \
                        GreaterThanSearchRule, \
                        GreaterThanEqualSearchRule, \
-                       RangeSearchRule, \
-                       NotRangeSearchRule, \
                        AndSearchRule, \
                        OrSearchRule, \
                        BlankSearchRule, \
-                       allTextRule, \
-                       tokenizeString, \
-                       ruleFromString, \
                        ParseError, RHSError, LHSError, TokenizeError
 
 DB_PATH = "./unittest.db"
@@ -30,7 +28,7 @@ class TestSearchParse(unittest.TestCase):
     def setUp(self):
         #if os.path.exists(DB_PATH):
         #    os.remove(DB_PATH)
-        pass
+        self.grammar = SongSearchGrammar()
 
     def tearDown(self):
         #if os.path.exists(DB_PATH):
@@ -38,7 +36,7 @@ class TestSearchParse(unittest.TestCase):
         pass
 
     def parse(self,input,expected):
-        actual = tokenizeString(input)
+        actual = self.grammar.tokenizeString(input)
         try:
             self.assertEqual( len(actual), len(expected) )
             for i,(x,y) in enumerate(zip(actual,expected)):
@@ -76,27 +74,27 @@ class TestSearchParse(unittest.TestCase):
 
     def test_parser_old_style(self):
 
-        expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
-        actual = ruleFromString("foo")
+        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        actual = self.grammar.ruleFromString("foo")
         self.assertEqual(expected,actual)
 
         expected = PartialStringSearchRule(Song.artist, "foo")
-        actual = ruleFromString(".art foo")
+        actual = self.grammar.ruleFromString(".art foo")
         self.assertEqual(expected,actual)
 
         expected = InvertedPartialStringSearchRule(Song.artist, "foo")
-        actual = ruleFromString(".art ! foo")
+        actual = self.grammar.ruleFromString(".art ! foo")
         self.assertEqual(expected,actual)
 
         expected = ExactSearchRule(Song.artist, "foo")
-        actual = ruleFromString(".art == foo")
+        actual = self.grammar.ruleFromString(".art == foo")
         self.assertEqual(expected,actual)
 
         expected = AndSearchRule([
                 InvertedExactSearchRule(Song.artist, "foo"),
                 InvertedExactSearchRule(Song.artist, "bar")
                 ])
-        actual = ruleFromString(".art !== foo bar")
+        actual = self.grammar.ruleFromString(".art !== foo bar")
         self.assertEqual(expected,actual)
 
         # show that parameters can be changed
@@ -104,84 +102,84 @@ class TestSearchParse(unittest.TestCase):
                 PartialStringSearchRule(Song.artist, "foo"),
                 PartialStringSearchRule(Song.album, "bar")
                 ])
-        actual = ruleFromString(".art foo .abm bar")
+        actual = self.grammar.ruleFromString(".art foo .abm bar")
         self.assertEqual(expected,actual)
 
         expected = AndSearchRule([
                 PartialStringSearchRule(Song.artist, "foo"),
                 InvertedPartialStringSearchRule(Song.artist, "bar")
                 ])
-        actual = ruleFromString(".art foo ! bar")
+        actual = self.grammar.ruleFromString(".art foo ! bar")
         self.assertEqual(expected,actual)
 
     def test_parser_new_style(self):
 
         expected = BlankSearchRule()
-        actual = ruleFromString("  ")
+        actual = self.grammar.ruleFromString("  ")
         self.assertEqual(expected,actual)
 
-        expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
-        actual = ruleFromString(" = foo")
+        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        actual = self.grammar.ruleFromString(" = foo")
         self.assertEqual(expected,actual)
 
-        expected = allTextRule(OrSearchRule,PartialStringSearchRule, "foo")
-        actual = ruleFromString("text = foo")
+        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        actual = self.grammar.ruleFromString("text = foo")
         self.assertEqual(expected,actual)
 
-        expected = allTextRule(AndSearchRule,InvertedPartialStringSearchRule, "foo")
-        actual = ruleFromString(" != foo")
+        expected = self.grammar.allTextRule(InvertedPartialStringSearchRule, "foo")
+        actual = self.grammar.ruleFromString(" != foo")
         self.assertEqual(expected,actual)
 
         expected = PartialStringSearchRule(Song.artist, "foo")
-        actual = ruleFromString("art = foo")
+        actual = self.grammar.ruleFromString("art = foo")
         self.assertEqual(expected,actual)
 
         expected = InvertedPartialStringSearchRule(Song.artist, "foo")
-        actual = ruleFromString("art != foo")
+        actual = self.grammar.ruleFromString("art != foo")
         self.assertEqual(expected,actual)
 
         expected = PartialStringSearchRule( Song.title, "hello world")
-        actual = ruleFromString("ttl = \"hello world\"")
+        actual = self.grammar.ruleFromString("ttl = \"hello world\"")
         self.assertEqual(expected,actual)
 
     def test_parser_special(self):
 
         expected = LessThanSearchRule(Song.play_count, "5")
-        actual = ruleFromString("pcnt < 5")
+        actual = self.grammar.ruleFromString("pcnt < 5")
         self.assertEqual(expected,actual)
 
         expected = GreaterThanEqualSearchRule(Song.play_count, "5")
-        actual = ruleFromString("pcnt >= 5")
+        actual = self.grammar.ruleFromString("pcnt >= 5")
         self.assertEqual(expected,actual)
 
     def test_parser_text_edge(self):
         # for = != == !==, LHS should be infered as all text when not given
         expected = AndSearchRule([
-                allTextRule(OrSearchRule,PartialStringSearchRule,"foo"),
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                self.grammar.allTextRule(PartialStringSearchRule,"foo"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"bar"),
                 ])
-        actual = ruleFromString("foo && !=bar")
+        actual = self.grammar.ruleFromString("foo && !=bar")
         self.assertEqual(expected,actual)
 
         expected = AndSearchRule([
                 PartialStringSearchRule(Song.artist, "foo"),
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"bar"),
                 ])
-        actual = ruleFromString("artist=foo !=bar")
+        actual = self.grammar.ruleFromString("artist=foo !=bar")
         self.assertEqual(expected,actual)
 
         expected = AndSearchRule([
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"foo"),
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"foo"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"bar"),
                 ])
-        actual = ruleFromString("!=foo && !=bar")
+        actual = self.grammar.ruleFromString("!=foo && !=bar")
         self.assertEqual(expected,actual)
 
         expected = AndSearchRule([
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"foo"),
-                allTextRule(AndSearchRule,InvertedPartialStringSearchRule,"bar"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"foo"),
+                self.grammar.allTextRule(InvertedPartialStringSearchRule,"bar"),
                 ])
-        actual = ruleFromString("!=foo !=bar")
+        actual = self.grammar.ruleFromString("!=foo !=bar")
         self.assertEqual(expected,actual)
 
     def test_parser_nested(self):
@@ -193,67 +191,67 @@ class TestSearchParse(unittest.TestCase):
                     PartialStringSearchRule(Song.album, "baz")
                     ])
                 ])
-        actual = ruleFromString("artist=foo && (album=bar || album=baz)")
+        actual = self.grammar.ruleFromString("artist=foo && (album=bar || album=baz)")
         self.assertEqual(expected,actual)
 
-        actual = ruleFromString("artist=foo (album=bar || album=baz)")
+        actual = self.grammar.ruleFromString("artist=foo (album=bar || album=baz)")
         self.assertEqual(expected,actual)
 
-        actual = ruleFromString(".art foo (.abm bar || .abm baz)")
+        actual = self.grammar.ruleFromString(".art foo (.abm bar || .abm baz)")
         self.assertEqual(expected,actual)
 
     def test_parser_errors(self):
 
         # the lhs is optional for this token
         with self.assertRaises(RHSError):
-            ruleFromString(" = ")
+            self.grammar.ruleFromString(" = ")
 
         # right hand side is required
         with self.assertRaises(RHSError):
-            ruleFromString("pcnt < ")
+            self.grammar.ruleFromString("pcnt < ")
 
         # left hand side is required.
         with self.assertRaises(LHSError):
-            ruleFromString("< 6")
+            self.grammar.ruleFromString("< 6")
 
         with self.assertRaises(RHSError):
-            ruleFromString("x &&")
+            self.grammar.ruleFromString("x &&")
 
         with self.assertRaises(LHSError):
-            ruleFromString("&& y")
+            self.grammar.ruleFromString("&& y")
 
         with self.assertRaises(LHSError):
-            ruleFromString("|| y")
+            self.grammar.ruleFromString("|| y")
 
         with self.assertRaises(RHSError):
-            ruleFromString(" artist = (album = bar) ")
+            self.grammar.ruleFromString(" artist = (album = bar) ")
 
         #with self.assertRaises(LHSError):
-        #    ruleFromString(" (album = bar) = value")
+        #    self.grammar.ruleFromString(" (album = bar) = value")
 
         with self.assertRaises(RHSError):
-            ruleFromString(" artist >= (album = bar) ")
+            self.grammar.ruleFromString(" artist >= (album = bar) ")
 
         with self.assertRaises(LHSError):
-            ruleFromString(" (album = bar) <= value")
+            self.grammar.ruleFromString(" (album = bar) <= value")
 
         with self.assertRaises(TokenizeError):
-            ruleFromString(" ( album ")
+            self.grammar.ruleFromString(" ( album ")
 
         with self.assertRaises(TokenizeError):
-            ruleFromString(" albumn )")
+            self.grammar.ruleFromString(" albumn )")
 
         with self.assertRaises(TokenizeError):
-            ruleFromString(" \" foo ")
+            self.grammar.ruleFromString(" \" foo ")
 
         with self.assertRaises(RHSError):
-            ruleFromString("one = &&")
+            self.grammar.ruleFromString("one = &&")
 
         with self.assertRaises(RHSError):
-            ruleFromString("one < &&")
+            self.grammar.ruleFromString("one < &&")
 
         with self.assertRaises(RHSError):
-            ruleFromString("one && &&")
+            self.grammar.ruleFromString("one && &&")
 
         # || = foo
         # foo = ||

@@ -11,6 +11,8 @@ from yue.app.widgets.playlist import PlayListElem
 from yue.app.widgets.querybuilder import QueryKind
 from yue.app.widgets.tristate import TriState
 
+from yue.core.song import SongSearchGrammar
+
 from yue.core.search import PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \
                        ExactSearchRule, \
@@ -113,9 +115,9 @@ def kindToSearchRule( k ):
 
 def createAllTextRule( action, string ):
 
-    meta = OrSearchRule
-    if action in (QueryKind.NOTLIKE, QueryKind.NE):
-        meta = AndSearchRule
+    #meta = OrSearchRule
+    #if action in (QueryKind.NOTLIKE, QueryKind.NE):
+    #    meta = AndSearchRule
     rule = _kindToRule[ action ]
 
-    return allTextRule( meta, rule, string)
+    return SongSearchGrammar().allTextRule( rule, string)

@@ -1,6 +1,7 @@
 
 import os,sys
 
+from .search import SearchGrammar, ParseError
 from calendar import timegm
 import time
 import datetime
@@ -229,6 +230,29 @@ class Song(object):
         ivalue = min(500,value);
         fvalue = ivalue/Song.eqfactor;
         return fvalue
+
+class SongSearchGrammar(SearchGrammar):
+    """docstring for SongSearchGrammar"""
+
+    def __init__(self):
+        super(SongSearchGrammar, self).__init__()
+
+        self.support_oldstyle = True
+        # all_text is a meta-column name which is used to search all text fields
+        # this requires reimplementing allTextRule.
+        self.all_text = Song.all_text
+        self.text_fields = set(Song.textFields())
+        self.text_fields.add(Song.path)
+        self.date_fields = set(Song.dateFields())
+        self.time_fields = set([Song.length,])
+
+    def translateColumn(self,colid):
+        # translate the given colid to an internal column name
+        # e.g. user may type 'pcnt' which expands to 'playcount'
+        try:
+            return Song.column( colid );
+        except KeyError:
+            raise ParseError("Invalid column name `%s`"%colid)
 
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )

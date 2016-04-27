@@ -35,12 +35,12 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-from .search import sql_search, ruleFromString, BlankSearchRule, RegExpSearchRule
+from .search import sql_search, BlankSearchRule, RegExpSearchRule
 #from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
 #from yue.settings import Settings
-from .song import Song
+from .song import Song, SongSearchGrammar
 from .history import History
 from .sqlstore import SQLTable, SQLView
 
@@ -164,6 +164,8 @@ class Library(object):
         self.song_view = SQLView( sqlstore, viewname, sql, colnames)
         #instance of History() for recording events
         self.history = None
+
+        self.grammar = SongSearchGrammar();
 
     @staticmethod
     def init( sqlstore ):
@@ -392,7 +394,7 @@ class Library(object):
         if rule is None:
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
-            rule = ruleFromString( rule )
+            rule = self.grammar.ruleFromString( rule )
 
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
@@ -410,7 +412,7 @@ class Library(object):
         if rule is None:
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
-            rule = ruleFromString( rule )
+            rule = self.grammar.ruleFromString( rule )
 
         where,where_vals = rule.sql()
 

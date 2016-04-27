@@ -8,8 +8,9 @@ from PyQt5.QtGui import *
 
 from yue.client.widgets.LargeTable import LargeTable, TableColumn
 from yue.client.widgets.TableEditColumn import EditColumn
+from yue.core.song import SongSearchGrammar
 from yue.core.sqlstore import SQLStore
-from yue.core.search import ruleFromString, ParseError
+from yue.core.search import ParseError
 from yue.client.SymTr import SymTr
 
 from yue.client.style import currentStyle
@@ -257,7 +258,7 @@ class PresetEditColumn(EditColumn):
 
 def validate_query(query):
     try:
-        ruleFromString(query)
+        SongSearchGrammar().ruleFromString(query)
     except ParseError as e:
         sys.stdout.write("%s\n"%e)
         return False
