@@ -133,12 +133,30 @@ class History(object):
         pass
 
 
+    def delete(self,records_lst):
+        """ delete a record, or a list of records
+        """
+        lst = records_lst
+        if isinstance(records_lst,dict):
+            lst = [records_lst, ]
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+
+            for record in lst:
+                self._delete(c,record)
+
+    def _delete(self,c,record):
+        date = record['date']
+        uid = record['uid']
+        c.execute("DELETE from history where uid=? and date=?",(uid,date))
+
     def search(self,query):
         _ = query
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
 
-            c.execute("select * from history_view")
+            c.execute("select * from history_view ORDER BY date")
             items = c.fetchmany()
             while items:
                 for item in items:
