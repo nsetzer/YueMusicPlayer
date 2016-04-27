@@ -1113,6 +1113,7 @@ def main(version="",buildtime=""):
     parser.add_argument('--sound', default="default",
                    help='set sound device: default, bass, dummy')
     parser.add_argument('--altdb', default=False, action="store_true",
+                   help='use separate db for settings')
     args = parser.parse_args()
 
     with LogView(trace=False,echo=True) as diag:
