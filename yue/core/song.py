@@ -237,11 +237,10 @@ class SongSearchGrammar(SearchGrammar):
     def __init__(self):
         super(SongSearchGrammar, self).__init__()
 
-        self.support_oldstyle = True
         # all_text is a meta-column name which is used to search all text fields
-        # this requires reimplementing allTextRule.
         self.all_text = Song.all_text
         self.text_fields = set(Song.textFields())
+        # i still treat the path as a special case even though it really isnt
         self.text_fields.add(Song.path)
         self.date_fields = set(Song.dateFields())
         self.time_fields = set([Song.length,])
@@ -256,8 +255,6 @@ class SongSearchGrammar(SearchGrammar):
 
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
-
-# from kivy.logger import Logger
 
 def read_tags( path ):
 

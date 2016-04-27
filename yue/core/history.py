@@ -3,10 +3,16 @@
 # contains boolean : save history true false
 # mimic update pattern
 
+from .search import SearchGrammar, BlankSearchRule, sql_search, ParseError
 from yue.core.song import Song
 from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
 import time
+
+import sys
+isPython3 = sys.version_info[0]==3
+if isPython3:
+    unicode = str
 
 class History(object):
     """docstring for Library"""
@@ -38,6 +44,8 @@ class History(object):
         self.view = SQLView( sqlstore, viewname, sql, colnames)
         self.sqlstore = sqlstore
         self.enabled = False
+
+        self.grammar = HistorySearchGrammar( )
 
     @staticmethod
     def init( sqlstore ):
@@ -151,14 +159,50 @@ class History(object):
         uid = record['uid']
         c.execute("DELETE from history where uid=? and date=?",(uid,date))
 
-    def search(self,query):
-        _ = query
-        with self.sqlstore.conn:
-            c = self.sqlstore.conn.cursor()
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None):
 
-            c.execute("select * from history_view ORDER BY date")
-            items = c.fetchmany()
-            while items:
-                for item in items:
-                    yield {k:v for k,v in zip(self.view.column_names,item)}
-                items = c.fetchmany()
+        if rule is None:
+            rule = BlankSearchRule();
+        elif isinstance(rule,(str,unicode)):
+            rule = self.grammar.ruleFromString( rule )
+        else:
+            raise ParseError("invalid rule type: %s"%type(rule))
+        if isinstance(rule,(str,unicode)):
+            raise ParseError("fuck. invalid rule type: %s"%type(rule))
+        if orderby is not None:
+            if not isinstance( orderby, (list,tuple)):
+                orderby = [ orderby, ]
+
+        echo = False
+        return sql_search( self.view, rule, case_insensitive, orderby, reverse, limit, echo )
+
+
+class HistorySearchGrammar(SearchGrammar):
+    """docstring for HistorySearchGrammar"""
+
+    def __init__(self):
+        super(HistorySearchGrammar, self).__init__()
+
+        # [ "uid", "date", "column", "value", "artist", "album", "title" ]
+        self.text_fields = {'column', 'artist','album','title'}
+        self.date_fields = {'date',}
+
+        self.columns = {"uid", "date", 'column', 'artist','album','title', }
+        self.col_shortcuts = {
+                                "art"    : "artist", # copied from Song
+                                "artist" : "artist",
+                                "abm"    : "album",
+                                "alb"    : "album",
+                                "album"  : "album",
+                                "ttl"    : "title",
+                                "tit"    : "title",
+                                "title"  : "title",
+                                "data"   : "column",
+                            }
+
+    def translateColumn(self,colid):
+        if colid in self.col_shortcuts:
+            return self.col_shortcuts[colid]
+        if colid in self.columns:
+            return colid
+        raise ParseError("Invalid column name `%s`"%colid)

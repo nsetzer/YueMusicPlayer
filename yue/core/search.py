@@ -542,7 +542,7 @@ class SearchGrammar(object):
 
             if isinstance(tok,list):
                 tokens[i] = self.parseTokens(tok)
-            elif self.support_oldstyle and tok.startswith(self.sigil):
+            elif tok.startswith(self.sigil):
                 # old style query
                 s = i
                 while i < len(tokens) and \
@@ -594,8 +594,8 @@ class SearchGrammar(object):
             i += 1
 
         # collect any old style tokens, which did not use a sigil
-        if self.support_oldstyle:
-            self.parseTokensOldStyle( tokens )
+        #if self.support_oldstyle:
+        self.parseTokensOldStyle( tokens )
 
         i=0
         while i < len(tokens):
@@ -617,6 +617,8 @@ class SearchGrammar(object):
             i+=1
 
         if len(tokens) == 1:
+            if isinstance(tokens[0],(str,unicode)):
+                raise ParseError("unexpected error")
             return tokens[0]
 
         return AndSearchRule( tokens )

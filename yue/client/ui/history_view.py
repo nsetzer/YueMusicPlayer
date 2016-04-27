@@ -33,6 +33,17 @@ from yue.client.ui.library_view import LineEdit_Search
 
 class HistoryTable(LargeTable):
 
+    update_data = pyqtSignal()
+
+    def __init__(self,parent=None):
+        super(HistoryTable,self).__init__(parent)
+
+        self.sort_orderby = [(Song.artist,Song.asc),
+                             (Song.album,Song.asc),
+                             (Song.title,Song.asc)]
+        self.sort_reverse = False
+        self.sort_limit = 3 # this limit controls maximum number of fields passed to ORDER BY
+
     def initColumns(self):
 
         self.columns.append( TableColumn(self,"date","Date") )
@@ -49,6 +60,28 @@ class HistoryTable(LargeTable):
         self.columns[-1].setWidthByCharCount(30)
         self.columns.append( TableColumn(self,"album","Album") )
         self.columns[-1].setWidthByCharCount(20)
+
+    def sortColumn(self,col_index):
+        column = self.columns[col_index]
+        index  =  column.index
+        self.sort_reverse = self.setSortColumn(col_index) == -1
+        if self.sort_orderby:
+
+            if self.sort_orderby[0][0] == index:
+                dir = Song.desc if self.sort_orderby[0][1] == Song.asc else Song.asc
+                self.sort_orderby[0] = (index,dir)
+            else:
+                # remove copies of sort index, if any
+                i=1;
+                while i < len(self.sort_orderby):
+                    if self.sort_orderby[1][0] == index or i+1 >= self.sort_limit:
+                        self.sort_orderby.pop(i)
+                        continue
+                    i+=1
+                dir = Song.desc if column.column_sort_default==-1 else Song.asc
+                self.sort_orderby.insert(0,(index,dir))
+        self.update_data.emit()
+
 
     def mouseReleaseRight(self,event):
 
@@ -85,13 +118,23 @@ class HistoryView(QWidget):
         self.tbl_history = HistoryTable(self)
         self.tbl_history.showColumnHeader( True )
         self.tbl_history.showRowHeader( False )
+        self.tbl_history.update_data.connect( self.refresh )
 
         self.txt_search = LineEdit_Search(self,self.tbl_history, "Search History")
+        self.txt_search.textEdited.connect(self.onTextChanged)
+
+        self.lbl_error  = QLabel("")
 
         self.vbox_main.addWidget( self.txt_search )
+        self.vbox_main.addWidget( self.lbl_error )
         self.vbox_main.addWidget( self.tbl_history.container )
 
+        self.lbl_error.hide()
+
         self.run_search("")
+
+    def onTextChanged(self,text,update=0):
+        self.run_search(text)
 
     def refresh(self):
         self.run_search( self.txt_search.text() , refresh=True)
@@ -102,8 +145,14 @@ class HistoryView(QWidget):
         """
         try:
             lib = Library.instance()
-            data = list(History.instance().search(""))
+            data = History.instance().search(text, \
+                orderby = self.tbl_history.sort_orderby,
+                reverse = self.tbl_history.sort_reverse )
             self.tbl_history.setData(data)
+
+            self.txt_search.setStyleSheet("")
+            self.lbl_error.hide()
+
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
