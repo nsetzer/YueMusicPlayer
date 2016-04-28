@@ -418,6 +418,8 @@ class MainWindow(QMainWindow):
         self.tabview.addTab(self.historyview,"History")
         self.tabview.setCornerWidget( self.volcontroller )
 
+        self.historyview_index = self.tabview.indexOf( self.historyview )
+
         h=48
         self.btn_playpause = PlayButton( self )
         self.btn_playpause.setFixedHeight( h )
@@ -476,6 +478,9 @@ class MainWindow(QMainWindow):
 
         if not s['ui_show_treeview']:
             self.libview.tree_lib.container.hide()
+
+        if not s['ui_show_history']:
+            self.tabview.removeTab(self.historyview_index)
 
         if self.controller.dspSupported():
             if not s['ui_show_visualizer']:
@@ -557,6 +562,12 @@ class MainWindow(QMainWindow):
         else:
             self.action_view_tree.setText("Show Tree View")
 
+        self.action_view_history    = menu.addAction("",self.toggleHistoryVisible)
+        if s['ui_show_history']:
+            self.action_view_history.setText("Hide History")
+        else:
+            self.action_view_history.setText("Show History")
+
         self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
         if s['ui_show_error_log']:
             self.action_view_logger.setText("Hide Error Log")
@@ -588,7 +599,7 @@ class MainWindow(QMainWindow):
         s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
         s['ui_show_console'] = int(not self.edit_cmd.isHidden())
         s['ui_show_treeview'] = int(not self.libview.tree_lib.container.isHidden())
-        print("ui tree",s['ui_show_treeview'])
+        s['ui_show_history'] = int(self.tabview.indexOf(self.historyview) == self.historyview_index)
         if self.controller.dspSupported():
             s['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
@@ -779,6 +790,15 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         q5 = os.path.split(song[Song.path])[0]
         menu.addAction("Explore Containing Folder", lambda: self.exploreDirectory(q5))
+
+    def toggleHistoryVisible(self):
+        if self.tabview.indexOf(self.historyview) != self.historyview_index:
+            self.action_view_history.setText("Hide History")
+            self.tabview.insertTab(self.historyview_index, self.historyview, "History")
+
+        else:
+            self.action_view_history.setText("Show History")
+            self.tabview.removeTab(self.historyview_index)
 
     def toggleTreeViewVisible(self):
         if self.libview.tree_lib.container.isHidden():
@@ -1067,6 +1087,7 @@ def setSettingsDefaults():
     s.setDefault("ui_show_error_log",0)  # off
     s.setDefault("ui_show_visualizer",1) # on
     s.setDefault("ui_show_treeview",1)   # on
+    s.setDefault("ui_show_history",0)
 
     s.setDefault("keyhook_playpause", 0xB3)
     s.setDefault("keyhook_stop", 0xB2)
