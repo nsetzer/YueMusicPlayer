@@ -104,6 +104,7 @@ class History(object):
 
     def import_record(self, c, record):
 
+
         if record['column'] == Song.playtime:
             self.import_playtime(c,record)
         else:
@@ -117,6 +118,13 @@ class History(object):
         c: connection cursor associated with target library
         record: a history record
         """
+
+        # experimental: insert record into THIS db
+        k,v = zip(*record.items())
+        s = ', '.join(str(x) for x in k)
+        r = ('?,'*len(v))[:-1]
+        fmt = "insert into %s (%s) VALUES (%s)"%("history",s,r)
+        c.execute(fmt,list(v))
 
         #song = library.songFromId( record['uid'])
         date = record['date']
