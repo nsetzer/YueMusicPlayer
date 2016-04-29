@@ -223,6 +223,9 @@ class LibraryView(QWidget):
         self.lbl_error  = QLabel("")
 
         self.btn_newlist = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
+        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
+        self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
+        self.btn_newlist.setFlat(True)
 
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )
@@ -288,7 +291,6 @@ class LibraryView(QWidget):
     def setCurrentSongId( self, uid ):
         self.tbl_song.current_uid = uid
         self.tbl_song.update()
-
 
     def setMenuCallback(self,cbk):
         """
