@@ -372,7 +372,6 @@ class Library(object):
                 songs.append( dict(zip(self.song_view.column_names,item)) )
         return songs
 
-
     def toPathMap(self):
         """
         the current kivy datastore impl for find() is to scan the entire store

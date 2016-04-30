@@ -49,12 +49,16 @@ class HookThread(QThread):
 
         if vkCode ==self.key_playpause:
             self.playpause.emit()
+            return 0
         elif vkCode ==self.key_stop:
             self.stop.emit()
+            return 0
         elif vkCode == self.key_prev:
             self.play_prev.emit()
+            return 0
         elif vkCode == self.key_next :
             self.play_next.emit()
+            return 0
 
         return 1
 

@@ -61,6 +61,9 @@ class History(object):
     def isEnabled(self):
         return self.enabled
 
+    def __len__(self):
+        return self.db.count()
+
     def size(self):
         return self.db.count()
 
@@ -195,7 +198,7 @@ class HistorySearchGrammar(SearchGrammar):
         self.text_fields = {'column', 'artist','album','title'}
         self.date_fields = {'date',}
 
-        self.columns = {"uid", "date", 'column', 'artist','album','title', }
+        self.columns = {self.all_text, "uid", "date", 'column', 'artist','album','title', }
         self.col_shortcuts = {
                                 "art"    : "artist", # copied from Song
                                 "artist" : "artist",

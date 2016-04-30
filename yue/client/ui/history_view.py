@@ -38,9 +38,7 @@ class HistoryTable(LargeTable):
     def __init__(self,parent=None):
         super(HistoryTable,self).__init__(parent)
 
-        self.sort_orderby = [(Song.artist,Song.asc),
-                             (Song.album,Song.asc),
-                             (Song.title,Song.asc)]
+        self.sort_orderby = [("date",Song.desc),]
         self.sort_reverse = False
         self.sort_limit = 3 # this limit controls maximum number of fields passed to ORDER BY
 
@@ -114,6 +112,10 @@ class HistoryView(QWidget):
         super(HistoryView, self).__init__(parent)
 
         self.vbox_main = QVBoxLayout(self)
+        self.vbox_main.setContentsMargins(0,0,0,0)
+
+        self.hbox = QHBoxLayout()
+        self.hbox.setContentsMargins(0,0,0,0)
 
         self.tbl_history = HistoryTable(self)
         self.tbl_history.showColumnHeader( True )
@@ -122,10 +124,13 @@ class HistoryView(QWidget):
 
         self.txt_search = LineEdit_Search(self,self.tbl_history, "Search History")
         self.txt_search.textEdited.connect(self.onTextChanged)
-
+        self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
 
-        self.vbox_main.addWidget( self.txt_search )
+        self.hbox.addWidget( self.txt_search )
+        self.hbox.addWidget( self.lbl_search )
+
+        self.vbox_main.addLayout( self.hbox )
         self.vbox_main.addWidget( self.lbl_error )
         self.vbox_main.addWidget( self.tbl_history.container )
 
@@ -144,13 +149,14 @@ class HistoryView(QWidget):
         setText: if true set the text box to contain text
         """
         try:
-            lib = Library.instance()
-            data = History.instance().search(text, \
+            hist = History.instance()
+            data = hist.search(text, \
                 orderby = self.tbl_history.sort_orderby,
                 reverse = self.tbl_history.sort_reverse )
             self.tbl_history.setData(data)
 
             self.txt_search.setStyleSheet("")
+            self.lbl_search.setText("%d/%d"%(len(data), len(hist)))
             self.lbl_error.hide()
 
         except ParseError as e:
