@@ -30,17 +30,26 @@ from ..core.repl import YueRepl, ReplArgumentParser
 
 from . import resource
 from .controller import newDevice, PlaybackController
+
+HookThread = None
+KeyHook = None
 try:
-    if os.name == 'nt':
-        from .hook2 import HookThread
-    else:
-        HookThread = None
+    from .hook import KeyHook
 except ImportError as e:
-    sys.stderr.write("hook import: %s\n"%e)
-    HookThread = None
-except OSError as e:
-    sys.stderr.write("hook import: %s\n"%e)
-    HookThread = None
+    sys.stderr.write("pyHook not supported: %s\n"%e)
+    KeyHook = None
+if KeyHook is None:
+    try:
+        if os.name == 'nt':
+            from .hook2 import HookThread
+        else:
+            HookThread = None
+    except ImportError as e:
+        sys.stderr.write("hook not supported: %s\n"%e)
+        HookThread = None
+    except OSError as e:
+        sys.stderr.write("hook not supported: %s\n"%e)
+        HookThread = None
 
 try:
     from .remote import SocketListen
@@ -243,7 +252,8 @@ class ClientRepl(object):
     def exdiag(self, args):
         """ enable/disable diagnostics """
 
-        self.client.keyhook.diag = not self.client.keyhook.diag
+        keyhook = self.client.keyhook
+        keyhook.setDiagEnabled( not keyhook.getDiagEnabled() )
         print(self.client.keyhook.diag)
 
     def exeditor(self, args):
@@ -274,6 +284,8 @@ class MainWindow(QMainWindow):
     def __init__(self, errorlog_view, device, version_info ):
         super(MainWindow, self).__init__()
 
+        s = Settings.instance()
+
         self.setAcceptDrops( True )
         self.version,self.versiondate = version_info
         self.device = device
@@ -286,7 +298,15 @@ class MainWindow(QMainWindow):
         self.keyhook = None
         self.remotethread = None
 
-        if HookThread is not None:
+        if KeyHook is not None:
+            sys.stdout.write("Initialize pyHook.\n")
+            self.keyhook = KeyHook()
+            self.setEnabled(True)
+            self.keyhook.playpause.connect(self.device.playpause)
+            self.keyhook.play_next.connect(self.controller.play_next)
+            self.keyhook.play_prev.connect(self.controller.play_prev)
+            self.keyhook.stop.connect(self.controller.toggleStop)
+        elif HookThread is not None:
             sys.stdout.write("Initialize Keyboard hook.\n")
             self.keyhook = HookThread()
             self.keyhook.start()
@@ -296,16 +316,20 @@ class MainWindow(QMainWindow):
             self.keyhook.stop.connect(self.controller.toggleStop)
         else:
             sys.stdout.write("Unable to initialize Keyboard Hook.\n")
-        if SocketListen is not None:
-            port = 15123
-            if hasattr(sys,"_MEIPASS"):
-                port = 15124 # use a different port when frozen
-            sys.stdout.write("Initialize Remote Thread.\n")
-            self.remotethread = SocketListen(port=port,parent=self)
-            self.remotethread.message_recieved.connect(self.executeCommand)
-            self.remotethread.start()
+
+        if s['enable_remote_commands']:
+            if SocketListen is not None:
+                port = 15123
+                if hasattr(sys,"_MEIPASS"):
+                    port = 15124 # use a different port when frozen
+                sys.stdout.write("Initialize Remote Thread.\n")
+                self.remotethread = SocketListen(port=port,parent=self)
+                self.remotethread.message_recieved.connect(self.executeCommand)
+                self.remotethread.start()
+            else:
+                sys.stdout.write("Unable to initialize Remote Thread.\n")
         else:
-            sys.stdout.write("Unable to initialize Remote Thread.\n")
+            sys.stdout.write("Socket Thread not started. Remote Commands Disabled.\n")
 
         self.default_palette = QPalette(self.palette())
         self.default_font    = QFont(self.font())
@@ -316,7 +340,7 @@ class MainWindow(QMainWindow):
         self._init_values()
         self._init_menubar()
 
-        s = Settings.instance()
+
         self.set_style(s["current_theme"])
 
         History.instance().setEnabled( s['enable_history'] )
@@ -1099,6 +1123,7 @@ def setSettingsDefaults():
     s.setDefault("keyhook_next", 0xB0)
 
     s.setDefault("enable_keyboard_hook",1) # on by default
+    s.setDefault("enable_remote_commands",0) # on by default
 
     s.setDefault("enable_history",0)
     s.setDefault("path_alternatives",[])

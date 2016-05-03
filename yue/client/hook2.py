@@ -75,3 +75,8 @@ class HookThread(QThread):
         #cHook.unhook();
         #self.wait()
 
+    def setDiagEnabled(self,b):
+        self.diag = b
+
+    def getDiagEnabled(self):
+        return self.diag
