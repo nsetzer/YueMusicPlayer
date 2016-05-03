@@ -12,6 +12,7 @@ from PyQt5.QtCore import *
 # can find `platforms/qwindows.dll`
 if hasattr(sys,"_MEIPASS"):
     QCoreApplication.addLibraryPath(sys._MEIPASS)
+    QCoreApplication.addLibraryPath(os.path.join(sys._MEIPASS,"qt5_plugins"))
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR, delete as sip_delete

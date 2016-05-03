@@ -82,12 +82,25 @@ addDllFile(a,"basswv.dll")
 addDllFile(a,"libfftw3-3.dll")
 addDllFile(a,"hook.dll")
 
-def addQtPlatformDllFile(a,name):
-  qtdll = os.path.join(get_python_lib(),"PyQt5","plugins","platforms",name)
+def addQtPlatformDllFile(a,plugtype,name):
+  qtdll = os.path.join(get_python_lib(),"PyQt5","plugins",plugtype,name)
   if os.path.exists( qtdll ):
-    a.datas.append( (os.path.join("platforms",name), qtdll, 'DATA') )
+    a.datas.append( (os.path.join(plugtype,name), qtdll, 'DATA') )
 
-addQtPlatformDllFile(a,"qwindows.dll")
+addQtPlatformDllFile(a,"platforms","qwindows.dll")
+
+# i may not need to add any of these since MEIPASS/qt5_plugins exists
+#addQtPlatformDllFile(a,"imageformats","qdds.dll")
+#addQtPlatformDllFile(a,"imageformats","qgif.dll")
+#addQtPlatformDllFile(a,"imageformats","qicns.dll")
+#addQtPlatformDllFile(a,"imageformats","qico.dll")
+#addQtPlatformDllFile(a,"imageformats","qjpeg.dll")
+#addQtPlatformDllFile(a,"imageformats","qsvg.dll")
+#addQtPlatformDllFile(a,"imageformats","qtga.dll")
+#addQtPlatformDllFile(a,"imageformats","qtiff.dll")
+#addQtPlatformDllFile(a,"imageformats","qbmp.dll")
+#addQtPlatformDllFile(a,"imageformats","qwebp.dll")
+
 
 def addQtDllFile(a,name):
   qtdll = os.path.join(get_python_lib(),"PyQt5",name)

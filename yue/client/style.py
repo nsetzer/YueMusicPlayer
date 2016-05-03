@@ -98,8 +98,9 @@ def style_set_custom_theme(style_directory,style_name):
         R.remove("Main.css")
     # load all remaining css files
     for file in R:
-        if fileGetExt(file) == "css":
-            fname = fileGetName(file)
+        if file.lower().endswith("css"):
+            _,fname = os.path.split(file)
+            fname,_ = os.path.splitext(file)
             if fname[:1] != 'x':
                 css += read_css_file(dict_vars, theme_path,fname)
 

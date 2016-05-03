@@ -1,5 +1,14 @@
 #!python $this
-__version__ = "1.0.5"
+"""
+changelog
+
+1.1.0
+    move to python3.5
+    move to Qt 5.6
+    use Visual Studio 2015 to build C libraries
+
+"""
+__version__ = "1.1.0"
 __datetime__ = ""
 import codecs,traceback
 try:
