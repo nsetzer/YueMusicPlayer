@@ -66,27 +66,27 @@ DSP_VOLEQ_Delete = func_type(None,ctypes.c_void_p)(mod('DSP_VOLEQ_Delete'))
 DSP_VOLEQ_Settings = func_type(int)(mod('DSP_VOLEQ_Settings'))
 DSP_VOLEQ_SetScale = func_type(None,ctypes.c_void_p,ctypes.c_float)(mod('DSP_VOLEQ_SetScale'))
 
-DSP_AudioIngest_New = func_type(ctypes.c_void_p,DWORD_t,DWORD_t,ctypes.c_char)(mod('DSP_AudioIngest_New'))
-DSP_AudioIngest_fromChannel = func_type(ctypes.c_int32, ctypes.c_void_p,DWORD_t,float_p,ctypes.c_int32)(mod('DSP_AudioIngest_fromChannel'))
-DSP_AudioIngest_fromSignal = func_type(DWORD_t, ctypes.c_void_p,float_p,DWORD_t,float_p,DWORD_t)(mod('DSP_AudioIngest_fromSignal'))
-DSP_AudioIngest_Delete = func_type(None,ctypes.c_void_p)(mod('DSP_AudioIngest_Delete'))
-
-DSP_FEATGEN_new    = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_new'))  # deprecated
-DSP_FEATGEN_newMFCC           = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newMFCC'))
-DSP_FEATGEN_newMIDI           = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newMIDI'))
-DSP_FEATGEN_newSpectrogram    = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newSpectrogram'))
-DSP_FEATGEN_setLogOutput  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_double,ctypes.c_double,ctypes.c_double)(mod('DSP_FEATGEN_setLogOutput'))
-DSP_FEATGEN_setFFTOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_int)(mod('DSP_FEATGEN_setFFTOptions'))
-DSP_FEATGEN_setMFCCOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_double,ctypes.c_double)(mod('DSP_FEATGEN_setMFCCOptions'))
-DSP_FEATGEN_setMIDIOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int)(mod('DSP_FEATGEN_setMIDIOptions'))
-DSP_FEATGEN_init  = func_type(ctypes.c_int,ctypes.c_void_p)(mod('DSP_FEATGEN_init'))
-
-DSP_FEATGEN_delete  = func_type(None,ctypes.c_void_p)(mod('DSP_FEATGEN_delete'))
-DSP_FEATGEN_reset = func_type(None,ctypes.c_void_p)(mod('DSP_FEATGEN_reset'))
-
-DSP_FEATGEN_outputSize = func_type(None,ctypes.c_void_p,int_p)(mod('DSP_FEATGEN_outputSize'))
-DSP_FEATGEN_pushSample = func_type(ctypes.c_long,ctypes.c_void_p,double_p,ctypes.c_ulong)(mod('DSP_FEATGEN_pushSample'))
-DSP_FEATGEN_nextFrame  = func_type(ctypes.c_long,ctypes.c_void_p,double_p,ctypes.c_ulong)(mod('DSP_FEATGEN_nextFrame'))
+#DSP_AudioIngest_New = func_type(ctypes.c_void_p,DWORD_t,DWORD_t,ctypes.c_char)(mod('DSP_AudioIngest_New'))
+#DSP_AudioIngest_fromChannel = func_type(ctypes.c_int32, ctypes.c_void_p,DWORD_t,float_p,ctypes.c_int32)(mod('DSP_AudioIngest_fromChannel'))
+#DSP_AudioIngest_fromSignal = func_type(DWORD_t, ctypes.c_void_p,float_p,DWORD_t,float_p,DWORD_t)(mod('DSP_AudioIngest_fromSignal'))
+#DSP_AudioIngest_Delete = func_type(None,ctypes.c_void_p)(mod('DSP_AudioIngest_Delete'))
+#
+#DSP_FEATGEN_new    = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_new'))  # deprecated
+#DSP_FEATGEN_newMFCC           = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newMFCC'))
+#DSP_FEATGEN_newMIDI           = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newMIDI'))
+#DSP_FEATGEN_newSpectrogram    = func_type(ctypes.c_void_p,ctypes.c_ulong)(mod('DSP_FEATGEN_newSpectrogram'))
+#DSP_FEATGEN_setLogOutput  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_double,ctypes.c_double,ctypes.c_double)(mod('DSP_FEATGEN_setLogOutput'))
+#DSP_FEATGEN_setFFTOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_int)(mod('DSP_FEATGEN_setFFTOptions'))
+#DSP_FEATGEN_setMFCCOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_double,ctypes.c_double)(mod('DSP_FEATGEN_setMFCCOptions'))
+#DSP_FEATGEN_setMIDIOptions  = func_type(None,ctypes.c_void_p,ctypes.c_int)(mod('DSP_FEATGEN_setMIDIOptions'))
+#DSP_FEATGEN_init  = func_type(ctypes.c_int,ctypes.c_void_p)(mod('DSP_FEATGEN_init'))
+#
+#DSP_FEATGEN_delete  = func_type(None,ctypes.c_void_p)(mod('DSP_FEATGEN_delete'))
+#DSP_FEATGEN_reset = func_type(None,ctypes.c_void_p)(mod('DSP_FEATGEN_reset'))
+#
+#DSP_FEATGEN_outputSize = func_type(None,ctypes.c_void_p,int_p)(mod('DSP_FEATGEN_outputSize'))
+#DSP_FEATGEN_pushSample = func_type(ctypes.c_long,ctypes.c_void_p,double_p,ctypes.c_ulong)(mod('DSP_FEATGEN_pushSample'))
+#DSP_FEATGEN_nextFrame  = func_type(ctypes.c_long,ctypes.c_void_p,double_p,ctypes.c_ulong)(mod('DSP_FEATGEN_nextFrame'))
 
 c_void_p = ctypes.c_void_p
 c_int = ctypes.c_int
@@ -481,50 +481,50 @@ class PyDspDynRng(PyDSP):
 def BufError():
     return BufferError("underlying c structure is not initialized");
 
-class FeatureGenerator(object):
-    def __init__(self,FS):
-        self.vpfg = DSP_FEATGEN_newMFCC(FS);
-        if self.vpfg == None:
-            raise BufError()
-    # todo getters / setters for feature gen settings
-    def init(self):
-
-        if self.vpfg == None:
-            raise BufError()
-        DSP_FEATGEN_setLogOutput(self.vpfg,1,0,20,1e-16);
-        #DSP_FEATGEN_setMIDIOptions(self.vpfg,12);
-        x = DSP_FEATGEN_init(self.vpfg)
-        if x != 0:
-            print("error",x)
-            raise BufError()
-
-        c_y_size = ctypes.c_int()
-        DSP_FEATGEN_outputSize(self.vpfg,ctypes.byref(c_y_size))
-        self.y_size = c_y_size.value
-        self.y = (ctypes.c_double*self.y_size)()
-
-    def push(self,seq):
-        if self.vpfg == None:
-            raise BufError()
-
-        x_size = len(seq)
-        x = (ctypes.c_double*x_size)(*seq)
-
-        return DSP_FEATGEN_pushSample(self.vpfg,x,x_size);
-
-    def getFrame(self):
-        if self.vpfg == None:
-            raise BufError()
-
-        #c_y_size = ctypes.c_int()
-        #DSP_FEATGEN_outputSize(self.vpfg,ctypes.byref(c_y_size))
-        #y_size = c_y_size.value
-        #y = (ctypes.c_double*y_size)()
-
-        n = DSP_FEATGEN_nextFrame(self.vpfg,self.y,self.y_size);
-        if n > 0:
-            return [ float(self.y[i]) for i in range(n)  ]
-        return None;
+#class FeatureGenerator(object):
+#    def __init__(self,FS):
+#        self.vpfg = DSP_FEATGEN_newMFCC(FS);
+#        if self.vpfg == None:
+#            raise BufError()
+#    # todo getters / setters for feature gen settings
+#    def init(self):
+#
+#        if self.vpfg == None:
+#            raise BufError()
+#        DSP_FEATGEN_setLogOutput(self.vpfg,1,0,20,1e-16);
+#        #DSP_FEATGEN_setMIDIOptions(self.vpfg,12);
+#        x = DSP_FEATGEN_init(self.vpfg)
+#        if x != 0:
+#            print("error",x)
+#            raise BufError()
+#
+#        c_y_size = ctypes.c_int()
+#        DSP_FEATGEN_outputSize(self.vpfg,ctypes.byref(c_y_size))
+#        self.y_size = c_y_size.value
+#        self.y = (ctypes.c_double*self.y_size)()
+#
+#    def push(self,seq):
+#        if self.vpfg == None:
+#            raise BufError()
+#
+#        x_size = len(seq)
+#        x = (ctypes.c_double*x_size)(*seq)
+#
+#        return DSP_FEATGEN_pushSample(self.vpfg,x,x_size);
+#
+#    def getFrame(self):
+#        if self.vpfg == None:
+#            raise BufError()
+#
+#        #c_y_size = ctypes.c_int()
+#        #DSP_FEATGEN_outputSize(self.vpfg,ctypes.byref(c_y_size))
+#        #y_size = c_y_size.value
+#        #y = (ctypes.c_double*y_size)()
+#
+#        n = DSP_FEATGEN_nextFrame(self.vpfg,self.y,self.y_size);
+#        if n > 0:
+#            return [ float(self.y[i]) for i in range(n)  ]
+#        return None;
 
 
 #class BassTranscoder(object):

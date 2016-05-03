@@ -21,14 +21,15 @@ TODO:
             select * from a
             insert item into b
 """
+import os,sys
 try:
     # TODO: i don't need PIL with PyQT
     import PIL
 except ImportError:
-    sys.stderr.write("PIL unsupported")
+    sys.stderr.write("PIL unsupported\n")
     PIL = None
 
-import os,sys
+
 import codecs
 import subprocess
 import tempfile, shutil

@@ -1,4 +1,4 @@
-#!python34 $this
+#!python $this
 __version__ = "1.0.5"
 __datetime__ = ""
 import codecs,traceback

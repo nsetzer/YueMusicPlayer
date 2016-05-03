@@ -1,4 +1,4 @@
-#! cd ../.. && python34 test/test_client.py
+#! cd ../.. && python test/test_client.py
 
 import os,sys
 import time
@@ -38,6 +38,10 @@ try:
 except ImportError as e:
     sys.stderr.write("hook import: %s\n"%e)
     HookThread = None
+except OSError as e:
+    sys.stderr.write("hook import: %s\n"%e)
+    HookThread = None
+
 try:
     from .remote import SocketListen
 except ImportError as e:
