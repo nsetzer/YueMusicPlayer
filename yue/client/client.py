@@ -411,9 +411,8 @@ class MainWindow(QMainWindow):
         self.edit_cmd.setPlaceholderText("Command Input")
 
         self.volcontroller = VolumeController(self)
-        # TODO: something needs to be done about this :
         self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
-        self.volcontroller.volume_slider.value_set.connect(self.setVolume)
+        self.volcontroller.value_set.valueChanged.connect(self.setVolume)
 
         # note: visible state is not stored for the playlist,
         # it should always be displayed at startup
