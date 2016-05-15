@@ -43,7 +43,9 @@ class History(object):
 
         self.view = SQLView( sqlstore, viewname, sql, colnames)
         self.sqlstore = sqlstore
-        self.enabled = False
+        self.enabled_log = False
+        self.enabled_update = False
+
 
         self.grammar = HistorySearchGrammar( )
 
@@ -55,11 +57,19 @@ class History(object):
     def instance():
         return History.__instance
 
-    def setEnabled(self, b):
-        self.enabled = bool(b)
+    def setLogEnabled(self, b):
+        """ enable recording of playback events"""
+        self.enabled_log = bool(b)
 
-    def isEnabled(self):
-        return self.enabled
+    def setUpdateEnabled(self, b):
+        """ enable recording of record changes """
+        self.enabled_update = bool(b)
+
+    def isLogEnabled(self):
+        return self.enabled_log
+
+    def isUpdateEnabled(self):
+        return self.enabled_update
 
     def __len__(self):
         return self.db.count()
@@ -69,7 +79,7 @@ class History(object):
 
     def update(self,c, uid,**kwargs):
 
-        if not self.enabled:
+        if not self.enabled_update:
             return
 
         date = timegm(time.localtime(time.time()))
@@ -79,12 +89,12 @@ class History(object):
         }
         for col,val in kwargs.items():
             data['column'] = col
-            data['value'] = val
+            data['value'] = str(val)
             self.db._insert(c,**data)
 
     def incrementPlaycount(self, c, uid, date):
 
-        if not self.enabled:
+        if not self.enabled_log:
             return
 
         kwargs = {
@@ -98,59 +108,12 @@ class History(object):
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            c.execute("SELECT date,uid,column,value FROM history ORDER BY date")
+            c.execute("SELECT date,uid,column,value FROM history ORDER BY date ASC")
 
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.db.column_names,item))
                 item = c.fetchone()
-
-    def import_record(self, c, record):
-
-
-        if record['column'] == Song.playtime:
-            self.import_playtime(c,record)
-        else:
-            self.import_update(c,record)
-
-    # TODO" these should probably be moved to the Library()
-    def import_playtime(self, c, record):
-        """
-        update playcount for a song given a record
-
-        c: connection cursor associated with target library
-        record: a history record
-        """
-
-        # experimental: insert record into THIS db
-        k,v = zip(*record.items())
-        s = ', '.join(str(x) for x in k)
-        r = ('?,'*len(v))[:-1]
-        fmt = "insert into %s (%s) VALUES (%s)"%("history",s,r)
-        c.execute(fmt,list(v))
-
-        #song = library.songFromId( record['uid'])
-        date = record['date']
-        uid = record['uid']
-
-        c = self.sqlstore.conn.cursor()
-        c.execute("SELECT playcount, frequency, last_played FROM songs WHERE uid=?",(uid,))
-        item = c.fetchone()
-        if item is None:
-            raise ValueError( uid )
-        playcount, frequency, last_played = item
-        # only update frequency, last_played if the item is newer
-        if date > last_played:
-            d, freq = Song.calculateFrequency(playcount, frequency, last_played, date);
-            c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?", \
-                      (freq, date, uid))
-        else:
-            c.execute("UPDATE songs SET playcount=playcount+1 WHERE uid=?", (uid,))
-
-    def import_update(self, c, record):
-        # update column/value for uid given a record
-        pass
-
 
     def delete(self,records_lst):
         """ delete a record, or a list of records

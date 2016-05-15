@@ -233,16 +233,23 @@ class ClientRepl(object):
         self.client.backup_database()
 
     def exhistory(self,args):
-
+        """
+        0 : disable
+        1 : enable logging
+        2 : enable logging of record changes
+        3 : enable logging + record logging
+        """
         args = ReplArgumentParser(args)
         args.assertMinArgs( 1 )
 
-        enable = int(args[0]) != 0
+        enable_log    = bool(int(args[0]) & 1)
+        enable_update = bool(int(args[0]) & 2)
 
-        History.instance().setEnabled( enable )
+        History.instance().setLogEnabled( enable_log )
+        History.instance().setUpdateEnabled( enable_update )
 
-        print("history: %d"%(enable))
-
+        print("history log: %d"%(enable_log))
+        print("history update: %d"%(enable_update))
 
     def exexplorer(self, args):
         """ open directory of the database in explorer """
@@ -251,7 +258,10 @@ class ClientRepl(object):
         explorerOpen( dirpath )
 
     def exdiag(self, args):
-        """ enable/disable diagnostics """
+        """ enable/disable diagnostics
+
+        currently toggles keylogger enable
+        """
 
         keyhook = self.client.keyhook
         keyhook.setDiagEnabled( not keyhook.getDiagEnabled() )
@@ -344,10 +354,14 @@ class MainWindow(QMainWindow):
 
         self.set_style(s["current_theme"])
 
-        History.instance().setEnabled( s['enable_history'] )
+        History.instance().setLogEnabled( s['enable_history'] )
+        History.instance().setUpdateEnabled( s['enable_history_update'] )
+
         self.device.setAlternatives(s['path_alternatives'])
 
-        sys.stdout.write("record history: %s\n"%bool(s['enable_history']))
+        sys.stdout.write("record history: log:%s update:%s\n"%( \
+                    bool(s['enable_history']), \
+                    bool(s['enable_history_update'])))
         sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
 
         try:
@@ -636,7 +650,8 @@ class MainWindow(QMainWindow):
         if self.remotethread is not None:
             self.remotethread.join()
 
-        s['enable_history'] = int(History.instance().isEnabled())
+        s['enable_history'] = int(History.instance().isLogEnabled())
+        s['enable_history_update'] = int(History.instance().isUpdateEnabled())
 
         s['current_position'] = int(self.device.position())
 
@@ -1125,7 +1140,8 @@ def setSettingsDefaults():
     s.setDefault("enable_keyboard_hook",1) # on by default
     s.setDefault("enable_remote_commands",0) # on by default
 
-    s.setDefault("enable_history",0)
+    s.setDefault("enable_history",1)
+    s.setDefault("enable_history_update",0)
     s.setDefault("path_alternatives",[])
 
     # when empty, default order is used

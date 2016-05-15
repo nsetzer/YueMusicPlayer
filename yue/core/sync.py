@@ -310,7 +310,7 @@ class ImportHistoryProcess(IterativeProcess):
         with conn:
             c = conn.cursor()
             for record in remote_history.export():
-                local_history.import_record( c, record )
+                self.parent.library._import_record( c, record )
 
 
     def end(self):

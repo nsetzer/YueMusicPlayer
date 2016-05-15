@@ -131,6 +131,14 @@ class Song(object):
                Song.genre, Song.country, Song.lang, Song.comment
 
     @staticmethod
+    def numberFields():
+        """ integer fields """
+        return Song.uid, Song.year, Song.album_index, Song.length, \
+               Song.last_played, Song.play_count, Song.skip_count, \
+               Song.rating, Song.blocked, Song.opm, Song.equalizer, \
+               Song.date_added, Song.frequency, Song.file_size;
+
+    @staticmethod
     def dateFields():
         return Song.last_played, Song.date_added;
 

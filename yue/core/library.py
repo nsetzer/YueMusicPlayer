@@ -255,6 +255,9 @@ class Library(object):
         if 'uid' in kwargs:
             del kwargs['uid']
 
+        if self.history is not None:
+            self.history.update(c,uid,**kwargs)
+
         # altering artist, album requires updating count of songs
         # and removing artists that no longer exist.
         if 'artist' in kwargs:
@@ -542,4 +545,65 @@ class Library(object):
             cols = ['uid','album','count']
             return self.album_db._select_columns(c, cols, artist=artistid)
 
+    def import_record(self, record):
 
+        with self.sqlstore.conn as conn:
+            c = conn.cursor()
+            self._import_record(c,record)
+
+    def _import_record(self, c, record):
+
+        if record['column'] == Song.playtime:
+            self.import_record_playtime(c,record)
+        else:
+            self.import_record_update(c,record)
+
+    # TODO these should probably be moved to the Library()
+    def import_record_playtime(self, c, record):
+        """
+        update playcount for a song given a record
+
+        c: connection cursor associated with target library
+        record: a history record
+        """
+
+        # experimental: insert record into THIS db
+        k,v = zip(*record.items())
+        s = ', '.join(str(x) for x in k)
+        r = ('?,'*len(v))[:-1]
+        fmt = "insert into %s (%s) VALUES (%s)"%("history",s,r)
+        c.execute(fmt,list(v))
+
+        #song = library.songFromId( record['uid'])
+        date = record['date']
+        uid = record['uid']
+
+        c = self.sqlstore.conn.cursor()
+        c.execute("SELECT playcount, frequency, last_played FROM songs WHERE uid=?",(uid,))
+        item = c.fetchone()
+        if item is None:
+            raise ValueError( uid )
+        playcount, frequency, last_played = item
+        # only update frequency, last_played if the item is newer
+        if date > last_played:
+            d, freq = Song.calculateFrequency(playcount, frequency, last_played, date);
+            c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?", \
+                      (freq, date, uid))
+        else:
+            c.execute("UPDATE songs SET playcount=playcount+1 WHERE uid=?", (uid,))
+
+    def import_record_update(self, c, record):
+        """
+        update column/value for uid given a record
+
+        c: connection cursor associated with target library
+        record: a history record
+        """
+
+        col=record['column']
+        val=record['value']
+        if col in Song.numberFields():
+            new_value = {col:int(val)}
+        else:
+            new_value = {col:val}
+        self._update_one(c, record['uid'], **new_value)
