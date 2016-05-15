@@ -87,10 +87,14 @@ class PlayListView(object):
     def set(self, lst):
         with self.db_names.conn() as conn:
             c = conn.cursor()
-            c.execute("DELETE from playlist_songs where uid=?",(self.uid,))
-            for idx, key in enumerate( lst ):
-                self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+            self._set(c,lst)
             self.db_names._update(c, self.uid, size=len(lst), idx=0)
+
+    def _set(self,cursor, lst):
+        """ set the list of songs in the playlist to lst """
+        cursor.execute("DELETE from playlist_songs where uid=?",(self.uid,))
+        for idx, key in enumerate( lst ):
+            self.db_lists._insert(cursor, uid=self.uid, idx=idx, song_id=key)
 
     def append(self, key):
         with self.db_names.conn() as conn:
@@ -103,7 +107,7 @@ class PlayListView(object):
         with self.db_names.conn() as conn:
             c = conn.cursor()
             _, name, size, index = self.db_names._get( c, self.uid );
-            return size
+            return max(0,size)
 
     def __len__(self):
         return self.size()
@@ -227,7 +231,58 @@ class PlayListView(object):
                 self.db_names._update( c, self.uid, idx=cur+1)
             self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
 
-    def reinsertList(self, lst, row):
+    def reinsertList(self, selection, insert_row):
+        """
+        selection: a list of unique row indices
+        """
+        selection = set(selection)
+
+        with self.db_lists.conn() as conn:
+            c = conn.cursor()
+
+            lsta = []
+            lstb = []
+            idx = 0;
+            insert_offset = 0;
+            new_index = -1;
+
+            _, name, size, current_index = self.db_names._get( c, self.uid );
+
+            c.execute("select song_id from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
+
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    if idx in selection:
+                        if (idx == current_index):
+                            insert_offset = len(lstb)
+                        lstb.append(item[0])
+                    else:
+                        if (idx == current_index):
+                            new_index = len(lsta)
+                        lsta.append(item[0])
+                    idx += 1;
+                items = c.fetchmany()
+
+            insert_row = min(insert_row, len(lsta))
+            if new_index < 0:
+                new_index = insert_row + insert_offset;
+            elif insert_row < new_index:
+                new_index += len(lstb)
+
+            if insert_row < len(lsta):
+                lsta = lsta[:insert_row] + lstb + lsta[insert_row:]
+            else:
+                lsta = lsta + lstb
+
+            self._set(c, lsta)
+            self.db_names._update( c, self.uid, idx=new_index)
+
+            return insert_row, insert_row+len(lstb)
+
+
+
+    def reinsertList_old(self, lst, row):
         """
         given a list of row indices, remove each row from the table
         then, in the order given, reinsert each element at the given row.

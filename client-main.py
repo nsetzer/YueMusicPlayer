@@ -2,7 +2,7 @@
 """
 changelog
 
-1.1.0
+2016-05-03 1.1.0
     move to python3.5
     move to Qt 5.6
     use Visual Studio 2015 to build C libraries
