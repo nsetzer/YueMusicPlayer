@@ -2,6 +2,9 @@
 """
 changelog
 
+2016-xx-xx 1.1.1
+    enable recording of history record changes
+
 2016-05-03 1.1.0
     move to python3.5
     move to Qt 5.6

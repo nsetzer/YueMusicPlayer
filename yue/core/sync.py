@@ -316,7 +316,6 @@ class ImportHistoryProcess(IterativeProcess):
     def end(self):
         return
 
-
 @run_async
 def async_transcode(obj,src,dst):
     if obj.local_source.exists(dst):
@@ -388,9 +387,18 @@ class ParallelTranscodeProcess(IterativeProcess):
         # limited, so throughput may only allow one file at a time.
         # as it is, transcode is the slowest part (compared to copy)
         for t,trpath,tgtpath in tasks:
+
+            self.parent.log("join %s -> %s"%(trpath,tgtpath))
+
             if not self.no_exec:
                 t.join()
-                self.parent.log("join %s -> %s"%(trpath,tgtpath))
+
+                # keep going but log an error when the transcode fails
+                # to produce a file
+                if not self.parent.local_source.exists( trpath ):
+                    self.parent.log("transcode failed: %s -> %s"%(trpath,tgtpath))
+                    continue
+
                 p = self.parent.target_source.parent(tgtpath)
                 self.parent.target_source.mkdir( p )
 
