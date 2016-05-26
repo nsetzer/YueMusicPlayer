@@ -2,6 +2,11 @@
 
 """
 
+pip install --upgrade pip wheel setuptools
+pip install docutils pygments pypiwin32 kivy.deps.sdl2 kivy.deps.glew
+pip install kivy plyer
+pip install mutagen natsort Enum
+
 todo:
     https://kivy.org/docs/api-kivy.app.html
     see built in support for settings,

@@ -147,8 +147,8 @@ class ModifyPresetScreen(Screen):
         try:
             Logger.info("sql: %s"%sql)
             Logger.info("sql: %s"%values)
-            result = Library.instance().search( rule, orderby=[Song.artist,Song.album,Song.title] )
-            tree =  libraryToTreeFromIterable( result )
+            #result = Library.instance().search( rule, orderby=[Song.artist,Song.album,Song.title] )
+            tree =  libraryToTree( Library.instance(), rule )
             self.setData( tree)
         except OperationalError as e:
 
