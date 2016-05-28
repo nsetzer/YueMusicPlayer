@@ -423,16 +423,16 @@ def get_album_art( song_path, temp_path):
         2. check for cover.jpg / cover.png in the same directory
         3. check for folder.jpg/folder.png in the same directory
     """
-    ext = os.path.splitext(song_path)[1].lower()
-
+    dirname, fname = os.path.split( song_path )
+    fname, fext = os.path.splitext( fname )
+    fext = fext.lower()
     #if type(song_path) is str:
     #    song_path = str.decode("utf-8")
-
     data = None
     try:
-        if ext == ".mp3":
+        if fext == ".mp3":
             data = get_album_art_mp3( song_path )
-        elif ext == '.flac':
+        elif fext == '.flac':
             data = get_album_art_flac( song_path )
     except Exception as e:
         print("mutagen: %s"%e)
@@ -442,9 +442,9 @@ def get_album_art( song_path, temp_path):
             wb.write( data )
         return temp_path
 
-    dirname = os.path.dirname( song_path )
-
-    for name in ["cover.jpg","cover.png","folder.jpg","folder.png"]:
+    for name in [fname+".jpg", fname+".png",
+                 "cover.jpg", "cover.png",
+                 "folder.jpg","folder.png"]:
         path = os.path.join(dirname,name)
         if os.path.exists( path ):
             return path
@@ -459,13 +459,15 @@ def get_album_art_data( song ):
     # the path could be to a file that does not exist, as long
     # as the directory does exist.
     song_path = song[Song.path]
-    ext = os.path.splitext(song_path)[1].lower()
+    dirname, fname = os.path.split( song_path )
+    fname, fext = os.path.splitext( fname )
+    fext = fext.lower()
 
     data = None
     try:
-        if ext == ".mp3":
+        if fext == ".mp3":
             data = get_album_art_mp3( song_path )
-        elif ext == '.flac':
+        elif fext == '.flac':
             data = get_album_art_flac( song_path )
     except Exception as e:
         print("mutagen: %s"%e)
@@ -475,7 +477,9 @@ def get_album_art_data( song ):
 
     dirname = os.path.dirname( song_path )
 
-    names = ["cover.jpg","cover.png","folder.jpg","folder.png"]
+    names = [fname+".jpg", fname+".png",
+                 "cover.jpg", "cover.png",
+                 "folder.jpg","folder.png"]
     n = "%s - %s.jpg"%(song[Song.artist],song[Song.album])
     names.append(n)
     names.append(n.replace(" ","_"))
