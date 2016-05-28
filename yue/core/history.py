@@ -88,6 +88,10 @@ class History(object):
             "uid"  : uid,
         }
         for col,val in kwargs.items():
+            # don't record changes for path, since that will overwrite
+            # the path on import - bad!
+            if col == Song.path:
+                continue;
             data['column'] = col
             data['value'] = str(val)
             self.db._insert(c,**data)

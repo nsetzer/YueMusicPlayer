@@ -195,6 +195,7 @@ class LibraryView(QWidget):
         super(LibraryView, self).__init__(parent)
 
         self.vbox_main = QVBoxLayout(self)
+        self.vbox_main.setContentsMargins(0,0,0,0)
         self.splitter = QSplitter(Qt.Horizontal, self)
         self.tree_lib = LibTree( self )
         self.tree_lib.showColumnHeader( False )
@@ -205,7 +206,7 @@ class LibraryView(QWidget):
         self.splitter.addWidget( self.cwidget )
         self.vbox_main.addWidget(self.splitter)
         self.vbox = QVBoxLayout(self.cwidget)
-        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setContentsMargins(0,5,0,0)
 
         self.hbox = QHBoxLayout()
         self.hbox.setContentsMargins(0,0,0,0)

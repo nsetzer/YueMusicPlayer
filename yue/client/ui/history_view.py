@@ -112,23 +112,26 @@ class HistoryView(QWidget):
         super(HistoryView, self).__init__(parent)
 
         self.vbox_main = QVBoxLayout(self)
-        self.vbox_main.setContentsMargins(0,0,0,0)
+        self.vbox_main.setContentsMargins(0,5,0,0)
 
         self.hbox = QHBoxLayout()
-        self.hbox.setContentsMargins(0,0,0,0)
 
         self.tbl_history = HistoryTable(self)
         self.tbl_history.showColumnHeader( True )
         self.tbl_history.showRowHeader( False )
         self.tbl_history.update_data.connect( self.refresh )
 
+        self.cbox_action = QComboBox(self)
         self.txt_search = LineEdit_Search(self,self.tbl_history, "Search History")
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
 
+        self.hbox.addSpacing( 5 )
+        self.hbox.addWidget( self.cbox_action )
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )
+        self.hbox.addSpacing( 5 )
 
         self.vbox_main.addLayout( self.hbox )
         self.vbox_main.addWidget( self.lbl_error )
