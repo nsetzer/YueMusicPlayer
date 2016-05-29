@@ -545,6 +545,43 @@ class Library(object):
             cols = ['uid','album','count']
             return self.album_db._select_columns(c, cols, artist=artistid)
 
+    def getArtistAlbums(self):
+        """ returns a list of all artist and album names
+
+        format is
+            list-of-tuple
+        where each tuple is a:
+            (string, list-of-string)
+        which denotes the artist name and associated albums
+
+        output is in sorted order.
+        """
+        with self.sqlstore.conn:
+            root = []
+            map = {}
+            c = self.sqlstore.conn.cursor()
+
+            c.execute("SELECT uid, artist from artists ORDER BY sortkey COLLATE NOCASE" )
+            items = c.fetchmany()
+            while items:
+                for uid,art in items:
+                    elem = (art,list())
+                    map[uid] = elem
+                    root.append(elem)
+                items = c.fetchmany()
+
+            c.execute("SELECT artist, album from albums ORDER BY album COLLATE NOCASE" )
+            items = c.fetchmany()
+            while items:
+                for art,abm in items:
+                    if art in map:
+                        map[art][1].append(abm)
+                    else:
+                        sys.stderr.write("Missing Artist Info for %d\n"%(art))
+                items = c.fetchmany()
+
+            return root
+
     def import_record(self, record):
 
         with self.sqlstore.conn as conn:
