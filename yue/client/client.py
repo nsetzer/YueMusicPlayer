@@ -19,6 +19,8 @@ from sip import SIP_VERSION_STR, delete as sip_delete
 
 from .style import style_set_custom_theme, setApplicationPallete, currentStyle, clearStyle, StyleError
 
+from yue.client.widgets.Tab import Tab
+
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
 from ..core.library import Library
@@ -297,6 +299,8 @@ class MainWindow(QMainWindow):
     def __init__(self, errorlog_view, device, version_info ):
         super(MainWindow, self).__init__()
 
+        start = time.time()
+
         self.setAcceptDrops( True )
         self.version,self.versiondate = version_info
         self.device = device
@@ -305,6 +309,8 @@ class MainWindow(QMainWindow):
         self.clientrepl = ClientRepl( self )
         self.clientrepl.register( self.repl )
         self.errorlog_view = errorlog_view
+
+        sys.stdout.write(" >> 0 >> %f\n"%(time.time()-start))
 
         self.keyhook = None
         self.remotethread = None
@@ -315,19 +321,19 @@ class MainWindow(QMainWindow):
         self.dialog_ingest = None
         self.dialog_update = None
 
-        self.refreshTreeView.connect( self.OnRefreshTreeView )
-
+        sys.stdout.write(" >> 1.0 >> %f\n"%(time.time()-start))
         self._init_keyhook()
+        sys.stdout.write(" >> 1.1 >> %f\n"%(time.time()-start))
         self._init_remote()
+        sys.stdout.write(" >> 1.2 >> %f\n"%(time.time()-start))
         self._init_ui()
+        sys.stdout.write(" >> 1.3 >> %f\n"%(time.time()-start))
         self._init_values()
+        sys.stdout.write(" >> 1.4 >> %f\n"%(time.time()-start))
         self._init_menubar()
+        sys.stdout.write(" >> 1.5 >> %f\n"%(time.time()-start))
         self._init_misc()
-
-        #self.libview.tree_lib.refreshData()
-        self.refreshTreeView.emit()
-
-        sys.stdout.write("Initialization Complete\n")
+        sys.stdout.write(" >> 2 >> %f\n"%(time.time()-start))
 
     def _init_keyhook(self):
         if KeyHook is not None:
@@ -384,6 +390,7 @@ class MainWindow(QMainWindow):
 
         self.tabview = QTabWidget( self )
         self.setCentralWidget(self.tabview)
+        self.tabview.currentChanged.connect(self.onCurrentTabChanged)
 
         # init primary views
         self.libview = LibraryView(self);
@@ -500,12 +507,16 @@ class MainWindow(QMainWindow):
         sys.stdout.write("Initialization of Ui completed in %f seconds\n"%(time.time()-start))
 
     def _init_values(self):
+        start = time.time()
         sys.stdout.write("Initializing default values\n")
 
         s = Settings.instance()
         vol = s['volume']
         self.volcontroller.volume_slider.setValue( vol )
         self.controller.device.setVolume( vol/100.0 )
+
+        sys.stdout.write(" >> >> values 0 >> %f\n"%(time.time()-start))
+
 
         if not s['ui_show_console']:
             self.edit_cmd.hide()
@@ -524,6 +535,8 @@ class MainWindow(QMainWindow):
                 self.audioview.hide()
                 self.audioview.stop()
 
+        sys.stdout.write(" >> >> values 1 >> %f\n"%(time.time()-start))
+
         #if s['enable_keyboard_hook']:
         #    pass # TODO enable keyhook here
 
@@ -531,45 +544,17 @@ class MainWindow(QMainWindow):
         self.quickview.setFavorites(Song.genre,s["ui_quickselect_favorite_genres"])
         self.libview.setColumnState(s["ui_library_column_order"])
 
+        sys.stdout.write(" >> >> values 2 >> %f\n"%(time.time()-start))
+
+
         pl = PlaylistManager.instance().openCurrent()
         if len(pl)==0:
             songs = Library.instance().search(None, orderby=Song.random, limit=5)
-            lst = [ s['uid'] for s in songs ]
+            lst = [ songs['uid'] for song in songs ]
             pl.set( lst )
         self.plview.setPlaylist( Library.instance(), pl)
 
-    def _init_misc(self):
-
-        s = Settings.instance()
-
-        self.set_style(s["current_theme"])
-
-        History.instance().setLogEnabled( s['enable_history'] )
-        History.instance().setUpdateEnabled( s['enable_history_update'] )
-
-        self.device.setAlternatives(s['path_alternatives'])
-
-        sys.stdout.write("record history: log:%s update:%s\n"%( \
-                    bool(s['enable_history']), \
-                    bool(s['enable_history_update'])))
-        sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
-
-        try:
-            self.device.load_current( )
-            # TODO: check that p is less than length of current song (minus 5s)
-            # or something similar. Then make this a configuration option
-            # that defaults on.
-            p = s["current_position"]
-            self.device.seek( p )
-            self.controller.on_song_tick( p )
-        except IndexError:
-            sys.stderr.write("error: No Current Song\n")
-
-    def toggleFullScreen(self):
-        if self.isFullScreen():
-            self.showNormal()
-        else:
-            self.showFullScreen()
+        sys.stdout.write(" >> >> values 3 >> %f\n"%(time.time()-start))
 
     def _init_menubar(self):
 
@@ -652,6 +637,45 @@ class MainWindow(QMainWindow):
         about_text += "Playback Engine: %s\n"%self.controller.device.name()
         menu.addAction("About",lambda:QMessageBox.about(self,"Yue Music Player",about_text))
 
+    def _init_misc(self):
+
+        s = Settings.instance()
+
+        self.set_style(s["current_theme"])
+
+        History.instance().setLogEnabled( s['enable_history'] )
+        History.instance().setUpdateEnabled( s['enable_history_update'] )
+
+        self.device.setAlternatives(s['path_alternatives'])
+
+        sys.stdout.write("record history: log:%s update:%s\n"%( \
+                    bool(s['enable_history']), \
+                    bool(s['enable_history_update'])))
+        sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
+
+        try:
+            self.device.load_current( )
+            # TODO: check that p is less than length of current song (minus 5s)
+            # or something similar. Then make this a configuration option
+            # that defaults on.
+            p = s["current_position"]
+            self.device.seek( p )
+            self.controller.on_song_tick( p )
+        except IndexError:
+            sys.stderr.write("error: No Current Song\n")
+
+        self.libview.tree_lib.refreshData()
+
+        songs = Library.instance().search(None)
+        self.libview.displaySongs( songs );
+        self.quickview.generateData( songs );
+
+    def toggleFullScreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
     def closeEvent(self, event):
 
         sys.stdout.write("Closing Application\n")
@@ -711,6 +735,13 @@ class MainWindow(QMainWindow):
 
         super(MainWindow,self).closeEvent( event )
         sys.stdout.write("finished saving state (%f)\n"%(time.time()-start))
+
+    def onCurrentTabChanged(self,index):
+
+        w = self.tabview.widget( index )
+
+        if isinstance(w,Tab):
+            w.onEnter();
 
     def tabIndex(self, widget):
         idx = -1
@@ -792,9 +823,6 @@ class MainWindow(QMainWindow):
 
         #Settings.instance()["volume"] = vol
         self.controller.device.setVolume( vol/100.0 )
-
-    def OnRefreshTreeView(self):
-        self.libview.tree_lib.refreshData()
 
     def ingestFinished(self):
         self.executeSearch("added = today",False)
@@ -1256,7 +1284,7 @@ def main(version="",buildtime=""):
         sys.stdout.write("Initializing application (%f)\n"%(time.time()-start))
         window = MainWindow( diag, device, (version,buildtime) )
 
-        sys.stdout.write("Showing Window (%f)\n"%(time.time()-start))
+        sys.stdout.write("Initialization Complete. Showing Window (%f)\n"%(time.time()-start))
         window.showWindow()
 
     sys.exit(app.exec_())

@@ -26,28 +26,19 @@ class LibraryTree(LargeTree):
         self.checkable = True
 
     def refreshData(self):
-        start = time.time()
 
         data = Library.instance().getArtistAlbums()
         # convert the data to a tree
-        root = Leaf(None,"root",None)
+        root = Leaf(None,"Library (%d)"%len(data),None)
         for art, albs in data:
             a = Leaf(root, art, None)
             for alb in albs:
                 Leaf(a, alb, None)
 
-        #song_list = list(Library.instance().search(""))
-        #toString = lambda x : x[Song.album]
-        #root = Leaf.list_to_idx_tree([Song.artist,],toString,song_list)
-        #root.children.sort(key=lambda x:getSortKey(x.text).lower())
-
-        root.text="Library (%d)"%(len(root.children))
         root.checkable = True
         root.collapsed = False
         root.collapsible = False
         self.setRoot(root)
-
-        print("BUILT TREE IN %f"%(time.time()-start))
 
     def keyPressOther(self,event):
         self.jump_to_letter(chr(event.key()))

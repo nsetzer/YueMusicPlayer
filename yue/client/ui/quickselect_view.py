@@ -18,6 +18,7 @@ if isPython3:
 import yue
 from yue.client.widgets.LargeTable import LargeTable, TableColumn
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.Tab import Tab
 
 from yue.core.util import format_delta, string_quote
 from yue.core.song import Song
@@ -93,7 +94,7 @@ def buildQuickList(songs,minimum,key_index,text_transform):
 
     return records
 
-class QuickSelectView(QWidget):
+class QuickSelectView(Tab):
     """docstring for MainWindow"""
 
     # signal to emit when a playlist a new playlist is requested.
@@ -126,8 +127,6 @@ class QuickSelectView(QWidget):
         self.display_index = Record.cnt
         self.display_class = Song.artist
 
-        self.generateData();
-
     def setData(self, data):
         self.data = data
         self.formatData()
@@ -136,8 +135,9 @@ class QuickSelectView(QWidget):
         """ the total number of rows needed to display data in columns of 1,2, or 3"""
         return (len(self.data)//self.col_count) + (1 if len(self.data)%self.col_count else 0)
 
-    def generateData(self):
-        songs = Library.instance().search(None)
+    def generateData(self, songs=None):
+        if songs is None:
+            songs = Library.instance().search(None)
         text_transform = lambda x : [x,]
         if self.display_class == Song.genre:
             text_transform = lambda x : [ x.strip().title() for x in (x.replace(",",";").split(";")) if x.strip() ]

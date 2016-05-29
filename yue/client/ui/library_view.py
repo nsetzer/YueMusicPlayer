@@ -19,6 +19,7 @@ from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LibraryTree import LibraryTree
 from yue.client.widgets.LineEdit import LineEdit
 from yue.client.widgets.FlatPushButton import FlatPushButton
+from yue.client.widgets.Tab import Tab
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -175,12 +176,11 @@ class LibTree(LibraryTree):
         uids = [ song[Song.uid] for song in songs ]
         self.parent().set_playlist.emit( uids )
 
-
     def on_selection_change(self,event=None):
         q = self.formatSelectionAsQueryString()
         self.parent().run_search(q,True)
 
-class LibraryView(QWidget):
+class LibraryView(Tab):
     """docstring for MainWindow"""
 
     # emit this signal to create a new playlist from a given query string
@@ -240,8 +240,6 @@ class LibraryView(QWidget):
 
         self.menu_callback = None
 
-        self.run_search("")
-
     def setColumnState(self, order):
         if len(order) > 0:
             self.tbl_song.columns_setOrder( order )
@@ -264,24 +262,29 @@ class LibraryView(QWidget):
         """
         setText: if true set the text box to contain text
         """
+        songs = Library.instance().search( text, \
+            orderby=self.tbl_song.sort_orderby,
+            reverse = self.tbl_song.sort_reverse )
+
+        self.displaySongs(songs)
+
+        if setText:
+            self.txt_search.setText( text )
+
+        if not refresh:
+            self.tbl_song.scrollTo( 0 )
+            self.tbl_song.setSelection([])
+
+    def displaySongs(self,songs):
+
         try:
-            lib = Library.instance()
-            data = lib.search( text, \
-                orderby=self.tbl_song.sort_orderby,
-                reverse = self.tbl_song.sort_reverse )
-            self.tbl_song.setData(data)
-            self.lbl_search.setText("%d/%d"%(len(data), len(lib)))
+            self.tbl_song.setData(songs)
+            self.lbl_search.setText("%d/%d"%(len(songs), len(Library.instance())))
 
             if not self.lbl_error.isHidden():
                 self.txt_search.setStyleSheet("")
                 self.lbl_error.hide()
 
-            if setText:
-                self.txt_search.setText( text )
-
-            if not refresh:
-                self.tbl_song.scrollTo( 0 )
-                self.tbl_song.setSelection([])
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
@@ -300,3 +303,6 @@ class LibraryView(QWidget):
         the given song
         """
         self.menu_callback = cbk
+
+
+

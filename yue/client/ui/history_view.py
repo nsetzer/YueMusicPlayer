@@ -20,6 +20,7 @@ from yue.client.widgets.LargeTable import TableColumn, LargeTable
 from yue.client.widgets.LibraryTree import LibraryTree
 from yue.client.widgets.LineEdit import LineEdit
 from yue.client.widgets.FlatPushButton import FlatPushButton
+from yue.client.widgets.Tab import Tab
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -105,7 +106,7 @@ class HistoryTable(LargeTable):
         History.instance().delete(records)
         self.parent().refresh()
 
-class HistoryView(QWidget):
+class HistoryView(Tab):
     """docstring for MainWindow"""
 
     def __init__(self, parent=None):
@@ -138,8 +139,6 @@ class HistoryView(QWidget):
         self.vbox_main.addWidget( self.tbl_history.container )
 
         self.lbl_error.hide()
-
-        self.run_search("")
 
     def onTextChanged(self,text,update=0):
         self.run_search(text)
