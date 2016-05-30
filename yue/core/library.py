@@ -35,7 +35,7 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-from .search import sql_search, BlankSearchRule, RegExpSearchRule
+from .search import sql_search, BlankSearchRule, RegExpSearchRule, ExactSearchRule, AndSearchRule
 #from kivy.logger import Logger
 #from kivy.storage.dictstore import DictStore
 
@@ -43,6 +43,7 @@ from .search import sql_search, BlankSearchRule, RegExpSearchRule
 from .song import Song, SongSearchGrammar
 from .history import History
 from .sqlstore import SQLTable, SQLView
+from .util import check_path_alternatives
 
 try:
     # 3.x name
@@ -388,6 +389,7 @@ class Library(object):
             m[song[Song.path]] = song[Song.uid]
         return m
 
+    # deprecated
     def iter(self):
         return self.song_view.iter()
 
@@ -555,10 +557,15 @@ class Library(object):
         which denotes the artist name and associated albums
 
         output is in sorted order.
+
+        This function also serves as an integrity check for the database,
+        It will find inconsistencies due to a bug in update().
         """
+        root = []
+        map = {}
+        errors = []
+
         with self.sqlstore.conn:
-            root = []
-            map = {}
             c = self.sqlstore.conn.cursor()
 
             c.execute("SELECT uid, artist from artists ORDER BY sortkey COLLATE NOCASE" )
@@ -570,17 +577,77 @@ class Library(object):
                     root.append(elem)
                 items = c.fetchmany()
 
-            c.execute("SELECT artist, album from albums ORDER BY album COLLATE NOCASE" )
+            c.execute("SELECT uid, artist, album from albums ORDER BY album COLLATE NOCASE" )
             items = c.fetchmany()
             while items:
-                for art,abm in items:
+                for uid, art,abm in items:
                     if art in map:
                         map[art][1].append(abm)
                     else:
-                        sys.stderr.write("Missing Artist Info for %d\n"%(art))
+                        errors.append( (uid,art,abm) )
                 items = c.fetchmany()
 
-            return root
+        for err in errors:
+            self.repairArtistAlbums(*err)
+
+        return root
+
+    def repairArtistAlbums(self, uid, art, abmstr):
+        """
+        """
+        sys.stderr.write("Missing Artist Info for %d:%d\n"%(uid,art))
+
+        rule = ExactSearchRule(Song.album,abmstr)
+        songs = sql_search( self.song_view, rule, case_insensitive=False);
+        artists = set([song[Song.artist] for song in songs])
+
+        if len(artists) == 1:
+            artist = list(artists)[0]
+            res = self.sqlstore.conn.execute("SELECT uid from artists where artist==?",(artist,),)
+            item = res.fetchone()
+            if item is not None:
+                artidx = item[0]
+                self.sqlstore.conn.execute("UPDATE albums SET artist=? WHERE uid=?",(artidx,uid))
+        else:
+            for artist in artists:
+                res = self.sqlstore.conn.execute("SELECT uid from artists where artist==?",(artist,),)
+                items = res.fetchone()
+                index = items[0]
+
+                res = self.sqlstore.conn.execute("SELECT uid,count from albums where artist==?",(index,),)
+                item = res.fetchone()
+                if item is not None:
+                    # there is already an entry for this element
+                    pass
+                else:
+                    # create a new entry because one is missing
+                    alb_index = -1
+                    with self.sqlstore.conn:
+                        c = self.sqlstore.conn.cursor()
+                        alb_index = self.album_db._get_id_or_insert(c,
+                            album=abmstr,
+                            artist=index)
+                    # update the count for the entry to be correct
+                    rule = AndSearchRule([ ExactSearchRule(Song.artist,artist),
+                                           ExactSearchRule(Song.album,abmstr) ])
+                    songs = sql_search( self.song_view, rule, case_insensitive=False);
+                    self.sqlstore.conn.execute.execute("UPDATE albums SET count=? WHERE uid=?",(len(songs),alb_index,))
+            # delete the existing row, since it is not attached to any artist
+            res = self.sqlstore.conn.execute("DELETE FROM albums WHERE uid==?",(uid,))
+
+    def songPathHack(self, alternatives):
+
+        songs = list(self.search(None))
+        last = None
+        print(len(songs))
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for song in songs:
+                old_path = song[Song.path]
+                last, new_path = check_path_alternatives( \
+                                    alternatives, old_path, last)
+                if (new_path != old_path):
+                    self._update_one(c, song[Song.uid], **{Song.path:new_path})
 
     def import_record(self, record):
 

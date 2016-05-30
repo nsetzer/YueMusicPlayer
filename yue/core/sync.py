@@ -390,20 +390,23 @@ class ParallelTranscodeProcess(IterativeProcess):
 
             self.parent.log("join %s -> %s"%(trpath,tgtpath))
 
-            if not self.no_exec:
-                t.join()
+            try:
+                if not self.no_exec:
+                    t.join()
 
-                # keep going but log an error when the transcode fails
-                # to produce a file
-                if not self.parent.local_source.exists( trpath ):
-                    self.parent.log("transcode failed: %s -> %s"%(trpath,tgtpath))
-                    continue
+                    # keep going but log an error when the transcode fails
+                    # to produce a file
+                    if not self.parent.local_source.exists( trpath ):
+                        self.parent.log("transcode failed: %s -> %s"%(trpath,tgtpath))
+                        continue
 
-                p = self.parent.target_source.parent(tgtpath)
-                self.parent.target_source.mkdir( p )
+                    p = self.parent.target_source.parent(tgtpath)
+                    self.parent.target_source.mkdir( p )
 
-                source_copy_file(self.parent.local_source, trpath,
-                                 self.parent.target_source, tgtpath, 1<<15)
+                    source_copy_file(self.parent.local_source, trpath,
+                                     self.parent.target_source, tgtpath, 1<<15)
+            except Exception as e:
+                self.parent.log("join error: %s %s"%(trpath,str(e)))
 
 
     def end(self):

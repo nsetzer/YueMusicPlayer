@@ -55,20 +55,23 @@ class Settings(object):
     def __getitem__(self,key):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            c.execute("SELECT uid,kind FROM settings WHERE key=?",(key,))
-            result = c.fetchone()
-            if not result:
-                raise KeyError(key)
-            uid,kind = result
+            return self._get_main(c, key)
 
-            if kind == K_STR:
-                return self._get(c,"setstr",uid)
-            elif kind == K_INT:
-                return self._get(c,"setint",uid)
-            elif kind == K_CSV:
-                return self._get_list(c,uid)
+    def _get_main(self,c,key):
+        c.execute("SELECT uid,kind FROM settings WHERE key=?",(key,))
+        result = c.fetchone()
+        if not result:
+            raise KeyError(key)
+        uid,kind = result
 
-            raise TypeError(kind)
+        if kind == K_STR:
+            return self._get(c,"setstr",uid)
+        elif kind == K_INT:
+            return self._get(c,"setint",uid)
+        elif kind == K_CSV:
+            return self._get_list(c,uid)
+
+        raise TypeError(kind)
 
     def _get(self,c,tbl,uid):
         c.execute("SELECT value FROM %s WHERE uid=?"%tbl,(uid,))
@@ -102,6 +105,17 @@ class Settings(object):
                 return self._get_list(c,uid)
 
             raise TypeError(kind)
+
+    def getMulti(self,*keys):
+        """
+        returns a dictionary
+        """
+        out = {}
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for key in keys:
+                out[key] = self._get_main(c,key)
+        return out
 
     def __setitem__(self,key,value):
         with self.sqlstore.conn:

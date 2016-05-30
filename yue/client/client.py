@@ -19,7 +19,7 @@ from sip import SIP_VERSION_STR, delete as sip_delete
 
 from .style import style_set_custom_theme, setApplicationPallete, currentStyle, clearStyle, StyleError
 
-from yue.client.widgets.Tab import Tab
+from yue.client.widgets.Tab import TabWidget
 
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
@@ -112,6 +112,7 @@ class ClientRepl(object):
 
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
+        self.actions["xx"] = self.exxx
 
         self.helptopics['search'] = """ information on search format
 
@@ -291,6 +292,20 @@ class ClientRepl(object):
         theme = args[0]
         self.client.set_style( theme )
 
+    def exxx(self,args):
+        """
+        1: xx 1 alt alt [alt ...]
+            update song path in db based on provided update alternatives list
+        """
+        args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
+        args.assertMinArgs( 1 )
+
+        value = int(args[0])
+        if value == 1:
+            alternatives = args[1:]
+            print(alternatives)
+            Library.instance().songPathHack( alternatives )
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
@@ -321,19 +336,22 @@ class MainWindow(QMainWindow):
         self.dialog_ingest = None
         self.dialog_update = None
 
-        sys.stdout.write(" >> 1.0 >> %f\n"%(time.time()-start))
         self._init_keyhook()
-        sys.stdout.write(" >> 1.1 >> %f\n"%(time.time()-start))
         self._init_remote()
-        sys.stdout.write(" >> 1.2 >> %f\n"%(time.time()-start))
         self._init_ui()
-        sys.stdout.write(" >> 1.3 >> %f\n"%(time.time()-start))
-        self._init_values()
-        sys.stdout.write(" >> 1.4 >> %f\n"%(time.time()-start))
-        self._init_menubar()
-        sys.stdout.write(" >> 1.5 >> %f\n"%(time.time()-start))
+        s = Settings.instance().getMulti('volume',
+                                         'volume_equalizer',
+                                         "ui_show_console",
+                                         'ui_show_visualizer',
+                                         'ui_show_treeview',
+                                         'ui_show_history',
+                                         'ui_show_error_log',
+                                         'ui_quickselect_favorite_artists',
+                                         'ui_quickselect_favorite_genres',
+                                         'ui_library_column_order');
+        self._init_values(s)
+        self._init_menubar(s)
         self._init_misc()
-        sys.stdout.write(" >> 2 >> %f\n"%(time.time()-start))
 
     def _init_keyhook(self):
         if KeyHook is not None:
@@ -388,9 +406,8 @@ class MainWindow(QMainWindow):
         self.bar_status.addPermanentWidget( self.lbl_pl_status)
         self.setStatusBar( self.bar_status )
 
-        self.tabview = QTabWidget( self )
+        self.tabview = TabWidget( self )
         self.setCentralWidget(self.tabview)
-        self.tabview.currentChanged.connect(self.onCurrentTabChanged)
 
         # init primary views
         self.libview = LibraryView(self);
@@ -506,17 +523,13 @@ class MainWindow(QMainWindow):
 
         sys.stdout.write("Initialization of Ui completed in %f seconds\n"%(time.time()-start))
 
-    def _init_values(self):
-        start = time.time()
+    def _init_values(self,s):
         sys.stdout.write("Initializing default values\n")
 
-        s = Settings.instance()
+
         vol = s['volume']
         self.volcontroller.volume_slider.setValue( vol )
         self.controller.device.setVolume( vol/100.0 )
-
-        sys.stdout.write(" >> >> values 0 >> %f\n"%(time.time()-start))
-
 
         if not s['ui_show_console']:
             self.edit_cmd.hide()
@@ -535,17 +548,12 @@ class MainWindow(QMainWindow):
                 self.audioview.hide()
                 self.audioview.stop()
 
-        sys.stdout.write(" >> >> values 1 >> %f\n"%(time.time()-start))
-
         #if s['enable_keyboard_hook']:
         #    pass # TODO enable keyhook here
 
         self.quickview.setFavorites(Song.artist,s["ui_quickselect_favorite_artists"])
         self.quickview.setFavorites(Song.genre,s["ui_quickselect_favorite_genres"])
         self.libview.setColumnState(s["ui_library_column_order"])
-
-        sys.stdout.write(" >> >> values 2 >> %f\n"%(time.time()-start))
-
 
         pl = PlaylistManager.instance().openCurrent()
         if len(pl)==0:
@@ -554,14 +562,11 @@ class MainWindow(QMainWindow):
             pl.set( lst )
         self.plview.setPlaylist( Library.instance(), pl)
 
-        sys.stdout.write(" >> >> values 3 >> %f\n"%(time.time()-start))
-
-    def _init_menubar(self):
+    def _init_menubar(self,s):
 
         self.xcut_fullscreen = QShortcut(QKeySequence("F1"), self)
         self.xcut_fullscreen.activated.connect(self.toggleFullScreen)
 
-        s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
         menu.addAction("Settings",self.showSettings)
         menu.addAction("Exit",QApplication.quit)
@@ -639,19 +644,22 @@ class MainWindow(QMainWindow):
 
     def _init_misc(self):
 
-        s = Settings.instance()
+        s = Settings.instance().getMulti("current_theme",
+                                         'enable_history',
+                                         'enable_history_update',
+                                         "current_position")
 
         self.set_style(s["current_theme"])
 
         History.instance().setLogEnabled( s['enable_history'] )
         History.instance().setUpdateEnabled( s['enable_history_update'] )
 
-        self.device.setAlternatives(s['path_alternatives'])
+        #self.device.setAlternatives(s['path_alternatives'])
 
         sys.stdout.write("record history: log:%s update:%s\n"%( \
                     bool(s['enable_history']), \
                     bool(s['enable_history_update'])))
-        sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
+       # sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
 
         try:
             self.device.load_current( )
@@ -695,10 +703,6 @@ class MainWindow(QMainWindow):
         if self.controller.dspSupported():
             sdat['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
-        self.hide()
-
-        if self.remotethread is not None:
-            self.remotethread.join()
 
         sdat['enable_history'] = int(History.instance().isLogEnabled())
         sdat['enable_history_update'] = int(History.instance().isUpdateEnabled())
@@ -729,19 +733,16 @@ class MainWindow(QMainWindow):
         sdat['ui_quickselect_favorite_artists'] = self.quickview.getFavoriteArtists()
         sdat['ui_quickselect_favorite_genres'] = self.quickview.getFavoriteGenres()
 
-        sys.stdout.write("Saving state\n")
-
+        sys.stdout.write("Saving state (%f)\n"%(time.time()-start))
         s = Settings.instance().setMulti(sdat)
-
-        super(MainWindow,self).closeEvent( event )
         sys.stdout.write("finished saving state (%f)\n"%(time.time()-start))
 
-    def onCurrentTabChanged(self,index):
+        self.hide()
+        if self.remotethread is not None:
+            self.remotethread.join()
 
-        w = self.tabview.widget( index )
-
-        if isinstance(w,Tab):
-            w.onEnter();
+        super(MainWindow,self).closeEvent( event )
+        sys.stdout.write("goodbye :) (%f)\n"%(time.time()-start))
 
     def tabIndex(self, widget):
         idx = -1
