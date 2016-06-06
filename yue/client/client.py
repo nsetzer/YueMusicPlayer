@@ -233,7 +233,7 @@ class ClientRepl(object):
 
     def exbackup(self, args):
         """ backup the database """
-        self.client.backup_database()
+        self.client.backup_database( True )
 
     def exhistory(self,args):
         """
@@ -1044,12 +1044,12 @@ class MainWindow(QMainWindow):
         msg = "%s / %s"%(format_delta(remaining), format_delta(duration))
         self.lbl_pl_status.setText(msg)
 
-    def backup_database(self):
+    def backup_database(self, force = False ):
 
         s = Settings.instance();
         if s['backup_enabled']:
             dir = s['backup_directory']
-            backupDatabase( Library.instance().sqlstore, dir)
+            backupDatabase( Library.instance().sqlstore, dir, force=force)
 
     def showWindow(self):
 
@@ -1104,6 +1104,9 @@ class MainWindow(QMainWindow):
                 background:rgb(214,120,  0);
                 border: 2px solid black;
                 border-radius: 1px;
+            }
+            QTextEdit {
+                font-family: "Lucida Console";
             }
             """
             app.setStyleSheet(css)

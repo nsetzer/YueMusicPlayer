@@ -58,7 +58,7 @@ def string_quote(string):
     """quote a string for use in search"""
     return "\""+string.replace("\\","\\\\").replace("\"","\\\"")+"\""
 
-def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
+def backupDatabase(sqlstore,backupdir=".", maxsave=6, force=False):
     """
         note this has been hacked to suport xml formats
         save a copy of the current library to ./backup/
