@@ -518,6 +518,10 @@ class ExplorerView(Tab):
 
     def chdir(self, path):
 
+        # chdir can be called from another Tab, prior to onEnter,
+        # if that happens run the onEnter first time setup.
+        self.onEnter()
+
         self.ex_main.chdir(path,True)
 
     def refresh(self):
