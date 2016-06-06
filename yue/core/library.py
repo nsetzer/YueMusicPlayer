@@ -597,6 +597,8 @@ class Library(object):
         """
         sys.stderr.write("Missing Artist Info for %d:%d\n"%(uid,art))
 
+        return
+
         rule = ExactSearchRule(Song.album,abmstr)
         songs = sql_search( self.song_view, rule, case_insensitive=False);
         artists = set([song[Song.artist] for song in songs])
