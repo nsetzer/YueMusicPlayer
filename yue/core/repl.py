@@ -5,8 +5,11 @@ import shlex
 import sys
 
 from .library import Library
+from .history import History
 from .song import Song
 from .util import format_delta
+
+from collections import defaultdict
 
 class ReplArgumentParser(object):
     """docstring for ArgParse"""
@@ -280,3 +283,30 @@ class YueRepl(object):
         sys.stdout.write( "Play Count        : %d\n"%c_ply)
         sys.stdout.write( "Play Count (AVG)  : %s\n"%(c_ply/count))
         sys.stdout.write( "Frequency         : %d\n"%(c_frq))
+
+
+
+        hist_arts = defaultdict(int)
+        hist_records = History.instance().search(None);
+        hist_count=len(hist_records)
+        for r in hist_records:
+            hist_arts[r['artist']] += 1
+
+        lib_arts = defaultdict(int)
+        lib_records=Library.instance().search(None)
+        lib_count=len(lib_records)
+        for r in lib_records:
+            lib_arts[r['artist']] += 1
+
+        items = sorted(list(hist_arts.items()),key=lambda x:x[1],reverse=True)
+        scaled=[]
+        for key,value in items[:10]:
+            print("%3d/%3d %.4f/%.4f %s "%(value,hist_count,value/hist_count,lib_arts[key]/lib_count,key))
+            g = lambda a,b : (a-b)
+        for key,value in items:
+            scaled.append(  (key,g(value/hist_count , lib_arts[key]/lib_count))  )
+        scaled.sort(key=lambda x:x[1],reverse = True)
+        for key,value in scaled[:10]:
+          print("%.4f %s"%(value,key))
+        for key,value in scaled[-10:]:
+          print("%.4f %s"%(value,key))
