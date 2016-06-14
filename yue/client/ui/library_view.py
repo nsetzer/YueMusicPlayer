@@ -25,6 +25,7 @@ from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.settings import Settings
 from yue.core.playlist import PlaylistManager
 
 class LineEdit_Search(LineEdit):
@@ -218,16 +219,20 @@ class LibraryView(Tab):
         # needed for song sort
         self.tbl_song.update_data.connect(self.onUpdate)
 
+        self.btn_quick = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
+        self.btn_quick.clicked.connect(self.showQuickMenu)
+        self.btn_quick.setFlat(True)
+
         self.txt_search = LineEdit_Search(self,self.tbl_song)
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
 
         self.btn_newlist = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
-        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
         self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
         self.btn_newlist.setFlat(True)
 
+        self.hbox.addWidget( self.btn_quick )
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )
         self.hbox.addWidget( self.btn_newlist )
@@ -262,28 +267,10 @@ class LibraryView(Tab):
         """
         setText: if true set the text box to contain text
         """
-        songs = Library.instance().search( text, \
-            orderby=self.tbl_song.sort_orderby,
-            reverse = self.tbl_song.sort_reverse )
-
-        self.displaySongs(songs)
-
-        if setText:
-            self.txt_search.setText( text )
-
-        if not refresh:
-            self.tbl_song.scrollTo( 0 )
-            self.tbl_song.setSelection([])
-
-    def displaySongs(self,songs):
-
         try:
-            self.tbl_song.setData(songs)
-            self.lbl_search.setText("%d/%d"%(len(songs), len(Library.instance())))
-
-            if not self.lbl_error.isHidden():
-                self.txt_search.setStyleSheet("")
-                self.lbl_error.hide()
+            songs = Library.instance().search( text, \
+                orderby=self.tbl_song.sort_orderby,
+                reverse = self.tbl_song.sort_reverse )
 
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
@@ -291,6 +278,25 @@ class LibraryView(Tab):
             self.lbl_error.show()
         except Exception as e:
             raise e
+
+        else:
+            self.displaySongs(songs)
+
+            if setText:
+                self.txt_search.setText( text )
+
+            if not refresh:
+                self.tbl_song.scrollTo( 0 )
+                self.tbl_song.setSelection([])
+
+    def displaySongs(self,songs):
+
+        self.tbl_song.setData(songs)
+        self.lbl_search.setText("%d/%d"%(len(songs), len(Library.instance())))
+
+        if not self.lbl_error.isHidden():
+            self.txt_search.setStyleSheet("")
+            self.lbl_error.hide()
 
     def setCurrentSongId( self, uid ):
         self.tbl_song.current_uid = uid
@@ -304,5 +310,19 @@ class LibraryView(Tab):
         """
         self.menu_callback = cbk
 
+    def showQuickMenu(self, event):
+        pos = self.btn_quick.mapToGlobal(self.btn_quick.pos())
 
+        menu = QMenu(self)
 
+        d=Settings.instance().getMulti("playlist_preset_names",
+                                       "playlist_presets")
+        dp=list(zip(d["playlist_preset_names"],d["playlist_presets"]))
+
+        for name,query in sorted(dp):
+            menu.addAction(name).setData(query)
+
+        action = menu.exec_( pos )
+
+        if action is not None:
+            self.run_search(action.data(),setText=True)

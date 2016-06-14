@@ -558,7 +558,7 @@ class MainWindow(QMainWindow):
         pl = PlaylistManager.instance().openCurrent()
         if len(pl)==0:
             songs = Library.instance().search(None, orderby=Song.random, limit=5)
-            lst = [ songs['uid'] for song in songs ]
+            lst = [ song['uid'] for song in songs ]
             pl.set( lst )
         self.plview.setPlaylist( Library.instance(), pl)
 
