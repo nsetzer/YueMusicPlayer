@@ -113,6 +113,8 @@ class ClientRepl(object):
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
         self.actions["xx"] = self.exxx
+        self.actions["clear"] = self.exclear
+        self.actions["clr"] = self.exclear
 
         self.helptopics['search'] = """ information on search format
 
@@ -192,6 +194,10 @@ class ClientRepl(object):
 
         for name,string in self.helptopics.items():
             repl.registerTopic(name,string)
+
+    def exclear(self,args):
+        """ clear the error log """
+        self.client.errorlog_view.clear()
 
     def exexit(self,args):
         """ exit application """

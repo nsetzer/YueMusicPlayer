@@ -138,11 +138,12 @@ class History(object):
         c.execute("DELETE from history where uid=? and date=?",(uid,date))
 
     def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None):
-
+        print(rule,reverse,limit,orderby)
         if rule is None:
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
             rule = self.grammar.ruleFromString( rule )
+            limit = self.grammar.getMetaValue("limit",limit)
         else:
             raise ParseError("invalid rule type: %s"%type(rule))
         if isinstance(rule,(str,unicode)):

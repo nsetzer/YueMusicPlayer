@@ -25,6 +25,9 @@ class SearchRule(object):
     def sql(self):
         raise NotImplementedError()
 
+    def __repr__(self):
+        return "<%s>"%self.__class__.__name__
+
 class BlankSearchRule(SearchRule):
     """a rule that match all values"""
 
@@ -204,7 +207,7 @@ class AndSearchRule(MetaSearchRule):
         return sqlstr,vals
 
     def __repr__(self):
-        return "<" + ' && '.join([ repr(r) for r in self.rules]) + ">"
+        return "<" + ' && '.join(map(repr,self.rules)) + ">"
 
 class OrSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that at least one rule returns true"""
@@ -227,7 +230,7 @@ class OrSearchRule(MetaSearchRule):
         return sqlstr,vals
 
     def __repr__(self):
-        return "<" + ' || '.join([ repr(r) for r in self.rules]) + ">"
+        return "<" + ' || '.join(map(repr,self.rules))  + ">"
 
 def naive_search( sqldb, rule ):
     """ iterate through the database and yield elems which match a rule """
@@ -315,7 +318,6 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
             print(e-s,sql)
         return result
     except:
-        print("`%s`"%sql)
         print(query)
         print(vals)
         raise
@@ -396,6 +398,9 @@ class SearchGrammar(object):
             LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
         }
 
+        self.meta_columns = set(["limit",])
+        self.meta_options = dict()
+
         self.old_style_operators = self.operators.copy()
         self.old_style_operators.update(self.special)
 
@@ -442,6 +447,10 @@ class SearchGrammar(object):
             ])
 
         """
+
+        # reset meta options
+        self.meta_options = dict()
+
         if not string.strip():
             return BlankSearchRule()
         tokens = self.tokenizeString( string )
@@ -532,7 +541,7 @@ class SearchGrammar(object):
 
         return output
 
-    def parseTokens( self, tokens ):
+    def parseTokens( self, tokens, top=True ):
 
         i=0
         while i < len(tokens):
@@ -541,7 +550,10 @@ class SearchGrammar(object):
             hasr = i<len(tokens)-1
 
             if isinstance(tok,list):
-                tokens[i] = self.parseTokens(tok)
+                tokens[i] = self.parseTokens(tok, top=False)
+                if isinstance(tokens[i],BlankSearchRule):
+                    tokens.pop(i)
+                    continue
             elif tok.startswith(self.sigil):
                 # old style query
                 s = i
@@ -564,17 +576,20 @@ class SearchGrammar(object):
                 if r in self.operators_flow:
                     raise RHSError(tok, "unexpected operator [U01]")
                 # left side is optional, defaults to all text
-                if not hasl:
+                if not hasl or \
+                    (not isinstance(tokens[i-1],(str,unicode)) or tokens[i-1] in self.operators_flow):
+                    # no left side, or left side has been processed and is not a column label
                     tokens[i] = self.parserRule(self.all_text,self.operators[tok],r)
                 else:
-                    #i -= 1
-                    l = tokens[i-1]
-                    if not isinstance(l,(str,unicode)) or l in self.operators_flow:
-                        #raise LHSError(tok, "expected string [02]")
-                        tokens[i] = self.parserRule(self.all_text,self.operators[tok],r)
+                    # left side token exists
+                    i-=1
+                    l = tokens.pop(i)
+                    if l in self.meta_columns:
+                        # and remove the column name
+                        tokens.pop(i) # remove token
+                        self.parserMeta(l,tok,r,top)
+                        continue
                     else:
-                        i-=1
-                        tokens.pop(i)
                         tokens[i] = self.parserRule(l,self.operators[tok],r)
             elif tok in self.special:
                 if not hasr:
@@ -616,7 +631,10 @@ class SearchGrammar(object):
                     tokens[i] = self.operators_flow[tok]([l,r])
             i+=1
 
-        if len(tokens) == 1:
+        if len(tokens) == 0:
+            return BlankSearchRule()
+
+        elif len(tokens) == 1:
             if isinstance(tokens[0],(str,unicode)):
                 raise ParseError("unexpected error")
             return tokens[0]
@@ -786,3 +804,25 @@ class SearchGrammar(object):
             meta = AndSearchRule
         return meta([ rule(col,string) for col in self.text_fields ])
 
+    def parserMeta(self, colid, tok, value, top):
+        """ meta options control sql parameters of the query
+        They are independant of any database.
+        """
+        if not top:
+            raise ParseError("Option `%s` can only be provided at the top level."%colid)
+
+        if colid in self.meta_options:
+            raise ParseError("Option `%s` can not be provided twice"%colid)
+
+        rule = self.operators[tok]
+
+        if colid == "limit":
+
+            if rule in (PartialStringSearchRule, ExactSearchRule):
+                self.meta_options[colid] = int(value)
+            else:
+                raise ParseError("Illegal operation `%s` for option `%s`"%(tok,colid))
+
+    def getMetaValue(self,colid,default=None):
+        """ returns parsed value of a meta option, or default """
+        return self.meta_options.get(colid,default)

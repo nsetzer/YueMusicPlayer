@@ -65,6 +65,9 @@ class Song(object):
     # used by history to mark playback time
     playtime = "playtime"
 
+    # meta, these actually control DB access
+    limit = "limit"
+
     eqfactor = 250.0
 
     abbreviations = {

@@ -399,6 +399,7 @@ class Library(object):
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
             rule = self.grammar.ruleFromString( rule )
+            limit = self.grammar.getMetaValue("limit",limit)
 
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
@@ -424,18 +425,20 @@ class Library(object):
 
             if invert:
                 # select songs not in a named playlist (filtered)
-                sql = "SELECT sv.* FROM library as sv where (sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?) AND %s)"%where
+                sql = "where (sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?) AND %s)"%where
             else:
                 # select songs in a named playlist, (filtered)
-                sql = "SELECT sv.* FROM library as sv JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid AND %s)"%where
+                sql = "JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid AND %s)"%where
         else:
 
             if invert:
                 # select songs not in a named playlist, (blank search)
-                sql = "SELECT sv.* FROM library as sv where sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?)"
+                sql = "where sv.uid NOT IN (SELECT ps.song_id from playlist_songs ps where ps.uid=?)"
             else:
                 # select songs in a named playlist (blank search)
-                sql = "SELECT sv.* FROM library as sv JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid)"
+                sql = "JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid)"
+
+        sql = "SELECT sv.* FROM library as sv " + sl
 
         if case_insensitive:
             sql += " COLLATE NOCASE"

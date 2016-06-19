@@ -1,4 +1,4 @@
-#! cd ../.. && python2.7 setup.py test
+#! cd ../.. && python2.7 setup.py test --test=search
 
 """
 todo: none of these tests actually check that the correct answer is returned,

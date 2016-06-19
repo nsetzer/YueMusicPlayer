@@ -257,13 +257,15 @@ class YueRepl(object):
         sys.stdout.write( text)
 
     def exstat(self,args):
-        """ print library statistics """
+        """ print library statistics
+        """
         # term will execute a search, contraining the statistics
         c_ply=0 # total play count
         c_len=0 # total play time
         c_frq=0
 
-        args = ReplArgumentParser(args,{'s':'search'})
+        args = ReplArgumentParser(args,{'s':'search','h':'hquery', 'l':'limit'})
+
 
         query = None
         if 'search' in args:
@@ -284,10 +286,17 @@ class YueRepl(object):
         sys.stdout.write( "Play Count (AVG)  : %s\n"%(c_ply/count))
         sys.stdout.write( "Frequency         : %d\n"%(c_frq))
 
-
-
+        hquery = None
+        if 'hquery' in args:
+            hquery = str(args['hquery'])
+        qlimit = None
+        if 'limit' in args:
+            qlimit = int(args['limit'])
+        print("hquery",args.kwargs)
+        print("hquery",args.switch)
+        print("hquery",hquery)
         hist_arts = defaultdict(int)
-        hist_records = History.instance().search(None);
+        hist_records = History.instance().search(hquery,orderby=[("date",'DESC'),],limit=qlimit);
         hist_count=len(hist_records)
         for r in hist_records:
             hist_arts[r['artist']] += 1
