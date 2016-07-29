@@ -401,25 +401,38 @@ def deltadate_s(y,m,d,dy,dm):
     return datetime(y,m,d)
 
 def parsedelta( refDate, sValue ):
+    """
+    parse strings of the form
+        "12d" (12 days)
+        "1y2m" (1 year 2 months)
+        "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
+    """
 
-    dy = 0
-    dm = 0
-    dd = 0
+    negate = False
+    num=""
+    dy=dm=dd=0
+    for c in sValue:
+        if c == "-":
+            negate = not negate
+        elif c == "y":
+            dy = int(num)
+            num=""
+        elif c == "m":
+            dm = int(num)
+            num=""
+        elif c == "w":
+            dd += 7*int(num)
+            num=""
+        elif c == "d":
+            dd += int(num)
+            num=""
+        else:
+            num += c
 
-    if sValue.endswith("d"):
-        sValue = sValue[:-1]
-        dd = int( sValue )
-    elif sValue.endswith("w"):
-        sValue = sValue[:-1]
-        dd = int( sValue ) * 7
-    elif sValue.endswith("m"):
-        sValue = sValue[:-1]
-        dm = int(sValue)
-    elif sValue.endswith("y"):
-        sValue = sValue[:-1]
-        dy = int( sValue )
-    else:
-        dd = int( sValue )
+    if negate:
+        dy *= -1
+        dm *= -1
+        dd *= -1
 
     return deltadate_s(refDate.year,refDate.month,refDate.day,dy,dm) - timedelta( dd )
 
