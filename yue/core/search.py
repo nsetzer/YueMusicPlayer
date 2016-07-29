@@ -1,5 +1,3 @@
-#! C:\\python34\\python.exe $this
-
 from .nlpdatesearch import NLPDateRange
 
 import calendar
@@ -342,6 +340,89 @@ class LHSError(ParseError):
             msg += " : %s"%value
         super(LHSError, self).__init__( msg )
 
+def deltadate_y(y,m,d,dy): # -> days
+    """ subtract dy from y,m and return number of days
+
+        first, days so far this year are subtracted
+        then full years are subtracted
+    """
+
+    assert dy > 0, "dm cannot be negative"
+
+    # subtract out to the beginning of the first month
+    dd = 0;
+    if (m>0 or d>0) and dy > 0:
+        dd += d
+        while (m > 0):
+            dd += calendar.monthrange(y,m)[1]
+            m -= 1
+        dy -= 1
+        y -= 1
+
+    while dy > 0:
+        dd += 365 + (1 if calendar.isleap(y) else 0)
+        dy -= 1
+
+    return dd
+
+def deltadate_m(y,m,d,dm): # -> days
+    """ subtract dy,dm from y,m and return number of days
+
+        first, days so far this month are subtracted
+        then full months are subtracted
+    """
+
+    assert dm > 0, "dm cannot be negative"
+
+    # subtract out to the beginning of the first month
+    dd = 0;
+    if d > 0 and dm > 0:
+        dd += d
+        dm -= 1
+        m -= 1
+
+    while dm > 0:
+        if m < 0:
+            y -= 1
+            m  = 12
+        print( y,m, "->", calendar.monthrange(y,m)[1])
+        dd += calendar.monthrange(y,m)[1]
+        dm -= 1
+        m -= 1
+
+    return dd
+
+def deltadate_s(y,m,d,dy,dm):
+    """ semantically simple and more obvious behavior than _m and _y variants
+        and it works for negative deltas!
+    """
+    y = y - (m - dm)//12 - dy
+    m = (m - dm)%12
+    return datetime(y,m,d)
+
+def parsedelta( refDate, sValue ):
+
+    dy = 0
+    dm = 0
+    dd = 0
+
+    if sValue.endswith("d"):
+        sValue = sValue[:-1]
+        dd = int( sValue )
+    elif sValue.endswith("w"):
+        sValue = sValue[:-1]
+        dd = int( sValue ) * 7
+    elif sValue.endswith("m"):
+        sValue = sValue[:-1]
+        dm = int(sValue)
+    elif sValue.endswith("y"):
+        sValue = sValue[:-1]
+        dy = int( sValue )
+    else:
+        dd = int( sValue )
+
+    return deltadate_s(refDate.year,refDate.month,refDate.day,dy,dm) - timedelta( dd )
+
 class SearchGrammar(object):
     """docstring for SearchGrammar"""
     def __init__(self):
@@ -412,6 +493,9 @@ class SearchGrammar(object):
             "||" : OrSearchRule
         }
 
+        self.autoset_datetime = True
+        self.datetime_now = datetime.now()
+
     def translateColumn(self,colid):
         """ convert a column name, as input by the user to the internal name
 
@@ -447,6 +531,8 @@ class SearchGrammar(object):
             ])
 
         """
+        if self.autoset_datetime:
+            self.datetime_now =  datetime.now()
 
         # reset meta options
         self.meta_options = dict()
@@ -672,10 +758,10 @@ class SearchGrammar(object):
 
         return AndSearchRule( tokens )
 
-    def parserFormatDays( self, days ):
+    def parserFormatDateString( self, sValue ):
 
-        now = datetime.now()
-        dt1 = datetime(now.year,now.month,now.day) - timedelta( days )
+        dt1 = parsedelta(self.datetime_now,sValue)
+        #dt1 = datetime(ncy,cm,cd) - timedelta( days )
         dt2 = dt1 + timedelta( 1 )
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
@@ -687,7 +773,9 @@ class SearchGrammar(object):
         m = int(sm)
         d = int(sd)
 
-        if y < 100:
+        if 50 < y < 100 :
+            y += 1990
+        if y < 50:
             y += 2000
 
         dt1 = datetime(y,m,d)
@@ -696,7 +784,7 @@ class SearchGrammar(object):
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
     def parserNLPDate( self, value ):
-        dt = NLPDateRange().parse( value )
+        dt = NLPDateRange(self.datetime_now).parse( value )
         if dt:
             cf = calendar.timegm(dt[0].utctimetuple())
             if cf < 0:
@@ -739,9 +827,7 @@ class SearchGrammar(object):
             elif c > 0:
                 raise ParseError("Invalid Date format. Expected YY/MM/DD.")
             else:
-                ivalue = int( value )
-                epochtime,epochtime2 = self.parserFormatDays( ivalue )
-                #epochtime2 = parserFormatDays( ivalue - 1 )
+                epochtime,epochtime2 = self.parserFormatDateString( value )
         except ValueError:
 
             result = self.parserNLPDate( value )
@@ -766,6 +852,9 @@ class SearchGrammar(object):
         # inverted range matching
         if rule is InvertedPartialStringSearchRule:
             return NotRangeSearchRule(col, epochtime, epochtime2)
+
+        if rule is LessThanEqualSearchRule:
+            return rule( col, epochtime2)
 
         return rule( col, epochtime )
 
@@ -826,3 +915,4 @@ class SearchGrammar(object):
     def getMetaValue(self,colid,default=None):
         """ returns parsed value of a meta option, or default """
         return self.meta_options.get(colid,default)
+
