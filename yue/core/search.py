@@ -341,7 +341,50 @@ class LHSError(ParseError):
         super(LHSError, self).__init__( msg )
 
 class SearchGrammar(object):
-    """docstring for SearchGrammar"""
+    """SearchGrammar is a generic class for building a db search engine
+
+        This defines a query syntax for querying records by text, date, or time
+        fields.
+
+        new-style queries use boolean logic and a `column = value` syntax
+            for example, "artist=Aldious" can turn into a sql query for
+            searching the artist column for the string Aldious
+
+            These types of queries can be grouped using parenthesis and
+            operators && and || can be used to group them in powerful ways
+
+        old-style queries are used for user friendly text searching.
+            and text that does not fit into the rigid new-style framework
+            is interpretted as an old style query.
+
+            Just typing a string, e.g. "Aldious" will search ALL text fields
+            for the given string. multiple strings can be typed in a row,
+            separated by white space and will automatically be ORed together.
+            so called 'Implicit Or', or you can use an explicit && .
+            if a word begins with the sigil, it will be used to denote a
+            column to search for, which is applied to each word after
+            the sigil word. e.g. ".artist Aldious" is the same as the new-style
+            "artist=Aldious". and "Blind Melon" is the same as the new-style
+            "Blind || Melon"
+
+            old style supports negate and modifiers, for example
+                ".date < 5 > 3" is equivalent to "date < 5 && date > 3"
+                ".date ! < 5" is equivalent to "date >= 6"
+
+        Text Searches
+
+            todo, use quotes, etc
+        Date Searches
+
+            todo date modifiers, NLP, etc
+
+        Time Searches
+
+            todo, in seconds, minutes or hours, x:y:z, etc
+
+
+        TODO: add support for negate in new-style queries.
+    """
     def __init__(self):
         super(SearchGrammar, self).__init__()
 
@@ -380,7 +423,6 @@ class SearchGrammar(object):
             ExactSearchRule:InvertedExactSearchRule,
         }
 
-
         # require left/right token
         self.special = {
             "<"  : LessThanSearchRule,
@@ -396,6 +438,8 @@ class SearchGrammar(object):
             LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
         }
 
+        # meta optins can be used to control the query results
+        # by default, limit could be used to limit the number of results
         self.meta_columns = set(["limit",])
         self.meta_options = dict()
 
