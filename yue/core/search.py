@@ -340,102 +340,6 @@ class LHSError(ParseError):
             msg += " : %s"%value
         super(LHSError, self).__init__( msg )
 
-def deltadate_y(y,m,d,dy): # -> days
-    """ subtract dy from y,m and return number of days
-
-        first, days so far this year are subtracted
-        then full years are subtracted
-    """
-
-    assert dy > 0, "dm cannot be negative"
-
-    # subtract out to the beginning of the first month
-    dd = 0;
-    if (m>0 or d>0) and dy > 0:
-        dd += d
-        while (m > 0):
-            dd += calendar.monthrange(y,m)[1]
-            m -= 1
-        dy -= 1
-        y -= 1
-
-    while dy > 0:
-        dd += 365 + (1 if calendar.isleap(y) else 0)
-        dy -= 1
-
-    return dd
-
-def deltadate_m(y,m,d,dm): # -> days
-    """ subtract dy,dm from y,m and return number of days
-
-        first, days so far this month are subtracted
-        then full months are subtracted
-    """
-
-    assert dm > 0, "dm cannot be negative"
-
-    # subtract out to the beginning of the first month
-    dd = 0;
-    if d > 0 and dm > 0:
-        dd += d
-        dm -= 1
-        m -= 1
-
-    while dm > 0:
-        if m < 0:
-            y -= 1
-            m  = 12
-        print( y,m, "->", calendar.monthrange(y,m)[1])
-        dd += calendar.monthrange(y,m)[1]
-        dm -= 1
-        m -= 1
-
-    return dd
-
-def deltadate_s(y,m,d,dy,dm):
-    """ semantically simple and more obvious behavior than _m and _y variants
-        and it works for negative deltas!
-    """
-    y = y - (m - dm)//12 - dy
-    m = (m - dm)%12
-    return datetime(y,m,d)
-
-def parsedelta( refDate, sValue ):
-    """
-    parse strings of the form
-        "12d" (12 days)
-        "1y2m" (1 year 2 months)
-        "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
-    """
-
-    negate = False
-    num=""
-    dy=dm=dd=0
-    for c in sValue:
-        if c == "-":
-            negate = not negate
-        elif c == "y":
-            dy = int(num)
-            num=""
-        elif c == "m":
-            dm = int(num)
-            num=""
-        elif c == "w":
-            dd += 7*int(num)
-            num=""
-        elif c == "d":
-            dd += int(num)
-            num=""
-        else:
-            num += c
-
-    if negate:
-        dy *= -1
-        dm *= -1
-        dd *= -1
-
-    return deltadate_s(refDate.year,refDate.month,refDate.day,dy,dm) - timedelta( dd )
-
 class SearchGrammar(object):
     """docstring for SearchGrammar"""
     def __init__(self):
@@ -771,9 +675,54 @@ class SearchGrammar(object):
 
         return AndSearchRule( tokens )
 
+    def parserDateDeltaImpl(self,y,m,d,dy,dm):
+        """ semantically simple and more obvious behavior than _m and _y variants
+            and it works for negative deltas!
+        """
+        y = y - (m - dm)//12 - dy
+        m = (m - dm)%12
+        return datetime(y,m,d)
+
+    def parserDateDelta(self, sValue ):
+        """
+        parse strings of the form
+            "12d" (12 days)
+            "1y2m" (1 year 2 months)
+            "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
+        """
+
+        negate = False
+        num=""
+        dy=dm=dd=0
+        for c in sValue:
+            if c == "-":
+                negate = not negate
+            elif c == "y":
+                dy = int(num)
+                num=""
+            elif c == "m":
+                dm = int(num)
+                num=""
+            elif c == "w":
+                dd += 7*int(num)
+                num=""
+            elif c == "d":
+                dd += int(num)
+                num=""
+            else:
+                num += c
+
+        if negate:
+            dy *= -1
+            dm *= -1
+            dd *= -1
+
+        dtn = self.datetime_now
+        return self.parserDateDeltaImpl(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
+
     def parserFormatDateString( self, sValue ):
 
-        dt1 = parsedelta(self.datetime_now,sValue)
+        dt1 = self.parserDateDelta(sValue)
         #dt1 = datetime(ncy,cm,cd) - timedelta( days )
         dt2 = dt1 + timedelta( 1 )
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
