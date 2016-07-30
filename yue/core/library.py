@@ -438,7 +438,7 @@ class Library(object):
                 # select songs in a named playlist (blank search)
                 sql = "JOIN playlist_songs ps where (ps.uid=? and ps.song_id=sv.uid)"
 
-        sql = "SELECT sv.* FROM library as sv " + sl
+        sql = "SELECT sv.* FROM library as sv " + sql
 
         if case_insensitive:
             sql += " COLLATE NOCASE"
