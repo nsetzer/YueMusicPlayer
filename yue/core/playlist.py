@@ -249,7 +249,7 @@ class PlayListView(object):
             lsta = []
             lstb = []
             idx = 0;
-            insert_offset = 0;
+            insert_offset = 0; # for updating current idx
             new_index = -1;
 
             _, name, size, current_index = self.db_names._get( c, self.uid );
@@ -259,17 +259,23 @@ class PlayListView(object):
             items = c.fetchmany()
             while items:
                 for item in items:
+                    song_id = item[0]
                     if idx in selection:
-                        if (idx == current_index):
+                        # if we need to update the current idx after drop
+                        if idx == current_index:
                             insert_offset = len(lstb)
-                        lstb.append(item[0])
+                        # if the selection effects insert row
+                        if idx <= insert_row:
+                            insert_row -= 1
+                        lstb.append(song_id)
                     else:
                         if (idx == current_index):
                             new_index = len(lsta)
-                        lsta.append(item[0])
+                        lsta.append(song_id)
                     idx += 1;
                 items = c.fetchmany()
 
+            # insert row must be in range 0..len(lsta)
             insert_row = min(insert_row, len(lsta))
             if new_index < 0:
                 new_index = insert_row + insert_offset;
