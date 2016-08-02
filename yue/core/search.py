@@ -415,7 +415,6 @@ class SearchGrammar(object):
         self.date_fields = set(); # column represents a date in seconds since jan 1st 1970
         self.time_fields = set(); # column represents a duration, in seconds
 
-        self.support_oldstyle=False
         self.all_text = 'text'
         # sigil is used to define the oldstyle syntax marker
         self.sigil = '.'
@@ -691,7 +690,6 @@ class SearchGrammar(object):
             i += 1
 
         # collect any old style tokens, which did not use a sigil
-        #if self.support_oldstyle:
         self.parseTokensOldStyle( tokens )
 
         i=0
@@ -761,15 +759,25 @@ class SearchGrammar(object):
 
         return AndSearchRule( tokens )
 
-    def parserDateDeltaImpl(self,y,m,d,dy,dm):
+    def parserDateDelta(self,y,m,d,dy,dm):
         """ semantically simple and more obvious behavior than _m and _y variants
             and it works for negative deltas!
         """
         y = y - (m - dm)//12 - dy
         m = (m - dm)%12
+
+        # modulo fix the day by rolling up, feb 29 to march 1
+        # or july 32 to aug 1st, if needed
+        days = calendar.monthrange(y,m)[1]
+        if d>days:
+            d -= days
+            m += 1
+        if m > 12:
+            m -= 12;
+            y += 1
         return datetime(y,m,d)
 
-    def parserDateDelta(self, sValue ):
+    def parserFormatDateDelta( self, sValue ):
         """
         parse strings of the form
             "12d" (12 days)
@@ -788,6 +796,7 @@ class SearchGrammar(object):
                 dy = int(num)
                 num=""
             elif c == "m":
+                print(num)
                 dm = int(num)
                 num=""
             elif c == "w":
@@ -798,6 +807,8 @@ class SearchGrammar(object):
                 num=""
             else:
                 num += c
+        if num:
+            dd += int(num) # make 'd' optional, and capture remainder
 
         if negate:
             dy *= -1
@@ -805,11 +816,8 @@ class SearchGrammar(object):
             dd *= -1
 
         dtn = self.datetime_now
-        return self.parserDateDeltaImpl(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
 
-    def parserFormatDateString( self, sValue ):
-
-        dt1 = self.parserDateDelta(sValue)
+        dt1 = self.parserDateDelta(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
         #dt1 = datetime(ncy,cm,cd) - timedelta( days )
         dt2 = dt1 + timedelta( 1 )
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
@@ -823,7 +831,7 @@ class SearchGrammar(object):
         d = int(sd)
 
         if 50 < y < 100 :
-            y += 1990
+            y += 1900
         if y < 50:
             y += 2000
 
@@ -876,14 +884,16 @@ class SearchGrammar(object):
             elif c > 0:
                 raise ParseError("Invalid Date format. Expected YY/MM/DD.")
             else:
-                epochtime,epochtime2 = self.parserFormatDateString( value )
-        except ValueError:
+                epochtime,epochtime2 = self.parserFormatDateDelta( value )
+        except ValueError as e:
 
             result = self.parserNLPDate( value )
 
             if result is None:
                 # failed to convert istr -> int
+                print(str(e))
                 raise ParseError("Expected Integer or Date, found `%s`"%value)
+
             epochtime,epochtime2 = result
 
         # flip the context of '<' and '>'
