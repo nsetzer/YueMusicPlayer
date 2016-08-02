@@ -791,7 +791,6 @@ class SearchGrammar(object):
                 dy = int(num)
                 num=""
             elif c == "m":
-                print(num)
                 dm = int(num)
                 num=""
             elif c == "w":
@@ -850,9 +849,13 @@ class SearchGrammar(object):
         # convert hours:minutes:seconds to seconds
         m=1
         t = 0
-        for x in reversed(value.split(":")):
-            t += int(x)*m
-            m *= 60
+        try:
+            for x in reversed(value.split(":")):
+                if x:
+                    t += int(x)*m
+                m *= 60
+        except ValueError:
+            raise ParseError("Duration `%s` not well formed."%value)
         return t
 
     def parserDateRule( self, rule , col, value):
@@ -886,7 +889,7 @@ class SearchGrammar(object):
 
             if result is None:
                 # failed to convert istr -> int
-                print(str(e))
+                sys.stdout.write(str(e)+"\n")
                 raise ParseError("Expected Integer or Date, found `%s`"%value)
 
             epochtime,epochtime2 = result
