@@ -265,7 +265,7 @@ class PlayListView(object):
                         if idx == current_index:
                             insert_offset = len(lstb)
                         # if the selection effects insert row
-                        if idx <= insert_row:
+                        if idx < insert_row:
                             insert_row -= 1
                         lstb.append(song_id)
                     else:
