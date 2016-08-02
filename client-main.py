@@ -2,18 +2,13 @@
 """
 changelog
 
-2016-xx-xx 1.1.1
-    enable recording of history record changes
-    enable faster access of settings
-    improve startup time
-
 2016-05-03 1.1.0
     move to python3.5
     move to Qt 5.6
     use Visual Studio 2015 to build C libraries
 
 """
-__version__ = "1.1.1"
+__version__ = "1.1.3"
 __datetime__ = ""
 import codecs,traceback
 try:

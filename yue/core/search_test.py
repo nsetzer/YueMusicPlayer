@@ -7,9 +7,12 @@ only that the answers for applying rules, vs using sql match.
 
 import unittest
 import os
+import datetime
+import calendar
 
 from yue.core.library import Library
-from yue.core.search import PartialStringSearchRule, \
+from yue.core.search import SearchGrammar, \
+        PartialStringSearchRule, \
         InvertedPartialStringSearchRule, \
         ExactSearchRule, \
         InvertedExactSearchRule, \
@@ -127,3 +130,63 @@ class TestSearch(unittest.TestCase):
     def tearDownClass(cls):
 
         cls.sqlstore.close()
+
+class TestSearchGrammer(unittest.TestCase):
+    """
+    """
+
+    def __init__(self,*args,**kwargs):
+        super(TestSearchGrammer,self).__init__(*args,**kwargs)
+
+    def setUp(self):
+
+        self.sg = SearchGrammar();
+
+
+    def tearDown(self):
+        pass
+
+    def test_date_delta(self):
+
+        dtn = self.sg.datetime_now = datetime.datetime(2015,6,15);
+        self.sg.autoset_datetime = False
+
+        # show that we can subtract one month and one year from a date
+        dt = self.sg.parserDateDelta(dtn.year,dtn.month,dtn.day,1,1)
+        self.assertEqual(dt.year,dtn.year-1)
+        self.assertEqual(dt.month,dtn.month-1)
+        self.assertEqual(dt.day,dtn.day)
+
+        # there is no february 31st, so the month is incremented
+        # to get the day value to agree
+        dt = self.sg.parserDateDelta(2015,3,31,0,1)
+        self.assertEqual(dt.year,2015)
+        self.assertEqual(dt.month,3)
+        self.assertEqual(dt.day,3)
+
+
+        # show that days can be subtracted correctly
+        t1,t2 = self.sg.parserFormatDateDelta("1y1m1w1d")
+        dt = datetime.datetime(dtn.year-1,dtn.month-1,dtn.day-8)
+        self.assertEqual(t1,calendar.timegm(dt.timetuple()))
+
+    def test_date_format(self):
+
+        dtn = self.sg.datetime_now = datetime.datetime(2015,6,15);
+        self.sg.autoset_datetime = False
+
+        t1,t2 = self.sg.parserFormatDate("2015/6/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(2015,6,15).timetuple()))
+
+        t1,t2 = self.sg.parserFormatDate("15/06/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(2015,6,15).timetuple()))
+
+        t1,t2 = self.sg.parserFormatDate("75/06/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(1975,6,15).timetuple()))
+
+
+
+
+
+
+
