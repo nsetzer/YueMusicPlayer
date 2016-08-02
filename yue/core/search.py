@@ -219,6 +219,7 @@ class OrSearchRule(MetaSearchRule):
         sql  = []
         vals = []
         sqlstr= ""
+
         for rule in self.rules:
             x = rule.sql()
             sql.append(x[0])
@@ -230,49 +231,26 @@ class OrSearchRule(MetaSearchRule):
     def __repr__(self):
         return "<" + ' || '.join(map(repr,self.rules))  + ">"
 
-class AndSearchRule(MetaSearchRule):
-    """MetaSearchRule which checks that all rules return true"""
-    def check(self, elem):
-        for rule in self.rules:
-            if not rule.check(elem):
-                break
-        else:
-            return True
-        return False
-
-    def sql(self):
-        sql  = []
-        vals = []
-        sqlstr= ""
-        for rule in self.rules:
-            x = rule.sql()
-            sql.append(x[0])
-            vals.extend(x[1])
-        if sql:
-            sqlstr = '(' + ' AND '.join(sql) + ')'
-        return sqlstr,vals
-
-    def __repr__(self):
-        return "<" + ' && '.join(map(repr,self.rules)) + ">"
-
 class NotSearchRule(MetaSearchRule):
-    """MetaSearchRule which negates a given rule"""
+    """MetaSearchRule which checks that inverts result from rule"""
     def check(self, elem):
-        assert len(self.rules) == 1
+        assert len(self.rules)==1
+        assert self.rules[0] is not BlankSearchRule
         if self.rules[0].check(elem):
-                return False
+            return False
         return True
 
     def sql(self):
-        assert len(self.rules) == 1
-        sqlstr= ""
+        assert len(self.rules)==1
+        assert self.rules[0] is not BlankSearchRule
         sql,vals = self.rules[0].sql()
-        if sql:
-            sqlstr = 'NOT ' + rule.sql()
-        return sqlstr,vals
+        sql = '( NOT ' + sql + ')'
+        return sql,vals
 
     def __repr__(self):
-        return "<" + ' || '.join(map(repr,self.rules))  + ">"
+        assert len(self.rules)==1
+        assert self.rules[0] is not BlankSearchRule
+        return "<!" + repr(self.rules[0]) + ">"
 
 def naive_search( sqldb, rule ):
     """ iterate through the database and yield elems which match a rule """
@@ -450,6 +428,13 @@ class SearchGrammar(object):
         self.tok_quote = "\""
         self.tok_escape = "\\"
 
+        self.autoset_datetime = True
+        self.datetime_now = datetime.now()
+
+        self.compile_operators();
+
+    def compile_operators(self):
+
         # does not require left token
         self.operators = {
             "=" :PartialStringSearchRule,
@@ -497,9 +482,6 @@ class SearchGrammar(object):
             "||" : OrSearchRule
         }
 
-        self.autoset_datetime = True
-        self.datetime_now = datetime.now()
-
     def translateColumn(self,colid):
         """ convert a column name, as input by the user to the internal name
 
@@ -507,6 +489,10 @@ class SearchGrammar(object):
 
             raise ParseError if colid is invalid
         """
+        if colid not in self.text_fields and \
+           colid not in self.date_fields and \
+           colid not in self.time_fields:
+            raise ParseError("Invalid column name `%s`"%colid)
         return colid
 
     def ruleFromString( self, string ):
@@ -695,6 +681,11 @@ class SearchGrammar(object):
                 l = tokens.pop(i)
                 if not isinstance(l,(str,unicode)):
                     raise LHSError(tok, "expected string [S03]")
+                if l in self.meta_columns:
+                    # and remove the column name
+                    tokens.pop(i) # remove token
+                    self.parserMeta(l,tok,r,top)
+                    continue
                 tokens[i] = self.parserRule(l,self.special[tok],r)
             i += 1
 
@@ -707,11 +698,16 @@ class SearchGrammar(object):
             hasl = i>0
             hasr = i<len(tokens)-1
             if isinstance(tok, (str, unicode)):
-                if tok in self.operators_flow:
+                if tok ==  self.tok_negate:
                     if not hasr:
                         raise RHSError(tok, "expected value [V04]")
+                    r = tokens.pop(i+1)
+                    tokens[i] = NotSearchRule([r,]);
+                elif tok in self.operators_flow:
+                    if not hasr:
+                        raise RHSError(tok, "expected value [V05]")
                     if not hasl:
-                        raise LHSError(tok, "expected value [V05]")
+                        raise LHSError(tok, "expected value [V06]")
                     r = tokens.pop(i+1)
                     if isinstance(r, (str, unicode)) and r in self.operators_flow:
                         raise RHSError(tok, "unexpected operator [U03]")
@@ -735,6 +731,7 @@ class SearchGrammar(object):
         current_col = self.all_text
         current_opr = PartialStringSearchRule
 
+        allow_negate = False;
         i=0
         while i < len(tokens):
             tok = tokens[i]
@@ -744,15 +741,16 @@ class SearchGrammar(object):
                     current_col = tok[1:]
                     tokens.pop(i)
                     i -= 1
-                elif tok == self.tok_negate:
-                    current_opr = self.old_style_operators_invert[current_opr]
-                    tokens.pop(i)
-                    i -= 1
+                #    allow_negate = True;
+                #elif tok == self.tok_negate and allow_negate:
+                #    current_opr = self.old_style_operators_invert[current_opr]
+                #    tokens.pop(i)
+                #    i -= 1
                 elif tok in self.old_style_operators:
                     current_opr = self.old_style_operators[tok]
                     tokens.pop(i)
                     i -= 1
-                elif tok not in self.operators_flow:
+                elif tok not in self.operators_flow and tok != self.tok_negate:
                     tokens[i] = self.parserRule(current_col,current_opr,tok)
             i+=1
 
@@ -780,6 +778,13 @@ class SearchGrammar(object):
         return datetime(y,m,d)
 
     def parserFormatDateDelta( self, sValue ):
+        """
+        parse strings of the form
+            "12d" (12 days)
+            "1y2m" (1 year 2 months)
+            "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
+            negative sign in front creates a date IN THE FUTURE
+        """
 
         negate = False
         num=""
@@ -959,6 +964,9 @@ class SearchGrammar(object):
 
         if colid in self.meta_options:
             raise ParseError("Option `%s` can not be provided twice"%colid)
+
+        if tok not in self.operators:
+            raise ParseError("Operator `%s` not valid in this context"%tok)
 
         rule = self.operators[tok]
 
