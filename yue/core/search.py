@@ -1,16 +1,30 @@
 from .nlpdatesearch import NLPDateRange
-
+from .util import lru_cache, format_delta, format_date
+import re
 import calendar
 from datetime import datetime, timedelta
 import time
+
 
 import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
+# classes to tag an integer as a specific type for later formating
+# any arithmetic on these types returns int
+
+class IntDate(int):
+    def __new__(cls, *args, **kwargs):
+        return  super(IntDate, cls).__new__(cls, args[0])
+
+class IntTime(int):
+    def __new__(cls, *args, **kwargs):
+        return  super(IntTime, cls).__new__(cls, args[0])
+
 class SearchRule(object):
     """docstring for SearchRule"""
+
     def __init__(self):
         super(SearchRule, self).__init__()
 
@@ -21,10 +35,35 @@ class SearchRule(object):
         return repr(self) == repr(othr)
 
     def sql(self):
+        """ return string representation and a list of values
+            the string should have question marks (?) in place
+            of the values, which will be filled in when the sql
+            is executed.
+            each value in the returned list of values should
+            correspond with 1 question mark, from left to right.
+
+            see sqlstr()
+        """
         raise NotImplementedError()
 
     def __repr__(self):
         return "<%s>"%self.__class__.__name__
+
+    def fmtval(self,v):
+        if isinstance(v,IntDate):
+            return "\"%s\""%format_date(v)
+        elif isinstance(v,IntTime):
+            return "\"%s\""%format_delta(v)
+        elif isinstance(v,str):
+            return "\"%s\""%v
+        return v;
+
+    def sqlstr(self):
+        """ like sql() but returns a single string representing the rulw"""
+        s,v = self.sql()
+        # at this point all values should be strings, ints or floats right?
+        v = map(self.fmtval,v)
+        return s.replace("?","{}").format(*v)
 
 class BlankSearchRule(SearchRule):
     """a rule that match all values"""
@@ -45,8 +84,12 @@ class ColumnSearchRule(SearchRule):
         self.column = column
         self.value = value
 
+@lru_cache(maxsize=128)
+def rexcmp(expr):
+    return re.compile(expr,re.IGNORECASE)
+
 def regexp(expr, item):
-    reg = re.compile(expr,re.IGNORECASE)
+    reg = rexcmp(expr)
     return reg.search(item) is not None
 
 class RegExpSearchRule(ColumnSearchRule):
@@ -54,33 +97,33 @@ class RegExpSearchRule(ColumnSearchRule):
     def check(self,elem):
         return regexp(self.value,elem[self.column])
 
+    def __repr__(self):
+        return "<%s =~ \"%s\""%(self.column,self.fmtval(self.value))
+
     def sql(self):
         return "%s REGEXP ?"%(self.column,), (self.value,)
-
-    def __repr__(self):
-        return "<%s in `%s`>"%(self.value, self.column)
 
 class PartialStringSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,elem):
         return self.value in elem[self.column]
 
+    def __repr__(self):
+        return "<%s in `%s`>"%(self.fmtval(self.value), self.column)
+
     def sql(self):
         return "%s LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
-
-    def __repr__(self):
-        return "<%s in `%s`>"%(self.value, self.column)
 
 class InvertedPartialStringSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,elem):
         return self.value not in elem[self.column]
 
+    def __repr__(self):
+        return "<%s not in `%s`>"%(self.fmtval(self.value), self.column)
+
     def sql(self):
         return "%s NOT LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
-
-    def __repr__(self):
-        return "<%s not in `%s`>"%(self.value, self.column)
 
 class ExactSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
@@ -88,7 +131,7 @@ class ExactSearchRule(ColumnSearchRule):
         return self.value == elem[self.column]
 
     def __repr__(self):
-        return "<%s equals `%s`>"%(self.value, self.column)
+        return "<%s == %s>"%(self.column, self.fmtval(self.value))
 
     def sql(self):
         return "%s = ?"%(self.column,), (self.value,)
@@ -99,7 +142,7 @@ class InvertedExactSearchRule(ColumnSearchRule):
         return self.value != elem[self.column]
 
     def __repr__(self):
-        return "<%s not equals `%s`>"%(self.value, self.column)
+        return "<%s != %s>"%(self.column, self.fmtval(self.value))
 
     def sql(self):
         return "%s != ?"%(self.column,), (self.value,)
@@ -109,43 +152,44 @@ class LessThanSearchRule(ColumnSearchRule):
     def check(self,elem):
         return elem[self.column] < self.value
 
+    def __repr__(self):
+        return "<%s < %s>"%(self.column, self.fmtval(self.value))
+
     def sql(self):
         return "%s < ?"%(self.column,), (self.value,)
-
-    def __repr__(self):
-        return "<%s less than `%s`>"%(self.value, self.column)
 
 class LessThanEqualSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,elem):
         return elem[self.column] <= self.value
 
+    def __repr__(self):
+        return "<%s <= %s>"%(self.column, self.fmtval(self.value))
+
     def sql(self):
         return "%s <= ?"%(self.column,), (self.value,)
-
-    def __repr__(self):
-        return "<%s less than or equal `%s`>"%(self.value, self.column)
 
 class GreaterThanSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,elem):
         return elem[self.column] > self.value
 
+    def __repr__(self):
+        return "<%s > %s>"%(self.column, self.fmtval(self.value))
+
     def sql(self):
         return "%s > ?"%(self.column,), (self.value,)
-
-    def __repr__(self):
-        return "<%s greater than `%s`>"%(self.value, self.column)
 
 class GreaterThanEqualSearchRule(ColumnSearchRule):
     """docstring for SearchRule"""
     def check(self,elem):
         return elem[self.column] >= self.value
-    def sql(self):
-        return "%s >= ?"%(self.column,), (self.value,)
 
     def __repr__(self):
-        return "<%s greater than or equal `%s`>"%(self.value, self.column)
+        return "<%s >= %s>"%(self.column, self.fmtval(self.value))
+
+    def sql(self):
+        return "%s >= ?"%(self.column,), (self.value,)
 
 class RangeSearchRule(SearchRule):
     """docstring for SearchRule"""
@@ -158,11 +202,11 @@ class RangeSearchRule(SearchRule):
     def check(self,elem):
         return self.value_low <= elem[self.column] <= self.value_high
 
+    def __repr__(self):
+        return "<`%s` in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
+
     def sql(self):
         return "%s BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
-
-    def __repr__(self):
-        return "<`%s` in range (%s,%s)>"%(self.column,self.value_low,self.value_high)
 
 class NotRangeSearchRule(RangeSearchRule):
     """docstring for SearchRule"""
@@ -170,11 +214,11 @@ class NotRangeSearchRule(RangeSearchRule):
     def check(self,elem):
         return elem[self.column] < self.value_low or self.value_high < elem[self.column]
 
+    def __repr__(self):
+        return "<`%s` not in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
+
     def sql(self):
         return "%s NOT BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
-
-    def __repr__(self):
-        return "<`%s` not in range (%s,%s)>"%(self.column,self.value_low,self.value_high)
 
 class MetaSearchRule(SearchRule):
     """group one or more search rules"""
@@ -192,6 +236,9 @@ class AndSearchRule(MetaSearchRule):
             return True
         return False
 
+    def __repr__(self):
+        return "<" + ' && '.join(map(repr,self.rules)) + ">"
+
     def sql(self):
         sql  = []
         vals = []
@@ -204,9 +251,6 @@ class AndSearchRule(MetaSearchRule):
             sqlstr = '(' + ' AND '.join(sql) + ')'
         return sqlstr,vals
 
-    def __repr__(self):
-        return "<" + ' && '.join(map(repr,self.rules)) + ">"
-
 class OrSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that at least one rule returns true"""
     def check(self, elem):
@@ -214,6 +258,9 @@ class OrSearchRule(MetaSearchRule):
             if rule.check(elem):
                 return True
         return False
+
+    def __repr__(self):
+        return "<" + ' || '.join(map(repr,self.rules))  + ">"
 
     def sql(self):
         sql  = []
@@ -228,9 +275,6 @@ class OrSearchRule(MetaSearchRule):
             sqlstr = '(' + ' OR '.join(sql) + ')'
         return sqlstr,vals
 
-    def __repr__(self):
-        return "<" + ' || '.join(map(repr,self.rules))  + ">"
-
 class NotSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that inverts result from rule"""
     def check(self, elem):
@@ -240,17 +284,17 @@ class NotSearchRule(MetaSearchRule):
             return False
         return True
 
+    def __repr__(self):
+        assert len(self.rules)==1
+        assert self.rules[0] is not BlankSearchRule
+        return "<!" + repr(self.rules[0]) + ">"
+
     def sql(self):
         assert len(self.rules)==1
         assert self.rules[0] is not BlankSearchRule
         sql,vals = self.rules[0].sql()
         sql = '( NOT ' + sql + ')'
         return sql,vals
-
-    def __repr__(self):
-        assert len(self.rules)==1
-        assert self.rules[0] is not BlankSearchRule
-        return "<!" + repr(self.rules[0]) + ">"
 
 def naive_search( sqldb, rule ):
     """ iterate through the database and yield elems which match a rule """
@@ -440,6 +484,7 @@ class SearchGrammar(object):
             "=" :PartialStringSearchRule,
             "~" :PartialStringSearchRule,
             "==":ExactSearchRule,
+            "=~":RegExpSearchRule,
             "!=":InvertedPartialStringSearchRule,
             "!==":InvertedExactSearchRule,
         }
@@ -468,7 +513,7 @@ class SearchGrammar(object):
 
         # meta optins can be used to control the query results
         # by default, limit could be used to limit the number of results
-        self.meta_columns = set(["limit",])
+        self.meta_columns = set(["limit","debug"])
         self.meta_options = dict()
 
         self.old_style_operators = self.operators.copy()
@@ -491,7 +536,8 @@ class SearchGrammar(object):
         """
         if colid not in self.text_fields and \
            colid not in self.date_fields and \
-           colid not in self.time_fields:
+           colid not in self.time_fields and \
+           colid != self.all_text:
             raise ParseError("Invalid column name `%s`"%colid)
         return colid
 
@@ -530,7 +576,15 @@ class SearchGrammar(object):
         if not string.strip():
             return BlankSearchRule()
         tokens = self.tokenizeString( string )
-        return self.parseTokens( tokens );
+        rule = self.parseTokens( tokens );
+        if self.getMetaValue("debug") == 1:
+            sys.stdout.write("%r\n"%(rule))
+        elif self.getMetaValue("debug") == 2:
+            #s,v = rule.sql()
+            #v = [ ("\"%s\""%s) if isinstance(s,str) else s for s in v]
+            #s = s.replace("?","{}").format(*v)
+            sys.stdout.write("%s\n"%(rule.sqlstr()))
+        return rule;
 
     def tokenizeString(self, input ):
         """
@@ -570,6 +624,11 @@ class SearchGrammar(object):
             if c == self.tok_escape:
                 # skip the next character, by erasing the
                 # current character from the input
+                # to allow escape characters in strings
+                # first check that we are quoted here
+                # then look at the next character to decide
+                # mode (e.g. \\ -> \, \a -> bell \x00 -> 0x00, etc)
+
                 input = input[:idx] + input[idx+1:]
             elif c == self.tok_quote and not quoted:
                 # quote detected, ignore all characters until
@@ -740,7 +799,7 @@ class SearchGrammar(object):
                 if tok.startswith(self.sigil):
                     current_col = tok[1:]
                     tokens.pop(i)
-                    i -= 1
+                    continue
                 #    allow_negate = True;
                 #elif tok == self.tok_negate and allow_negate:
                 #    current_opr = self.old_style_operators_invert[current_opr]
@@ -749,7 +808,7 @@ class SearchGrammar(object):
                 elif tok in self.old_style_operators:
                     current_opr = self.old_style_operators[tok]
                     tokens.pop(i)
-                    i -= 1
+                    continue
                 elif tok not in self.operators_flow and tok != self.tok_negate:
                     tokens[i] = self.parserRule(current_col,current_opr,tok)
             i+=1
@@ -796,7 +855,6 @@ class SearchGrammar(object):
                 dy = int(num)
                 num=""
             elif c == "m":
-                print(num)
                 dm = int(num)
                 num=""
             elif c == "w":
@@ -858,7 +916,7 @@ class SearchGrammar(object):
         for x in reversed(value.split(":")):
             t += int(x)*m
             m *= 60
-        return t
+        return IntTime(t)
 
     def parserDateRule( self, rule , col, value):
         """
@@ -891,7 +949,6 @@ class SearchGrammar(object):
 
             if result is None:
                 # failed to convert istr -> int
-                print(str(e))
                 raise ParseError("Expected Integer or Date, found `%s`"%value)
 
             epochtime,epochtime2 = result
@@ -906,18 +963,16 @@ class SearchGrammar(object):
         # it will return any song played exactly n days ago
         # a value of '1' is yesterday
         if rule is PartialStringSearchRule:
-            return RangeSearchRule(col, epochtime, epochtime2)
+            return RangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
 
         # inverted range matching
         if rule is InvertedPartialStringSearchRule:
-            return NotRangeSearchRule(col, epochtime, epochtime2)
+            return NotRangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
 
         if rule is LessThanEqualSearchRule:
-            return rule( col, epochtime2)
+            return rule( col, IntDate(epochtime2))
 
-        return rule( col, epochtime )
-
-        # ---
+        return rule( col, IntDate(epochtime) )
 
     def parserRule(self, colid, rule ,value):
         """
@@ -967,7 +1022,9 @@ class SearchGrammar(object):
 
         rule = self.operators[tok]
 
-        if colid == "limit":
+        if colid == "debug":
+            self.meta_options[colid] = int(value)
+        elif colid == "limit":
 
             if rule in (PartialStringSearchRule, ExactSearchRule):
                 self.meta_options[colid] = int(value)
