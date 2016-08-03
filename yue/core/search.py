@@ -913,10 +913,14 @@ class SearchGrammar(object):
         # convert hours:minutes:seconds to seconds
         m=1
         t = 0
-        for x in reversed(value.split(":")):
-            t += int(x)*m
-            m *= 60
-        return IntTime(t)
+        try:
+            for x in reversed(value.split(":")):
+                if x:
+                    t += int(x)*m
+                m *= 60
+        except ValueError:
+            raise ParseError("Duration `%s` not well formed."%value)
+        return t
 
     def parserDateRule( self, rule , col, value):
         """
