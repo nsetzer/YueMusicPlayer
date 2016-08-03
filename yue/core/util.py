@@ -4,12 +4,14 @@ import os
 import sys
 from datetime import datetime
 
+from collections import OrderedDict
+
 try:
     from functools import lru_cache
 except:
     def lru_cache(maxsize=128):
         def lru_cache_decorator(func):
-            cache = dict()
+            cache = OrderedDict()
             def lru_cache_wrapper(*args):
                 if args in cache:
                     return cache[args]
