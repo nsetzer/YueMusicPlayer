@@ -220,7 +220,7 @@ class ExplorerModel(QWidget):
         self.btn_split.setHidden(False)
 
     def indexInLibrary(self,idx):
-        return self.view[idx]['name'] in self.list_library_files
+        return self.view[idx]['name'].lower() in self.list_library_files
 
     def refresh(self):
         self.chdir( self.view.pwd() )
@@ -240,7 +240,7 @@ class ExplorerModel(QWidget):
             self.view.chdir( pwd )
 
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( os.path.split(song[Song.path])[1] \
+        self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \
                                        for song in songs )
 
         self.txt_path.setText(self.view.pwd())
