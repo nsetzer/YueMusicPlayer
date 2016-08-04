@@ -246,51 +246,22 @@ class PlayListView(object):
         with self.db_lists.conn() as conn:
             c = conn.cursor()
 
-            lsta = []
-            lstb = []
-            idx = 0;
-            insert_offset = 0; # for updating current idx
-            new_index = -1;
-
             _, name, size, current_index = self.db_names._get( c, self.uid );
 
             c.execute("select song_id from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
 
+            lst = []
             items = c.fetchmany()
             while items:
-                for item in items:
-                    song_id = item[0]
-                    if idx in selection:
-                        # if we need to update the current idx after drop
-                        if idx == current_index:
-                            insert_offset = len(lstb)
-                        # if the selection effects insert row
-                        if idx < insert_row:
-                            insert_row -= 1
-                        lstb.append(song_id)
-                    else:
-                        if (idx == current_index):
-                            new_index = len(lsta)
-                        lsta.append(song_id)
-                    idx += 1;
+                lst += [ x[0] for x in items ]
                 items = c.fetchmany()
 
-            # insert row must be in range 0..len(lsta)
-            insert_row = min(insert_row, len(lsta))
-            if new_index < 0:
-                new_index = insert_row + insert_offset;
-            elif insert_row <= new_index:
-                new_index += len(lstb)
-
-            if insert_row < len(lsta):
-                lsta = lsta[:insert_row] + lstb + lsta[insert_row:]
-            else:
-                lsta = lsta + lstb
+            lsta, insert_row, count, current_index = reinsertList(lst, selection, insert_row, current_index)
 
             self._set(c, lsta)
-            self.db_names._update( c, self.uid, idx=new_index)
+            self.db_names._update( c, self.uid, idx=current_index)
 
-            return (lsta, insert_row, insert_row+len(lstb))
+            return lsta, insert_row, count
 
     def shuffle_range(self,start=None,end=None):
         """ shuffle a slice of the list, using python slice semantics
@@ -415,6 +386,60 @@ class PlayListView(object):
 
     def getDataView( self, library ):
         return PlayListDataView( library, self.db_names, self.db_lists, self.uid )
+
+def reinsertList(lst,selection,insert_row,current_index=0):
+
+    """
+    Generic implementation for reinserting a set of elements.
+
+    lst : a list of items (data type not important)
+    selection : list/set of indices of elements in lst
+    insert_row : an integer index into lst
+    current_index : index of the current song, optional
+
+    returns the new list, actual insert row, number of selected items
+    and the updated current index.
+
+    selects the set of items in selection in the order in which
+    they appear in lst. These items are then insert at insert_row.
+    removal / insertion may change the actual index of
+    insert_row and current_index so these values will be recalculated
+    accordingly
+    """
+    lsta = []
+    lstb = []
+    idx = 0;
+    insert_offset = 0; # for updating current idx
+    new_index = -1;
+
+    for item in lst:
+        if idx in selection:
+            # if we need to update the current idx after drop
+            if idx == current_index:
+                insert_offset = len(lstb)
+            # if the selection effects insert row
+            if idx < insert_row:
+                insert_row -= 1
+            lstb.append(item)
+        else:
+            if (idx == current_index):
+                new_index = len(lsta)
+            lsta.append(item)
+        idx += 1;
+
+    # insert row must be in range 0..len(lsta)
+    insert_row = min(insert_row, len(lsta))
+    if new_index < 0:
+        new_index = insert_row + insert_offset;
+    elif insert_row <= new_index:
+        new_index += len(lstb)
+
+    if insert_row < len(lsta):
+        lsta = lsta[:insert_row] + lstb + lsta[insert_row:]
+    else:
+        lsta = lsta + lstb
+
+    return (lsta, insert_row, insert_row+len(lstb), new_index)
 
 class PlayListDataView(PlayListView):
     """A PlayListView backed by a library
