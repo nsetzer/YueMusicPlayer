@@ -262,7 +262,7 @@ class SongSearchGrammar(SearchGrammar):
         try:
             return Song.column( colid );
         except KeyError:
-            raise ParseError("Invalid column name `%s`"%colid)
+            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
 
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
