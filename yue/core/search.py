@@ -20,6 +20,13 @@ class IntTime(int):
     def __new__(cls, *args, **kwargs):
         return  super(IntTime, cls).__new__(cls, args[0])
 
+class StrPos(str):
+    """ A string tagged with a position value"""
+    def __new__(cls, strval, pos):
+        inst = super(StrPos, cls).__new__(cls, strval)
+        inst.pos = pos
+        return inst
+
 class SearchRule(object):
     """Baseclass for search rules
 
@@ -420,14 +427,14 @@ class TokenizeError(ParseError):
 
 class RHSError(ParseError):
     def __init__(self, tok, value=""):
-        msg = "Invalid Expression on RHS of `%s`"%tok
+        msg = "Invalid Expression on RHS of `%s` at position %d"%(tok,tok.pos)
         if value:
             msg += " : %s"%value
         super(RHSError, self).__init__( msg )
 
 class LHSError(ParseError):
     def __init__(self, tok, value=""):
-        msg = "Invalid Expression on LHS of `%s`"%tok
+        msg = "Invalid Expression on LHS of `%s` at position %d"%(tok,tok.pos)
         if value:
             msg += " : %s"%value
         super(LHSError, self).__init__( msg )
@@ -537,6 +544,8 @@ class SearchGrammar(object):
             LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
         }
 
+        self.illegal = set(["|", "&"])
+
         # meta optins can be used to control the query results
         # by default, limit could be used to limit the number of results
         self.meta_columns = set(["limit","debug","offset"])
@@ -564,7 +573,7 @@ class SearchGrammar(object):
            colid not in self.date_fields and \
            colid not in self.time_fields and \
            colid != self.all_text:
-            raise ParseError("Invalid column name `%s`"%colid)
+            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
         return colid
 
     def ruleFromString( self, string ):
@@ -629,7 +638,7 @@ class SearchGrammar(object):
 
         """
         idx = 0;
-
+        cut = 0; # counts characters that have been cut
         output = []
 
         # cause 'special' symbols to join together, separately
@@ -640,9 +649,10 @@ class SearchGrammar(object):
         quoted = False
 
         def append():
+            # place a substring (one whole token) on the top of the stack
             text = input[start:idx].strip()
             if text:
-                stack[-1].append(text)
+                stack[-1].append(StrPos(text,start+cut))
 
         while idx < len( input ) and len(stack)>0:
             c = input[idx]
@@ -656,6 +666,7 @@ class SearchGrammar(object):
                 # mode (e.g. \\ -> \, \a -> bell \x00 -> 0x00, etc)
 
                 input = input[:idx] + input[idx+1:]
+                cut += 1;
             elif c == self.tok_quote and not quoted:
                 # quote detected, ignore all characters until
                 # the next matching quote is found
@@ -698,6 +709,7 @@ class SearchGrammar(object):
             raise TokenizeError("unterminated parenthesis")
         if quoted:
             raise TokenizeError("unterminated quote")
+        # collect anything left over
         append()
 
         return output
@@ -772,6 +784,8 @@ class SearchGrammar(object):
                     self.parserMeta(l,tok,r,top)
                     continue
                 tokens[i] = self.parserRule(l,self.special[tok],r)
+            elif tok in self.illegal:
+                raise ParseError("Unkown operator `%s` at position %d"%(tok,tok.pos))
             i += 1
 
         # collect any old style tokens, which did not use a sigil
@@ -934,18 +948,18 @@ class SearchGrammar(object):
             return cf,rf
         return None
 
-    def parserDuration( self, value ):
+    def parserDuration( self, sValue ):
         # input as "123" or "3:21"
         # convert hours:minutes:seconds to seconds
         m=1
         t = 0
         try:
-            for x in reversed(value.split(":")):
+            for x in reversed(sValue.split(":")):
                 if x:
                     t += int(x)*m
                 m *= 60
         except ValueError:
-            raise ParseError("Duration `%s` not well formed."%value)
+            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
         return t
 
     def parserDateRule( self, rule , col, value):
@@ -970,7 +984,7 @@ class SearchGrammar(object):
             if c == 2:
                 epochtime,epochtime2 = self.parserFormatDate( value )
             elif c > 0:
-                raise ParseError("Invalid Date format. Expected YY/MM/DD.")
+                raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
                 epochtime,epochtime2 = self.parserFormatDateDelta( value )
         except ValueError as e:
@@ -979,7 +993,7 @@ class SearchGrammar(object):
 
             if result is None:
                 # failed to convert istr -> int
-                raise ParseError("Expected Integer or Date, found `%s`"%value)
+                raise ParseError("Expected Integer or Date, found `%s` at position %d"%(value,value.pos))
 
             epochtime,epochtime2 = result
 
@@ -1042,13 +1056,13 @@ class SearchGrammar(object):
         They are independant of any database.
         """
         if not top:
-            raise ParseError("Option `%s` can only be provided at the top level."%colid)
+            raise ParseError("Option `%s` at position %d can only be provided at the top level."%(colid,colid.pos))
 
         if colid in self.meta_options:
-            raise ParseError("Option `%s` can not be provided twice"%colid)
+            raise ParseError("Option `%s` at position %d can not be provided twice"%(colid,colid.pos))
 
         if tok not in self.operators:
-            raise ParseError("Operator `%s` not valid in this context"%tok)
+            raise ParseError("Operator `%s` at position %d not valid in this context"%(tok,tok.pos))
 
         rule = self.operators[tok]
 
@@ -1059,7 +1073,7 @@ class SearchGrammar(object):
             if rule in (PartialStringSearchRule, ExactSearchRule):
                 self.meta_options[colid] = int(value)
             else:
-                raise ParseError("Illegal operation `%s` for option `%s`"%(tok,colid))
+                raise ParseError("Illegal operation `%s` at position %d for option `%s`"%(tok,tok.pos,colid))
 
     def getMetaValue(self,colid,default=None):
         """ returns parsed value of a meta option, or default """
