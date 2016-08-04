@@ -5,25 +5,30 @@ import calendar
 from datetime import datetime, timedelta
 import time
 
-
 import sys
 isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
-# classes to tag an integer as a specific type for later formating
-# any arithmetic on these types returns int
-
 class IntDate(int):
+    """ integer tagged as an epoch-time, see SearchRule.fmtval()"""
     def __new__(cls, *args, **kwargs):
         return  super(IntDate, cls).__new__(cls, args[0])
 
 class IntTime(int):
+    """ integer tagged as a time delta, see SearchRule.fmtval()"""
     def __new__(cls, *args, **kwargs):
         return  super(IntTime, cls).__new__(cls, args[0])
 
 class SearchRule(object):
-    """docstring for SearchRule"""
+    """Baseclass for search rules
+
+    The check()/sql() methods are a form of self documentation and ard
+    database implementation dependent. For example the check method
+    for the RangeSearchRule rule is implemented to match the BETWEEN condition
+    in sqlite3.
+
+    """
 
     def __init__(self):
         super(SearchRule, self).__init__()
@@ -59,14 +64,12 @@ class SearchRule(object):
         return v;
 
     def sqlstr(self):
-        """ like sql() but returns a single string representing the rulw"""
+        """ like sql() but returns a single string representing the rule"""
         s,v = self.sql()
-        # at this point all values should be strings, ints or floats right?
-        v = map(self.fmtval,v)
-        return s.replace("?","{}").format(*v)
+        return s.replace("?","{}").format(*map(self.fmtval,v))
 
 class BlankSearchRule(SearchRule):
-    """a rule that match all values"""
+    """a rule that matches all values"""
 
     def check(self,elem):
         return True
@@ -78,7 +81,7 @@ class BlankSearchRule(SearchRule):
         return "<all>"
 
 class ColumnSearchRule(SearchRule):
-    """docstring for SearchRule"""
+    """Base class for applying a rule to a column in a table"""
     def __init__(self, column, value):
         super(SearchRule, self).__init__()
         self.column = column
@@ -93,7 +96,7 @@ def regexp(expr, item):
     return reg.search(item) is not None
 
 class RegExpSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches a value using a regular expression"""
     def check(self,elem):
         return regexp(self.value,elem[self.column])
 
@@ -104,7 +107,7 @@ class RegExpSearchRule(ColumnSearchRule):
         return "%s REGEXP ?"%(self.column,), (self.value,)
 
 class PartialStringSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches if a value contains the given text"""
     def check(self,elem):
         return self.value in elem[self.column]
 
@@ -115,7 +118,7 @@ class PartialStringSearchRule(ColumnSearchRule):
         return "%s LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
 
 class InvertedPartialStringSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """does not match if a value contains the given text"""
     def check(self,elem):
         return self.value not in elem[self.column]
 
@@ -126,7 +129,10 @@ class InvertedPartialStringSearchRule(ColumnSearchRule):
         return "%s NOT LIKE ?"%(self.column,), ("%%%s%%"%self.value,)
 
 class ExactSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches if the a value is exactly equal to the given
+
+    this works for text or integers
+    """
     def check(self,elem):
         return self.value == elem[self.column]
 
@@ -137,7 +143,7 @@ class ExactSearchRule(ColumnSearchRule):
         return "%s = ?"%(self.column,), (self.value,)
 
 class InvertedExactSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches as long as the value does not exactly equal the given"""
     def check(self,elem):
         return self.value != elem[self.column]
 
@@ -148,7 +154,7 @@ class InvertedExactSearchRule(ColumnSearchRule):
         return "%s != ?"%(self.column,), (self.value,)
 
 class LessThanSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches as long as the value is less than the given number"""
     def check(self,elem):
         return elem[self.column] < self.value
 
@@ -159,7 +165,7 @@ class LessThanSearchRule(ColumnSearchRule):
         return "%s < ?"%(self.column,), (self.value,)
 
 class LessThanEqualSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches as long as the value is less than or equal to the given number"""
     def check(self,elem):
         return elem[self.column] <= self.value
 
@@ -170,7 +176,7 @@ class LessThanEqualSearchRule(ColumnSearchRule):
         return "%s <= ?"%(self.column,), (self.value,)
 
 class GreaterThanSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches as long as the value is greater than the given number"""
     def check(self,elem):
         return elem[self.column] > self.value
 
@@ -181,7 +187,7 @@ class GreaterThanSearchRule(ColumnSearchRule):
         return "%s > ?"%(self.column,), (self.value,)
 
 class GreaterThanEqualSearchRule(ColumnSearchRule):
-    """docstring for SearchRule"""
+    """matches as long as the value is greater than or equal to the given number"""
     def check(self,elem):
         return elem[self.column] >= self.value
 
@@ -192,7 +198,9 @@ class GreaterThanEqualSearchRule(ColumnSearchRule):
         return "%s >= ?"%(self.column,), (self.value,)
 
 class RangeSearchRule(SearchRule):
-    """docstring for SearchRule"""
+    """matches if a value is within a rage of values
+    sqlite3: values are inclusive on the range specified
+    """
     def __init__(self, column, value_low, value_high):
         super(RangeSearchRule, self).__init__()
         self.column = column
@@ -209,7 +217,9 @@ class RangeSearchRule(SearchRule):
         return "%s BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
 
 class NotRangeSearchRule(RangeSearchRule):
-    """docstring for SearchRule"""
+    """matches if a value is outside a specified range
+    sqlite3: values are inclusive on the range specified
+    """
 
     def check(self,elem):
         return elem[self.column] < self.value_low or self.value_high < elem[self.column]
@@ -296,16 +306,33 @@ class NotSearchRule(MetaSearchRule):
         sql = '( NOT ' + sql + ')'
         return sql,vals
 
-def naive_search( sqldb, rule ):
-    """ iterate through the database and yield elems which match a rule """
+def naive_search( seq, rule ):
+    """ return elements from seq which match the given rule
+
+    seq can be any iterable data structure containing table data
+    for example a list-of-dict, or a sql database view.
+
+    """
     # this does not support, case sensitivity, order, reverse or limit
     # it exists only to show that the basic rule concept
     # maps in an expected way between sql and python.
-    for elem in sqldb.iter():
+    for elem in seq:
         if rule.check(elem):
             yield elem
 
-def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit):
+def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit, offset):
+    """
+    Convert a rule into a SQL SELECT Query.
+
+    orderby can be:
+        a string:
+            "random" or column-name
+        a tuple or list of column names
+            (column-name, column-name)
+        a list-of-tuples-of-column-and-direction
+            ( (column-name, ASC) , (column-name, DESC) )
+
+    """
 
     sql,vals = rule.sql()
 
@@ -360,30 +387,29 @@ def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit):
     if limit is not None:
         query += " LIMIT %d"%limit
 
+    if offset>0:
+        query += " OFFSET %d"%offset
+
     return query, vals
 
-def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, echo=False):
+def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
     """ convert a rule to a sql query and yield matching elems
 
     orderby must be given for reverse to have any meaning
 
     """
 
-    query,vals = sqlFromRule(rule,db.name,case_insensitive, orderby, reverse, limit)
-
-    if echo:
-        print(query)
+    query,vals = sqlFromRule(rule,db.name,case_insensitive, orderby, reverse, limit, offset)
 
     try:
         s = time.clock()
         result = list(db.query(query, *vals))
         e = time.clock()
         if echo:
-            print(e-s,sql)
+            sys.stdout.write("runtime:%f %s\n"%(e-s,rule.sqlstr()))
         return result
     except:
-        print(query)
-        print(vals)
+        sys.stdout.write("error: %s\n"%(rule.sqlstr()))
         raise
 
 class ParseError(Exception):
@@ -513,7 +539,7 @@ class SearchGrammar(object):
 
         # meta optins can be used to control the query results
         # by default, limit could be used to limit the number of results
-        self.meta_columns = set(["limit","debug"])
+        self.meta_columns = set(["limit","debug","offset"])
         self.meta_options = dict()
 
         self.old_style_operators = self.operators.copy()
@@ -1028,7 +1054,7 @@ class SearchGrammar(object):
 
         if colid == "debug":
             self.meta_options[colid] = int(value)
-        elif colid == "limit":
+        elif colid in ("limit","offset"):
 
             if rule in (PartialStringSearchRule, ExactSearchRule):
                 self.meta_options[colid] = int(value)

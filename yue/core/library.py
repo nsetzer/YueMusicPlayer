@@ -393,13 +393,14 @@ class Library(object):
     def iter(self):
         return self.song_view.iter()
 
-    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None):
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
 
         if rule is None:
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
             rule = self.grammar.ruleFromString( rule )
             limit = self.grammar.getMetaValue("limit",limit)
+            offset = self.grammar.getMetaValue("offset",offset)
 
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
@@ -409,8 +410,7 @@ class Library(object):
                 if v in [Song.artist,]:
                     orderby[i]+="_key"
 
-        echo = False
-        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit, echo )
+        return sql_search( self.song_view, rule, case_insensitive, orderby, reverse, limit, offset )
 
     def searchPlaylist(self, playlist_name, rule=None, case_insensitive=True, invert=False, orderby=None, reverse = False, limit=None):
 

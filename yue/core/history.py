@@ -137,13 +137,13 @@ class History(object):
         uid = record['uid']
         c.execute("DELETE from history where uid=? and date=?",(uid,date))
 
-    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None):
-        print(rule,reverse,limit,orderby)
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
         if rule is None:
             rule = BlankSearchRule();
         elif isinstance(rule,(str,unicode)):
             rule = self.grammar.ruleFromString( rule )
             limit = self.grammar.getMetaValue("limit",limit)
+            offset = self.grammar.getMetaValue("offset",offset)
         else:
             raise ParseError("invalid rule type: %s"%type(rule))
         if isinstance(rule,(str,unicode)):
@@ -152,8 +152,7 @@ class History(object):
             if not isinstance( orderby, (list,tuple)):
                 orderby = [ orderby, ]
 
-        echo = False
-        return sql_search( self.view, rule, case_insensitive, orderby, reverse, limit, echo )
+        return sql_search( self.view, rule, case_insensitive, orderby, reverse, limit, offset )
 
 
 class HistorySearchGrammar(SearchGrammar):
