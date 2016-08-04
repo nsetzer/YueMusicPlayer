@@ -232,6 +232,9 @@ class SQLView(object):
                 yield dict(zip(self.column_names,item))
                 item = c.fetchone()
 
+    def __iter__(self):
+        return self.iter()
+
     def query(self,query,*values):
         with self.store.conn:
             c = self.store.conn.cursor()
