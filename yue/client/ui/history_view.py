@@ -105,6 +105,7 @@ class HistoryTable(LargeTable):
         # display a warning message before emiting any signal
         History.instance().delete(records)
         self.parent().refresh()
+        self.setSelection([])
 
 class HistoryView(Tab):
     """docstring for MainWindow"""
