@@ -491,7 +491,7 @@ class SearchGrammar(object):
         self.text_fields = set();
         self.date_fields = set(); # column represents a date in seconds since jan 1st 1970
         self.time_fields = set(); # column represents a duration, in seconds
-
+        self.year_fields = set(); # integer that represents a year
         self.all_text = 'text'
         # sigil is used to define the oldstyle syntax marker
         self.sigil = '.'
@@ -920,6 +920,15 @@ class SearchGrammar(object):
         dt2 = dt1 + timedelta( 1 )
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
+    def adjustYear(self,y):
+
+        if 50 < y < 100 :
+            y += 1900
+        if y < 50:
+            y += 2000
+
+        return y;
+
     def parserFormatDate( self, value ):
 
         sy,sm,sd = value.split('/')
@@ -928,10 +937,7 @@ class SearchGrammar(object):
         m = int(sm)
         d = int(sd)
 
-        if 50 < y < 100 :
-            y += 1900
-        if y < 50:
-            y += 2000
+        y = self.adjustYear(y)
 
         dt1 = datetime(y,m,d)
         dt2 = dt1 + timedelta( 1 )
@@ -961,6 +967,16 @@ class SearchGrammar(object):
         except ValueError:
             raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
         return t
+
+    def parserYear( self, sValue ):
+        # input as "123" or "3:21"
+        # convert hours:minutes:seconds to seconds
+        y = 0
+        try:
+            y = self.adjustYear(int(sValue))
+        except ValueError:
+            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
+        return y
 
     def parserDateRule( self, rule , col, value):
         """
@@ -1033,6 +1049,9 @@ class SearchGrammar(object):
         # partial rules don't make sense, convert to exact rules
         if col in self.time_fields:
             value = self.parserDuration( value )
+
+        if col in self.year_fields:
+            value = self.parserYear( value )
 
         if rule is PartialStringSearchRule:
             return ExactSearchRule(col, value)
