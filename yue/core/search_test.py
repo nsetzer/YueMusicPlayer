@@ -1,4 +1,5 @@
-#! cd ../.. && python2.7 setup.py test --test=search
+#! cd ../.. && python setup.py test --test=search
+#! C:\\Python35\\python.exe $this
 
 """
 todo: none of these tests actually check that the correct answer is returned,
@@ -9,9 +10,11 @@ import unittest
 import os
 import datetime
 import calendar
+import traceback
+from .util import with_metaclass
 
-from yue.core.library import Library
-from yue.core.search import SearchGrammar, \
+from .library import Library
+from .search import SearchGrammar, \
         PartialStringSearchRule, \
         InvertedPartialStringSearchRule, \
         ExactSearchRule, \
@@ -26,7 +29,7 @@ from yue.core.search import SearchGrammar, \
         OrSearchRule, \
         naive_search, \
         sql_search
-from yue.core.sqlstore import SQLStore
+from .sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
 
@@ -41,7 +44,7 @@ class TestSearchMeta(type):
     runs the same test with different parameters
 
     """
-    def __new__(cls, name, bases, dict):
+    def __new__(cls, name, bases, attr):
 
         def gen_compare_test(rule):
             """ check that a given rule returns the same results,
@@ -90,24 +93,23 @@ class TestSearchMeta(type):
 
         for i, rule in enumerate(rules):
             test_name = "test_rule_%d" % i
-            dict[test_name] = gen_compare_test(rule)
+            attr[test_name] = gen_compare_test(rule)
 
-        dict["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
-        dict["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
+        attr["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
+        attr["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
 
-        dict["test_pl1"] = gen_compare_count_test(pl1,11)
-        dict["test_pl2"] = gen_compare_count_test(pl2, 9)
+        attr["test_pl1"] = gen_compare_count_test(pl1,11)
+        attr["test_pl2"] = gen_compare_count_test(pl2, 9)
 
-        return type.__new__(cls, name, bases, dict)
+        return super(TestSearchMeta,cls).__new__(cls, name, bases, attr)
 
+@with_metaclass(TestSearchMeta)
 class TestSearch(unittest.TestCase):
-    __metaclass__ = TestSearchMeta
 
     # python 2.7, >3.2
 
     @classmethod
     def setUpClass(cls):
-
         if os.path.exists(DB_PATH):
             os.remove(DB_PATH)
 
@@ -131,12 +133,12 @@ class TestSearch(unittest.TestCase):
 
         cls.sqlstore.close()
 
-class TestSearchGrammer(unittest.TestCase):
-    """
-    """
 
+class TestSearchGrammar(unittest.TestCase):
+    """
+    """
     def __init__(self,*args,**kwargs):
-        super(TestSearchGrammer,self).__init__(*args,**kwargs)
+        super(TestSearchGrammar,self).__init__(*args,**kwargs)
 
     def setUp(self):
 
@@ -183,9 +185,6 @@ class TestSearchGrammer(unittest.TestCase):
 
         t1,t2 = self.sg.parserFormatDate("75/06/15")
         self.assertEqual(t1,calendar.timegm(datetime.datetime(1975,6,15).timetuple()))
-
-
-
 
 
 
