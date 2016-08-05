@@ -23,6 +23,22 @@ except:
             return lru_cache_wrapper
         return lru_cache_decorator
 
+
+def with_metaclass(mcls):
+    """ 2.7 and 3.5+ compatable metaclass decorator
+    python2 uses a __metaclass__ class atribute whlie python3
+    has a class level keyword argument.
+
+    """
+    # http://stackoverflow.com/questions/22409430/portable-meta-class-between-python2-and-python3
+    def decorator(cls):
+        body = vars(cls).copy()
+        # clean out class body
+        body.pop('__dict__', None)
+        body.pop('__weakref__', None)
+        return mcls(cls.__name__, cls.__bases__, body)
+    return decorator
+
 def format_date( unixTime ):
     """ format epoch time stamp as string """
     return time.strftime("%Y/%m/%d %H:%M", time.gmtime(unixTime))
