@@ -74,6 +74,8 @@ class TestSearchParse(unittest.TestCase):
 
     def test_parser_old_style(self):
 
+        # I'm slowly phasing out support for the old style format
+
         expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
         actual = self.grammar.ruleFromString("foo")
         self.assertEqual(expected,actual)
@@ -252,6 +254,14 @@ class TestSearchParse(unittest.TestCase):
 
         with self.assertRaises(RHSError):
             self.grammar.ruleFromString("one && &&")
+
+        # these are valid operators, given the grammmar, but
+        # are not used, so throw an error.
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("one | two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("one & two")
 
         # || = foo
         # foo = ||

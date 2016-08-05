@@ -395,6 +395,8 @@ def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit, offset
         query += " LIMIT %d"%limit
 
     if offset>0:
+        if limit is None:
+            query += " LIMIT 0" # always need a limit if offset is given
         query += " OFFSET %d"%offset
 
     return query, vals
@@ -439,6 +441,145 @@ class LHSError(ParseError):
             msg += " : %s"%value
         super(LHSError, self).__init__( msg )
 
+class FormatConversion(object):
+
+    """
+    FormatConversion handles conversion from string to another type.
+    Using Object Composition simplifies computation out of SearchGrammar
+    """
+    def __init__(self, dtn=None):
+
+        # locale date parsing, by default
+        # YYYY/MM/DD is supported.
+        # changing these values (indices into a 3-tuple)
+        # will change the supported date format.
+        self.DATE_LOCALE_FMT_Y = 0
+        self.DATE_LOCALE_FMT_M = 1
+        self.DATE_LOCALE_FMT_D = 2
+
+        self.datetime_now = dtn or datetime.now()
+
+    def formatDateDelta( self, sValue ):
+        """
+        parse strings of the form
+            "12d" (12 days)
+            "1y2m" (1 year 2 months)
+            "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
+            negative sign in front creates a date IN THE FUTURE
+        """
+
+        negate = False
+        num=""
+        dy=dm=dd=0
+        for c in sValue:
+            if c == "-":
+                negate = not negate
+            elif c == "y":
+                dy = int(num)
+                num=""
+            elif c == "m":
+                dm = int(num)
+                num=""
+            elif c == "w":
+                dd += 7*int(num)
+                num=""
+            elif c == "d":
+                dd += int(num)
+                num=""
+            else:
+                num += c
+        if num:
+            dd += int(num) # make 'd' optional, and capture remainder
+
+        if negate:
+            dy *= -1
+            dm *= -1
+            dd *= -1
+
+        dtn = self.datetime_now
+
+        dt1 = self.computeDateDelta(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
+        #dt1 = datetime(ncy,cm,cd) - timedelta( days )
+        dt2 = dt1 + timedelta( 1 )
+        return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+
+    def computeDateDelta(self,y,m,d,dy,dm):
+        """ semantically simple and more obvious behavior than _m and _y variants
+            and it works for negative deltas!
+        """
+        y = y - (m - dm)//12 - dy
+        m = (m - dm)%12
+
+        # modulo fix the day by rolling up, feb 29 to march 1
+        # or july 32 to aug 1st, if needed
+        days = calendar.monthrange(y,m)[1]
+        if d>days:
+            d -= days
+            m += 1
+        if m > 12:
+            m -= 12;
+            y += 1
+        return datetime(y,m,d)
+
+    def adjustYear(self,y):
+        """ convert an integer year into a 4-digit year
+        guesses the century using the magnitude of small numbers
+        """
+        if 50 < y < 100 :
+            y += 1900
+        if y < 50:
+            y += 2000
+        return y;
+
+    def formatDate( self, sValue ):
+
+        x = sValue.split('/')
+
+        y = int(x[self.DATE_LOCALE_FMT_Y])
+        m = int(x[self.DATE_LOCALE_FMT_M])
+        d = int(x[self.DATE_LOCALE_FMT_D])
+
+        y = self.adjustYear(y)
+
+        dt1 = datetime(y,m,d)
+        dt2 = dt1 + timedelta( 1 )
+
+        return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+
+    def parseDuration( self, sValue ):
+        # input as "123" or "3:21"
+        # convert hours:minutes:seconds to seconds
+        m=1
+        t = 0
+        try:
+            for x in reversed(sValue.split(":")):
+                if x:
+                    t += int(x)*m
+                m *= 60
+        except ValueError:
+            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
+        return t
+
+    def parseYear( self, sValue ):
+        # input as "123" or "3:21"
+        # convert hours:minutes:seconds to seconds
+        y = 0
+        try:
+            y = self.fc.adjustYear(int(sValue))
+        except ValueError:
+            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
+        return y
+
+    def parseNLPDate( self, value ):
+        dt = NLPDateRange(self.datetime_now).parse( value )
+        if dt:
+            cf = calendar.timegm(dt[0].utctimetuple())
+            if cf < 0:
+                cf = 0
+            rf = calendar.timegm(dt[1].utctimetuple())
+            return cf,rf
+        return None
+
 class SearchGrammar(object):
     """SearchGrammar is a generic class for building a db search engine
 
@@ -473,16 +614,13 @@ class SearchGrammar(object):
         Text Searches
 
             todo, use quotes, etc
-        Date Searches
 
+        Date Searches
             todo date modifiers, NLP, etc
 
         Time Searches
-
             todo, in seconds, minutes or hours, x:y:z, etc
 
-
-        TODO: add support for negate in new-style queries.
     """
     def __init__(self):
         super(SearchGrammar, self).__init__()
@@ -494,21 +632,66 @@ class SearchGrammar(object):
         self.year_fields = set(); # integer that represents a year
         self.all_text = 'text'
         # sigil is used to define the oldstyle syntax marker
+        # it should not appear in tok_special
         self.sigil = '.'
 
         # tokens control how the grammar is parsed.
-        self.tok_special = '~!=<>|&'
+        self.tok_whitespace = " \t"  # token separators
+        self.tok_special = '~!=<>|&' # all meaningful non-text chars
         self.tok_negate = "!"
         self.tok_nest_begin = '('
         self.tok_nest_end = ')'
-        self.tok_whitespace = " "
         self.tok_quote = "\""
         self.tok_escape = "\\"
 
-        self.autoset_datetime = True
-        self.datetime_now = datetime.now()
+        self.meta_limit = "limit"   # sql limit
+        self.meta_offset = "offset" # sql offset
+        self.meta_debug = "debug"   # write output to stdout
 
         self.compile_operators();
+
+        self.autoset_datetime = True
+        self.fc = FormatConversion( );
+
+    # public
+
+    def ruleFromString( self, string ):
+        """ return a rule AST from a given input string """
+        if self.autoset_datetime:
+            self.fc.datetime_now =  datetime.now()
+
+        # reset meta options
+        self.meta_options = dict()
+
+        if not string.strip():
+            return BlankSearchRule()
+        tokens = self.tokenizeString( string )
+        rule = self.parseTokens( tokens );
+        if self.getMetaValue(self.meta_debug) == 1:
+            sys.stdout.write("%r\n"%(rule))
+        elif self.getMetaValue(self.meta_debug) == 2:
+            sys.stdout.write("%s\n"%(rule.sqlstr()))
+        return rule;
+
+    def translateColumn(self,colid):
+        """ convert a column name, as input by the user to the internal name
+
+            overload this function to provide shortcuts for different columns
+
+            raise ParseError if colid is invalid
+        """
+        if colid not in self.text_fields and \
+           colid not in self.date_fields and \
+           colid not in self.time_fields and \
+           colid != self.all_text:
+            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
+        return colid
+
+    def getMetaValue(self,colid,default=None):
+        """ returns parsed value of a meta option, or default """
+        return self.meta_options.get(colid,default)
+
+    # private
 
     def compile_operators(self):
 
@@ -548,7 +731,8 @@ class SearchGrammar(object):
 
         # meta optins can be used to control the query results
         # by default, limit could be used to limit the number of results
-        self.meta_columns = set(["limit","debug","offset"])
+
+        self.meta_columns = set([self.meta_limit, self.meta_offset, self.meta_debug])
         self.meta_options = dict()
 
         self.old_style_operators = self.operators.copy()
@@ -562,95 +746,31 @@ class SearchGrammar(object):
             "||" : OrSearchRule
         }
 
-    def translateColumn(self,colid):
-        """ convert a column name, as input by the user to the internal name
-
-            overload this function to provide shortcuts for different columns
-
-            raise ParseError if colid is invalid
-        """
-        if colid not in self.text_fields and \
-           colid not in self.date_fields and \
-           colid not in self.time_fields and \
-           colid != self.all_text:
-            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
-        return colid
-
-    def ruleFromString( self, string ):
-        """
-
-        convert:
-            '.art foo; .abm bar'
-        to:
-            AndSearchRule([
-                PartialStringSearchRule("artist","foo"),
-                PartialStringSearchRule("album","bar"),
-            ])
-
-        allow for ';' to mean '&&' but also allow for &&, || and
-        parenthetical grouping
-
-        allow for '.' + token to map to a column name.
-            e.g. '.art' and '.artist' means 'artist'
-
-        allow for artist="foo bar" or "art="foo bar" to mean the same.
-
-        allow for '.art foo bar' to mean :
-            AndSearchRule([
-                PartialStringSearchRule("artist","foo"),
-                PartialStringSearchRule("artist","bar"),
-            ])
-
-        """
-        if self.autoset_datetime:
-            self.datetime_now =  datetime.now()
-
-        # reset meta options
-        self.meta_options = dict()
-
-        if not string.strip():
-            return BlankSearchRule()
-        tokens = self.tokenizeString( string )
-        rule = self.parseTokens( tokens );
-        if self.getMetaValue("debug") == 1:
-            sys.stdout.write("%r\n"%(rule))
-        elif self.getMetaValue("debug") == 2:
-            #s,v = rule.sql()
-            #v = [ ("\"%s\""%s) if isinstance(s,str) else s for s in v]
-            #s = s.replace("?","{}").format(*v)
-            sys.stdout.write("%s\n"%(rule.sqlstr()))
-        return rule;
-
     def tokenizeString(self, input ):
         """
-        simple parser for nested queries
+        split a string into tokens
+        Supports nesting of parenthesis and quoted regions
 
-        'column = this'
-        'column = this || column = that'
-        '(column = this || column=that) && column > 0'
-
-        supports old style queries:
-        defaults to partial string matching, an operator
-        changes the current operator used, negate flips the
-        current operator. multiple tokens can be specified in a row
-        '.col x y z'       is equal to 'col=x col=y col=z'
-        '.col = x < y ! z' is equal to 'col=x col<y col>z'
+        e.g.
+            "x y z" becomes three tokens ["x", "y", "z"]
+            "x && (y || z)" becomes ["x", "&&", ["y", "||", "Z"]]
 
         """
         idx = 0;
         cut = 0; # counts characters that have been cut
-        output = []
+        tokens = []
 
         # cause 'special' symbols to join together, separately
         # from all other character classes.
         join_special = False
-        stack = [ output ]
+        stack = [ tokens ]
         start = 0;
         quoted = False
+        bWasWhitespace = False #update start to ignore whitespace on append
 
         def append():
             # place a substring (one whole token) on the top of the stack
-            text = input[start:idx].strip()
+            text = input[start:idx]
             if text:
                 stack[-1].append(StrPos(text,start+cut))
 
@@ -693,7 +813,7 @@ class SearchGrammar(object):
                     stack.pop()
                 elif c in self.tok_whitespace:
                     append()
-                    start = idx
+                    bWasWhitespace = True
                 elif s and not join_special:
                     append()
                     start = idx
@@ -703,19 +823,23 @@ class SearchGrammar(object):
                     start = idx
                     join_special = False
             idx += 1
+            if bWasWhitespace:
+                start = idx;
+                bWasWhitespace = False
         if len(stack) == 0:
-            raise TokenizeError("empty stack (check parenthesis)")
+            raise TokenizeError("Empty stack (check parenthesis)")
         if len(stack) > 1:
-            raise TokenizeError("unterminated parenthesis")
+            raise TokenizeError("Unterminated Parenthesis")
         if quoted:
-            raise TokenizeError("unterminated quote")
+            raise TokenizeError("Unterminated Double Quote")
         # collect anything left over
         append()
 
-        return output
+        return tokens
 
     def parseTokens( self, tokens, top=True ):
-
+        """transforms the input tokens into an AST or SearchRules.
+        """
         i=0
         while i < len(tokens):
             tok = tokens[i]
@@ -723,12 +847,16 @@ class SearchGrammar(object):
             hasr = i<len(tokens)-1
 
             if isinstance(tok,list):
+                # recursively process nested levels
                 tokens[i] = self.parseTokens(tok, top=False)
+                # completely remove useless rules
                 if isinstance(tokens[i],BlankSearchRule):
                     tokens.pop(i)
                     continue
             elif tok.startswith(self.sigil):
-                # old style query
+                # old style query, replace consecutive words
+                # with rules built in the old-way
+                # intentionally ignores negate for legacy reasons
                 s = i
                 while i < len(tokens) and \
                     not isinstance(tokens[i],list) and \
@@ -752,18 +880,19 @@ class SearchGrammar(object):
                 if not hasl or \
                     (not isinstance(tokens[i-1],(str,unicode)) or tokens[i-1] in self.operators_flow):
                     # no left side, or left side has been processed and is not a column label
-                    tokens[i] = self.parserRule(self.all_text,self.operators[tok],r)
+                    tokens[i] = self.buildRule(self.all_text,self.operators[tok],r)
                 else:
                     # left side token exists
                     i-=1
                     l = tokens.pop(i)
                     if l in self.meta_columns:
                         # and remove the column name
-                        tokens.pop(i) # remove token
-                        self.parserMeta(l,tok,r,top)
+                        tokens.pop(i) # remove the operator
+                        self.addMeta(l,tok,r,top)
                         continue
                     else:
-                        tokens[i] = self.parserRule(l,self.operators[tok],r)
+                        # overwrite the operator with a rule
+                        tokens[i] = self.buildRule(l,self.operators[tok],r)
             elif tok in self.special:
                 if not hasr:
                     raise RHSError(tok, "expected value [V02]")
@@ -783,7 +912,7 @@ class SearchGrammar(object):
                     tokens.pop(i) # remove token
                     self.parserMeta(l,tok,r,top)
                     continue
-                tokens[i] = self.parserRule(l,self.special[tok],r)
+                tokens[i] = self.buildRule(l,self.special[tok],r)
             elif tok in self.illegal:
                 raise ParseError("Unkown operator `%s` at position %d"%(tok,tok.pos))
             i += 1
@@ -850,7 +979,7 @@ class SearchGrammar(object):
                     tokens.pop(i)
                     continue
                 elif tok not in self.operators_flow and tok != self.tok_negate:
-                    tokens[i] = self.parserRule(current_col,current_opr,tok)
+                    tokens[i] = self.buildRule(current_col,current_opr,tok)
             i+=1
 
         if len(tokens) == 1:
@@ -858,127 +987,7 @@ class SearchGrammar(object):
 
         return AndSearchRule( tokens )
 
-    def parserDateDelta(self,y,m,d,dy,dm):
-        """ semantically simple and more obvious behavior than _m and _y variants
-            and it works for negative deltas!
-        """
-        y = y - (m - dm)//12 - dy
-        m = (m - dm)%12
-
-        # modulo fix the day by rolling up, feb 29 to march 1
-        # or july 32 to aug 1st, if needed
-        days = calendar.monthrange(y,m)[1]
-        if d>days:
-            d -= days
-            m += 1
-        if m > 12:
-            m -= 12;
-            y += 1
-        return datetime(y,m,d)
-
-    def parserFormatDateDelta( self, sValue ):
-        """
-        parse strings of the form
-            "12d" (12 days)
-            "1y2m" (1 year 2 months)
-            "1y2m3w4d" (1 year, 2 months, 3 weeks, 4 days)
-            negative sign in front creates a date IN THE FUTURE
-        """
-
-        negate = False
-        num=""
-        dy=dm=dd=0
-        for c in sValue:
-            if c == "-":
-                negate = not negate
-            elif c == "y":
-                dy = int(num)
-                num=""
-            elif c == "m":
-                dm = int(num)
-                num=""
-            elif c == "w":
-                dd += 7*int(num)
-                num=""
-            elif c == "d":
-                dd += int(num)
-                num=""
-            else:
-                num += c
-        if num:
-            dd += int(num) # make 'd' optional, and capture remainder
-
-        if negate:
-            dy *= -1
-            dm *= -1
-            dd *= -1
-
-        dtn = self.datetime_now
-
-        dt1 = self.parserDateDelta(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
-        #dt1 = datetime(ncy,cm,cd) - timedelta( days )
-        dt2 = dt1 + timedelta( 1 )
-        return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
-
-    def adjustYear(self,y):
-
-        if 50 < y < 100 :
-            y += 1900
-        if y < 50:
-            y += 2000
-
-        return y;
-
-    def parserFormatDate( self, value ):
-
-        sy,sm,sd = value.split('/')
-
-        y = int(sy)
-        m = int(sm)
-        d = int(sd)
-
-        y = self.adjustYear(y)
-
-        dt1 = datetime(y,m,d)
-        dt2 = dt1 + timedelta( 1 )
-
-        return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
-
-    def parserNLPDate( self, value ):
-        dt = NLPDateRange(self.datetime_now).parse( value )
-        if dt:
-            cf = calendar.timegm(dt[0].utctimetuple())
-            if cf < 0:
-                cf = 0
-            rf = calendar.timegm(dt[1].utctimetuple())
-            return cf,rf
-        return None
-
-    def parserDuration( self, sValue ):
-        # input as "123" or "3:21"
-        # convert hours:minutes:seconds to seconds
-        m=1
-        t = 0
-        try:
-            for x in reversed(sValue.split(":")):
-                if x:
-                    t += int(x)*m
-                m *= 60
-        except ValueError:
-            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
-        return t
-
-    def parserYear( self, sValue ):
-        # input as "123" or "3:21"
-        # convert hours:minutes:seconds to seconds
-        y = 0
-        try:
-            y = self.adjustYear(int(sValue))
-        except ValueError:
-            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
-        return y
-
-    def parserDateRule( self, rule , col, value):
+    def buildDateRule( self, rule , col, value):
         """
         There are two date fields, 'last_played' and 'date_added'
 
@@ -998,14 +1007,14 @@ class SearchGrammar(object):
 
         try:
             if c == 2:
-                epochtime,epochtime2 = self.parserFormatDate( value )
+                epochtime,epochtime2 = self.fc.formatDate( value )
             elif c > 0:
                 raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
-                epochtime,epochtime2 = self.parserFormatDateDelta( value )
+                epochtime,epochtime2 = self.fcformatDateDelta( value )
         except ValueError as e:
 
-            result = self.parserNLPDate( value )
+            result = self.fc.parseNLPDate( value )
 
             if result is None:
                 # failed to convert istr -> int
@@ -1034,7 +1043,7 @@ class SearchGrammar(object):
 
         return rule( col, IntDate(epochtime) )
 
-    def parserRule(self, colid, rule ,value):
+    def buildRule(self, colid, rule ,value):
         """
         this must be expanded to support new data formats.
         """
@@ -1044,14 +1053,14 @@ class SearchGrammar(object):
         elif col in self.text_fields:
             return rule( col, value )
         elif col in self.date_fields:
-            return self.parserDateRule(rule, col, value)
+            return self.buildDateRule(rule, col, value)
         # numeric field
         # partial rules don't make sense, convert to exact rules
         if col in self.time_fields:
-            value = self.parserDuration( value )
+            value = self.fc.parseDuration( value )
 
         if col in self.year_fields:
-            value = self.parserYear( value )
+            value = self.fc.parseYear( value )
 
         if rule is PartialStringSearchRule:
             return ExactSearchRule(col, value)
@@ -1059,18 +1068,7 @@ class SearchGrammar(object):
             return InvertedExactSearchRule(col, value)
         return rule( col, value )
 
-    def allTextRule(self, rule, string ):
-        """
-        returns a rule that will return true if
-        any text field matches the given string
-        or if no text field contains the string
-        """
-        meta = OrSearchRule
-        if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
-            meta = AndSearchRule
-        return meta([ rule(col,string) for col in self.text_fields ])
-
-    def parserMeta(self, colid, tok, value, top):
+    def addMeta(self, colid, tok, value, top):
         """ meta options control sql parameters of the query
         They are independant of any database.
         """
@@ -1085,16 +1083,27 @@ class SearchGrammar(object):
 
         rule = self.operators[tok]
 
-        if colid == "debug":
+        if colid == self.meta_debug:
             self.meta_options[colid] = int(value)
-        elif colid in ("limit","offset"):
+        elif colid in (self.meta_limit,self.meta_offset):
 
             if rule in (PartialStringSearchRule, ExactSearchRule):
                 self.meta_options[colid] = int(value)
             else:
                 raise ParseError("Illegal operation `%s` at position %d for option `%s`"%(tok,tok.pos,colid))
 
-    def getMetaValue(self,colid,default=None):
-        """ returns parsed value of a meta option, or default """
-        return self.meta_options.get(colid,default)
+    # protected
+
+    def allTextRule(self, rule, string ):
+        """
+        returns a rule that will return true if
+        any text field matches the given string
+        or if no text field contains the string
+        """
+        meta = OrSearchRule
+        if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
+            meta = AndSearchRule
+        return meta([ rule(col,string) for col in self.text_fields ])
+
+
 
