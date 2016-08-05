@@ -255,6 +255,7 @@ class SongSearchGrammar(SearchGrammar):
         self.text_fields.add(Song.path)
         self.date_fields = set(Song.dateFields())
         self.time_fields = set([Song.length,])
+        self.year_fields = set([Song.year,])
 
     def translateColumn(self,colid):
         # translate the given colid to an internal column name
