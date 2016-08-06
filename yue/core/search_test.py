@@ -1,4 +1,4 @@
-#! cd ../.. && python setup.py test --test=search
+#! cd ../.. && python setup.py test
 #! C:\\Python35\\python.exe $this
 
 """

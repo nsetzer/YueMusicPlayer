@@ -22,9 +22,10 @@ class IntTime(int):
 
 class StrPos(str):
     """ A string tagged with a position value"""
-    def __new__(cls, strval, pos):
+    def __new__(cls, strval, pos, end):
         inst = super(StrPos, cls).__new__(cls, strval)
         inst.pos = pos
+        inst.end = end
         return inst
 
 class SearchRule(object):
@@ -757,7 +758,6 @@ class SearchGrammar(object):
 
         """
         idx = 0;
-        cut = 0; # counts characters that have been cut
         tokens = []
 
         # cause 'special' symbols to join together, separately
@@ -766,13 +766,16 @@ class SearchGrammar(object):
         stack = [ tokens ]
         start = 0;
         quoted = False
-        bWasWhitespace = False #update start to ignore whitespace on append
+        tok = ""
 
         def append():
             # place a substring (one whole token) on the top of the stack
-            text = input[start:idx]
-            if text:
-                stack[-1].append(StrPos(text,start+cut))
+            # old code modified input so that input[start:idx]
+            # could be appended. the new code updates a token variable
+            # so that we get more accurate ranges of the origin of the token
+            # from the input string
+            if tok:
+                stack[-1].append(StrPos(tok,start,idx))
 
         while idx < len( input ) and len(stack)>0:
             c = input[idx]
@@ -785,47 +788,57 @@ class SearchGrammar(object):
                 # then look at the next character to decide
                 # mode (e.g. \\ -> \, \a -> bell \x00 -> 0x00, etc)
 
-                input = input[:idx] + input[idx+1:]
-                cut += 1;
-            elif c == self.tok_quote and not quoted:
-                # quote detected, ignore all characters until
-                # the next matching quote is found
-                quoted = True
-                append()
-                start = idx+1
-            elif c == self.tok_quote and quoted:
-                append()
-                start = idx+1
-                quoted = False
+                idx+=1
+                tok += input[idx]
+
             elif not quoted:
                 s = c in self.tok_special
-                if c == self.tok_nest_begin:
+                if c == self.tok_quote:
+                    quoted = True
+                    append()
+                    start=idx+1
+                    tok = ""
+                elif c == self.tok_nest_begin:
                     # start of parenthetical grouping,
                     # push a new level on the stack.
                     append()
+                    start=idx+1
+                    tok = ""
                     new_level = []
                     stack[-1].append( new_level )
                     stack.append( new_level )
-                    start = idx+1
                 elif c == self.tok_nest_end:
                     append()
-                    start = idx+1
+                    start=idx+1
+                    tok = ""
                     stack.pop()
                 elif c in self.tok_whitespace:
                     append()
-                    bWasWhitespace = True
+                    start=idx+1
+                    tok = ""
                 elif s and not join_special:
                     append()
-                    start = idx
+                    start=idx
+                    tok=c
                     join_special = True
                 elif not s and join_special:
                     append()
-                    start = idx
+                    start=idx
+                    tok=c
                     join_special = False
+                else:
+                    tok += c
+            else: # is quoted
+                if c == self.tok_quote:
+                    stack[-1].append(StrPos(tok,start,idx))
+                    start=idx+1
+                    tok = ""
+                    quoted = False
+                else:
+                    tok += c
             idx += 1
-            if bWasWhitespace:
-                start = idx;
-                bWasWhitespace = False
+
+
         if len(stack) == 0:
             raise TokenizeError("Empty stack (check parenthesis)")
         if len(stack) > 1:
