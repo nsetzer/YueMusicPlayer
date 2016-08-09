@@ -29,21 +29,10 @@ class StrPos(str):
         inst.kind = kind
         return inst
 
-class SearchRule(object):
-    """Baseclass for search rules
-
-    The check()/sql() methods are a form of self documentation and ard
-    database implementation dependent. For example the check method
-    for the RangeSearchRule rule is implemented to match the BETWEEN condition
-    in sqlite3.
-
-    """
+class Rule(object):
 
     def __init__(self):
-        super(SearchRule, self).__init__()
-
-    def check(self,elem):
-        raise NotImplementedError()
+        super(Rule, self).__init__()
 
     def __eq__(self,othr):
         return repr(self) == repr(othr)
@@ -71,6 +60,25 @@ class SearchRule(object):
         elif isinstance(v,str):
             return "\"%s\""%v
         return v;
+
+    def sqlstr(self):
+        raise NotImplementedError()
+
+class SearchRule(Rule):
+    """Baseclass for search rules
+
+    The check()/sql() methods are a form of self documentation and ard
+    database implementation dependent. For example the check method
+    for the RangeSearchRule rule is implemented to match the BETWEEN condition
+    in sqlite3.
+
+    """
+
+    def __init__(self):
+        super(SearchRule, self).__init__()
+
+    def check(self,elem):
+        raise NotImplementedError()
 
     def sqlstr(self):
         """ like sql() but returns a single string representing the rule"""
@@ -582,7 +590,7 @@ class FormatConversion(object):
             return cf,rf
         return None
 
-class SearchGrammar(object):
+class Grammar(object):
     """SearchGrammar is a generic class for building a db search engine
 
         This defines a query syntax for querying records by text, date, or time
@@ -624,34 +632,19 @@ class SearchGrammar(object):
             todo, in seconds, minutes or hours, x:y:z, etc
 
     """
+
+    META_LIMIT  = "limit"   # sql limit
+    META_OFFSET = "offset"  # sql offset
+    META_DEBUG  = "debug"   # write output to stdout
+
     def __init__(self):
-        super(SearchGrammar, self).__init__()
+        super(Grammar, self).__init__()
 
         # set these to names of columns of specific data types
         self.text_fields = set();
         self.date_fields = set(); # column represents a date in seconds since jan 1st 1970
         self.time_fields = set(); # column represents a duration, in seconds
         self.year_fields = set(); # integer that represents a year
-        self.all_text = 'text'
-        # sigil is used to define the oldstyle syntax marker
-        # it should not appear in tok_special
-        self.sigil = '.'
-
-        # tokens control how the grammar is parsed.
-        self.tok_whitespace = " \t"  # token separators
-        # all meaningful non-text chars
-        self.tok_operators = '~!=<>'
-        self.tok_flow = "|&"
-        self.tok_special = self.tok_operators + self.tok_flow
-        self.tok_negate = "!"
-        self.tok_nest_begin = '('
-        self.tok_nest_end = ')'
-        self.tok_quote = "\""
-        self.tok_escape = "\\"
-
-        self.meta_limit = "limit"   # sql limit
-        self.meta_offset = "offset" # sql offset
-        self.meta_debug = "debug"   # write output to stdout
 
         self.compile_operators();
 
@@ -672,9 +665,9 @@ class SearchGrammar(object):
             return BlankSearchRule()
         tokens = self.tokenizeString( string )
         rule = self.parseTokens( tokens );
-        if self.getMetaValue(self.meta_debug) == 1:
+        if self.getMetaValue(Grammar.META_DEBUG) == 1:
             sys.stdout.write("%r\n"%(rule))
-        elif self.getMetaValue(self.meta_debug) == 2:
+        elif self.getMetaValue(Grammar.META_DEBUG) == 2:
             sys.stdout.write("%s\n"%(rule.sqlstr()))
         return rule;
 
@@ -697,59 +690,6 @@ class SearchGrammar(object):
         return self.meta_options.get(colid,default)
 
     # private
-
-    def compile_operators(self):
-
-        # does not require left token
-        self.operators = {
-            "=" :PartialStringSearchRule,
-            "~" :PartialStringSearchRule,
-            "==":ExactSearchRule,
-            "=~":RegExpSearchRule,
-            "!=":InvertedPartialStringSearchRule,
-            "!==":InvertedExactSearchRule,
-        }
-
-        self.operators_invert = {
-            InvertedPartialStringSearchRule :PartialStringSearchRule,
-            InvertedExactSearchRule:ExactSearchRule,
-            PartialStringSearchRule:InvertedPartialStringSearchRule,
-            ExactSearchRule:InvertedExactSearchRule,
-        }
-
-        # require left/right token
-        self.special = {
-            "<"  : LessThanSearchRule,
-            ">"  : GreaterThanSearchRule,
-            "<=" : LessThanEqualSearchRule,
-            ">=" : GreaterThanEqualSearchRule,
-        }
-
-        self.special_invert = {
-            GreaterThanSearchRule      : LessThanSearchRule,
-            LessThanSearchRule         : GreaterThanSearchRule,
-            GreaterThanEqualSearchRule : LessThanEqualSearchRule,
-            LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
-        }
-
-        self.illegal = set(["|", "&"])
-
-        # meta optins can be used to control the query results
-        # by default, limit could be used to limit the number of results
-
-        self.meta_columns = set([self.meta_limit, self.meta_offset, self.meta_debug])
-        self.meta_options = dict()
-
-        self.old_style_operators = self.operators.copy()
-        self.old_style_operators.update(self.special)
-
-        self.old_style_operators_invert = self.operators_invert.copy()
-        self.old_style_operators_invert.update(self.special_invert)
-
-        self.operators_flow = {
-            "&&" : AndSearchRule,
-            "||" : OrSearchRule
-        }
 
     def tokenizeString(self, input ):
         """
@@ -977,7 +917,7 @@ class SearchGrammar(object):
                 raise ParseError("unexpected error")
             return tokens[0]
 
-        return AndSearchRule( tokens )
+        return self.operators_flow["&&"]( tokens )
 
     def parseTokensOldStyle( self, tokens ):
 
@@ -1012,9 +952,139 @@ class SearchGrammar(object):
         if len(tokens) == 1:
             return tokens[0]
 
-        return AndSearchRule( tokens )
+        return self.operators_flow["&&"]( tokens )
 
-    def buildDateRule( self, rule , col, value):
+    def addMeta(self, colid, tok, value, top):
+        """ meta options control sql parameters of the query
+        They are independant of any database.
+        """
+        if not top:
+            raise ParseError("Option `%s` at position %d can only be provided at the top level."%(colid,colid.pos))
+
+        if colid in self.meta_options:
+            raise ParseError("Option `%s` at position %d can not be provided twice"%(colid,colid.pos))
+
+        if tok not in self.operators:
+            raise ParseError("Operator `%s` at position %d not valid in this context"%(tok,tok.pos))
+
+        rule = self.operators[tok]
+
+        if colid == Gramar.META_DEBUG:
+            self.meta_options[colid] = int(value)
+        elif colid in (Gramar.META_LIMIT,Gramar.META_OFFSET):
+
+            if rule in (PartialStringSearchRule, ExactSearchRule):
+                self.meta_options[colid] = int(value)
+            else:
+                raise ParseError("Illegal operation `%s` at position %d for option `%s`"%(tok,tok.pos,colid))
+
+    # protected
+
+    def compile_operators(self):
+        raise NotImplementedError()
+
+    def buildRule(self, colid, rule ,value):
+        raise NotImplementedError()
+
+class SearchGrammar(Grammar):
+
+    def __init__(self):
+        super(SearchGrammar, self).__init__()
+
+    def compile_operators(self):
+
+        self.all_text = 'text'
+        # sigil is used to define the oldstyle syntax marker
+        # it should not appear in tok_special
+        self.sigil = '.'
+
+        # tokens control how the grammar is parsed.
+        self.tok_whitespace = " \t"  # token separators
+        # all meaningful non-text chars
+        self.tok_operators = '~!=<>'
+        self.tok_flow = "|&"
+        self.tok_special = self.tok_operators + self.tok_flow
+        self.tok_negate = "!"
+        self.tok_nest_begin = '('
+        self.tok_nest_end = ')'
+        self.tok_quote = "\""
+        self.tok_escape = "\\"
+
+        # does not require left token
+        self.operators = {
+            "=" :PartialStringSearchRule,
+            "~" :PartialStringSearchRule,
+            "==":ExactSearchRule,
+            "=~":RegExpSearchRule,
+            "!=":InvertedPartialStringSearchRule,
+            "!==":InvertedExactSearchRule,
+        }
+
+        self.operators_invert = {
+            InvertedPartialStringSearchRule :PartialStringSearchRule,
+            InvertedExactSearchRule:ExactSearchRule,
+            PartialStringSearchRule:InvertedPartialStringSearchRule,
+            ExactSearchRule:InvertedExactSearchRule,
+        }
+
+        # require left/right token
+        self.special = {
+            "<"  : LessThanSearchRule,
+            ">"  : GreaterThanSearchRule,
+            "<=" : LessThanEqualSearchRule,
+            ">=" : GreaterThanEqualSearchRule,
+        }
+
+        self.special_invert = {
+            GreaterThanSearchRule      : LessThanSearchRule,
+            LessThanSearchRule         : GreaterThanSearchRule,
+            GreaterThanEqualSearchRule : LessThanEqualSearchRule,
+            LessThanEqualSearchRule    : GreaterThanEqualSearchRule,
+        }
+
+        # meta optins can be used to control the query results
+        # by default, limit could be used to limit the number of results
+
+        self.meta_columns = set([Grammar.META_LIMIT,Grammar.META_OFFSET,Grammar.META_DEBUG])
+        self.meta_options = dict()
+
+        self.old_style_operators = self.operators.copy()
+        self.old_style_operators.update(self.special)
+
+        self.old_style_operators_invert = self.operators_invert.copy()
+        self.old_style_operators_invert.update(self.special_invert)
+
+        self.operators_flow = {
+            "&&" : AndSearchRule,
+            "||" : OrSearchRule
+        }
+
+    def buildRule(self, colid, rule ,value):
+        """
+        this must be expanded to support new data formats.
+        """
+        col = self.translateColumn( colid )
+        if col == self.all_text:
+            return self.allTextRule(rule, value)
+        elif col in self.text_fields:
+            return rule( col, value )
+        elif col in self.date_fields:
+            return self.buildDateRule(col, rule, value)
+        # numeric field
+        # partial rules don't make sense, convert to exact rules
+        if col in self.time_fields:
+            value = self.fc.parseDuration( value )
+
+        if col in self.year_fields:
+            value = self.fc.parseYear( value )
+
+        if rule is PartialStringSearchRule:
+            return ExactSearchRule(col, value)
+        if rule is InvertedPartialStringSearchRule:
+            return InvertedExactSearchRule(col, value)
+        return rule( col, value )
+
+    def buildDateRule( self, col, rule, value):
         """
         There are two date fields, 'last_played' and 'date_added'
 
@@ -1070,6 +1140,130 @@ class SearchGrammar(object):
 
         return rule( col, IntDate(epochtime) )
 
+    def allTextRule(self, rule, string ):
+        """
+        returns a rule that will return true if
+        any text field matches the given string
+        or if no text field contains the string
+        """
+        meta = OrSearchRule
+        if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
+            meta = AndSearchRule
+        return meta([ rule(col,string) for col in self.text_fields ])
+
+class UpdateRule(Rule):
+    """Baseclass for search rules
+
+    The check()/sql() methods are a form of self documentation and ard
+    database implementation dependent. For example the check method
+    for the RangeSearchRule rule is implemented to match the BETWEEN condition
+    in sqlite3.
+
+    """
+
+    def __init__(self):
+        super(UpdateRule, self).__init__()
+
+    def sqlstr(self):
+        """ like sql() but returns a single string representing the rule"""
+        s,v = self.sql()
+        return s.replace("?","{}").format(*map(self.fmtval,v))
+
+class ColumnUpdateRule(UpdateRule):
+    """Base class for applying a rule to a column in a table"""
+    def __init__(self, column, value):
+        super(ColumnUpdateRule, self).__init__()
+        self.column = column
+        self.value = value
+
+class AssignmentRule(ColumnUpdateRule):
+    """matches if the a value is exactly equal to the given
+
+    this works for text or integers
+    """
+    def __repr__(self):
+        return "<%s = %s>"%(self.column, self.fmtval(self.value))
+
+    def sql(self):
+        return "%s = ?"%(self.column,), (self.value,)
+
+class MetaUpdateRule(UpdateRule):
+    """group one or more search rules"""
+    def __init__(self, rules):
+        super(MetaUpdateRule, self).__init__()
+        self.rules = rules
+
+class AndUpdateRule(MetaUpdateRule):
+    """MetaSearchRule which checks that all rules return true"""
+
+    def __repr__(self):
+        return "<" + ' '.join(map(repr,self.rules)) + ">"
+
+    def sql(self):
+        sql  = []
+        vals = []
+        sqlstr= ""
+        for rule in self.rules:
+            x = rule.sql()
+            sql.append(x[0])
+            vals.extend(x[1])
+        if sql:
+            sqlstr = ' '.join(sql)
+        return sqlstr,vals
+
+class UpdateGrammar(Grammar):
+
+    def __init__(self):
+        super(UpdateGrammar, self).__init__()
+
+    def compile_operators(self):
+
+        self.all_text = 'text'
+        # sigil is used to define the oldstyle syntax marker
+        # it should not appear in tok_special
+        self.sigil = '.'
+
+        # tokens control how the grammar is parsed.
+        self.tok_whitespace = " \t"  # token separators
+        # all meaningful non-text chars
+        self.tok_operators = '~!=<>()|&'
+        self.tok_flow = ""
+        self.tok_special = self.tok_operators + self.tok_flow
+        self.tok_negate = None
+        self.tok_nest_begin = None
+        self.tok_nest_end = None
+        self.tok_quote = "\""
+        self.tok_escape = "\\"
+
+        # does not require left token
+        self.operators = {
+            "=" :AssignmentRule,
+            "==":AssignmentRule,
+        }
+
+        self.operators_invert = {}
+
+        # require left/right token
+        self.special = {}
+
+        self.special_invert = {}
+
+        # meta optins can be used to control the query results
+        # by default, limit could be used to limit the number of results
+
+        self.meta_columns = set([Grammar.META_DEBUG])
+        self.meta_options = dict()
+
+        self.old_style_operators = self.operators.copy()
+        self.old_style_operators.update(self.special)
+
+        self.old_style_operators_invert = self.operators_invert.copy()
+        self.old_style_operators_invert.update(self.special_invert)
+
+        self.operators_flow = {
+            "&&" : AndUpdateRule,
+        }
+
     def buildRule(self, colid, rule ,value):
         """
         this must be expanded to support new data formats.
@@ -1080,7 +1274,7 @@ class SearchGrammar(object):
         elif col in self.text_fields:
             return rule( col, value )
         elif col in self.date_fields:
-            return self.buildDateRule(rule, col, value)
+            return self.buildDateRule(col, rule, value)
         # numeric field
         # partial rules don't make sense, convert to exact rules
         if col in self.time_fields:
@@ -1095,31 +1289,61 @@ class SearchGrammar(object):
             return InvertedExactSearchRule(col, value)
         return rule( col, value )
 
-    def addMeta(self, colid, tok, value, top):
-        """ meta options control sql parameters of the query
-        They are independant of any database.
+    def buildDateRule( self, col, rule, value):
         """
-        if not top:
-            raise ParseError("Option `%s` at position %d can only be provided at the top level."%(colid,colid.pos))
+        There are two date fields, 'last_played' and 'date_added'
 
-        if colid in self.meta_options:
-            raise ParseError("Option `%s` at position %d can not be provided twice"%(colid,colid.pos))
+        queries can be run in two modes.
 
-        if tok not in self.operators:
-            raise ParseError("Operator `%s` at position %d not valid in this context"%(tok,tok.pos))
+        providing an integer (e.g. date < N) performs a relative search
+        from the current date, in this examples songs played since N days ago.
 
-        rule = self.operators[tok]
+        providing a date string will run an exact search. (e.g. date < 15/3/12)
+        the string is parsed y/m/d but otherwise behaves exactly the same way.
 
-        if colid == self.meta_debug:
-            self.meta_options[colid] = int(value)
-        elif colid in (self.meta_limit,self.meta_offset):
+        < : closer to present day, including the date given
+        > : farther into the past, excluding the given date
+        = : exactly that day, from 00:00:00 to 23:59:59
+        """
+        c = value.count('/')
 
-            if rule in (PartialStringSearchRule, ExactSearchRule):
-                self.meta_options[colid] = int(value)
+        try:
+            if c == 2:
+                epochtime,epochtime2 = self.fc.formatDate( value )
+            elif c > 0:
+                raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
-                raise ParseError("Illegal operation `%s` at position %d for option `%s`"%(tok,tok.pos,colid))
+                epochtime,epochtime2 = self.fcformatDateDelta( value )
+        except ValueError as e:
 
-    # protected
+            result = self.fc.parseNLPDate( value )
+
+            if result is None:
+                # failed to convert istr -> int
+                raise ParseError("Expected Integer or Date, found `%s` at position %d"%(value,value.pos))
+
+            epochtime,epochtime2 = result
+
+        # flip the context of '<' and '>'
+        # for dates, '<' means closer to present day
+        # date < 5 is anything in the last 5 days
+        if rule in self.special_invert:
+            rule = self.special_invert[rule]
+
+        # token '=' is partial string matching, in the context of dates
+        # it will return any song played exactly n days ago
+        # a value of '1' is yesterday
+        if rule is PartialStringSearchRule:
+            return RangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
+
+        # inverted range matching
+        if rule is InvertedPartialStringSearchRule:
+            return NotRangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
+
+        if rule is LessThanEqualSearchRule:
+            return rule( col, IntDate(epochtime2))
+
+        return rule( col, IntDate(epochtime) )
 
     def allTextRule(self, rule, string ):
         """
@@ -1131,6 +1355,4 @@ class SearchGrammar(object):
         if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
             meta = AndSearchRule
         return meta([ rule(col,string) for col in self.text_fields ])
-
-
 
