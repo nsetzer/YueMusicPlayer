@@ -22,10 +22,11 @@ class IntTime(int):
 
 class StrPos(str):
     """ A string tagged with a position value"""
-    def __new__(cls, strval, pos, end):
+    def __new__(cls, strval, pos, end, kind="text"):
         inst = super(StrPos, cls).__new__(cls, strval)
         inst.pos = pos
         inst.end = end
+        inst.kind = kind
         return inst
 
 class SearchRule(object):
@@ -638,7 +639,10 @@ class SearchGrammar(object):
 
         # tokens control how the grammar is parsed.
         self.tok_whitespace = " \t"  # token separators
-        self.tok_special = '~!=<>|&' # all meaningful non-text chars
+        # all meaningful non-text chars
+        self.tok_operators = '~!=<>'
+        self.tok_flow = "|&"
+        self.tok_special = self.tok_operators + self.tok_flow
         self.tok_negate = "!"
         self.tok_nest_begin = '('
         self.tok_nest_end = ')'
@@ -774,8 +778,13 @@ class SearchGrammar(object):
             # could be appended. the new code updates a token variable
             # so that we get more accurate ranges of the origin of the token
             # from the input string
+
             if tok:
-                stack[-1].append(StrPos(tok,start,idx))
+                kind = "text"
+                if join_special:
+                    kind = "special"
+
+                stack[-1].append(StrPos(tok,start,idx,kind))
 
         while idx < len( input ) and len(stack)>0:
             c = input[idx]
@@ -887,8 +896,8 @@ class SearchGrammar(object):
                 r = tokens.pop(i+1)
                 if not isinstance(r,(str,unicode)):
                     raise RHSError(tok, "expected string [S01]")
-                if r in self.operators_flow:
-                    raise RHSError(tok, "unexpected operator [U01]")
+                if r.kind == "special":
+                    raise RHSError(tok, "unexpected operator `%s` [U01]"%r)
                 # left side is optional, defaults to all text
                 if not hasl or \
                     (not isinstance(tokens[i-1],(str,unicode)) or tokens[i-1] in self.operators_flow):
@@ -914,8 +923,8 @@ class SearchGrammar(object):
                 r = tokens.pop(i+1)
                 if not isinstance(r,(str,unicode)):
                     raise RHSError(tok, "expected string [S02]")
-                if r in self.operators_flow:
-                    raise RHSError(tok, "unexpected operator [U02]")
+                if r.kind == "special":
+                    raise RHSError(tok, "unexpected operator `%s` [U02]"%r)
                 i-=1
                 l = tokens.pop(i)
                 if not isinstance(l,(str,unicode)):
@@ -926,7 +935,9 @@ class SearchGrammar(object):
                     self.parserMeta(l,tok,r,top)
                     continue
                 tokens[i] = self.buildRule(l,self.special[tok],r)
-            elif tok in self.illegal:
+
+            elif tok not in self.operators_flow and tok.kind == "special":
+                # check for malformed operators
                 raise ParseError("Unkown operator `%s` at position %d"%(tok,tok.pos))
             i += 1
 
@@ -951,7 +962,7 @@ class SearchGrammar(object):
                         raise LHSError(tok, "expected value [V06]")
                     r = tokens.pop(i+1)
                     if isinstance(r, (str, unicode)) and r in self.operators_flow:
-                        raise RHSError(tok, "unexpected operator [U03]")
+                        raise RHSError(tok, "unexpected operator `%s` [U03]"%r)
                     i-=1
                     l = tokens.pop(i)
                     tokens[i] = self.operators_flow[tok]([l,r])
@@ -962,6 +973,7 @@ class SearchGrammar(object):
 
         elif len(tokens) == 1:
             if isinstance(tokens[0],(str,unicode)):
+                # there should be no strings at this point
                 raise ParseError("unexpected error")
             return tokens[0]
 
@@ -991,6 +1003,8 @@ class SearchGrammar(object):
                     current_opr = self.old_style_operators[tok]
                     tokens.pop(i)
                     continue
+                #elif tok not in self.operators_flow and tok[0] in self.tok_flow:
+                #    raise ParseError()
                 elif tok not in self.operators_flow and tok != self.tok_negate:
                     tokens[i] = self.buildRule(current_col,current_opr,tok)
             i+=1

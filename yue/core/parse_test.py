@@ -247,21 +247,45 @@ class TestSearchParse(unittest.TestCase):
             self.grammar.ruleFromString(" \" foo ")
 
         with self.assertRaises(RHSError):
-            self.grammar.ruleFromString("one = &&")
+            self.grammar.ruleFromString("artist = &&")
 
         with self.assertRaises(RHSError):
-            self.grammar.ruleFromString("one < &&")
+            self.grammar.ruleFromString("artist < &&")
 
         with self.assertRaises(RHSError):
-            self.grammar.ruleFromString("one && &&")
+            self.grammar.ruleFromString("artist && &&")
 
         # these are valid operators, given the grammmar, but
         # are not used, so throw an error.
         with self.assertRaises(ParseError):
-            self.grammar.ruleFromString("one | two")
+            self.grammar.ruleFromString("artist | two")
 
         with self.assertRaises(ParseError):
-            self.grammar.ruleFromString("one & two")
+            self.grammar.ruleFromString("artist & two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist !< two")
+
+        self.grammar.ruleFromString("artist \"!<\" two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist |& two")
+
+        self.grammar.ruleFromString("artist \"|&\" two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist &= two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist <| two")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist = &|")
+
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist <= &|")
+
+        self.grammar.ruleFromString("artist = \"&|\"")
 
         # || = foo
         # foo = ||
