@@ -166,21 +166,22 @@ class HistorySearchGrammar(SearchGrammar):
         self.date_fields = {'date',}
 
         self.columns = {self.all_text, "uid", "date", 'column', 'artist','album','title', }
-        self.col_shortcuts = {
-                                "art"    : "artist", # copied from Song
-                                "artist" : "artist",
-                                "abm"    : "album",
-                                "alb"    : "album",
-                                "album"  : "album",
-                                "ttl"    : "title",
-                                "tit"    : "title",
-                                "title"  : "title",
-                                "data"   : "column",
-                            }
+        self.shortcuts = {
+                        "art"    : "artist", # copied from Song
+                        "artist" : "artist",
+                        "abm"    : "album",
+                        "alb"    : "album",
+                        "album"  : "album",
+                        "ttl"    : "title",
+                        "tit"    : "title",
+                        "title"  : "title",
+                        "data"   : "column",
+                        "action" : "column",
+                    }
 
     def translateColumn(self,colid):
-        if colid in self.col_shortcuts:
-            return self.col_shortcuts[colid]
+        if colid in self.shortcuts:
+            return self.shortcuts[colid]
         if colid in self.columns:
             return colid
         raise ParseError("Invalid column name `%s`"%colid)
