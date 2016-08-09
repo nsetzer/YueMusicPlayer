@@ -323,6 +323,33 @@ class NotSearchRule(MetaSearchRule):
         sql = '( NOT ' + sql + ')'
         return sql,vals
 
+class MultiColumnSearchRule(SearchRule):
+    """
+    A combining rule for applying a rule to multiple columns
+
+    this exists only to make debug statements easier to read
+        when printing all_text rules
+    """
+    def __init__(self, rule, columns, value, colid="multi"):
+        super(SearchRule, self).__init__()
+        self.columns = columns
+        self.value = value
+        self.colid = colid
+
+        meta = OrSearchRule
+        self.operator = "="
+        if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
+            meta = AndSearchRule
+            self.operator = "!="
+
+        self.rule = meta([ rule(col,value) for col in columns ])
+
+    def __repr__(self):
+        return "< %s %s %s >"%(self.colid,self.operator,self.fmtval(self.value))
+
+    def sql(self):
+        return self.rule.sql()
+
 def naive_search( seq, rule ):
     """ return elements from seq which match the given rule
 
@@ -645,6 +672,7 @@ class Grammar(object):
         self.date_fields = set(); # column represents a date in seconds since jan 1st 1970
         self.time_fields = set(); # column represents a duration, in seconds
         self.year_fields = set(); # integer that represents a year
+        self.number_fields = set()
 
         self.compile_operators();
 
@@ -681,6 +709,8 @@ class Grammar(object):
         if colid not in self.text_fields and \
            colid not in self.date_fields and \
            colid not in self.time_fields and \
+           colid not in self.year_fields and \
+           colid not in self.number_fields and \
            colid != self.all_text:
             raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
         return colid
@@ -1146,10 +1176,7 @@ class SearchGrammar(Grammar):
         any text field matches the given string
         or if no text field contains the string
         """
-        meta = OrSearchRule
-        if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
-            meta = AndSearchRule
-        return meta([ rule(col,string) for col in self.text_fields ])
+        return MultiColumnSearchRule(rule, self.text_fields, string, colid=self.all_text)
 
 class UpdateRule(Rule):
     """Baseclass for search rules
@@ -1208,7 +1235,7 @@ class AndUpdateRule(MetaUpdateRule):
             sql.append(x[0])
             vals.extend(x[1])
         if sql:
-            sqlstr = ' '.join(sql)
+            sqlstr = ', '.join(sql)
         return sqlstr,vals
 
 class UpdateGrammar(Grammar):
@@ -1355,4 +1382,34 @@ class UpdateGrammar(Grammar):
         if rule in (InvertedPartialStringSearchRule, InvertedExactSearchRule):
             meta = AndSearchRule
         return meta([ rule(col,string) for col in self.text_fields ])
+
+def sqlUpdateFromRule( db_name, update_rule, search_rule, case_insensitive):
+
+    if search_rule is None:
+        search_rule = BlankSearchRule();
+
+    us,uv = update_rule.sql();
+
+    query = "UPDATE %s SET %s"%(db_name,us)
+
+    if not isinstance(search_rule, BlankSearchRule):
+        ss,sv = search_rule.sql();
+        uv += sv
+        query += " WHERE %s"%ss
+        if case_insensitive:
+            query += " COLLATE NOCASE"
+
+    return query, uv
+
+def sql_update( db, update_rule, search_rule=None, case_insensitive=True):
+
+    query, values = sqlUpdateFromRule(dn.name,update_rule,search_rule,case_insensitive)
+
+    try:
+        s = time.clock()
+        #result = list(db.query(query, *vals))
+        e = time.clock()
+        #return result
+    except:
+        raise
 
