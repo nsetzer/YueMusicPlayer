@@ -4,7 +4,8 @@ import unittest
 
 from yue.core.song import Song, SongSearchGrammar
 
-from yue.core.search import PartialStringSearchRule, \
+from yue.core.search import Grammar, \
+                       PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \
                        ExactSearchRule, \
                        InvertedExactSearchRule, \
@@ -14,6 +15,7 @@ from yue.core.search import PartialStringSearchRule, \
                        LessThanEqualSearchRule, \
                        GreaterThanSearchRule, \
                        GreaterThanEqualSearchRule, \
+                       NotSearchRule, \
                        AndSearchRule, \
                        OrSearchRule, \
                        BlankSearchRule, \
@@ -54,6 +56,7 @@ class TestSearchParse(unittest.TestCase):
         self.parse(" artist =\"foo\"", ['artist','=','foo'])
         self.parse(" artist =\"foo \\\" bar \\\"\"", ['artist','=','foo " bar "'])
 
+        self.parse("x&&\"y\"", ['x','&&','y'])
 
     def test_parse_generic(self):
 
@@ -184,6 +187,29 @@ class TestSearchParse(unittest.TestCase):
         actual = self.grammar.ruleFromString("!=foo !=bar")
         self.assertEqual(expected,actual)
 
+        expected = NotSearchRule([
+                self.grammar.allTextRule(PartialStringSearchRule,"x"),
+                ])
+        actual = self.grammar.ruleFromString("! = x")
+        self.assertEqual(expected,actual)
+
+        expected = NotSearchRule([
+                PartialStringSearchRule(Song.artist, "x"),
+                ])
+        actual = self.grammar.ruleFromString("! artist = x")
+        self.assertEqual(expected,actual)
+
+        # TODO: what is the order of combining && and ||
+        # Should it be Left to Right?
+        # or Right to Left with AND/OR first then NOT?
+        expected = AndSearchRule([
+                NotSearchRule([self.grammar.allTextRule(PartialStringSearchRule,"foo"),]),
+                self.grammar.allTextRule(PartialStringSearchRule,"bar"),
+                ])
+        actual = self.grammar.ruleFromString("! foo && bar")
+        self.assertEqual(expected,actual)
+
+
     def test_parser_nested(self):
 
         expected = AndSearchRule([
@@ -202,11 +228,33 @@ class TestSearchParse(unittest.TestCase):
         actual = self.grammar.ruleFromString(".art foo (.abm bar || .abm baz)")
         self.assertEqual(expected,actual)
 
+    def test_parser_meta(self):
+
+        expected = BlankSearchRule()
+        value=0 # otherwise it will print
+        actual = self.grammar.ruleFromString("%s=%s"%(Grammar.META_DEBUG,value))
+        self.assertEqual(expected,actual)
+        self.assertEqual(self.grammar.getMetaValue(Grammar.META_DEBUG),value)
+
+        value=10
+        actual = self.grammar.ruleFromString("%s=%s"%(Grammar.META_OFFSET,value))
+        self.assertEqual(expected,actual)
+        self.assertEqual(self.grammar.getMetaValue(Grammar.META_OFFSET),value)
+
+        value=20
+        actual = self.grammar.ruleFromString("%s=%s"%(Grammar.META_LIMIT,value))
+        self.assertEqual(expected,actual)
+        self.assertEqual(self.grammar.getMetaValue(Grammar.META_LIMIT),value)
+
     def test_parser_errors(self):
 
         # the lhs is optional for this token
         with self.assertRaises(RHSError):
             self.grammar.ruleFromString(" = ")
+
+        # this is a RHSError only by implementation
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString(" < ")
 
         # right hand side is required
         with self.assertRaises(RHSError):
@@ -286,6 +334,9 @@ class TestSearchParse(unittest.TestCase):
             self.grammar.ruleFromString("artist <= &|")
 
         self.grammar.ruleFromString("artist = \"&|\"")
+
+        with self.assertRaises(TokenizeError):
+            self.grammar.ruleFromString("x\\")
 
         # || = foo
         # foo = ||

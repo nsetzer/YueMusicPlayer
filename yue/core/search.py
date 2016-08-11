@@ -664,6 +664,51 @@ class Grammar(object):
     META_OFFSET = "offset"  # sql offset
     META_DEBUG  = "debug"   # write output to stdout
 
+    class TokenState(object):
+        """ state variables for tokenizer """
+        def __init__(self):
+            self.tokens = []
+            self.stack = [ self.tokens ]
+
+            self.start = 0;
+            self.tok = ""
+
+            self.quoted = False
+            self.join_special = False # join 'special' characters
+
+        def append(self,idx, new_start):
+            """ append a token to the top of the stack
+                clear all special states
+            """
+            if self.tok:
+                kind = "text"
+                if self.join_special:
+                    kind = "special"
+
+                self.stack[-1].append(StrPos(self.tok,self.start,idx,kind))
+
+            self.join_special = False
+            self.quoted = False
+
+            self.tok = ""
+            self.start=new_start
+
+        def push(self):
+            new_level = []
+            self.stack[-1].append(new_level)
+            self.stack.append(new_level)
+
+        def pop(self):
+            self.stack.pop()
+
+        def check(self):
+            if len(self.stack) == 0:
+                raise TokenizeError("Empty stack (check parenthesis)")
+            if len(self.stack) > 1:
+                raise TokenizeError("Unterminated Parenthesis")
+            if self.quoted:
+                raise TokenizeError("Unterminated Double Quote")
+
     def __init__(self):
         super(Grammar, self).__init__()
 
@@ -732,31 +777,9 @@ class Grammar(object):
 
         """
         idx = 0;
-        tokens = []
+        state = Grammar.TokenState();
 
-        # cause 'special' symbols to join together, separately
-        # from all other character classes.
-        join_special = False
-        stack = [ tokens ]
-        start = 0;
-        quoted = False
-        tok = ""
-
-        def append():
-            # place a substring (one whole token) on the top of the stack
-            # old code modified input so that input[start:idx]
-            # could be appended. the new code updates a token variable
-            # so that we get more accurate ranges of the origin of the token
-            # from the input string
-
-            if tok:
-                kind = "text"
-                if join_special:
-                    kind = "special"
-
-                stack[-1].append(StrPos(tok,start,idx,kind))
-
-        while idx < len( input ) and len(stack)>0:
+        while idx < len( input ) and len(state.stack)>0:
             c = input[idx]
 
             if c == self.tok_escape:
@@ -766,68 +789,40 @@ class Grammar(object):
                 # first check that we are quoted here
                 # then look at the next character to decide
                 # mode (e.g. \\ -> \, \a -> bell \x00 -> 0x00, etc)
-
                 idx+=1
-                tok += input[idx]
+                if idx >= len(input):
+                    raise TokenizeError("Escape sequence expected character at position %d"%idx)
+                state.tok += input[idx]
 
-            elif not quoted:
-                s = c in self.tok_special
+            elif not state.quoted:
                 if c == self.tok_quote:
-                    quoted = True
-                    append()
-                    start=idx+1
-                    tok = ""
+                    state.append(idx,idx+1)
+                    state.quoted = True
                 elif c == self.tok_nest_begin:
-                    # start of parenthetical grouping,
-                    # push a new level on the stack.
-                    append()
-                    start=idx+1
-                    tok = ""
-                    new_level = []
-                    stack[-1].append( new_level )
-                    stack.append( new_level )
+                    state.append(idx,idx+1)
+                    state.push()
                 elif c == self.tok_nest_end:
-                    append()
-                    start=idx+1
-                    tok = ""
-                    stack.pop()
+                    state.append(idx,idx+1)
+                    state.pop()
                 elif c in self.tok_whitespace:
-                    append()
-                    start=idx+1
-                    tok = ""
-                elif s and not join_special:
-                    append()
-                    start=idx
-                    tok=c
-                    join_special = True
-                elif not s and join_special:
-                    append()
-                    start=idx
-                    tok=c
-                    join_special = False
+                    state.append(idx,idx+1)
                 else:
-                    tok += c
+                    s = c in self.tok_special
+                    if s != state.join_special:
+                        state.append(idx,idx)
+                    state.join_special = s
+                    state.tok += c
             else: # is quoted
                 if c == self.tok_quote:
-                    stack[-1].append(StrPos(tok,start,idx))
-                    start=idx+1
-                    tok = ""
-                    quoted = False
+                    state.append(idx,idx+1)
                 else:
-                    tok += c
+                    state.tok += c
             idx += 1
 
+        state.check() # check the state machine for errors
+        state.append(idx,idx) # collect anything left over
 
-        if len(stack) == 0:
-            raise TokenizeError("Empty stack (check parenthesis)")
-        if len(stack) > 1:
-            raise TokenizeError("Unterminated Parenthesis")
-        if quoted:
-            raise TokenizeError("Unterminated Double Quote")
-        # collect anything left over
-        append()
-
-        return tokens
+        return state.tokens
 
     def parseTokens( self, tokens, top=True ):
         """transforms the input tokens into an AST or SearchRules.
@@ -999,9 +994,9 @@ class Grammar(object):
 
         rule = self.operators[tok]
 
-        if colid == Gramar.META_DEBUG:
+        if colid == Grammar.META_DEBUG:
             self.meta_options[colid] = int(value)
-        elif colid in (Gramar.META_LIMIT,Gramar.META_OFFSET):
+        elif colid in (Grammar.META_LIMIT,Grammar.META_OFFSET):
 
             if rule in (PartialStringSearchRule, ExactSearchRule):
                 self.meta_options[colid] = int(value)
@@ -1086,7 +1081,8 @@ class SearchGrammar(Grammar):
 
         self.operators_flow = {
             "&&" : AndSearchRule,
-            "||" : OrSearchRule
+            "||" : OrSearchRule,
+            "!"  : NotSearchRule,
         }
 
     def buildRule(self, colid, rule ,value):
@@ -1264,14 +1260,16 @@ class UpdateGrammar(Grammar):
 
         # does not require left token
         self.operators = {
-            "=" :AssignmentRule,
-            "==":AssignmentRule,
+
         }
 
         self.operators_invert = {}
 
         # require left/right token
-        self.special = {}
+        self.special = {
+            "=" :AssignmentRule,
+            "==":AssignmentRule,
+        }
 
         self.special_invert = {}
 
