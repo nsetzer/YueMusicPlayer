@@ -1138,7 +1138,7 @@ class SearchGrammar(Grammar):
             elif c > 0:
                 raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
-                epochtime,epochtime2 = self.fcformatDateDelta( value )
+                epochtime,epochtime2 = self.fc.formatDateDelta( value )
         except ValueError as e:
 
             result = self.fc.parseNLPDate( value )
@@ -1340,7 +1340,7 @@ class UpdateGrammar(Grammar):
             elif c > 0:
                 raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
-                epochtime,epochtime2 = self.fcformatDateDelta( value )
+                epochtime,epochtime2 = self.fc.formatDateDelta( value )
         except ValueError as e:
 
             result = self.fc.parseNLPDate( value )
