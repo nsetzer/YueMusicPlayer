@@ -1,4 +1,4 @@
-#! cd ../.. && python2.7 setup.py test --test=parse
+#! cd ../.. && python2 setup.py test --test=parse
 #! cd ../.. && python2.7 setup.py cover
 import unittest
 
@@ -246,6 +246,15 @@ class TestSearchParse(unittest.TestCase):
         self.assertEqual(expected,actual)
         self.assertEqual(self.grammar.getMetaValue(Grammar.META_LIMIT),value)
 
+    def test_regexp_errors(self):
+        # show that a malformed regular expression is caught as
+        # a ParseError, and not a re.error
+        with self.assertRaises(ParseError):
+            self.grammar.ruleFromString("artist =~ \"+[^a-z]\"")
+
+        # show that a properly formed regex does not throw
+        self.grammar.ruleFromString("artist =~ \".+[^a-z]\"")
+
     def test_parser_errors(self):
 
         # the lhs is optional for this token
@@ -319,6 +328,7 @@ class TestSearchParse(unittest.TestCase):
         with self.assertRaises(ParseError):
             self.grammar.ruleFromString("artist |& two")
 
+        # token tagging allows for proper handling of quoted text
         self.grammar.ruleFromString("artist \"|&\" two")
 
         with self.assertRaises(ParseError):
@@ -334,6 +344,9 @@ class TestSearchParse(unittest.TestCase):
             self.grammar.ruleFromString("artist <= &|")
 
         self.grammar.ruleFromString("artist = \"&|\"")
+
+        # TODO: don't know how to handle this
+        #self.grammar.ruleFromString("x&&=y");
 
         with self.assertRaises(TokenizeError):
             self.grammar.ruleFromString("x\\")
