@@ -114,6 +114,22 @@ def regexp(expr, item):
 
 class RegExpSearchRule(ColumnSearchRule):
     """matches a value using a regular expression"""
+    def __init__(self, column, value):
+        super(RegExpSearchRule,self).__init__(column,value)
+
+        # test that this regular expression can compile
+        # note that column, value are StrPos and we can determine
+        # precisely where the error occurred.
+        try:
+            rexcmp(value)
+        except re.error as e:
+            if isPython3:
+                #msg = "Regular Expression Error: %s at position %d"%(e.msg,value.pos+e.colno)
+                msg = "Regular Expression Error: %s at position %d in `%s`"%(e.msg,e.colno,value)
+            else:
+                msg = "Regular Expression Error: %s"%(e)
+            raise ParseError(msg)
+
     def check(self,elem):
         return regexp(self.value,elem[self.column])
 
