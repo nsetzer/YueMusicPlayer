@@ -244,7 +244,7 @@ class RangeSearchRule(SearchRule):
         return self.value_low <= elem[self.column] <= self.value_high
 
     def __repr__(self):
-        return "<`%s` in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
+        return "<%s >= %s && %s <= %s>"%(self.column,self.fmtval(self.value_low),self.column,self.fmtval(self.value_high))
 
     def sql(self):
         return "%s BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
@@ -692,11 +692,11 @@ class Grammar(object):
             self.quoted = False
             self.join_special = False # join 'special' characters
 
-        def append(self,idx, new_start):
+        def append(self,idx, new_start, force=False):
             """ append a token to the top of the stack
                 clear all special states
             """
-            if self.tok:
+            if self.tok or force:
                 kind = "text"
                 if self.join_special:
                     kind = "special"
@@ -830,7 +830,7 @@ class Grammar(object):
                     state.tok += c
             else: # is quoted
                 if c == self.tok_quote:
-                    state.append(idx,idx+1)
+                    state.append(idx,idx+1,True)
                 else:
                     state.tok += c
             idx += 1

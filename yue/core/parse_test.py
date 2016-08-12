@@ -1,4 +1,4 @@
-#! cd ../.. && python2 setup.py test --test=parse
+#! cd ../.. && python35 setup.py test --test=parse
 #! cd ../.. && python2.7 setup.py cover
 import unittest
 
@@ -261,6 +261,8 @@ class TestSearchParse(unittest.TestCase):
         with self.assertRaises(RHSError):
             self.grammar.ruleFromString(" = ")
 
+        self.grammar.ruleFromString("art < \"\"")
+
         # this is a RHSError only by implementation
         with self.assertRaises(ParseError):
             self.grammar.ruleFromString(" < ")
@@ -344,6 +346,8 @@ class TestSearchParse(unittest.TestCase):
             self.grammar.ruleFromString("artist <= &|")
 
         self.grammar.ruleFromString("artist = \"&|\"")
+
+        self.grammar.ruleFromString("artist=\"&|\"")
 
         # TODO: don't know how to handle this
         #self.grammar.ruleFromString("x&&=y");
