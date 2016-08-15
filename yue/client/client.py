@@ -653,7 +653,8 @@ class MainWindow(QMainWindow):
         s = Settings.instance().getMulti("current_theme",
                                          'enable_history',
                                          'enable_history_update',
-                                         "current_position")
+                                         "current_position",
+                                         "current_song_id")
 
         self.set_style(s["current_theme"])
 
@@ -668,13 +669,17 @@ class MainWindow(QMainWindow):
        # sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
 
         try:
-            self.device.load_current( )
+            song = self.device.load_current()
             # TODO: check that p is less than length of current song (minus 5s)
             # or something similar. Then make this a configuration option
             # that defaults on.
             p = s["current_position"]
-            self.device.seek( p )
-            self.controller.on_song_tick( p )
+            if song[Song.uid] == s['current_song_id']:
+                self.device.seek( p )
+                self.controller.on_song_tick( p )
+                print("Setting song position for %d to %s"%(song[Song.uid],format_delta(p)))
+            else:
+                print("Failed to set song position. stored id:%d current id: %d"%(s['current_song_id'], song[Song.uid]))
         except IndexError:
             sys.stderr.write("error: No Current Song\n")
 
@@ -715,6 +720,11 @@ class MainWindow(QMainWindow):
 
         # todo, only if a song from the library is playing
         sdat['current_position'] = int(self.device.position())
+        try:
+            idx,key = PlaylistManager.instance().openCurrent().current()
+            sdat['current_song_id'] = int(key)
+        except IndexError:
+            sdat['current_song_id'] = int(0)
         #sdat['current_song_id']  =
 
         # TODO: this doesnt work
@@ -1189,6 +1199,7 @@ def setSettingsDefaults():
     data["current_theme"] = "none"
 
     data["current_position"] = 0
+    data["current_song_id"] = 0
 
     data["backup_enabled"] = 1
     data["backup_directory"] = "./backup"
