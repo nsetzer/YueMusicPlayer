@@ -303,7 +303,7 @@ class OrSearchRule(MetaSearchRule):
         return False
 
     def __repr__(self):
-        return "<" + ' || '.join(map(repr,self.rules))  + ">"
+        return "[" + ' || '.join(map(repr,self.rules))  + "]"
 
     def sql(self):
         sql  = []
@@ -919,35 +919,24 @@ class Grammar(object):
 
             elif tok not in self.operators_flow and tok.kind == "special":
                 # check for malformed operators
-                raise ParseError("Unkown operator `%s` at position %d"%(tok,tok.pos))
+                raise ParseError("Unknown operator `%s` at position %d"%(tok,tok.pos))
             i += 1
 
         # collect any old style tokens, which did not use a sigil
         self.parseTokensOldStyle( tokens )
 
-        i=0
-        while i < len(tokens):
-            tok = tokens[i]
-            hasl = i>0
-            hasr = i<len(tokens)-1
-            if isinstance(tok, (str, unicode)):
-                if tok ==  self.tok_negate:
-                    if not hasr:
-                        raise RHSError(tok, "expected value [V04]")
-                    r = tokens.pop(i+1)
-                    tokens[i] = NotSearchRule([r,]);
-                elif tok in self.operators_flow:
-                    if not hasr:
-                        raise RHSError(tok, "expected value [V05]")
-                    if not hasl:
-                        raise LHSError(tok, "expected value [V06]")
-                    r = tokens.pop(i+1)
-                    if isinstance(r, (str, unicode)) and r in self.operators_flow:
-                        raise RHSError(tok, "unexpected operator `%s` [U03]"%r)
-                    i-=1
-                    l = tokens.pop(i)
-                    tokens[i] = self.operators_flow[tok]([l,r])
-            i+=1
+        # conditionally process logical operators if defined by the grammar
+        optok = self.operators_flow_invert.get(NotSearchRule,None)
+        if optok is not None:
+            self.processLogicalNot(tokens,optok)
+
+        optok = self.operators_flow_invert.get(AndSearchRule,None)
+        if optok is not None:
+            self.processLogical(tokens,optok)
+
+        optok = self.operators_flow_invert.get(OrSearchRule,None)
+        if optok is not None:
+            self.processLogical(tokens,optok)
 
         if len(tokens) == 0:
             return BlankSearchRule()
@@ -958,42 +947,66 @@ class Grammar(object):
                 raise ParseError("unexpected error")
             return tokens[0]
 
-        return self.operators_flow["&&"]( tokens )
+        return self.operators_flow_join( tokens )
+
+    def processLogical(self,tokens,operator):
+        """ left to right """
+        i=0
+        while i < len(tokens):
+            tok = tokens[i]
+            if isinstance(tok, StrPos) and tok == operator:
+                hasl = i>0
+                hasr = i<len(tokens)-1
+                if not hasr:
+                    raise RHSError(tok, "expected value [V05]")
+                if not hasl:
+                    raise LHSError(tok, "expected value [V06]")
+                r = tokens.pop(i+1)
+                if isinstance(r, StrPos) and r in self.operators_flow:
+                    raise RHSError(tok, "unexpected operator `%s` [U03]"%r)
+                i-=1
+                l = tokens.pop(i)
+                tokens[i] = self.operators_flow[tok]([l,r])
+            i+=1
+
+    def processLogicalNot(self,tokens,operator):
+        """ right to left """
+        i=len(tokens)-1
+        while i >= 0:
+            tok = tokens[i]
+            if isinstance(tok, (str, unicode)) and tok ==  operator:
+                hasl = i>0
+                hasr = i<len(tokens)-1
+                if not hasr:
+                    raise RHSError(tok, "expected value [V04]")
+                r = tokens.pop(i+1)
+                if isinstance(r, (str, unicode)) and r in self.operators_flow:
+                    raise RHSError(tok, "unexpected operator `%s` [U03]"%r)
+                tokens[i] = NotSearchRule([r,]);
+            i-=1
 
     def parseTokensOldStyle( self, tokens ):
 
         current_col = self.all_text
         current_opr = PartialStringSearchRule
 
-        allow_negate = False;
         i=0
         while i < len(tokens):
             tok = tokens[i]
 
             if isinstance(tokens[i],(str,unicode)):
                 if tok.startswith(self.sigil):
-                    current_col = tok[1:]
+                    current_col = StrPos(tok[1:],tok.pos+1,tok.end,tok.kind)
                     tokens.pop(i)
                     continue
-                #    allow_negate = True;
-                #elif tok == self.tok_negate and allow_negate:
-                #    current_opr = self.old_style_operators_invert[current_opr]
-                #    tokens.pop(i)
-                #    i -= 1
-                elif tok in self.old_style_operators:
-                    current_opr = self.old_style_operators[tok]
-                    tokens.pop(i)
-                    continue
-                #elif tok not in self.operators_flow and tok[0] in self.tok_flow:
-                #    raise ParseError()
-                elif tok not in self.operators_flow and tok != self.tok_negate:
+                elif tok not in self.operators_flow:
                     tokens[i] = self.buildRule(current_col,current_opr,tok)
             i+=1
 
+        # return the single rule of a meta rule of all rules
         if len(tokens) == 1:
             return tokens[0]
-
-        return self.operators_flow["&&"]( tokens )
+        return self.operators_flow_join( tokens )
 
     def addMeta(self, colid, tok, value, top):
         """ meta options control sql parameters of the query
@@ -1100,6 +1113,10 @@ class SearchGrammar(Grammar):
             "||" : OrSearchRule,
             "!"  : NotSearchRule,
         }
+
+        self.operators_flow_invert = { v:k for k,v in self.operators_flow.items() }
+
+        self.operators_flow_join = AndSearchRule
 
     def buildRule(self, colid, rule ,value):
         """
@@ -1302,8 +1319,9 @@ class UpdateGrammar(Grammar):
         self.old_style_operators_invert.update(self.special_invert)
 
         self.operators_flow = {
-            "&&" : AndUpdateRule,
         }
+        self.operators_flow_invert = { v:k for k,v in self.operators_flow.items() }
+        self.operators_flow_join = AndUpdateRule
 
     def buildRule(self, colid, rule ,value):
         """

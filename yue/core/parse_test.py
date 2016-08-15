@@ -1,4 +1,4 @@
-#! cd ../.. && python35 setup.py test --test=parse
+#! cd ../.. && python3 setup.py test --test=parse
 #! cd ../.. && python2.7 setup.py cover
 import unittest
 
@@ -36,6 +36,9 @@ class TestSearchParse(unittest.TestCase):
         #if os.path.exists(DB_PATH):
         #    os.remove(DB_PATH)
         pass
+
+    def _allText(self,v):
+        return self.grammar.allTextRule(PartialStringSearchRule,v)
 
     def parse(self,input,expected):
         actual = self.grammar.tokenizeString(input)
@@ -79,7 +82,7 @@ class TestSearchParse(unittest.TestCase):
 
         # I'm slowly phasing out support for the old style format
 
-        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        expected = self._allText( "foo")
         actual = self.grammar.ruleFromString("foo")
         self.assertEqual(expected,actual)
 
@@ -91,9 +94,9 @@ class TestSearchParse(unittest.TestCase):
         #actual = self.grammar.ruleFromString(".art ! foo")
         #self.assertEqual(expected,actual)
 
-        expected = ExactSearchRule(Song.artist, "foo")
-        actual = self.grammar.ruleFromString(".art == foo")
-        self.assertEqual(expected,actual)
+        #expected = ExactSearchRule(Song.artist, "foo")
+        #actual = self.grammar.ruleFromString(".art == foo")
+        #self.assertEqual(expected,actual)
 
         #expected = AndSearchRule([
         #        InvertedExactSearchRule(Song.artist, "foo"),
@@ -123,11 +126,11 @@ class TestSearchParse(unittest.TestCase):
         actual = self.grammar.ruleFromString("  ")
         self.assertEqual(expected,actual)
 
-        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        expected = self._allText( "foo")
         actual = self.grammar.ruleFromString(" = foo")
         self.assertEqual(expected,actual)
 
-        expected = self.grammar.allTextRule(PartialStringSearchRule, "foo")
+        expected = self._allText( "foo")
         actual = self.grammar.ruleFromString("text = foo")
         self.assertEqual(expected,actual)
 
@@ -160,7 +163,7 @@ class TestSearchParse(unittest.TestCase):
     def test_parser_text_edge(self):
         # for = != == !==, LHS should be infered as all text when not given
         expected = AndSearchRule([
-                self.grammar.allTextRule(PartialStringSearchRule,"foo"),
+                self._allText("foo"),
                 self.grammar.allTextRule(InvertedPartialStringSearchRule,"bar"),
                 ])
         actual = self.grammar.ruleFromString("foo && !=bar")
@@ -188,7 +191,7 @@ class TestSearchParse(unittest.TestCase):
         self.assertEqual(expected,actual)
 
         expected = NotSearchRule([
-                self.grammar.allTextRule(PartialStringSearchRule,"x"),
+                self._allText("x"),
                 ])
         actual = self.grammar.ruleFromString("! = x")
         self.assertEqual(expected,actual)
@@ -199,16 +202,35 @@ class TestSearchParse(unittest.TestCase):
         actual = self.grammar.ruleFromString("! artist = x")
         self.assertEqual(expected,actual)
 
-        # TODO: what is the order of combining && and ||
-        # Should it be Left to Right?
-        # or Right to Left with AND/OR first then NOT?
+    def test_parser_operator_precedence(self):
+        # correct order is the C order for operators
+        #
+
         expected = AndSearchRule([
-                NotSearchRule([self.grammar.allTextRule(PartialStringSearchRule,"foo"),]),
-                self.grammar.allTextRule(PartialStringSearchRule,"bar"),
+                NotSearchRule([self._allText("foo"),]),
+                self._allText("bar"),
                 ])
         actual = self.grammar.ruleFromString("! foo && bar")
         self.assertEqual(expected,actual)
 
+        expected = NotSearchRule([
+                        NotSearchRule([
+                            self._allText("x"),
+                        ]),
+                   ])
+        actual = self.grammar.ruleFromString("! ! x")
+        self.assertEqual(expected,actual)
+
+        expected = OrSearchRule([
+                AndSearchRule([self._allText("a"), self._allText("b"),]),
+                AndSearchRule([self._allText("c"), self._allText("d"),]),
+                ])
+        actual = self.grammar.ruleFromString("a && b || c && d")
+        self.assertEqual(expected,actual)
+
+        # TODO: should "a b || c d" parse to the same thing
+
+        return
 
     def test_parser_nested(self):
 
