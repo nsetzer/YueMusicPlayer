@@ -8,7 +8,7 @@ changelog
     use Visual Studio 2015 to build C libraries
 
 """
-__version__ = "1.1.3"
+__version__ = "1.1.5"
 __datetime__ = ""
 import codecs,traceback
 try:
