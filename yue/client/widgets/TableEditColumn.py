@@ -193,6 +193,7 @@ class EditColumn(TableColumn):
                     self.editor_save()
                     default_text = self.parent.getItem(row,self.index)
                     self.editor_start({row,},default_text)
+                    self.parent.editRowChange.emit(row)
         elif event.key() in (Qt.Key_Backtab,Qt.Key_Up):
             # if we are editing one row at a time BACKTAB can sequentially move through all rows
             if len(self.open_editors) == 1:
@@ -201,6 +202,7 @@ class EditColumn(TableColumn):
                     self.editor_save()
                     default_text = self.parent.getItem(row,self.index)
                     self.editor_start({row,},default_text)
+                    self.parent.editRowChange.emit(row)
         elif event.key() == Qt.Key_Left:
             self.editor.index_left()
             if _s or _c: self.editor.selection_end  = self.editor.insert_index

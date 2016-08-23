@@ -2260,6 +2260,8 @@ class LargeTable(LargeTableBase):
                 keyPressUp        - the up arrow key - modifies selection by default
     """
 
+    editRowChange = pyqtSignal(int);
+
     def __init__(self,parent=None):
 
         super(LargeTable, self).__init__(parent)
@@ -2497,6 +2499,9 @@ class LargeTable(LargeTableBase):
             self.column_keyboard_capture.editor_close();
         #self._sbar_hor_setrange() # no need to set horizontal range on data update
         self._sbar_ver_setrange()
+
+    def isEditorOpen(self):
+        return self.column_keyboard_capture!=None
 
     def addColumn(self,col_index=-1,index=-1):
         """
