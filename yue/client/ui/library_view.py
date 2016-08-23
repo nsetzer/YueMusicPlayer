@@ -54,9 +54,14 @@ class LibraryTable(SongTable):
         self.addRowTextColorComplexRule(self.currentSongRule,self.color_text_played_recent)
 
         self.selection_changed.connect(self.on_selection_change)
+        self.editRowChange.connect(self.onEditRowChange)
 
     def currentSongRule(self,row):
         return self.data[row][Song.uid] == self.current_uid
+
+    def onEditRowChange(self,row):
+        # update the display path when the editor row changes
+        self.parent().notify.emit(self.data[row][Song.path])
 
     def on_selection_change(self,event=None):
 
@@ -267,6 +272,10 @@ class LibraryView(Tab):
         """
         setText: if true set the text box to contain text
         """
+
+        if self.tbl_song.isEditorOpen():
+            return # TODO, should do something
+
         try:
             songs = Library.instance().search( text, \
                 orderby=self.tbl_song.sort_orderby,
