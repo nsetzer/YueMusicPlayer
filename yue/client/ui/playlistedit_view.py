@@ -5,9 +5,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 import os, sys
-dirpath = os.path.dirname(os.path.abspath(__file__))
-dirpath = os.path.dirname(dirpath)
-sys.path.insert(0,dirpath)
+#dirpath = os.path.dirname(os.path.abspath(__file__))
+#dirpath = os.path.dirname(dirpath)
+#sys.path.insert(0,dirpath)
 
 isPython3 = sys.version_info[0]==3
 if isPython3:
@@ -102,6 +102,8 @@ class PlayListEditTable(EditTable):
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.add( song[Song.uid] )
+                    if not self.parent().dirty:
+                        self.parent().dirtyChanged.emit(True)
                     self.parent().dirty = True
                     uids.add( song[Song.uid] )
             self.sibling.setSelection([])
@@ -112,6 +114,8 @@ class PlayListEditTable(EditTable):
         uids = set()
         for song in self.getSelection():
             self.parent().playlist_data.remove( song[Song.uid] )
+            if not self.parent().dirty:
+                self.parent().dirtyChanged.emit(True)
             self.parent().dirty = True
             uids.add(song[Song.uid])
         sel = self.getSelectionIndex()
@@ -140,6 +144,8 @@ class LibraryEditTable(EditTable):
             for song in data:
                 if isinstance(song,dict):
                     self.parent().playlist_data.remove( song[Song.uid] )
+                    if not self.parent().dirty:
+                        self.parent().dirtyChanged.emit(True)
                     self.parent().dirty = True
                     uids.add( song[Song.uid] )
             self.sibling.setSelection([])
@@ -150,6 +156,8 @@ class LibraryEditTable(EditTable):
         uids = set()
         for song in self.getSelection():
             self.parent().playlist_data.add( song[Song.uid] )
+            if not self.parent().dirty:
+                self.parent().dirtyChanged.emit(True)
             self.parent().dirty = True
             uids.add(song[Song.uid])
         sel = self.getSelectionIndex()
@@ -172,9 +180,10 @@ class PlaylistEditView(QWidget):
     set_playlist = pyqtSignal(list,bool)
     notify = pyqtSignal(str)
     set_playlist = pyqtSignal(list)
+    dirtyChanged = pyqtSignal(bool)
 
-    def __init__(self, playlist_name):
-        super(PlaylistEditView, self).__init__()
+    def __init__(self, playlist_name=None, parent = None):
+        super(PlaylistEditView, self).__init__(parent)
 
         self.dirty = False
 
@@ -197,10 +206,10 @@ class PlaylistEditView(QWidget):
 
         self.toolbar = QToolBar(self)
         self.toolbar.addAction(QIcon(':/img/app_save.png'),"save", self.save)
-        self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
+        #self.toolbar.addAction(QIcon(':/img/app_open.png'),"load", self.load)
+        #self.toolbar.addAction(QIcon(':/img/app_newlist.png'),"Play",self.create_playlist)
         self.toolbar.addAction(QIcon(':/img/app_export.png'),"Export", self.export_playlist)
         self.toolbar.addAction(QIcon(':/img/app_import.png'),"Import", self.import_playlist)
-        self.toolbar.addAction(QIcon(':/img/app_newlist.png'),"Play",self.create_playlist)
         self.toolbar.addAction(QIcon(':/img/app_sync.png'),"sync", self.sync)
 
         self.tbl_lib = LibraryEditTable( self )
@@ -232,10 +241,15 @@ class PlaylistEditView(QWidget):
 
         self.lbl_error.hide()
 
-        self.playlist_name = playlist_name
-        self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
-        self.playlist_data = set(self.playlist.iter())
-        self.refresh()
+        if playlist_name is not None:
+            self.playlist_name = playlist_name
+            self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
+            self.playlist_data = set(self.playlist.iter())
+            self.refresh()
+        else:
+            self.playlist_name = None
+            self.playlist = None
+            self.playlist_data = None
 
     def isDirty(self):
         return self.dirty
@@ -325,6 +339,13 @@ class PlaylistEditView(QWidget):
             return self.save()
         return result;
 
+    def save_force(self):
+        self.playlist.set( list(self.playlist_data) )
+        if self.dirty:
+           self.dirtyChanged.emit(False)
+        self.dirty = False
+        return QMessageBox.Save
+
     def save(self):
         dialog = RenameDialog(self.playlist_name,"Save As")
 
@@ -335,6 +356,8 @@ class PlaylistEditView(QWidget):
                 self.playlist = PlaylistManager.instance().openPlaylist(self.playlist_name)
                 self.playlist.set( list(self.playlist_data) )
                 self.on_rename.emit(self,self.playlist_name)
+                if self.dirty:
+                    self.dirtyChanged.emit(False)
                 self.dirty = False
                 return QMessageBox.Save
         return QMessageBox.Cancel
@@ -369,9 +392,10 @@ class PlaylistEditView(QWidget):
         filter = "M3U (*.m3u)"
         filepath,filter = QFileDialog.getSaveFileName(self, caption, directory, filter)
 
-        dialog = ExportM3uDialog(self.playlist_data,filepath,self)
-        dialog.start()
-        dialog.exec_()
+        if os.access(os.path.dirname(filepath), os.W_OK):
+            dialog = ExportM3uDialog(self.playlist_data,filepath,self)
+            dialog.start()
+            dialog.exec_()
 
     def import_playlist(self):
 
@@ -380,16 +404,30 @@ class PlaylistEditView(QWidget):
         filter = "M3U (*.m3u)"
         filepath,filter = QFileDialog.getOpenFileName(self, caption, directory, filter)
 
-        dialog = ImportM3uDialog(filepath,self)
-        dialog.start()
-        dialog.exec_()
+        if os.path.exists(filepath):
 
-        self.playlist_data = dialog.getData()
-        self.playlist_name = os.path.splitext(os.path.split(filepath)[1])[0]
-        self.on_rename.emit(self,self.playlist_name)
-        self.refresh()
+            dialog = ImportM3uDialog(filepath,self)
+            dialog.start()
+            dialog.exec_()
+
+            self.playlist_data = dialog.getData()
+            self.playlist_name = os.path.splitext(os.path.split(filepath)[1])[0]
+            self.on_rename.emit(self,self.playlist_name)
+            self.refresh()
 
     def create_playlist(self):
-
         if len(self.playlist_data) > 0:
             self.set_playlist.emit(list(self.playlist_data))
+
+    # new editor api
+
+    def setData(self,name,pl,data,dirty):
+        self.playlist_name = name
+        self.playlist = PlaylistManager.instance().openPlaylist(name)
+        self.playlist_data = data
+        self.dirty = dirty
+
+        self.refresh()
+
+    def getData(self):
+        return self.playlist_name, self.playlist,self.playlist_data,self.dirty

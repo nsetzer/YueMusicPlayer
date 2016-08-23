@@ -61,6 +61,7 @@ except ImportError as e:
     SocketListen = None
 
 from .ui.library_view import LibraryView
+from .ui.playlisttab_view import PlaylistTabView
 from .ui.history_view import HistoryView
 from .ui.quickselect_view import QuickSelectView
 from .ui.explorer_view import ExplorerView, explorerOpen
@@ -446,6 +447,8 @@ class MainWindow(QMainWindow):
         self.edit_cmd.setFocus()
         self.edit_cmd.setPlaceholderText("Command Input")
 
+        self.pleditview = PlaylistTabView(self)
+
         self.volcontroller = VolumeController(self)
         self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
         self.volcontroller.volume_slider.value_set.connect(self.setVolume)
@@ -468,6 +471,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
 
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
+        self.tabview.addTab( self.pleditview, QIcon(':/img/app_list.png'), "Playlists")
         self.tabview.addTab( self.quickview, QIcon(':/img/app_fav.png'), "Quick Select")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
         if self.controller.dspSupported():
@@ -579,9 +583,9 @@ class MainWindow(QMainWindow):
 
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
-        menu.addSeparator()
-        menu.addAction("New Editable Playlist", self.newEditablePlaylist)
-        menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
+        #menu.addSeparator()
+        #menu.addAction("New Editable Playlist", self.newEditablePlaylist)
+        #menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
         menu.addSeparator()
         menu.addAction("Update Song Tags",self.updateTags)
         if self.controller.dspSupported():
@@ -1161,12 +1165,13 @@ class MainWindow(QMainWindow):
             if isinstance(tab,PlaylistEditView):
                 songtables.append( tab.tbl_lib)
                 songtables.append( tab.tbl_pl)
+        colors = ( qdct["text_important1"], \
+                   qdct["text_important2"], \
+                   qdct["theme_p_mid"]    , \
+                   qdct["color_special1"] )
         for table in songtables:
-            table.setRuleColors( \
-                    qdct["text_important1"], \
-                    qdct["text_important2"], \
-                    qdct["theme_p_mid"]    , \
-                    qdct["color_special1"] )
+            table.setRuleColors(*colors)
+        self.pleditview.setRuleColors(*colors)
 
         # create and set a custom palette for the song view
         p = self.palette()

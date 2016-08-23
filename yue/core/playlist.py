@@ -51,6 +51,24 @@ class PlaylistManager(object):
     def openCurrent(self):
         return self.openPlaylist("current")
 
+
+    def deletePlaylist(self,name):
+
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            res = c.execute("SELECT uid from playlists where name=?", (name,))
+            item = res.fetchone()
+            if item is not None:
+                c.execute("DELETE from playlist_songs where uid=?",(item[0],))
+                c.execute("DELETE from playlists where name=?",(name,))
+
+    def renamePlaylist(self,old_name,new_name):
+
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            res = c.execute("UPDATE playlists set name=? WHERE name=?", (new_name,old_name))
+            print(res)
+
     def openPlaylist(self, name):
         """ create if it does not exist """
 
