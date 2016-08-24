@@ -157,6 +157,7 @@ class PlaylistTabView(QWidget):
         pl = PlaylistManager.instance().openPlaylist(self.active_list)
         data = set()
         self.open_playlists[self.active_list] = PlModel(self.active_list,pl,data)
+        self.viewEdit.setData(self.active_list,pl,data,False)
         self.refresh()
 
     def refresh(self):
