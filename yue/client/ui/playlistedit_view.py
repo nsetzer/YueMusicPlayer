@@ -249,7 +249,7 @@ class PlaylistEditView(QWidget):
         else:
             self.playlist_name = None
             self.playlist = None
-            self.playlist_data = None
+            self.playlist_data = set()
 
     def isDirty(self):
         return self.dirty
