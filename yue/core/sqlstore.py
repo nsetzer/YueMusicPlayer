@@ -53,6 +53,13 @@ class SQLStore(object):
     def path(self):
         return self.filepath
 
+    def execute(self,sqlstr,sqlargs):
+        res = self.conn.execute(sqlstr,sqlargs)
+        item = res.fetchone()
+        while item is not None:
+            yield item
+            item = res.fetchone()
+
 class SQLTable(object):
     """docstring for SQLTable"""
     def __init__(self, store, name, columns, foreign_keys=None):
