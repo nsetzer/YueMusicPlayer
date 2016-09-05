@@ -591,54 +591,71 @@ class Library(object):
                 items = c.fetchmany()
 
         for err in errors:
+            # next time we refresh this tree it will display correctly
             self.repairArtistAlbums(*err)
 
         return root
 
-    def repairArtistAlbums(self, uid, art, abmstr):
+    def repairArtistAlbums(self, abmuid, artuid, abmstr):
         """
         """
-        sys.stderr.write("Missing Artist Info for %d:%d\n"%(uid,art))
+        # we have an album that no longer points at a valid artist
+        print("Missing Artist Info for art:%d abm:%d:%s"%(artuid,abmuid,abmstr))
+
+        # look for songs that are using this bad album id, and check the artist
+        # for each song, the artist should be correct already so we use that
+        # information to correct the record.
+
+        alt_artists = set()
+        for item in self.sqlstore.execute("SELECT uid,artist,album,title from songs where album==?",(abmuid,)):
+            x = list(self.sqlstore.execute("SELECT artist from artists where uid=?",(item[1],)))
+            alt_artists.add(item[1])
+
+        if len(alt_artists) != 1:
+            print("recovery error: artists: %s"%alt_artists)
+            return
+
+        # the altart is the correct artist id for the album, which we use
+        # to check and see if there are any albums currently under
+        # that id.
+        altart = alt_artists.pop()
+
+        alt_albums = set()
+        for item in self.sqlstore.execute("SELECT uid,artist,album,count from albums where artist==? AND album==?",(altart,abmstr)):
+            alt_albums.add(item[0])
+
+        # this is the easy case to fix, there is no other album competeing
+        # update this albums record to point at the correct artist
+        if len(alt_albums) == 0:
+            self.sqlstore.conn.execute("UPDATE albums set artist=? where uid=?",(altart,abmuid));
+            return
+
+        # this code expects to find only one album at this point in time
+        # only handle this case if a specific need arises
+        if len(alt_albums) > 1:
+            print("recovery error: albums: %s"%alt_albums)
+            return
+
+        # we have a album pointing the wrong artist, and exactly one
+        # album pointing to the correct artist, so just transfer the useful
+        # information from the bad record to the good record then delete
+        # the bad record
+
+        altabm = alt_albums.pop()
+
+        abmcount = 0
+        for item in self.sqlstore.execute("SELECT count from albums where uid==?",(abmuid,)):
+            abmcount = item[0]
+
+        altcount = 0
+        for item in self.sqlstore.execute("SELECT count from albums where uid==?",(altabm,)):
+            altcount = item[0]
+
+        self.sqlstore.conn.execute("UPDATE songs set album=? where album=?",(altabm,abmuid));
+        self.sqlstore.conn.execute("UPDATE albums set count=? where album=?",(abmcount+altcount,altabm));
+        self.sqlstore.conn.execute("DELETE FROM albums WHERE uid=?",(abmuid,))
 
         return
-
-        rule = ExactSearchRule(Song.album,abmstr)
-        songs = sql_search( self.song_view, rule, case_insensitive=False);
-        artists = set([song[Song.artist] for song in songs])
-
-        if len(artists) == 1:
-            artist = list(artists)[0]
-            res = self.sqlstore.conn.execute("SELECT uid from artists where artist==?",(artist,),)
-            item = res.fetchone()
-            if item is not None:
-                artidx = item[0]
-                self.sqlstore.conn.execute("UPDATE albums SET artist=? WHERE uid=?",(artidx,uid))
-        else:
-            for artist in artists:
-                res = self.sqlstore.conn.execute("SELECT uid from artists where artist==?",(artist,),)
-                items = res.fetchone()
-                index = items[0]
-
-                res = self.sqlstore.conn.execute("SELECT uid,count from albums where artist==?",(index,),)
-                item = res.fetchone()
-                if item is not None:
-                    # there is already an entry for this element
-                    pass
-                else:
-                    # create a new entry because one is missing
-                    alb_index = -1
-                    with self.sqlstore.conn:
-                        c = self.sqlstore.conn.cursor()
-                        alb_index = self.album_db._get_id_or_insert(c,
-                            album=abmstr,
-                            artist=index)
-                    # update the count for the entry to be correct
-                    rule = AndSearchRule([ ExactSearchRule(Song.artist,artist),
-                                           ExactSearchRule(Song.album,abmstr) ])
-                    songs = sql_search( self.song_view, rule, case_insensitive=False);
-                    self.sqlstore.conn.execute.execute("UPDATE albums SET count=? WHERE uid=?",(len(songs),alb_index,))
-            # delete the existing row, since it is not attached to any artist
-            res = self.sqlstore.conn.execute("DELETE FROM albums WHERE uid==?",(uid,))
 
     def songPathHack(self, alternatives):
 
