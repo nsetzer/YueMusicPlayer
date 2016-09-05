@@ -292,7 +292,7 @@ class AndSearchRule(MetaSearchRule):
             vals.extend(x[1])
         if sql:
             sqlstr = '(' + ' AND '.join(sql) + ')'
-        return sqlstr,vals
+        return sqlstr, tuple(vals)
 
 class OrSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that at least one rule returns true"""
@@ -316,7 +316,7 @@ class OrSearchRule(MetaSearchRule):
             vals.extend(x[1])
         if sql:
             sqlstr = '(' + ' OR '.join(sql) + ')'
-        return sqlstr,vals
+        return sqlstr, tuple(vals)
 
 class NotSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that inverts result from rule"""
@@ -337,7 +337,7 @@ class NotSearchRule(MetaSearchRule):
         assert self.rules[0] is not BlankSearchRule
         sql,vals = self.rules[0].sql()
         sql = '( NOT ' + sql + ')'
-        return sql,vals
+        return sql, vals
 
 class MultiColumnSearchRule(SearchRule):
     """
@@ -1265,7 +1265,7 @@ class AndUpdateRule(MetaUpdateRule):
             vals.extend(x[1])
         if sql:
             sqlstr = ', '.join(sql)
-        return sqlstr,vals
+        return sqlstr, tuple(vals)
 
 class UpdateGrammar(Grammar):
 
@@ -1426,7 +1426,7 @@ def sqlUpdateFromRule( db_name, update_rule, search_rule, case_insensitive):
 
     if not isinstance(search_rule, BlankSearchRule):
         ss,sv = search_rule.sql();
-        uv += sv
+        uv = uv + sv
         query += " WHERE %s"%ss
         if case_insensitive:
             query += " COLLATE NOCASE"
