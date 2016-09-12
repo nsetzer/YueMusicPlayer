@@ -248,9 +248,9 @@ class Library(object):
             c.execute("UPDATE songs SET skip_count=skip_count+1 WHERE uid=?", (uid,))
 
     def _update_one(self,c, uid, **kwargs):
-        info = list(self.song_db._select_columns(c,['artist','album'],uid=uid))[0]
-        old_art_id = info['artist']
-        old_abm_id = info['album']
+        info = list(self.song_db._select_columns(c,[Song.artist,Song.album],uid=uid))[0]
+        old_art_id = info[Song.artist]
+        old_abm_id = info[Song.album]
 
         # cannot change uid
         if 'uid' in kwargs:
@@ -261,28 +261,36 @@ class Library(object):
 
         # altering artist, album requires updating count of songs
         # and removing artists that no longer exist.
-        if 'artist' in kwargs:
+        if Song.artist in kwargs:
+            # convert string value to integer value
             new_art_id = self.artist_db._get_id_or_insert(c,
-                artist=kwargs['artist'],
-                sortkey=getSortKey(kwargs['artist']))
+                artist=kwargs[Song.artist],
+                sortkey=getSortKey(kwargs[Song.artist]))
             c.execute("UPDATE artists SET count=count+1 WHERE uid=?",(new_art_id,))
             c.execute("UPDATE artists SET count=count-1 WHERE uid=?",(old_art_id,))
             # update field as integer, not string
-            kwargs['artist'] = new_art_id
+            kwargs[Song.artist] = new_art_id # set to the integer value
             old_art_id = new_art_id
 
-        if 'album' in kwargs:
+            # add the album to the set of things to update. this way the
+            # point to the correct artist
+            # this fixes also a subtle bug where renaming an artist can
+            # create an orphaned album.
+            # this fix makes repairArtistAlbums() obsolete.
+            if Song.album not in kwargs:
+                x = list(self.album_db._select_columns(c,[Song.album,],uid=old_abm_id))
+                kwargs[Song.album] = x[0][Song.album] # set to the string value
+
+        if Song.album in kwargs:
+            # convert string value to integer value
             new_abm_id = self.album_db._get_id_or_insert(c,
-                album=kwargs['album'],
+                album=kwargs[Song.album],
                 #sortkey=getSortKey(kwargs['album']),
                 artist=old_art_id)
             c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(new_abm_id,))
             c.execute("UPDATE albums SET count=count-1 WHERE uid=?",(old_abm_id,))
             # update field as integer, not string
-            kwargs['album'] = new_abm_id
-
-        #if 'title' in kwargs and 'title_key' not in kwargs:
-        #    kwargs['title_key'] = getSortKey( kwargs['title'] )
+            kwargs[Song.album] = new_abm_id # set to the integer value
 
         # update all remaining fields
         if kwargs:
@@ -565,40 +573,55 @@ class Library(object):
         It will find inconsistencies due to a bug in update().
         """
         root = []
-        map = {}
-        errors = []
+        artmap = {}
+        errors = [] # tracks orphaned albums
+        art_counts = dict() # artist_uid -> [ (album_uid, album_song_count), ...]
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
 
-            c.execute("SELECT uid, artist from artists ORDER BY sortkey COLLATE NOCASE" )
+
+            c.execute("SELECT uid, artist, count from artists ORDER BY sortkey COLLATE NOCASE" )
             items = c.fetchmany()
             while items:
-                for uid,art in items:
+                for uid,art,cnt in items:
                     elem = (art,list())
-                    map[uid] = elem
+                    artmap[uid] = elem
                     root.append(elem)
+                    art_counts[uid] = [(0,cnt),] # init with the expected sum of all albums
                 items = c.fetchmany()
 
-            c.execute("SELECT uid, artist, album from albums ORDER BY album COLLATE NOCASE" )
+            c.execute("SELECT uid, artist, album, count from albums ORDER BY album COLLATE NOCASE" )
             items = c.fetchmany()
             while items:
-                for uid, art,abm in items:
-                    if art in map:
-                        map[art][1].append(abm)
+                for uid, art, abm, cnt in items:
+
+                    if art in artmap:
+                        artmap[art][1].append(abm)
+                        art_counts[art].append((uid,cnt))
                     else:
                         errors.append( (uid,art,abm) )
                 items = c.fetchmany()
+
+            # this checks that the count for an artist matches the actual value
+            # so far, this does not seem to be an error that happens in practice
+            #for uid,counts in art_counts.items():
+            #    expected=len(list(self.song_db._select_columns(c,[Song.artist,],artist=uid)))
+            #    actual = counts[0]
+            #    if actual != expected:
+            #        print("art error", uid, actual, expected)
 
         for err in errors:
             # next time we refresh this tree it will display correctly
             self.repairArtistAlbums(*err)
 
+        self.repairArtistAlbums2(art_counts)
+
         return root
 
     def repairArtistAlbums(self, abmuid, artuid, abmstr):
-        """
-        """
+        # recent improvements to _update_one should mean this is no longer required.
+
         # we have an album that no longer points at a valid artist
         print("Missing Artist Info for art:%d abm:%d:%s"%(artuid,abmuid,abmstr))
 
@@ -627,6 +650,7 @@ class Library(object):
         # this is the easy case to fix, there is no other album competeing
         # update this albums record to point at the correct artist
         if len(alt_albums) == 0:
+            print("set album %d to point at artist %d instead of %d"%(abmuid,altart,artuid))
             self.sqlstore.conn.execute("UPDATE albums set artist=? where uid=?",(altart,abmuid));
             return
 
@@ -651,11 +675,39 @@ class Library(object):
         for item in self.sqlstore.execute("SELECT count from albums where uid==?",(altabm,)):
             altcount = item[0]
 
+        print("update album %d to count %d"%(altabm,abmcount+altcount))
+
         self.sqlstore.conn.execute("UPDATE songs set album=? where album=?",(altabm,abmuid));
         self.sqlstore.conn.execute("UPDATE albums set count=? where album=?",(abmcount+altcount,altabm));
         self.sqlstore.conn.execute("DELETE FROM albums WHERE uid=?",(abmuid,))
 
         return
+
+    def repairArtistAlbums2(self,art_counts):
+        # recent improvements to _update_one should mean this is no longer required.
+
+        # check for count errors, and fix albums that do not
+        # have the correct counts.
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+
+            for uid,abm_counts in art_counts.items():
+                counts = list(map(lambda x:x[1],abm_counts)) # extract just count values
+                zero_sum = counts[0] - sum(counts[1:])
+                # sum from the artist table should equal the sum from the count of
+                # all albums in the album table for that artist. In addition
+                # check for any count which is less than zero, indicating another type of
+                # possible error
+                if zero_sum != 0 or any(map(lambda x:x<0,counts)):
+                    artist_name=list(self.artist_db._select_columns(c,[Song.artist,],uid=uid))[0][Song.artist]
+
+                    for abmid,actual in abm_counts[1:]:
+                        # actual is the value the database contains for the count
+                        # expected is the true count
+                        expected=len(list(self.song_db._select_columns(c,[Song.album,],album=abmid)))
+                        if actual != expected:
+                            self.album_db._update(c,abmid,count=expected)
+                    print(uid,counts,zero_sum,artist_name)
 
     def songPathHack(self, alternatives):
 
