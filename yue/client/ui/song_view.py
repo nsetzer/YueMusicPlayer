@@ -348,10 +348,11 @@ class CurrentSongView(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.enable_rate_tracking = True
-            self.suggested_rating = self._get_suggested_rating( event.y() )
-            self.update()
-            event.accept()
+            if event.x() > self.rtdrawx:
+                self.enable_rate_tracking = True
+                self.suggested_rating = self._get_suggested_rating( event.y() )
+                self.update()
+                event.accept()
 
     def mouseReleaseEvent(self, event):
         self.enable_rate_tracking = False
