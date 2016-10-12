@@ -79,32 +79,46 @@ class LibraryTable(SongTable):
 
         items = self.getSelection()
 
+        closeEditor=False
+
+        for col in self.columns:
+            if isinstance(col,EditColumn) and col.editor_isOpen():
+                closeEditor = True;
+                break;
+
         menu = QMenu(self)
 
-        act = menu.addAction("Play",lambda:self.action_play_next(items,True))
-        act.setDisabled( len(items) != 1 )
+        if closeEditor:
 
-        menu.addAction("Play next",lambda:self.action_play_next(items))
-        act.setDisabled( len(items) == 0 )
+            act = menu.addAction("Save Changes",lambda:self.action_close_editors(EditColumn.editor_save))
+            act = menu.addAction("Discard Changes",lambda:self.action_close_editors(EditColumn.editor_close))
 
-        act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
-        act.setDisabled( len(items) != 1 )
-
-        if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
-            menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
-                lambda:self.action_edit_column(row,cur_c))
-
-        menu.addSeparator()
-        menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
-
-        if any(not song[Song.blocked] for song in items):
-            menu.addAction(QIcon(":/img/app_x.png"),"Bannish", lambda:self.action_bannish(items,True))
         else:
-            menu.addAction("Restore", lambda:self.action_bannish(items,False))
 
-        if len(items) == 1 and self.parent().menu_callback is not None:
+            act = menu.addAction("Play",lambda:self.action_play_next(items,True))
+            act.setDisabled( len(items) != 1 )
+
+            menu.addAction("Play next",lambda:self.action_play_next(items))
+            act.setDisabled( len(items) == 0 )
+
+            act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
+            act.setDisabled( len(items) != 1 )
+
+            if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
+                menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
+                    lambda:self.action_edit_column(row,cur_c))
+
             menu.addSeparator()
-            self.parent().menu_callback(menu,items[0])
+            menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
+
+            if any(not song[Song.blocked] for song in items):
+                menu.addAction(QIcon(":/img/app_x.png"),"Bannish", lambda:self.action_bannish(items,True))
+            else:
+                menu.addAction("Restore", lambda:self.action_bannish(items,False))
+
+            if len(items) == 1 and self.parent().menu_callback is not None:
+                menu.addSeparator()
+                self.parent().menu_callback(menu,items[0])
 
         action = menu.exec_( event.globalPos() )
 
@@ -145,6 +159,12 @@ class LibraryTable(SongTable):
 
     def action_show_in_tree_view(self, song):
         self.parent().tree_lib.showArtist(song[Song.artist])
+
+    def action_close_editors(self,func):
+        for col in self.columns:
+            if isinstance(col,EditColumn) and col.editor_isOpen():
+                func(col)
+
 
 class LibTree(LibraryTree):
 

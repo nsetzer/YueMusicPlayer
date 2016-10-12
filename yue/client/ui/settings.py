@@ -51,6 +51,10 @@ class SettingsDialog(QDialog):
 
         self.tab_preset.export_settings( settings )
 
+    def accept(self,arg=None):
+        self.tab_preset.close()
+        return super().accept()
+
 class SettingsTab(QWidget):
 
     def import_settings(self,settings):
@@ -131,6 +135,12 @@ class SettingsPresetTab(SettingsTab):
 
         self.setData(names,queries)
         self.setDefaultPresetIndex(row)
+
+    def close(self):
+        for col in self.table.columns:
+            if isinstance(col,EditColumn):
+                if col.editor_isOpen():
+                    col.editor_save()
 
     def export_settings(self,settings):
         """ update values in a key/value store """
