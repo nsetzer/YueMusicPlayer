@@ -11,6 +11,8 @@ from yue.app.widgets.playlist import PlayListElem
 from yue.app.widgets.querybuilder import QueryKind
 from yue.app.widgets.tristate import TriState
 
+from yue.core.song import Song,SongSearchGrammar
+
 from yue.core.search import PartialStringSearchRule, \
                        InvertedPartialStringSearchRule, \
                        ExactSearchRule, \
@@ -22,8 +24,7 @@ from yue.core.search import PartialStringSearchRule, \
                        RangeSearchRule, \
                        NotRangeSearchRule, \
                        AndSearchRule, \
-                       OrSearchRule, \
-                       allTextRule
+                       OrSearchRule
 
 _kindToRule = {
     QueryKind.LIKE    : PartialStringSearchRule,
@@ -44,30 +45,47 @@ class TrackTreeElem(TreeElem):
         super(TrackTreeElem, self).__init__(text)
         self.uid = uid
 
-def libraryToTree(lib):
-    return libraryToTreeFromIterable( lib.iter() )
+def libraryToTree(lib,rule=""):
+
+    result = lib.search(rule,orderby=[Song.artist,Song.album,Song.title])
+    return libraryToTreeFromIterable( result )
 
 def libraryToTreeFromIterable( data ):
-    """ data as an iterable, yielding dictionaries representing songs """
-    artists = {}
+    """ data as an iterable of songs, produces a tree structure
+        assumes the input has already been sorted by Artist, Album, Title
+    """
+    tree = []
+
+    last_art = None
+    last_alb = None
+
     for song in data:
+        if last_art is None or last_art.text != song[Song.artist]:
+            last_art = TreeElem(song[Song.artist])
+            last_alb = None
+            tree.append(last_art)
 
-        if song['artist'] not in artists:
-            artists[ song['artist'] ] = TreeElem(song['artist'])
+        if last_alb is None or last_alb.text != song[Song.album]:
+            last_alb = TreeElem(song[Song.album])
+            last_art.addChild( last_alb )
 
-        album = None
-        for child in artists[ song['artist'] ]:
-            if child.text == song['album']:
-                album = child
-                break;
-        else:
-            album = artists[ song['artist'] ].addChild(TreeElem(song['album']))
+        last_alb.addChild( TrackTreeElem(song[Song.uid],song[Song.title]) )
 
-        album.addChild(TrackTreeElem(song['uid'],song['title']))
 
-    out = list(artists.values())
-    out.sort(key=lambda e : e.text)
-    return out
+    #for song in data:
+    #    if song['artist'] not in artists:
+    #        artists[ song['artist'] ] = TreeElem(song['artist'])
+    #    album = None
+    #    for child in artists[ song['artist'] ]:
+    #        if child.text == song['album']:
+    #            album = child
+    #            break;
+    #    else:
+    #        album = artists[ song['artist'] ].addChild(TreeElem(song['album']))
+    #    album.addChild(TrackTreeElem(song['uid'],song['title']))
+    #out = list(artists.values())
+    #out.sort(key=lambda e : e.text)
+    return tree
 
 def PlayListToViewList(lib,playlist):
     out = []
@@ -113,9 +131,9 @@ def kindToSearchRule( k ):
 
 def createAllTextRule( action, string ):
 
-    meta = OrSearchRule
-    if action in (QueryKind.NOTLIKE, QueryKind.NE):
-        meta = AndSearchRule
+    #meta = OrSearchRule
+    #if action in (QueryKind.NOTLIKE, QueryKind.NE):
+    #    meta = AndSearchRule
     rule = _kindToRule[ action ]
 
-    return allTextRule( meta, rule, string)
+    return SongSearchGrammar().allTextRule( rule, string)

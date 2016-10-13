@@ -4,12 +4,14 @@ import os
 import sys
 from datetime import datetime
 
+from collections import OrderedDict
+
 try:
     from functools import lru_cache
 except:
     def lru_cache(maxsize=128):
         def lru_cache_decorator(func):
-            cache = dict()
+            cache = OrderedDict()
             def lru_cache_wrapper(*args):
                 if args in cache:
                     return cache[args]
@@ -20,6 +22,22 @@ except:
                 return result
             return lru_cache_wrapper
         return lru_cache_decorator
+
+
+def with_metaclass(mcls):
+    """ 2.7 and 3.5+ compatable metaclass decorator
+    python2 uses a __metaclass__ class atribute whlie python3
+    has a class level keyword argument.
+
+    """
+    # http://stackoverflow.com/questions/22409430/portable-meta-class-between-python2-and-python3
+    def decorator(cls):
+        body = vars(cls).copy()
+        # clean out class body
+        body.pop('__dict__', None)
+        body.pop('__weakref__', None)
+        return mcls(cls.__name__, cls.__bases__, body)
+    return decorator
 
 def format_date( unixTime ):
     """ format epoch time stamp as string """
@@ -58,7 +76,7 @@ def string_quote(string):
     """quote a string for use in search"""
     return "\""+string.replace("\\","\\\\").replace("\"","\\\"")+"\""
 
-def backupDatabase(sqlstore,backupdir=".",maxsave=6,force=False):
+def backupDatabase(sqlstore,backupdir=".", maxsave=6, force=False):
     """
         note this has been hacked to suport xml formats
         save a copy of the current library to ./backup/

@@ -1,4 +1,5 @@
-#! cd ../.. && python2.7 setup.py test
+#! cd ../.. && python setup.py test
+#! C:\\Python35\\python.exe $this
 
 """
 todo: none of these tests actually check that the correct answer is returned,
@@ -7,9 +8,15 @@ only that the answers for applying rules, vs using sql match.
 
 import unittest
 import os
+import datetime
+import calendar
+import traceback
+from .util import with_metaclass
 
-from yue.core.library import Library
-from yue.core.search import PartialStringSearchRule, \
+from .library import Library
+from .search import SearchGrammar, \
+        FormatConversion, \
+        PartialStringSearchRule, \
         InvertedPartialStringSearchRule, \
         ExactSearchRule, \
         InvertedExactSearchRule, \
@@ -23,7 +30,7 @@ from yue.core.search import PartialStringSearchRule, \
         OrSearchRule, \
         naive_search, \
         sql_search
-from yue.core.sqlstore import SQLStore
+from .sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
 
@@ -38,7 +45,7 @@ class TestSearchMeta(type):
     runs the same test with different parameters
 
     """
-    def __new__(cls, name, bases, dict):
+    def __new__(cls, name, bases, attr):
 
         def gen_compare_test(rule):
             """ check that a given rule returns the same results,
@@ -87,24 +94,23 @@ class TestSearchMeta(type):
 
         for i, rule in enumerate(rules):
             test_name = "test_rule_%d" % i
-            dict[test_name] = gen_compare_test(rule)
+            attr[test_name] = gen_compare_test(rule)
 
-        dict["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
-        dict["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
+        attr["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
+        attr["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
 
-        dict["test_pl1"] = gen_compare_count_test(pl1,11)
-        dict["test_pl2"] = gen_compare_count_test(pl2, 9)
+        attr["test_pl1"] = gen_compare_count_test(pl1,11)
+        attr["test_pl2"] = gen_compare_count_test(pl2, 9)
 
-        return type.__new__(cls, name, bases, dict)
+        return super(TestSearchMeta,cls).__new__(cls, name, bases, attr)
 
+@with_metaclass(TestSearchMeta)
 class TestSearch(unittest.TestCase):
-    __metaclass__ = TestSearchMeta
 
     # python 2.7, >3.2
 
     @classmethod
     def setUpClass(cls):
-
         if os.path.exists(DB_PATH):
             os.remove(DB_PATH)
 
@@ -127,3 +133,60 @@ class TestSearch(unittest.TestCase):
     def tearDownClass(cls):
 
         cls.sqlstore.close()
+
+
+class TestSearchGrammar(unittest.TestCase):
+    """
+    """
+    def __init__(self,*args,**kwargs):
+        super(TestSearchGrammar,self).__init__(*args,**kwargs)
+
+    def setUp(self):
+
+        self.sg = SearchGrammar();
+
+
+    def tearDown(self):
+        pass
+
+    def test_date_delta(self):
+
+        dtn = datetime.datetime(2015,6,15)
+        fc = FormatConversion( dtn );
+
+        # show that we can subtract one month and one year from a date
+        dt = fc.computeDateDelta(dtn.year,dtn.month,dtn.day,1,1)
+        self.assertEqual(dt.year,dtn.year-1)
+        self.assertEqual(dt.month,dtn.month-1)
+        self.assertEqual(dt.day,dtn.day)
+
+        # there is no february 31st, so the month is incremented
+        # to get the day value to agree
+        dt = fc.computeDateDelta(2015,3,31,0,1)
+        self.assertEqual(dt.year,2015)
+        self.assertEqual(dt.month,3)
+        self.assertEqual(dt.day,3)
+
+
+        # show that days can be subtracted correctly
+        t1,t2 = fc.formatDateDelta("1y1m1w1d")
+        dt = datetime.datetime(dtn.year-1,dtn.month-1,dtn.day-8)
+        self.assertEqual(t1,calendar.timegm(dt.timetuple()))
+
+    def test_date_format(self):
+
+        dtn = self.sg.fc.datetime_now = datetime.datetime(2015,6,15);
+        self.sg.autoset_datetime = False
+
+        t1,t2 = self.sg.fc.formatDate("2015/6/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(2015,6,15).timetuple()))
+
+        t1,t2 = self.sg.fc.formatDate("15/06/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(2015,6,15).timetuple()))
+
+        t1,t2 = self.sg.fc.formatDate("75/06/15")
+        self.assertEqual(t1,calendar.timegm(datetime.datetime(1975,6,15).timetuple()))
+
+
+
+

@@ -55,20 +55,23 @@ class Settings(object):
     def __getitem__(self,key):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            c.execute("SELECT uid,kind FROM settings WHERE key=?",(key,))
-            result = c.fetchone()
-            if not result:
-                raise KeyError(key)
-            uid,kind = result
+            return self._get_main(c, key)
 
-            if kind == K_STR:
-                return self._get(c,"setstr",uid)
-            elif kind == K_INT:
-                return self._get(c,"setint",uid)
-            elif kind == K_CSV:
-                return self._get_list(c,uid)
+    def _get_main(self,c,key):
+        c.execute("SELECT uid,kind FROM settings WHERE key=?",(key,))
+        result = c.fetchone()
+        if not result:
+            raise KeyError(key)
+        uid,kind = result
 
-            raise TypeError(kind)
+        if kind == K_STR:
+            return self._get(c,"setstr",uid)
+        elif kind == K_INT:
+            return self._get(c,"setint",uid)
+        elif kind == K_CSV:
+            return self._get_list(c,uid)
+
+        raise TypeError(kind)
 
     def _get(self,c,tbl,uid):
         c.execute("SELECT value FROM %s WHERE uid=?"%tbl,(uid,))
@@ -103,20 +106,47 @@ class Settings(object):
 
             raise TypeError(kind)
 
-    def __setitem__(self,key,value):
+    def getMulti(self,*keys):
+        """
+        returns a dictionary
+        """
+        out = {}
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for key in keys:
+                out[key] = self._get_main(c,key)
+        return out
 
+    def __setitem__(self,key,value):
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            self._set_main(c,key,value,True)
+
+    def setDefault(self,key,value):
+        """ set the value iff it does not exist"""
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            self._set_main(c,key,value,False)
+
+    def setMulti(self,data,overwrite=True):
+        """ overwrite, if false and key exists, value will not be updated """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for key,value in data.items():
+                self._set_main(c,key,value,overwrite)
+
+    def _set_main(self,c,key,value,overwrite):
         if isinstance(value,str):
-            self._set("setstr",K_STR,key,value)
+            self._set(c,"setstr",K_STR,key,value,overwrite)
         elif isinstance(value,int):
-            self._set("setint",K_INT,key,value)
+            self._set(c,"setint",K_INT,key,value,overwrite)
         elif isinstance(value,(list,tuple,set)):
-            self._set_list(key,value)
+            self._set_list(c,key,value,overwrite)
         else:
             raise TypeError(key)
 
-    def _set(self,tbl,kind,key,value,overwrite=True):
-        with self.sqlstore.conn:
-            c = self.sqlstore.conn.cursor()
+    def _set(self,c,tbl,kind,key,value,overwrite):
+
             c.execute("SELECT uid,kind FROM settings WHERE key=?",(key,))
             result = c.fetchone()
             if not result:
@@ -133,7 +163,7 @@ class Settings(object):
 
                 c.execute("UPDATE %s SET value=? WHERE uid=?"%tbl,(value,uid,))
 
-    def _set_list(self,key,data,overwrite=True):
+    def _set_list(self,c,key,data,overwrite):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
             c.execute("SELECT uid, kind FROM settings WHERE key=?",(key,))
@@ -154,18 +184,6 @@ class Settings(object):
 
             for idx, item in enumerate(data):
                 c.execute("INSERT INTO setcsv (uid,idx,value)  VALUES (?,?,?)",(uid,idx,item))
-
-    def setDefault(self,key,value):
-        """ set the value iff it does not exist"""
-
-        if isinstance(value,str):
-            self._set("setstr",K_STR,key,value,False)
-        elif isinstance(value,int):
-            self._set("setint",K_INT,key,value,False)
-        elif isinstance(value,(list,tuple)):
-            self._set_list(key,value,False)
-        else:
-            raise TypeError(key)
 
     def keys(self):
         """ generator function returns all settings keys """

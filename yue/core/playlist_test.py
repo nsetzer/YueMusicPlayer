@@ -1,8 +1,8 @@
-#! cd ../.. && python34 setup.py cover
+#! cd ../.. && python setup.py test --test=playlist
 import unittest
 
 import os
-from yue.core.playlist import PlaylistManager
+from yue.core.playlist import PlaylistManager, reinsertList
 from yue.core.sqlstore import SQLStore
 
 DB_PATH = "./unittest.db"
@@ -216,19 +216,38 @@ class TestPlaylist(unittest.TestCase):
         self.assertEqual(idx,2)
         self.assertEqual(key,1)
 
-    def test_playlist_reinsertlist_simple(self):
+    def test_reinsertList(self):
 
-        sqlstore = SQLStore( DB_PATH )
-        pm = PlaylistManager( sqlstore )
-        pl = pm.openPlaylist(PL_NAME)
-        pl.set( [1,2,3,4,5] )
+        lst = [1,2,3,4,5]
 
-        pl.reinsertList( [0,1,2], 17 )
+        def _assert(actual,expected):
+            for i,v in enumerate(expected):
+                self.assertEqual( actual[i], v, "error at position %d actual:%s expected:%s"%(i, actual, expected))
 
-        expected = [4, 5, 1, 2, 3]
-        for i,v in enumerate(expected):
-            actual = pl.get(i)
-            self.assertEqual( actual, v, "%d %d"%(v,actual))
+        # insert at selection index, no change
+        sel = [2,]
+        out,_,_,_ = reinsertList( lst, sel, sel[0] )
+        _assert(out,[1, 2, 3, 4, 5])
+
+        # insert at zero
+        sel = [2,]
+        out,_,_,_ = reinsertList( lst, sel, 0 )
+        _assert(out,[3, 1, 2, 4, 5])
+
+        # drop on last element
+        sel = [2,]
+        out,_,_,_ = reinsertList( lst, sel, len(lst)-1 )
+        _assert(out,[1, 2, 4, 3, 5])
+
+         # drop below last element
+        sel = [2,]
+        out,_,_,_ = reinsertList( lst, sel, len(lst) )
+        _assert(out,[1, 2, 4, 5, 3])
+
+        # reinsert, where insert index is beyond length of list
+        sel = [0,1,2]
+        out,_,_,_ = reinsertList( lst, sel, 17 )
+        _assert(out,[4, 5, 1, 2, 3])
 
     def test_playlist_shuffle(self):
         sqlstore = SQLStore( DB_PATH )

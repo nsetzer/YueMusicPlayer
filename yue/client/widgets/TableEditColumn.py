@@ -193,6 +193,7 @@ class EditColumn(TableColumn):
                     self.editor_save()
                     default_text = self.parent.getItem(row,self.index)
                     self.editor_start({row,},default_text)
+                    self.parent.editRowChange.emit(row)
         elif event.key() in (Qt.Key_Backtab,Qt.Key_Up):
             # if we are editing one row at a time BACKTAB can sequentially move through all rows
             if len(self.open_editors) == 1:
@@ -201,6 +202,7 @@ class EditColumn(TableColumn):
                     self.editor_save()
                     default_text = self.parent.getItem(row,self.index)
                     self.editor_start({row,},default_text)
+                    self.parent.editRowChange.emit(row)
         elif event.key() == Qt.Key_Left:
             self.editor.index_left()
             if _s or _c: self.editor.selection_end  = self.editor.insert_index
@@ -280,6 +282,7 @@ class EditColumn(TableColumn):
             start editing the rows in the iterable 'rows'
             use the default text 'text'
         """
+        self.SaveAndCloseEditors()
         self.open_editors = set(rows)
         self.captureKeyboard()
         #for row in self.open_editors:
@@ -322,10 +325,20 @@ class EditColumn(TableColumn):
         self.releaseKeyboard()
         self.parent.update()
 
+    def editor_isOpen(self):
+        return self.editor is not None;
+
     def editor_insert(self,chara):
         # use this to hook in a validator.
         # for on character insert.
         self.editor.insert(chara)
+
+    def SaveAndCloseEditors(self):
+        for col in self.parent.columns:
+            if isinstance(col,EditColumn):
+                if col.editor_isOpen():
+                    print("boo")
+                    col.editor_save();
 
 if __name__ == '__main__':
 

@@ -166,7 +166,7 @@ class PlaybackController(object):
 
     def on_song_tick(self, pos):
         if pos >= 0:
-            self.root.posview.setValue(pos)
+            self.root.posview.setPosition(pos)
             self.root.songview.setPosition(pos)
             self.last_tick = pos
 

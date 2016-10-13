@@ -1,4 +1,4 @@
-#! python34 ../../../test/test_client.py $this
+#! python35 ../../../test/test_client.py $this
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -16,6 +16,8 @@ if isPython3:
 import yue
 from yue.client.widgets.LargeTable import LargeTable, TableDualColumn, TableColumnImage
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.FlatPushButton import FlatPushButton
+from yue.client.widgets.Tab import Tab
 
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -194,28 +196,31 @@ class ExplorerModel(QWidget):
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
 
-        self.btn_split = QPushButton(self)
-        self.btn_split.setIcon(QIcon(":/img/app_newlist.png"))
-        self.btn_split.setObjectName("SplitViewButton")
-        self.btn_split.clicked.connect(self.on_splitButton_clicked)
-        self.btn_split.setFlat(True)
+        self.btn_split = FlatPushButton(QIcon(":/img/app_split.png"),self)
         self.btn_split.setHidden(True)
+        self.btn_split.clicked.connect( self.on_splitButton_clicked )
 
         self.hbox.addWidget(self.txt_path)
         self.hbox.addWidget(self.btn_split)
         self.vbox.addLayout( self.hbox )
         self.vbox.addWidget( self.tbl_file.container )
 
-        self.tbl_file.setData(self.view)
-        self.txt_path.setText(self.view.pwd())
+        #self.tbl_file.setData(self.view)
+        #self.txt_path.setText(self.view.pwd())
 
         self.list_library_files = set()
+
+    def setView(self,view):
+        self.view = view
+        self.tbl_file.view = view
+        self.tbl_file.setData(view)
+        self.txt_path.setText(view.pwd())
 
     def showSplitButton(self):
         self.btn_split.setHidden(False)
 
     def indexInLibrary(self,idx):
-        return self.view[idx]['name'] in self.list_library_files
+        return self.view[idx]['name'].lower() in self.list_library_files
 
     def refresh(self):
         self.chdir( self.view.pwd() )
@@ -235,7 +240,7 @@ class ExplorerModel(QWidget):
             self.view.chdir( pwd )
 
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( os.path.split(song[Song.path])[1] \
+        self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \
                                        for song in songs )
 
         self.txt_path.setText(self.view.pwd())
@@ -292,6 +297,9 @@ class ExplorerModel(QWidget):
         self.chdir( self.view.pwd() )
         self.tbl_file.scrollTo(0)
         self.tbl_file.setSelection([])
+
+    def action_update_replace(self, item):
+        self.controller.action_update_replace( self.view.realpath(item['name']) )
 
     def on_splitButton_clicked(self):
 
@@ -352,6 +360,8 @@ class ExplorerController(DummyController):
         self.cut_root = ""
         self.parent = parent
 
+
+
     def contextMenu(self, event, model, items):
 
         is_files = all(not item['isDir'] for item in items)
@@ -385,7 +395,7 @@ class ExplorerController(DummyController):
             act.setDisabled( not is_files or not model.canIngest())
 
         if len(items) == 1:
-            act = contextMenu.addAction("Play Song", lambda : model.action_play( items[0] ))
+            act = contextMenu.addAction("Play Song", lambda: model.action_play( items[0] ))
             ext = os.path.splitext(items[0]['name'])[1].lower()
             if not model.supportedExtension( ext ):
                 act.setDisabled( True )
@@ -397,6 +407,10 @@ class ExplorerController(DummyController):
             act = contextMenu.addAction("Open Secondary View", self.action_open_view)
         else:
             act = contextMenu.addAction("Close Secondary View", self.action_close_view)
+
+        if len(items) == 1 and is_files:
+            contextMenu.addSeparator()
+            act = contextMenu.addAction("update/replace *", lambda: model.action_update_replace(items[0]))
 
         action = contextMenu.exec_( event.globalPos() )
 
@@ -424,6 +438,26 @@ class ExplorerController(DummyController):
         """ return true if we can paste into the given directory """
         return self.cut_items is not None and self.cut_root != dirpath
 
+    def action_update_replace(self, path):
+
+        def strmatch(s1,s2,field):
+            return s1[field].lower().replace(" ","") == \
+                   s2[field].lower().replace(" ","")
+
+        p, n = os.path.split( path )
+        gp, _ = os.path.split( p )
+
+        songs = Library.instance().searchDirectory( gp, recursive=True )
+
+        temp = Song.fromPath( path );
+        sys.stdout.write(gp+"\n")
+        for song in songs:
+            match = strmatch(song,temp,Song.artist) and strmatch(song,temp,Song.title) or \
+                    (temp[Song.album_index]>0 and song[Song.album_index] == temp[Song.album_index])
+            sys.stdout.write( "[%d] %s\n"%(match,Song.toString(song)) )
+            if match:
+                Library.instance().update(song[Song.uid],**{Song.path:path})
+
     def action_open_view(self):
         self.parent.ex_secondary.show()
         # self.parent().ex_secondary.chdir( self.view.pwd() )
@@ -432,12 +466,13 @@ class ExplorerController(DummyController):
         self.parent.ex_secondary.hide()
 
     def action_play(self, path):
+        print(path)
         self.parent.play_file.emit( path )
 
     def secondaryHidden(self):
         return self.parent.ex_secondary.isHidden()
 
-class ExplorerView(QWidget):
+class ExplorerView(Tab):
     """docstring for ExplorerView"""
 
     play_file = pyqtSignal(str)
@@ -450,18 +485,15 @@ class ExplorerView(QWidget):
 
         self.source = DirectorySource()
 
-        self.ex_main = ExplorerModel( SourceListView(self.source,self.source.root()), self.controller, self )
-        self.ex_secondary = ExplorerModel( SourceListView(self.source,self.source.root()), self.controller, self )
+        self.ex_main = ExplorerModel( None, self.controller, self )
+        self.ex_secondary = ExplorerModel( None, self.controller, self )
+
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
         self.hbox.addWidget(self.ex_main)
         self.hbox.addWidget(self.ex_secondary)
 
         self.ex_main.showSplitButton()
-        #self.btn = QPushButton("...")
-        #self.btn.clicked.connect(self.openFtp)
-        #self.ex_main.vbox.insertWidget(0,self.btn)
-
         self.ex_secondary.hide()
 
         self.ex_main.do_ingest.connect(self.controller.showIngestDialog)
@@ -470,9 +502,34 @@ class ExplorerView(QWidget):
         self.ex_main.do_move.connect(self.controller.showMoveFileDialog)
         self.ex_secondary.do_move.connect(self.controller.showMoveFileDialog)
 
+        self.xcut_exec = QShortcut(QKeySequence("F5"), self)
+        self.xcut_exec.activated.connect(self.refresh)
+
+    def onEnter(self):
+
+        # delay creating the views until the tab is entered for the first
+        # time, this slightly improves startup performance
+        if (self.ex_main.view is None):
+            view1 = SourceListView(self.source,self.source.root())
+            view2 = SourceListView(self.source,self.source.root())
+
+            self.ex_main.setView(view1)
+            self.ex_secondary.setView(view2)
+
     def chdir(self, path):
 
+        # chdir can be called from another Tab, prior to onEnter,
+        # if that happens run the onEnter first time setup.
+        self.onEnter()
+
         self.ex_main.chdir(path,True)
+
+    def refresh(self):
+        print(self.ex_main.view.pwd())
+        self.ex_main.refresh()
+        if self.ex_secondary.isVisible():
+            print(self.ex_secondary.view.pwd())
+            self.ex_secondary.refresh()
 
     def openFtp(self):
 
@@ -489,7 +546,6 @@ class ExplorerView(QWidget):
 
             self.ftpdialog = ExplorerDialog( mdl, self )
             self.ftpdialog.show()
-
 
 def main():
     app = QApplication(sys.argv)

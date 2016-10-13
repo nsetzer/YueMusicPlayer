@@ -5,14 +5,16 @@
 import os,sys
 
 if os.name == 'nt':
-    # pyHook-1.5.1
-    try:
-        from pyHook import HookManager
-    except ImportError as e:
-        print("pyHook: %s"%e)
-        HookManager = None
+    from pyHook import HookManager
+else:
+    raise ImportError("HookManager")
 
 class KeyHook(object):
+
+    playpause = pyqtSignal()
+    play_prev = pyqtSignal()
+    play_next = pyqtSignal()
+    stop      = pyqtSignal()
 
     def __init__(self, controller,enabled=True):
         super(KeyHook,self).__init__();
@@ -44,16 +46,16 @@ class KeyHook(object):
 
         # return false to capture the key press
         if event.KeyID == self.k_PLAYPAUSE :
-            self.controller.device.playpause()
+            self.playpause.emit()
             return False
         elif event.KeyID == self.k_STOP :
-            self.controller.toggleStop()
+            self.stop.emit()
             return False
         elif event.KeyID == self.k_PREV :
-            self.controller.device.prev()
+            self.play_prev.emit()
             return False
         elif event.KeyID == self.k_NEXT :
-            self.controller.device.next()
+            self.play_next.emit()
             return False
         elif self.diag :
             if event.Ascii > 0x20 or event.Ascii == 0xD:#any char or \n
@@ -73,6 +75,7 @@ class KeyHook(object):
     def setDiagEnabled(self,b):
         self.diag = b
 
-
+    def getDiagEnabled(self):
+        return self.diag
 
 

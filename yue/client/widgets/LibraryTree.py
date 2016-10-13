@@ -16,6 +16,8 @@ from yue.core.search import BlankSearchRule,PartialStringSearchRule,AndSearchRul
 from .Leaf import Leaf
 from .LargeTree import LargeTree
 
+import time
+
 class LibraryTree(LargeTree):
 
     def __init__(self,parent=None):
@@ -24,11 +26,15 @@ class LibraryTree(LargeTree):
         self.checkable = True
 
     def refreshData(self):
-        song_list = list(Library.instance().search(""))
-        toString = lambda x : x[Song.album]
-        root = Leaf.list_to_idx_tree([Song.artist,],toString,song_list)
-        root.children.sort(key=lambda x:getSortKey(x.text))
-        root.text="Library (%d)"%(len(root.children))
+
+        data = Library.instance().getArtistAlbums()
+        # convert the data to a tree
+        root = Leaf(None,"Library (%d)"%len(data),None)
+        for art, albs in data:
+            a = Leaf(root, art, None)
+            for alb in albs:
+                Leaf(a, alb, None)
+
         root.checkable = True
         root.collapsed = False
         root.collapsible = False
@@ -58,8 +64,7 @@ class LibraryTree(LargeTree):
                 item = self.data[(offset+idx)%len(self.data)]
                 # only scroll to artists.
                 if not self.index_is_album(idx):
-                    # getSortKey(str(item))
-                    if str(item).upper().replace("THE ","").startswith(key):
+                    if getSortKey(str(item)).upper().startswith(key):
                         idx=(offset+idx)%len(self.data)
                         self.setSelection([idx,])
                         self.scrollTo(idx)

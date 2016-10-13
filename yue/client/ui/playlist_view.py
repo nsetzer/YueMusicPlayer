@@ -67,12 +67,15 @@ class PlaylistTable(LargeTable):
 
     def processDropEvent(self,source,row,data):
 
+        #start = time.clock()
         if source is self:
             sel = self.getSelectionIndex()
 
-            s,e = self.parent().playlist.reinsertList(sel, row)
+            uids, s, e = self.parent().playlist.reinsertList(sel, row)
 
             self.setSelection( list(range(s,e)) )
+
+            self.parent().updateData( uids )
         else:
             # dropped data from other source must all be songs
             if not all( [ isinstance(item,dict) and Song.uid in item for item in data ] ):
@@ -83,8 +86,10 @@ class PlaylistTable(LargeTable):
             self.parent().playlist.insert( row, ids)
             self.setSelection( list(range(row,row+len(ids))) )
 
+            self.parent().updateData()
+
         self.parent().playlist_changed.emit()
-        self.parent().updateData()
+        #print("pldrop %f"%(time.clock()-start))
 
     def shuffleList(self):
         self.parent().playlist.shuffle_range()
@@ -170,10 +175,12 @@ class PlayListViewWidget(QWidget):
             pass
         self.update()
 
-    def updateData(self):
+    def updateData(self, uids = None):
         #s = time.clock()
-        songs = self.library.songFromIds( self.playlist.iter() )
+        if uids is None:
+            uids = self.playlist.iter()
 
+        songs = self.library.songFromIds( uids )
 
         try:
             if self.playlist is not None:
@@ -181,10 +188,9 @@ class PlayListViewWidget(QWidget):
         except IndexError:
             pass
 
-
-        #print("plload",time.clock()-s)
         self.tbl.setData( songs )
         self.update()
+        #print("plload",time.clock()-s)
 
     def update(self):
         """
