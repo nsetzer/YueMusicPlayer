@@ -1161,6 +1161,7 @@ class SearchGrammar(Grammar):
         """
         c = value.count('/')
 
+        invert = False
         try:
             if c == 2:
                 epochtime,epochtime2 = self.fc.formatDate( value )
@@ -1168,6 +1169,7 @@ class SearchGrammar(Grammar):
                 raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
                 epochtime,epochtime2 = self.fc.formatDateDelta( value )
+                invert = True
         except ValueError as e:
 
             result = self.fc.parseNLPDate( value )
@@ -1181,7 +1183,9 @@ class SearchGrammar(Grammar):
         # flip the context of '<' and '>'
         # for dates, '<' means closer to present day
         # date < 5 is anything in the last 5 days
-        if rule in self.special_invert:
+        # only invert when giving a relative date range
+        # inverted query when giving an absolute date is confusing
+        if invert and rule in self.special_invert:
             rule = self.special_invert[rule]
 
         # token '=' is partial string matching, in the context of dates
@@ -1194,7 +1198,10 @@ class SearchGrammar(Grammar):
         if rule is InvertedPartialStringSearchRule:
             return NotRangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
 
-        if rule is LessThanEqualSearchRule:
+        # todo: this needs further testing due to recent change
+        # if invert is true, use less than equal
+        # if invert is false, use greater than equal (i believe this is needed)
+        if invert and rule is LessThanEqualSearchRule:
             return rule( col, IntDate(epochtime2))
 
         return rule( col, IntDate(epochtime) )
@@ -1382,12 +1389,6 @@ class UpdateGrammar(Grammar):
                 raise ParseError("Expected Integer or Date, found `%s` at position %d"%(value,value.pos))
 
             epochtime,epochtime2 = result
-
-        # flip the context of '<' and '>'
-        # for dates, '<' means closer to present day
-        # date < 5 is anything in the last 5 days
-        if rule in self.special_invert:
-            rule = self.special_invert[rule]
 
         # token '=' is partial string matching, in the context of dates
         # it will return any song played exactly n days ago
