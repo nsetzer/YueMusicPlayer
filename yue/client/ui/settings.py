@@ -8,8 +8,9 @@ from PyQt5.QtGui import *
 
 from yue.client.widgets.LargeTable import LargeTable, TableColumn
 from yue.client.widgets.TableEditColumn import EditColumn
+from yue.core.song import SongSearchGrammar
 from yue.core.sqlstore import SQLStore
-from yue.core.search import ruleFromString, ParseError
+from yue.core.search import ParseError
 from yue.client.SymTr import SymTr
 
 from yue.client.style import currentStyle
@@ -49,6 +50,10 @@ class SettingsDialog(QDialog):
     def export_settings(self,settings):
 
         self.tab_preset.export_settings( settings )
+
+    def accept(self,arg=None):
+        self.tab_preset.close()
+        return super().accept()
 
 class SettingsTab(QWidget):
 
@@ -130,6 +135,12 @@ class SettingsPresetTab(SettingsTab):
 
         self.setData(names,queries)
         self.setDefaultPresetIndex(row)
+
+    def close(self):
+        for col in self.table.columns:
+            if isinstance(col,EditColumn):
+                if col.editor_isOpen():
+                    col.editor_save()
 
     def export_settings(self,settings):
         """ update values in a key/value store """
@@ -257,7 +268,7 @@ class PresetEditColumn(EditColumn):
 
 def validate_query(query):
     try:
-        ruleFromString(query)
+        SongSearchGrammar().ruleFromString(query)
     except ParseError as e:
         sys.stdout.write("%s\n"%e)
         return False

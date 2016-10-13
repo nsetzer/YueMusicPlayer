@@ -51,6 +51,24 @@ class PlaylistManager(object):
     def openCurrent(self):
         return self.openPlaylist("current")
 
+
+    def deletePlaylist(self,name):
+
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            res = c.execute("SELECT uid from playlists where name=?", (name,))
+            item = res.fetchone()
+            if item is not None:
+                c.execute("DELETE from playlist_songs where uid=?",(item[0],))
+                c.execute("DELETE from playlists where name=?",(name,))
+
+    def renamePlaylist(self,old_name,new_name):
+
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            res = c.execute("UPDATE playlists set name=? WHERE name=?", (new_name,old_name))
+            print(res)
+
     def openPlaylist(self, name):
         """ create if it does not exist """
 
@@ -87,10 +105,14 @@ class PlayListView(object):
     def set(self, lst):
         with self.db_names.conn() as conn:
             c = conn.cursor()
-            c.execute("DELETE from playlist_songs where uid=?",(self.uid,))
-            for idx, key in enumerate( lst ):
-                self.db_lists._insert(c, uid=self.uid, idx=idx, song_id=key)
+            self._set(c,lst)
             self.db_names._update(c, self.uid, size=len(lst), idx=0)
+
+    def _set(self,cursor, lst):
+        """ set the list of songs in the playlist to lst """
+        cursor.execute("DELETE from playlist_songs where uid=?",(self.uid,))
+        for idx, key in enumerate( lst ):
+            self.db_lists._insert(cursor, uid=self.uid, idx=idx, song_id=key)
 
     def append(self, key):
         with self.db_names.conn() as conn:
@@ -103,7 +125,7 @@ class PlayListView(object):
         with self.db_names.conn() as conn:
             c = conn.cursor()
             _, name, size, index = self.db_names._get( c, self.uid );
-            return size
+            return max(0,size)
 
     def __len__(self):
         return self.size()
@@ -227,60 +249,37 @@ class PlayListView(object):
                 self.db_names._update( c, self.uid, idx=cur+1)
             self.db_lists._insert(c, uid=self.uid, idx=idx2, song_id=key)
 
-    def reinsertList(self, lst, row):
+    def reinsertList(self, selection, insert_row):
         """
-        given a list of row indices, remove each row from the table
-        then, in the order given, reinsert each element at the given row.
+        selection: a list of unique row indices
+        insert_row: move selection so the first element is at this index.
+                    insert_row is an index in the original list
+
+        Note: this returns the new list, but this is only a hack
+        to optimize one specific area in the Qt Client.
 
         """
-        # the set of keys to insert
-        keys = []
-
-        # if need, store the index of the current song in keys
-        set_current = -1;
+        selection = set(selection)
 
         with self.db_lists.conn() as conn:
             c = conn.cursor()
-            _, _, size, current = self.db_names._get( c, self.uid );
-            if row >= size:
-                row = size
-            # delete and keep track of selected items
-            lst = sorted(lst,reverse=True)
-            for item in lst:
-                key = self._get(c, item)
-                self._delete_one(c, item)
-                keys.append( key )
-                if item == current:
-                    set_current = len(keys);
-                elif item <= current:
-                    current -= 1
-                    self.db_names._update( c, self.uid, idx=current)
-                if item < row:
-                    row -= 1
 
-            # reinsert the keys
-            for key in keys:
-                self._insert_one( c, row, key)
+            _, name, size, current_index = self.db_names._get( c, self.uid );
 
-            # update the current index
-            if set_current>=0:
-                self.db_names._update( c, self.uid, idx=row+set_current-1)
-            elif row <= current:
-                current += len(keys)
-                self.db_names._update( c, self.uid, idx=current)
+            c.execute("select song_id from playlist_songs WHERE uid=? ORDER BY idx",(self.uid,))
 
-            _, _, _, cur = self.db_names._get( c, self.uid );
+            lst = []
+            items = c.fetchmany()
+            while items:
+                lst += [ x[0] for x in items ]
+                items = c.fetchmany()
 
-            #c.execute("SELECT idx FROM playlist_songs where uid=? ORDER BY idx",(self.uid,))
-            #idxlst = []
-            #items = c.fetchmany()
-            #while items:
-            #    for item in items:
-            #        idxlst.append( item[0] )# song_id
-            #    items = c.fetchmany()
-            #print(idxlst)
+            lsta, insert_row, count, current_index = reinsertList(lst, selection, insert_row, current_index)
 
-            return row,row+len(keys);
+            self._set(c, lsta)
+            self.db_names._update( c, self.uid, idx=current_index)
+
+            return lsta, insert_row, count
 
     def shuffle_range(self,start=None,end=None):
         """ shuffle a slice of the list, using python slice semantics
@@ -406,7 +405,59 @@ class PlayListView(object):
     def getDataView( self, library ):
         return PlayListDataView( library, self.db_names, self.db_lists, self.uid )
 
+def reinsertList(lst,selection,insert_row,current_index=0):
 
+    """
+    Generic implementation for reinserting a set of elements.
+
+    lst : a list of items (data type not important)
+    selection : list/set of indices of elements in lst
+    insert_row : an integer index into lst
+    current_index : index of the current song, optional
+
+    returns the new list, actual insert row, number of selected items
+    and the updated current index.
+
+    selects the set of items in selection in the order in which
+    they appear in lst. These items are then insert at insert_row.
+    removal / insertion may change the actual index of
+    insert_row and current_index so these values will be recalculated
+    accordingly
+    """
+    lsta = []
+    lstb = []
+    idx = 0;
+    insert_offset = 0; # for updating current idx
+    new_index = -1;
+
+    for item in lst:
+        if idx in selection:
+            # if we need to update the current idx after drop
+            if idx == current_index:
+                insert_offset = len(lstb)
+            # if the selection effects insert row
+            if idx < insert_row:
+                insert_row -= 1
+            lstb.append(item)
+        else:
+            if (idx == current_index):
+                new_index = len(lsta)
+            lsta.append(item)
+        idx += 1;
+
+    # insert row must be in range 0..len(lsta)
+    insert_row = min(insert_row, len(lsta))
+    if new_index < 0:
+        new_index = insert_row + insert_offset;
+    elif insert_row <= new_index:
+        new_index += len(lstb)
+
+    if insert_row < len(lsta):
+        lsta = lsta[:insert_row] + lstb + lsta[insert_row:]
+    else:
+        lsta = lsta + lstb
+
+    return (lsta, insert_row, insert_row+len(lstb), new_index)
 
 class PlayListDataView(PlayListView):
     """A PlayListView backed by a library

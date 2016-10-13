@@ -40,9 +40,10 @@ import datetime
 from calendar import monthrange,isleap,timegm
 
 def ppdt(dt):
-    return "%s/%02s/%02s (%s) %02s:00"%(dt.year,dt.month,dt.day,dt.weekday(),dt.hour)
+    return "%s/%02s/%02s (%s) %02s:00"%(dt.year,dt.month,dt.day,
+                                        dt.weekday(),dt.hour)
 
-def unit_start(offset,unit):
+def unit_start(dt,offset,unit):
     """
     for each time-scale unit, year,month,week,day,hour
     return the 'start' of its kind
@@ -53,7 +54,7 @@ def unit_start(offset,unit):
         'hour' return H:00 on this hour
     """
     weekday_offset=1 # set to one for sunday being first day of the week
-    dt = datetime.datetime.now();
+    #dt = datetime.datetime.now();
     if unit.endswith('s'):
         unit = unit[:-1]
     if unit == 'year':
@@ -98,7 +99,7 @@ def unit_delta(dt,unit):
 
 class NLPDateRange(object):
     """docstring for NLPDate"""
-    def __init__(self):
+    def __init__(self, dtn=None):
         super(NLPDateRange, self).__init__()
 
         self.keyword = {
@@ -111,14 +112,24 @@ class NLPDateRange(object):
 
         base_unit = ['hour','day','week','month','year']
 
-
         rex_units = '('+'|'.join(base_unit)+')s?'
         rex_words = '('+"today|yesterday|" + ')'
-        #
+        rex_mod   = '(\d+|next|this|last)'
+        rex_ago   = '(?:\s+ago)?'
+        rex_to    = '(?:to|til)'
+        rex_modv  = rex_mod+'\s+'+rex_units
+
         # http://www.regexper.com/
-        rex_format = '^(?:last\s+)?(?:'+rex_words+'|(\d+|next|this|last)\s+'+rex_units+')(?:\s+ago)?(?:(?:\s+(?:to|til)\s+'+rex_words+')?|\s+(?:to|til)\s+(\d+|next|this|last)\s+'+rex_units+'(?:\s+ago)?)$'
+        rex_format = '^(?:last\s+)?(?:'+rex_words+'|'+rex_modv+')'+rex_ago+ \
+                     '(?:(?:\s+'+rex_to+'\s+'+rex_words+')?|\s+'+ \
+                     rex_to+'\s+'+rex_modv+rex_ago+')$'
 
         self.match_words = re.compile(rex_format)
+
+        if dtn is None:
+            self.dtn = datetime.now()
+        else:
+            self.dtn = dtn
 
 
     def parse(self,text):
@@ -147,9 +158,11 @@ class NLPDateRange(object):
             range_end   = self.keyword.get(range_end  ,range_end  )
 
             if range_start:
-                range_start= -int(self.keyword.get(range_start[0],range_start[0])),range_start[1]
+                srng = -int(self.keyword.get(range_start[0],range_start[0]))
+                range_start= (srng,range_start[1])
             if range_end:
-                range_end  = -int(self.keyword.get(range_end[0],  range_end[0])),  range_end[1]
+                srng = -int(self.keyword.get(range_end[0],  range_end[0]))
+                range_end  = (srng, range_end[1])
 
             #print g
             if not range_end: # shifts range to that of one unit
@@ -159,8 +172,8 @@ class NLPDateRange(object):
                 range_start = (-100,'year') # (-1,range_start[1])
 
             # get the datetime object for year (count,unit) from today
-            ds=unit_start(*range_start)
-            de=unit_start(*range_end)
+            ds=unit_start(self.dtn,*range_start)
+            de=unit_start(self.dtn,*range_end)
 
             if not negative: # add one unit to the end range
                 de = de + unit_delta(de,range_end[1])

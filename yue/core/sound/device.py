@@ -118,6 +118,7 @@ class SoundDevice(object):
         print(idx,key)
         song = Library.instance().songFromId( key )
         self.load( song )
+        return song
 
     # current playlist management
 

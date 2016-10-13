@@ -58,6 +58,9 @@ theme_neutral       => #505050
 theme_bg_color      => #1e2328
 theme_bg_color_alt  => rgba(45,50,60,128)
 #theme_bg_color_alt  => #252b32
+# light_alt is used exclusivley for alt row bg color
+theme_p_light_alt   => #a0a0a0
+
 
 font_size           => 11
 font_family         => Verdana

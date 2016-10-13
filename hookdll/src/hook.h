@@ -1,7 +1,7 @@
 #ifndef PY_KEY_HOOK_H
 #define PY_KEY_HOOK_H
 
-#ifdef BUILD_HOOK_DLL
+#ifdef hook_EXPORTS
 #define HOOK_DLL __declspec(dllexport)
 #else
 #define HOOK_DLL __declspec(dllimport)

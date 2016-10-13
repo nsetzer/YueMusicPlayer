@@ -8,7 +8,7 @@ QDialog LargeTable {
     background: %theme_p_light%;
     color: %text_dark%;
     /* alternate is only used if alternate row colors is enabled*/
-    alternate-background-color: %theme_p_mid%; /*QPalette.AlternateBase*/
+    alternate-background-color: %theme_p_light_alt%; /*QPalette.AlternateBase*/
     selection-background-color: %color_highlight%; /*QPalette.Highlight*/
     selection-color: white; /*selected text color: QPalette.HighLightText*/
     /*color: %acolor%; */

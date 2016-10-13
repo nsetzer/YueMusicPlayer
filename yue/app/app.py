@@ -2,6 +2,15 @@
 
 """
 
+pip install --upgrade pip wheel setuptools
+pip install docutils pygments pypiwin32 kivy.deps.sdl2 kivy.deps.glew
+pip install kivy plyer
+pip install mutagen natsort Enum
+
+#todo make natsort an optional dependency
+#todo move to python 35 and remove enum as a dependency
+
+
 todo:
     https://kivy.org/docs/api-kivy.app.html
     see built in support for settings,

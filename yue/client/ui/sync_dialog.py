@@ -37,8 +37,8 @@ class QtSyncManager(SyncManager):
     def message(self,msg):
         self.parent.setMessage(msg)
 
-    def getYesOrNo(self,msg):
-        result = self.parent.getInput("Delete",msg,"cancel","delete")
+    def getYesOrNo(self,msg,btn2="delete"):
+        result = self.parent.getInput("Delete",msg,"cancel",btn2)
         return result==1
 
     def log(self,msg):

@@ -1,6 +1,7 @@
 
 import os,sys
 
+from .search import SearchGrammar, ParseError
 from calendar import timegm
 import time
 import datetime
@@ -63,6 +64,9 @@ class Song(object):
 
     # used by history to mark playback time
     playtime = "playtime"
+
+    # meta, these actually control DB access
+    limit = "limit"
 
     eqfactor = 250.0
 
@@ -128,6 +132,14 @@ class Song(object):
     def textFields():
         return Song.artist, Song.composer, Song.album, Song.title, \
                Song.genre, Song.country, Song.lang, Song.comment
+
+    @staticmethod
+    def numberFields():
+        """ integer fields """
+        return Song.uid, Song.year, Song.album_index, Song.length, \
+               Song.last_played, Song.play_count, Song.skip_count, \
+               Song.rating, Song.blocked, Song.opm, Song.equalizer, \
+               Song.date_added, Song.frequency, Song.file_size;
 
     @staticmethod
     def dateFields():
@@ -230,10 +242,31 @@ class Song(object):
         fvalue = ivalue/Song.eqfactor;
         return fvalue
 
+class SongSearchGrammar(SearchGrammar):
+    """docstring for SongSearchGrammar"""
+
+    def __init__(self):
+        super(SongSearchGrammar, self).__init__()
+
+        # all_text is a meta-column name which is used to search all text fields
+        self.all_text = Song.all_text
+        self.text_fields = set(Song.textFields())
+        # i still treat the path as a special case even though it really isnt
+        self.text_fields.add(Song.path)
+        self.date_fields = set(Song.dateFields())
+        self.time_fields = set([Song.length,])
+        self.year_fields = set([Song.year,])
+
+    def translateColumn(self,colid):
+        # translate the given colid to an internal column name
+        # e.g. user may type 'pcnt' which expands to 'playcount'
+        try:
+            return Song.column( colid );
+        except KeyError:
+            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
+
 def stripIllegalChars(x):
     return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
-
-# from kivy.logger import Logger
 
 def read_tags( path ):
 
@@ -394,16 +427,16 @@ def get_album_art( song_path, temp_path):
         2. check for cover.jpg / cover.png in the same directory
         3. check for folder.jpg/folder.png in the same directory
     """
-    ext = os.path.splitext(song_path)[1].lower()
-
+    dirname, fname = os.path.split( song_path )
+    fname, fext = os.path.splitext( fname )
+    fext = fext.lower()
     #if type(song_path) is str:
     #    song_path = str.decode("utf-8")
-
     data = None
     try:
-        if ext == ".mp3":
+        if fext == ".mp3":
             data = get_album_art_mp3( song_path )
-        elif ext == '.flac':
+        elif fext == '.flac':
             data = get_album_art_flac( song_path )
     except Exception as e:
         print("mutagen: %s"%e)
@@ -413,9 +446,9 @@ def get_album_art( song_path, temp_path):
             wb.write( data )
         return temp_path
 
-    dirname = os.path.dirname( song_path )
-
-    for name in ["cover.jpg","cover.png","folder.jpg","folder.png"]:
+    for name in [fname+".jpg", fname+".png",
+                 "cover.jpg", "cover.png",
+                 "folder.jpg","folder.png"]:
         path = os.path.join(dirname,name)
         if os.path.exists( path ):
             return path
@@ -430,13 +463,15 @@ def get_album_art_data( song ):
     # the path could be to a file that does not exist, as long
     # as the directory does exist.
     song_path = song[Song.path]
-    ext = os.path.splitext(song_path)[1].lower()
+    dirname, fname = os.path.split( song_path )
+    fname, fext = os.path.splitext( fname )
+    fext = fext.lower()
 
     data = None
     try:
-        if ext == ".mp3":
+        if fext == ".mp3":
             data = get_album_art_mp3( song_path )
-        elif ext == '.flac':
+        elif fext == '.flac':
             data = get_album_art_flac( song_path )
     except Exception as e:
         print("mutagen: %s"%e)
@@ -446,7 +481,9 @@ def get_album_art_data( song ):
 
     dirname = os.path.dirname( song_path )
 
-    names = ["cover.jpg","cover.png","folder.jpg","folder.png"]
+    names = [fname+".jpg", fname+".png",
+                 "cover.jpg", "cover.png",
+                 "folder.jpg","folder.png"]
     n = "%s - %s.jpg"%(song[Song.artist],song[Song.album])
     names.append(n)
     names.append(n.replace(" ","_"))

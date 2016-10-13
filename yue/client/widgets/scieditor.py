@@ -131,9 +131,24 @@ class CodeEditor(QWidget):
         else:
             print("Execution Complete.")
 
-    def _help(self):
-        for k,v in self.locals.items():
-            print(k,v)
+    def _help(self,obj=None):
+        print("\n\n")
+
+        if obj is not None:
+            # display variables of object formatted to fit in display
+            items = dir(obj)
+            l = max( len(s) for s in items )
+            f = "%%-%ds"%l
+            n = 79//l
+            grps = [ items[i:i+n] for i in range(0,len(items)+n,n)]
+            for grp in grps:
+                print(" ".join(f%s for s in grp))
+        else:
+            for k,v in self.locals.items():
+                if k == "help":
+                    continue
+                print("%s\ttype:%s"%(k,v.__class__.__name__))
+            print("help\thelp(obj=None) display global vars or variables of a given obj")
 
 
 if __name__ == "__main__":

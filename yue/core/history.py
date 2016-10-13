@@ -3,10 +3,16 @@
 # contains boolean : save history true false
 # mimic update pattern
 
+from .search import SearchGrammar, BlankSearchRule, sql_search, ParseError
 from yue.core.song import Song
-from yue.core.sqlstore import SQLTable
+from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
 import time
+
+import sys
+isPython3 = sys.version_info[0]==3
+if isPython3:
+    unicode = str
 
 class History(object):
     """docstring for Library"""
@@ -22,8 +28,26 @@ class History(object):
 
         self.db = SQLTable( sqlstore ,"history", fields)
 
+
+        #SELECT s.uid, h.date, h.column, h.value, a.artist, b.album, s.title
+        #FROM songs s, artists a, albums b, history h
+        #WHERE s.uid=h.uid AND a.uid = s.artist AND b.uid = s.album
+
+        viewname = "history_view"
+        colnames = [ "uid", "date", "column", "value", "artist", "album", "title" ]
+        cols = [ 's.uid', 'h.date', 'h.column', 'h.value', 'a.artist', 'b.album', 's.title']
+        cols = ', '.join(cols)
+        tbls = "songs s, artists a, albums b, history h"
+        where = "s.uid=h.uid AND a.uid = s.artist AND b.uid = s.album"
+        sql = """CREATE VIEW IF NOT EXISTS {} as SELECT {} FROM {} WHERE {}""".format(viewname,cols,tbls,where)
+
+        self.view = SQLView( sqlstore, viewname, sql, colnames)
         self.sqlstore = sqlstore
-        self.enabled = False
+        self.enabled_log = False
+        self.enabled_update = False
+
+
+        self.grammar = HistorySearchGrammar( )
 
     @staticmethod
     def init( sqlstore ):
@@ -33,18 +57,29 @@ class History(object):
     def instance():
         return History.__instance
 
-    def setEnabled(self, b):
-        self.enabled = bool(b)
+    def setLogEnabled(self, b):
+        """ enable recording of playback events"""
+        self.enabled_log = bool(b)
 
-    def isEnabled(self):
-        return self.enabled
+    def setUpdateEnabled(self, b):
+        """ enable recording of record changes """
+        self.enabled_update = bool(b)
+
+    def isLogEnabled(self):
+        return self.enabled_log
+
+    def isUpdateEnabled(self):
+        return self.enabled_update
+
+    def __len__(self):
+        return self.db.count()
 
     def size(self):
         return self.db.count()
 
     def update(self,c, uid,**kwargs):
 
-        if not self.enabled:
+        if not self.enabled_update:
             return
 
         date = timegm(time.localtime(time.time()))
@@ -53,13 +88,17 @@ class History(object):
             "uid"  : uid,
         }
         for col,val in kwargs.items():
+            # don't record changes for path, since that will overwrite
+            # the path on import - bad!
+            if col == Song.path:
+                continue;
             data['column'] = col
-            data['value'] = val
+            data['value'] = str(val)
             self.db._insert(c,**data)
 
     def incrementPlaycount(self, c, uid, date):
 
-        if not self.enabled:
+        if not self.enabled_log:
             return
 
         kwargs = {
@@ -73,47 +112,76 @@ class History(object):
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            c.execute("SELECT date,uid,column,value FROM history ORDER BY date")
+            c.execute("SELECT date,uid,column,value FROM history ORDER BY date ASC")
 
             item = c.fetchone()
             while item is not None:
                 yield dict(zip(self.db.column_names,item))
                 item = c.fetchone()
 
-    def import_record(self, c, record):
-
-        if record['column'] == Song.playtime:
-            self.import_playtime(c,record)
-        else:
-            self.import_update(c,record)
-
-    # TODO" these should probably be moved to the Library()
-    def import_playtime(self, c, record):
+    def delete(self,records_lst):
+        """ delete a record, or a list of records
         """
-        update playcount for a song given a record
+        lst = records_lst
+        if isinstance(records_lst,dict):
+            lst = [records_lst, ]
 
-        c: connection cursor associated with target library
-        record: a history record
-        """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
 
-        #song = library.songFromId( record['uid'])
+            for record in lst:
+                self._delete(c,record)
+
+    def _delete(self,c,record):
         date = record['date']
         uid = record['uid']
+        c.execute("DELETE from history where uid=? and date=?",(uid,date))
 
-        c = self.sqlstore.conn.cursor()
-        c.execute("SELECT playcount, frequency, last_played FROM songs WHERE uid=?",(uid,))
-        item = c.fetchone()
-        if item is None:
-            raise ValueError( uid )
-        playcount, frequency, last_played = item
-        # only update frequency, last_played if the item is newer
-        if date > last_played:
-            d, freq = Song.calculateFrequency(playcount, frequency, last_played, date);
-            c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?", \
-                      (freq, date, uid))
+    def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
+        if rule is None:
+            rule = BlankSearchRule();
+        elif isinstance(rule,(str,unicode)):
+            rule = self.grammar.ruleFromString( rule )
+            limit = self.grammar.getMetaValue("limit",limit)
+            offset = self.grammar.getMetaValue("offset",offset)
         else:
-            c.execute("UPDATE songs SET playcount=playcount+1 WHERE uid=?", (uid,))
+            raise ParseError("invalid rule type: %s"%type(rule))
+        if isinstance(rule,(str,unicode)):
+            raise ParseError("fuck. invalid rule type: %s"%type(rule))
+        if orderby is not None:
+            if not isinstance( orderby, (list,tuple)):
+                orderby = [ orderby, ]
 
-    def import_update(self, c, record):
-        # update column/value for uid given a record
-        pass
+        return sql_search( self.view, rule, case_insensitive, orderby, reverse, limit, offset )
+
+
+class HistorySearchGrammar(SearchGrammar):
+    """docstring for HistorySearchGrammar"""
+
+    def __init__(self):
+        super(HistorySearchGrammar, self).__init__()
+
+        # [ "uid", "date", "column", "value", "artist", "album", "title" ]
+        self.text_fields = {'column', 'artist','album','title'}
+        self.date_fields = {'date',}
+
+        self.columns = {self.all_text, "uid", "date", 'column', 'artist','album','title', }
+        self.shortcuts = {
+                        "art"    : "artist", # copied from Song
+                        "artist" : "artist",
+                        "abm"    : "album",
+                        "alb"    : "album",
+                        "album"  : "album",
+                        "ttl"    : "title",
+                        "tit"    : "title",
+                        "title"  : "title",
+                        "data"   : "column",
+                        "action" : "column",
+                    }
+
+    def translateColumn(self,colid):
+        if colid in self.shortcuts:
+            return self.shortcuts[colid]
+        if colid in self.columns:
+            return colid
+        raise ParseError("Invalid column name `%s`"%colid)

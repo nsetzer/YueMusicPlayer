@@ -18,11 +18,14 @@ from yue.client.widgets.TableEditColumn import EditColumn
 from yue.client.widgets.SongTable import SongTable
 from yue.client.widgets.LibraryTree import LibraryTree
 from yue.client.widgets.LineEdit import LineEdit
+from yue.client.widgets.FlatPushButton import FlatPushButton
+from yue.client.widgets.Tab import Tab
 
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.settings import Settings
 from yue.core.playlist import PlaylistManager
 
 class LineEdit_Search(LineEdit):
@@ -51,9 +54,14 @@ class LibraryTable(SongTable):
         self.addRowTextColorComplexRule(self.currentSongRule,self.color_text_played_recent)
 
         self.selection_changed.connect(self.on_selection_change)
+        self.editRowChange.connect(self.onEditRowChange)
 
     def currentSongRule(self,row):
         return self.data[row][Song.uid] == self.current_uid
+
+    def onEditRowChange(self,row):
+        # update the display path when the editor row changes
+        self.parent().notify.emit(self.data[row][Song.path])
 
     def on_selection_change(self,event=None):
 
@@ -71,32 +79,46 @@ class LibraryTable(SongTable):
 
         items = self.getSelection()
 
+        closeEditor=False
+
+        for col in self.columns:
+            if isinstance(col,EditColumn) and col.editor_isOpen():
+                closeEditor = True;
+                break;
+
         menu = QMenu(self)
 
-        act = menu.addAction("Play",lambda:self.action_play_next(items,True))
-        act.setDisabled( len(items) != 1 )
+        if closeEditor:
 
-        menu.addAction("Play next",lambda:self.action_play_next(items))
-        act.setDisabled( len(items) == 0 )
+            act = menu.addAction("Save Changes",lambda:self.action_close_editors(EditColumn.editor_save))
+            act = menu.addAction("Discard Changes",lambda:self.action_close_editors(EditColumn.editor_close))
 
-        act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
-        act.setDisabled( len(items) != 1 )
-
-        if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
-            menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
-                lambda:self.action_edit_column(row,cur_c))
-
-        menu.addSeparator()
-        menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
-
-        if any(not song[Song.blocked] for song in items):
-            menu.addAction(QIcon(":/img/app_x.png"),"Bannish", lambda:self.action_bannish(items,True))
         else:
-            menu.addAction("Restore", lambda:self.action_bannish(items,False))
 
-        if len(items) == 1 and self.parent().menu_callback is not None:
+            act = menu.addAction("Play",lambda:self.action_play_next(items,True))
+            act.setDisabled( len(items) != 1 )
+
+            menu.addAction("Play next",lambda:self.action_play_next(items))
+            act.setDisabled( len(items) == 0 )
+
+            act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
+            act.setDisabled( len(items) != 1 )
+
+            if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
+                menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
+                    lambda:self.action_edit_column(row,cur_c))
+
             menu.addSeparator()
-            self.parent().menu_callback(menu,items[0])
+            menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
+
+            if any(not song[Song.blocked] for song in items):
+                menu.addAction(QIcon(":/img/app_x.png"),"Bannish", lambda:self.action_bannish(items,True))
+            else:
+                menu.addAction("Restore", lambda:self.action_bannish(items,False))
+
+            if len(items) == 1 and self.parent().menu_callback is not None:
+                menu.addSeparator()
+                self.parent().menu_callback(menu,items[0])
 
         action = menu.exec_( event.globalPos() )
 
@@ -138,6 +160,12 @@ class LibraryTable(SongTable):
     def action_show_in_tree_view(self, song):
         self.parent().tree_lib.showArtist(song[Song.artist])
 
+    def action_close_editors(self,func):
+        for col in self.columns:
+            if isinstance(col,EditColumn) and col.editor_isOpen():
+                func(col)
+
+
 class LibTree(LibraryTree):
 
     def __init__(self,parent):
@@ -174,12 +202,11 @@ class LibTree(LibraryTree):
         uids = [ song[Song.uid] for song in songs ]
         self.parent().set_playlist.emit( uids )
 
-
     def on_selection_change(self,event=None):
         q = self.formatSelectionAsQueryString()
         self.parent().run_search(q,True)
 
-class LibraryView(QWidget):
+class LibraryView(Tab):
     """docstring for MainWindow"""
 
     # emit this signal to create a new playlist from a given query string
@@ -194,6 +221,7 @@ class LibraryView(QWidget):
         super(LibraryView, self).__init__(parent)
 
         self.vbox_main = QVBoxLayout(self)
+        self.vbox_main.setContentsMargins(0,0,0,0)
         self.splitter = QSplitter(Qt.Horizontal, self)
         self.tree_lib = LibTree( self )
         self.tree_lib.showColumnHeader( False )
@@ -204,7 +232,7 @@ class LibraryView(QWidget):
         self.splitter.addWidget( self.cwidget )
         self.vbox_main.addWidget(self.splitter)
         self.vbox = QVBoxLayout(self.cwidget)
-        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setContentsMargins(0,5,0,0)
 
         self.hbox = QHBoxLayout()
         self.hbox.setContentsMargins(0,0,0,0)
@@ -216,20 +244,20 @@ class LibraryView(QWidget):
         # needed for song sort
         self.tbl_song.update_data.connect(self.onUpdate)
 
+        self.btn_quick = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
+        self.btn_quick.clicked.connect(self.showQuickMenu)
+        self.btn_quick.setFlat(True)
+
         self.txt_search = LineEdit_Search(self,self.tbl_song)
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
-        #self.btn_newlist = QToolButton(self)
-        self.btn_newlist = QPushButton(self)
-        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
-        self.btn_newlist.setObjectName("NewPlaylistButton")
+
+        self.btn_newlist = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
         self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
         self.btn_newlist.setFlat(True)
-        #act = QAction(QIcon(":/img/app_newlist.png"),"Create Playlist",self)
-        #act.triggered.connect(lambda:sys.stdout.write("create\n"))
-        #self.btn_newlist.setDefaultAction(act)
 
+        self.hbox.addWidget( self.btn_quick )
         self.hbox.addWidget( self.txt_search )
         self.hbox.addWidget( self.lbl_search )
         self.hbox.addWidget( self.btn_newlist )
@@ -241,8 +269,6 @@ class LibraryView(QWidget):
         self.lbl_error.hide()
 
         self.menu_callback = None
-
-        self.run_search("")
 
     def setColumnState(self, order):
         if len(order) > 0:
@@ -266,24 +292,15 @@ class LibraryView(QWidget):
         """
         setText: if true set the text box to contain text
         """
+
+        if self.tbl_song.isEditorOpen():
+            return # TODO, should do something
+
         try:
-            lib = Library.instance()
-            data = lib.search( text, \
+            songs = Library.instance().search( text, \
                 orderby=self.tbl_song.sort_orderby,
                 reverse = self.tbl_song.sort_reverse )
-            self.tbl_song.setData(data)
-            self.lbl_search.setText("%d/%d"%(len(data), len(lib)))
 
-            if not self.lbl_error.isHidden():
-                self.txt_search.setStyleSheet("")
-                self.lbl_error.hide()
-
-            if setText:
-                self.txt_search.setText( text )
-
-            if not refresh:
-                self.tbl_song.scrollTo( 0 )
-                self.tbl_song.setSelection([])
         except ParseError as e:
             self.txt_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
@@ -291,10 +308,28 @@ class LibraryView(QWidget):
         except Exception as e:
             raise e
 
+        else:
+            self.displaySongs(songs)
+
+            if setText:
+                self.txt_search.setText( text )
+
+            if not refresh:
+                self.tbl_song.scrollTo( 0 )
+                self.tbl_song.setSelection([])
+
+    def displaySongs(self,songs):
+
+        self.tbl_song.setData(songs)
+        self.lbl_search.setText("%d/%d"%(len(songs), len(Library.instance())))
+
+        if not self.lbl_error.isHidden():
+            self.txt_search.setStyleSheet("")
+            self.lbl_error.hide()
+
     def setCurrentSongId( self, uid ):
         self.tbl_song.current_uid = uid
         self.tbl_song.update()
-
 
     def setMenuCallback(self,cbk):
         """
@@ -303,3 +338,20 @@ class LibraryView(QWidget):
         the given song
         """
         self.menu_callback = cbk
+
+    def showQuickMenu(self, event):
+        pos = self.btn_quick.mapToGlobal(self.btn_quick.pos())
+
+        menu = QMenu(self)
+
+        d=Settings.instance().getMulti("playlist_preset_names",
+                                       "playlist_presets")
+        dp=list(zip(d["playlist_preset_names"],d["playlist_presets"]))
+
+        for name,query in sorted(dp):
+            menu.addAction(name).setData(query)
+
+        action = menu.exec_( pos )
+
+        if action is not None:
+            self.run_search(action.data(),setText=True)

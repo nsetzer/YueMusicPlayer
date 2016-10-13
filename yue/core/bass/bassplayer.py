@@ -384,10 +384,14 @@ class BassPlayer(object):
         """
         if seconds != None:
             bytes = pybass.BASS_ChannelSeconds2Bytes(self.channel,seconds);
+            length=pybass.BASS_ChannelGetLength(self.channel, pybass.BASS_POS_BYTE);
+            if bytes > length:
+                bytes = length
             pybass.BASS_ChannelSetPosition(self.channel,bytes,pybass.BASS_POS_BYTE);
-        bytes = pybass.BASS_ChannelGetPosition(self.channel,pybass.BASS_POS_BYTE);
+        else:
+            bytes = pybass.BASS_ChannelGetPosition(self.channel,pybass.BASS_POS_BYTE);
+
         seconds = pybass.BASS_ChannelBytes2Seconds(self.channel,bytes);
-        #print (float(seconds))
         return float( seconds )
 
     def status(self):

@@ -1,9 +1,19 @@
-#!python34 $this
-__version__ = "1.0.3"
+#!python $this
+"""
+changelog
+
+2016-05-03 1.1.0
+    move to python3.5
+    move to Qt 5.6
+    use Visual Studio 2015 to build C libraries
+
+"""
+__version__ = "1.1.5"
+__datetime__ = ""
 import codecs,traceback
 try:
     from yue.client.client import main
-    main(__version__)
+    main(__version__,__datetime__)
 except Exception as e:
     with codecs.open("yue-error.log","w","utf-8") as wf:
         wf.write("%s\n"%e)

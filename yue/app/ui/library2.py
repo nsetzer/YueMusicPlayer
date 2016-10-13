@@ -150,9 +150,9 @@ class LibraryScreen(Screen):
     def executeQuery(self,*args):
 
         try:
-            result = Library.instance().search( self.txt_filter.text, \
-                orderby=[Song.artist,Song.album,Song.title] )
-            tree =  libraryToTreeFromIterable( result )
+            #result = Library.instance().search( self.txt_filter.text, \
+            #    orderby=[Song.artist,Song.album,Song.title] )
+            tree =  libraryToTree( Library.instance(), rule=self.txt_filter.text )
             self.setData(tree)
         except ParseError as e:
             Logger.error("search error: %s"%e)

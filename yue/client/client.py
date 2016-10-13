@@ -1,4 +1,4 @@
-#! cd ../.. && python34 test/test_client.py
+#! cd ../.. && python test/test_client.py
 
 import os,sys
 import time
@@ -12,11 +12,14 @@ from PyQt5.QtCore import *
 # can find `platforms/qwindows.dll`
 if hasattr(sys,"_MEIPASS"):
     QCoreApplication.addLibraryPath(sys._MEIPASS)
+    QCoreApplication.addLibraryPath(os.path.join(sys._MEIPASS,"qt5_plugins"))
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from sip import SIP_VERSION_STR, delete as sip_delete
 
 from .style import style_set_custom_theme, setApplicationPallete, currentStyle, clearStyle, StyleError
+
+from yue.client.widgets.Tab import TabWidget
 
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
@@ -30,14 +33,27 @@ from ..core.repl import YueRepl, ReplArgumentParser
 
 from . import resource
 from .controller import newDevice, PlaybackController
+
+HookThread = None
+KeyHook = None
 try:
-    if os.name == 'nt':
-        from .hook2 import HookThread
-    else:
-        HookThread = None
+    from .hook import KeyHook
 except ImportError as e:
-    sys.stderr.write("hook import: %s\n"%e)
-    HookThread = None
+    sys.stderr.write("pyHook not supported: %s\n"%e)
+    KeyHook = None
+if KeyHook is None:
+    try:
+        if os.name == 'nt':
+            from .hook2 import HookThread
+        else:
+            HookThread = None
+    except ImportError as e:
+        sys.stderr.write("hook not supported: %s\n"%e)
+        HookThread = None
+    except OSError as e:
+        sys.stderr.write("hook not supported: %s\n"%e)
+        HookThread = None
+
 try:
     from .remote import SocketListen
 except ImportError as e:
@@ -45,6 +61,8 @@ except ImportError as e:
     SocketListen = None
 
 from .ui.library_view import LibraryView
+from .ui.playlisttab_view import PlaylistTabView
+from .ui.history_view import HistoryView
 from .ui.quickselect_view import QuickSelectView
 from .ui.explorer_view import ExplorerView, explorerOpen
 from .ui.playlist_view import PlayListViewWidget
@@ -95,6 +113,9 @@ class ClientRepl(object):
 
         self.actions["quit"] = self.exexit
         self.actions["exit"] = self.exexit
+        self.actions["xx"] = self.exxx
+        self.actions["clear"] = self.exclear
+        self.actions["clr"] = self.exclear
 
         self.helptopics['search'] = """ information on search format
 
@@ -175,6 +196,10 @@ class ClientRepl(object):
         for name,string in self.helptopics.items():
             repl.registerTopic(name,string)
 
+    def exclear(self,args):
+        """ clear the error log """
+        self.client.errorlog_view.clear()
+
     def exexit(self,args):
         """ exit application """
         QApplication.quit()
@@ -215,19 +240,26 @@ class ClientRepl(object):
 
     def exbackup(self, args):
         """ backup the database """
-        self.client.backup_database()
+        self.client.backup_database( True )
 
     def exhistory(self,args):
-
+        """
+        0 : disable
+        1 : enable logging
+        2 : enable logging of record changes
+        3 : enable logging + record logging
+        """
         args = ReplArgumentParser(args)
         args.assertMinArgs( 1 )
 
-        enable = int(args[0]) != 0
+        enable_log    = bool(int(args[0]) & 1)
+        enable_update = bool(int(args[0]) & 2)
 
-        History.instance().setEnabled( enable )
+        History.instance().setLogEnabled( enable_log )
+        History.instance().setUpdateEnabled( enable_update )
 
-        print("history: %d"%(enable))
-
+        print("history log: %d"%(enable_log))
+        print("history update: %d"%(enable_update))
 
     def exexplorer(self, args):
         """ open directory of the database in explorer """
@@ -236,23 +268,28 @@ class ClientRepl(object):
         explorerOpen( dirpath )
 
     def exdiag(self, args):
-        """ enable/disable diagnostics """
+        """ enable/disable diagnostics
 
-        self.client.keyhook.diag = not self.client.keyhook.diag
+        currently toggles keylogger enable
+        """
+
+        keyhook = self.client.keyhook
+        keyhook.setDiagEnabled( not keyhook.getDiagEnabled() )
         print(self.client.keyhook.diag)
 
     def exeditor(self, args):
 
         if not hasattr(self,'editor'):
             self.editor = CodeEditor()
-            self.editor.setVariable("Client",self)
+            self.editor.setVariable("Repl",self)
+            self.editor.setVariable("Client",self.client)
             self.editor.setVariable("Library",Library.instance())
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
             self.editor.setVariable("Settings",Settings.instance())
             self.editor.setVariable("History",History.instance())
             self.editor.setVariable("Song",Song)
             self.editor.setText("help()\nfor song in Library.search('title=fizzbuzz'):"+\
-                "\n    Library.update(song[Song.uid],**{Song.title:'foobar'}")
+                "\n    pass # Library.update(song[Song.uid],**{Song.title:'foobar'}")
         self.editor.show()
 
     def extheme(self,args):
@@ -262,14 +299,32 @@ class ClientRepl(object):
         theme = args[0]
         self.client.set_style( theme )
 
+    def exxx(self,args):
+        """
+        1: xx 1 alt alt [alt ...]
+            update song path in db based on provided update alternatives list
+        """
+        args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
+        args.assertMinArgs( 1 )
+
+        value = int(args[0])
+        if value == 1:
+            alternatives = args[1:]
+            print(alternatives)
+            Library.instance().songPathHack( alternatives )
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
-    def __init__(self, errorlog_view, device, version):
+    refreshTreeView = pyqtSignal()
+
+    def __init__(self, errorlog_view, device, version_info ):
         super(MainWindow, self).__init__()
 
+        start = time.time()
+
         self.setAcceptDrops( True )
-        self.version = version
+        self.version,self.versiondate = version_info
         self.device = device
         self.controller = PlaybackController( device, self );
         self.repl = YueRepl( device )
@@ -277,59 +332,74 @@ class MainWindow(QMainWindow):
         self.clientrepl.register( self.repl )
         self.errorlog_view = errorlog_view
 
+        sys.stdout.write(" >> 0 >> %f\n"%(time.time()-start))
+
         self.keyhook = None
         self.remotethread = None
-
-        if HookThread is not None:
-            sys.stdout.write("Initialize Keyboard hook.\n")
-            self.keyhook = HookThread()
-            self.keyhook.start()
-            self.keyhook.playpause.connect(self.device.playpause)
-            self.keyhook.play_next.connect(self.controller.play_next)
-            self.keyhook.play_prev.connect(self.controller.play_prev)
-        else:
-            sys.stdout.write("Unable to initialize Keyboard Hook.\n")
-        if SocketListen is not None:
-            port = 15123
-            if hasattr(sys,"_MEIPASS"):
-                port = 15124 # use a different port when frozen
-            sys.stdout.write("Initialize Remote Thread.\n")
-            self.remotethread = SocketListen(port=port,parent=self)
-            self.remotethread.message_recieved.connect(self.executeCommand)
-            self.remotethread.start()
-        else:
-            sys.stdout.write("Unable to initialize Remote Thread.\n")
 
         self.default_palette = QPalette(self.palette())
         self.default_font    = QFont(self.font())
 
         self.dialog_ingest = None
         self.dialog_update = None
+
+        self._init_keyhook()
+        self._init_remote()
         self._init_ui()
-        self._init_values()
-        self._init_menubar()
+        s = Settings.instance().getMulti('volume',
+                                         'volume_equalizer',
+                                         "ui_show_console",
+                                         'ui_show_visualizer',
+                                         'ui_show_treeview',
+                                         'ui_show_history',
+                                         'ui_show_error_log',
+                                         'ui_quickselect_favorite_artists',
+                                         'ui_quickselect_favorite_genres',
+                                         'ui_library_column_order');
+        self._init_values(s)
+        self._init_menubar(s)
+        self._init_misc()
 
+    def _init_keyhook(self):
+        if KeyHook is not None:
+            sys.stdout.write("Initialize pyHook.\n")
+            self.keyhook = KeyHook()
+            self.setEnabled(True)
+            self.keyhook.playpause.connect(self.device.playpause)
+            self.keyhook.play_next.connect(self.controller.play_next)
+            self.keyhook.play_prev.connect(self.controller.play_prev)
+            self.keyhook.stop.connect(self.controller.toggleStop)
+        elif HookThread is not None:
+            sys.stdout.write("Initialize Keyboard hook.\n")
+            self.keyhook = HookThread()
+            self.keyhook.start()
+            self.keyhook.playpause.connect(self.device.playpause)
+            self.keyhook.play_next.connect(self.controller.play_next)
+            self.keyhook.play_prev.connect(self.controller.play_prev)
+            self.keyhook.stop.connect(self.controller.toggleStop)
+        else:
+            sys.stdout.write("Unable to initialize Keyboard Hook.\n")
+
+    def _init_remote(self):
         s = Settings.instance()
-        self.set_style(s["current_theme"])
 
-        History.instance().setEnabled( s['enable_history'] )
-        self.device.setAlternatives(s['path_alternatives'])
-
-        sys.stdout.write("record history: %s\n"%bool(s['enable_history']))
-        sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
-
-        try:
-            self.device.load_current( )
-            # TODO: check that p is less than length of current song (minus 5s)
-            # or something similar. Then make this a configuration option
-            # that defaults on.
-            p = s["current_position"]
-            self.device.seek( p )
-            self.controller.on_song_tick( p )
-        except IndexError:
-            sys.stderr.write("error: No Current Song\n")
+        if s['enable_remote_commands']:
+            if SocketListen is not None:
+                port = 15123
+                if hasattr(sys,"_MEIPASS"):
+                    port = 15124 # use a different port when frozen
+                sys.stdout.write("Initialize Remote Thread.\n")
+                self.remotethread = SocketListen(port=port,parent=self)
+                self.remotethread.message_recieved.connect(self.executeCommand)
+                self.remotethread.start()
+            else:
+                sys.stdout.write("Unable to initialize Remote Thread.\n")
+        else:
+            sys.stdout.write("Socket Thread not started. Remote Commands Disabled.\n")
 
     def _init_ui(self):
+        start = time.time()
+        sys.stdout.write("Initializing Ui\n")
 
         self.bar_menu = QMenuBar( self )
         self.setMenuBar( self.bar_menu )
@@ -343,7 +413,7 @@ class MainWindow(QMainWindow):
         self.bar_status.addPermanentWidget( self.lbl_pl_status)
         self.setStatusBar( self.bar_status )
 
-        self.tabview = QTabWidget( self )
+        self.tabview = TabWidget( self )
         self.setCentralWidget(self.tabview)
 
         # init primary views
@@ -353,7 +423,6 @@ class MainWindow(QMainWindow):
         self.libview.set_playlist.connect(self.setNewPlaylist)
         self.libview.setMenuCallback( self.addSongActions )
         self.libview.notify.connect( self.update_statusbar_message )
-        self.libview.tree_lib.refreshData()
 
         self.quickview = QuickSelectView(self);
         self.quickview.create_playlist.connect(self.createQuickPlaylist)
@@ -368,6 +437,8 @@ class MainWindow(QMainWindow):
         self.plview.playlist_duration.connect( self.update_statusbar_duration )
         self.plview.playlist_changed.connect( self.update_song_view )
 
+        self.historyview = HistoryView(self);
+
         self.songview = CurrentSongView( self );
         self.songview.setMenuCallback( self.addSongActions )
         self.songview.update_rating.connect(self.setRating)
@@ -376,8 +447,9 @@ class MainWindow(QMainWindow):
         self.edit_cmd.setFocus()
         self.edit_cmd.setPlaceholderText("Command Input")
 
+        self.pleditview = PlaylistTabView(self)
+
         self.volcontroller = VolumeController(self)
-        # TODO: something needs to be done about this :
         self.volcontroller.volume_slider.valueChanged.connect(self.setVolume)
         self.volcontroller.volume_slider.value_set.connect(self.setVolume)
 
@@ -399,6 +471,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget (Qt.BottomDockWidgetArea, self.dock_diag)
 
         self.tabview.addTab( self.libview, QIcon(':/img/app_note.png'), "Library")
+        self.tabview.addTab( self.pleditview, QIcon(':/img/app_list.png'), "Playlists")
         self.tabview.addTab( self.quickview, QIcon(':/img/app_fav.png'), "Quick Select")
         self.tabview.addTab( self.expview, QIcon(':/img/app_folder.png'), "Explorer")
         if self.controller.dspSupported():
@@ -410,7 +483,10 @@ class MainWindow(QMainWindow):
             self.peqview.gain_updated.connect( self.controller.setEQGain )
             self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
             self.plview.vbox.insertWidget(0, self.audioview)
+        self.tabview.addTab(self.historyview,"History")
         self.tabview.setCornerWidget( self.volcontroller )
+
+        self.historyview_index = self.tabview.indexOf( self.historyview )
 
         h=48
         self.btn_playpause = PlayButton( self )
@@ -455,9 +531,12 @@ class MainWindow(QMainWindow):
         self.plview.vbox.insertLayout(0, self.hbox_btn)
         self.plview.vbox.insertWidget(0, self.edit_cmd)
 
-    def _init_values(self):
+        sys.stdout.write("Initialization of Ui completed in %f seconds\n"%(time.time()-start))
 
-        s = Settings.instance()
+    def _init_values(self,s):
+        sys.stdout.write("Initializing default values\n")
+
+
         vol = s['volume']
         self.volcontroller.volume_slider.setValue( vol )
         self.controller.device.setVolume( vol/100.0 )
@@ -470,6 +549,9 @@ class MainWindow(QMainWindow):
 
         if not s['ui_show_treeview']:
             self.libview.tree_lib.container.hide()
+
+        if not s['ui_show_history']:
+            self.tabview.removeTab(self.historyview_index)
 
         if self.controller.dspSupported():
             if not s['ui_show_visualizer']:
@@ -486,31 +568,24 @@ class MainWindow(QMainWindow):
         pl = PlaylistManager.instance().openCurrent()
         if len(pl)==0:
             songs = Library.instance().search(None, orderby=Song.random, limit=5)
-            lst = [ s['uid'] for s in songs ]
+            lst = [ song['uid'] for song in songs ]
             pl.set( lst )
         self.plview.setPlaylist( Library.instance(), pl)
 
-    def toggleFullScreen(self):
-        if self.isFullScreen():
-            self.showNormal()
-        else:
-            self.showFullScreen()
-
-    def _init_menubar(self):
+    def _init_menubar(self,s):
 
         self.xcut_fullscreen = QShortcut(QKeySequence("F1"), self)
         self.xcut_fullscreen.activated.connect(self.toggleFullScreen)
 
-        s = Settings.instance()
         menu = self.bar_menu.addMenu("&File")
         menu.addAction("Settings",self.showSettings)
         menu.addAction("Exit",QApplication.quit)
 
         menu = self.bar_menu.addMenu("&Music")
         menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
-        menu.addSeparator()
-        menu.addAction("New Editable Playlist", self.newEditablePlaylist)
-        menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
+        #menu.addSeparator()
+        #menu.addAction("New Editable Playlist", self.newEditablePlaylist)
+        #menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
         menu.addSeparator()
         menu.addAction("Update Song Tags",self.updateTags)
         if self.controller.dspSupported():
@@ -551,6 +626,12 @@ class MainWindow(QMainWindow):
         else:
             self.action_view_tree.setText("Show Tree View")
 
+        self.action_view_history    = menu.addAction("",self.toggleHistoryVisible)
+        if s['ui_show_history']:
+            self.action_view_history.setText("Hide History")
+        else:
+            self.action_view_history.setText("Show History")
+
         self.action_view_logger  = menu.addAction("",lambda : self.toggleDialogVisible(self.dock_diag))
         if s['ui_show_error_log']:
             self.action_view_logger.setText("Hide Error Log")
@@ -563,7 +644,7 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: %s\n"%self.version
+        about_text += "Version: %s\nDate:%s\n"%(self.version,self.versiondate)
         about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
         about_text += "Qt Version: %s\n"%QT_VERSION_STR
         about_text += "sip Version: %s\n"%SIP_VERSION_STR
@@ -571,29 +652,84 @@ class MainWindow(QMainWindow):
         about_text += "Playback Engine: %s\n"%self.controller.device.name()
         menu.addAction("About",lambda:QMessageBox.about(self,"Yue Music Player",about_text))
 
+    def _init_misc(self):
+
+        s = Settings.instance().getMulti("current_theme",
+                                         'enable_history',
+                                         'enable_history_update',
+                                         "current_position",
+                                         "current_song_id")
+
+        self.set_style(s["current_theme"])
+
+        History.instance().setLogEnabled( s['enable_history'] )
+        History.instance().setUpdateEnabled( s['enable_history_update'] )
+
+        #self.device.setAlternatives(s['path_alternatives'])
+
+        sys.stdout.write("record history: log:%s update:%s\n"%( \
+                    bool(s['enable_history']), \
+                    bool(s['enable_history_update'])))
+       # sys.stdout.write("path alternatives: %s\n"%s['path_alternatives'])
+
+        try:
+            song = self.device.load_current()
+            # TODO: check that p is less than length of current song (minus 5s)
+            # or something similar. Then make this a configuration option
+            # that defaults on.
+            p = s["current_position"]
+            if song[Song.uid] == s['current_song_id']:
+                self.device.seek( p )
+                self.controller.on_song_tick( p )
+                print("Setting song position for %d to %s"%(song[Song.uid],format_delta(p)))
+            else:
+                print("Failed to set song position. stored id:%d current id: %d"%(s['current_song_id'], song[Song.uid]))
+        except IndexError:
+            sys.stderr.write("error: No Current Song\n")
+
+        self.libview.tree_lib.refreshData()
+
+        songs = Library.instance().search(None)
+        self.libview.displaySongs( songs );
+        self.quickview.generateData( songs );
+
+    def toggleFullScreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
     def closeEvent(self, event):
 
-        s = Settings.instance()
+        sys.stdout.write("Closing Application\n")
 
+        sdat = {}
         self.controller.device.pause()
 
         start = time.time()
 
-        s['ui_show_error_log'] = int(not self.dock_diag.isHidden())
-        s['ui_show_console'] = int(not self.edit_cmd.isHidden())
-        s['ui_show_treeview'] = int(not self.libview.tree_lib.container.isHidden())
-        print("ui tree",s['ui_show_treeview'])
+        # todo, speed this up, store all values into a local dictionary
+        # then update the settings object in a single write block
+
+        sdat['ui_show_error_log'] = int(not self.dock_diag.isHidden())
+        sdat['ui_show_console'] = int(not self.edit_cmd.isHidden())
+        sdat['ui_show_treeview'] = int(not self.libview.tree_lib.container.isHidden())
+        sdat['ui_show_history'] = int(self.tabview.indexOf(self.historyview) == self.historyview_index)
         if self.controller.dspSupported():
-            s['ui_show_visualizer'] = int(not self.audioview.isHidden())
+            sdat['ui_show_visualizer'] = int(not self.audioview.isHidden())
         # hide now, to make it look like the application closed faster
-        self.hide()
 
-        if self.remotethread is not None:
-            self.remotethread.join()
+        sdat['enable_history'] = int(History.instance().isLogEnabled())
+        sdat['enable_history_update'] = int(History.instance().isUpdateEnabled())
 
-        s['enable_history'] = int(History.instance().isEnabled())
-
-        s['current_position'] = int(self.device.position())
+        # todo, only if a song from the library is playing
+        sdat['current_position'] = int(self.device.position())
+        try:
+            idx,key = PlaylistManager.instance().openCurrent().current()
+            sdat['current_song_id'] = int(key)
+        except IndexError:
+            sdat['current_song_id'] = int(0)
+        #sdat['current_song_id']  =
 
         # TODO: this doesnt work
         #if self.keyhook is not None:
@@ -602,24 +738,31 @@ class MainWindow(QMainWindow):
         # record the current volume, but prevent the application
         # from starting muted
         v = self.volcontroller.volume_slider.value()
-        s["volume"] = v if v > 0 else 25
+        sdat["volume"] = v if v > 0 else 25
 
         # record the current position of the window
         # application startup will check this is still valid, and try
         # to reposition accordingly
-        s["window_width"] = self.width()
-        s["window_height"] = self.height()
-        s["window_x"] = self.x()
-        s["window_y"] = self.y()
+        sdat["window_width"] = self.width()
+        sdat["window_height"] = self.height()
+        sdat["window_x"] = self.x()
+        sdat["window_y"] = self.y()
 
-        s['ui_library_column_order'] = self.libview.getColumnState();
+        sdat['ui_library_column_order'] = self.libview.getColumnState();
 
-        s['ui_quickselect_favorite_artists'] = self.quickview.getFavoriteArtists()
-        s['ui_quickselect_favorite_genres'] = self.quickview.getFavoriteGenres()
+        sdat['ui_quickselect_favorite_artists'] = self.quickview.getFavoriteArtists()
+        sdat['ui_quickselect_favorite_genres'] = self.quickview.getFavoriteGenres()
+
+        sys.stdout.write("Saving state (%f)\n"%(time.time()-start))
+        s = Settings.instance().setMulti(sdat)
+        sys.stdout.write("finished saving state (%f)\n"%(time.time()-start))
+
+        self.hide()
+        if self.remotethread is not None:
+            self.remotethread.join()
 
         super(MainWindow,self).closeEvent( event )
-
-        sys.stdout.write("finished saving state (%d)\n"%(time.time()-start))
+        sys.stdout.write("goodbye :) (%f)\n"%(time.time()-start))
 
     def tabIndex(self, widget):
         idx = -1
@@ -703,8 +846,6 @@ class MainWindow(QMainWindow):
         self.controller.device.setVolume( vol/100.0 )
 
     def ingestFinished(self):
-
-
         self.executeSearch("added = today",False)
         self.libview.tree_lib.refreshData()
 
@@ -773,6 +914,15 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         q5 = os.path.split(song[Song.path])[0]
         menu.addAction("Explore Containing Folder", lambda: self.exploreDirectory(q5))
+
+    def toggleHistoryVisible(self):
+        if self.tabview.indexOf(self.historyview) != self.historyview_index:
+            self.action_view_history.setText("Hide History")
+            self.tabview.insertTab(self.historyview_index, self.historyview, "History")
+
+        else:
+            self.action_view_history.setText("Show History")
+            self.tabview.removeTab(self.historyview_index)
 
     def toggleTreeViewVisible(self):
         if self.libview.tree_lib.container.isHidden():
@@ -914,12 +1064,12 @@ class MainWindow(QMainWindow):
         msg = "%s / %s"%(format_delta(remaining), format_delta(duration))
         self.lbl_pl_status.setText(msg)
 
-    def backup_database(self):
+    def backup_database(self, force = False ):
 
         s = Settings.instance();
         if s['backup_enabled']:
             dir = s['backup_directory']
-            backupDatabase( Library.instance().sqlstore, dir)
+            backupDatabase( Library.instance().sqlstore, dir, force=force)
 
     def showWindow(self):
 
@@ -975,6 +1125,9 @@ class MainWindow(QMainWindow):
                 border: 2px solid black;
                 border-radius: 1px;
             }
+            QTextEdit {
+                font-family: "Lucida Console";
+            }
             """
             app.setStyleSheet(css)
         else:
@@ -1012,12 +1165,13 @@ class MainWindow(QMainWindow):
             if isinstance(tab,PlaylistEditView):
                 songtables.append( tab.tbl_lib)
                 songtables.append( tab.tbl_pl)
+        colors = ( qdct["text_important1"], \
+                   qdct["text_important2"], \
+                   qdct["theme_p_mid"]    , \
+                   qdct["color_special1"] )
         for table in songtables:
-            table.setRuleColors( \
-                    qdct["text_important1"], \
-                    qdct["text_important2"], \
-                    qdct["theme_p_mid"]    , \
-                    qdct["color_special1"] )
+            table.setRuleColors(*colors)
+        self.pleditview.setRuleColors(*colors)
 
         # create and set a custom palette for the song view
         p = self.palette()
@@ -1045,72 +1199,102 @@ class MainWindow(QMainWindow):
 
 def setSettingsDefaults():
 
-    s = Settings.instance()
+    data = {}
 
-    s.setDefault("current_theme","none")
+    data["current_theme"] = "none"
 
-    s.setDefault("current_position",0)
+    data["current_position"] = 0
+    data["current_song_id"] = 0
 
-    s.setDefault("backup_enabled",1)
-    s.setDefault("backup_directory","./backup")
+    data["backup_enabled"] = 1
+    data["backup_directory"] = "./backup"
 
-    s.setDefault("volume",50)
-    s.setDefault("volume_equalizer",0) # off
+    data["volume"] = 50
+    data["volume_equalizer"] = 0 # off
 
-    s.setDefault("ui_show_console",0)    # off
-    s.setDefault("ui_show_error_log",0)  # off
-    s.setDefault("ui_show_visualizer",1) # on
-    s.setDefault("ui_show_treeview",1)   # on
+    data["ui_show_console"] = 0    # off
+    data["ui_show_error_log"] = 0  # off
+    data["ui_show_visualizer"] = 1 # on
+    data["ui_show_treeview"] = 1   # on
+    data["ui_show_history"] = 0
 
-    s.setDefault("enable_keyboard_hook",1) # on by default
+    data["keyhook_playpause"] =  0xB3
+    data["keyhook_stop"] =  0xB2
+    data["keyhook_prev"] =  0xB1
+    data["keyhook_next"] =  0xB0
 
-    s.setDefault("enable_history",0)
-    s.setDefault("path_alternatives",[])
+    data["enable_keyboard_hook"] = 1 # on by default
+    data["enable_remote_commands"] = 0 # on by default
 
-    # when empty, default order is used
-    s.setDefault("ui_library_column_order",[])
-    s.setDefault("ui_quickselect_favorite_artists",[])
-    s.setDefault("ui_quickselect_favorite_genres",[])
+    data["enable_history"] = 1
+    data["enable_history_update"] = 0
+    data["path_alternatives"] = []
 
-    s.setDefault("playlist_size",50)
-    s.setDefault("playlist_preset_default",0)
-    s.setDefault("playlist_presets",[
+    # when empty] =  default order is used
+    data["ui_library_column_order"] = []
+    data["ui_quickselect_favorite_artists"] = []
+    data["ui_quickselect_favorite_genres"] = []
+
+    data["playlist_size"] = 50
+    data["playlist_preset_default"] = 0
+    data["playlist_presets"] = [
         "ban=0 && date>14",
-        ])
-    s.setDefault("playlist_preset_names",[
+        ]
+    data["playlist_preset_names"] = [
         "Not Recent",
-        ])
+        ]
+
+    Settings.instance().setMulti(data,False)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         sys.stderr.write(line)
 
-def main(version="0.0.0"):
+def main(version="",buildtime=""):
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Yue Music Player - v%s"%version)
+    if version == "":
+        version = "{:%H:%M}".format(datetime.now())
+        app.setApplicationName("Yue Debug %s"%(version))
+    else:
+        app.setApplicationName("Yue Music Player - v%s"%(version))
+
     app.setQuitOnLastWindowClosed(True)
     app_icon = QIcon(':/img/icon.png')
     app.setWindowIcon(app_icon)
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Audio Playback and Library Manager')
     parser.add_argument('--sound', default="default",
                    help='set sound device: default, bass, dummy')
+    parser.add_argument('--altdb', default=False, action="store_true",
+                   help='use separate db for settings')
     args = parser.parse_args()
 
     with LogView(trace=False,echo=True) as diag:
 
+        start = time.time()
         sys.excepthook = handle_exception
 
         plugin_path = "./lib/%s/x86_64"%sys.platform
         if hasattr(sys,"_MEIPASS"):
             plugin_path = sys._MEIPASS
 
+        settings_db_path = "./settings.db"
         db_path = "./yue.db"
 
         sys.stdout.write("Loading database\n")
-        sqlstore = SQLStore(db_path)
-        Settings.init( sqlstore )
+
+        if os.path.exists(settings_db_path) or args.altdb:
+            sys.stdout.write("Separate Settings db found.\n")
+            settings_sqlstore = SQLStore(settings_db_path)
+            Settings.init( settings_sqlstore )
+            Settings.instance().setDefault("db_path","./yue.db")
+            db_path = Settings.instance()['db_path']
+            sqlstore = SQLStore(db_path)
+        else:
+            sqlstore = SQLStore(db_path)
+            Settings.init( sqlstore )
+
         Library.init( sqlstore )
         PlaylistManager.init( sqlstore )
         History.init( sqlstore )
@@ -1123,9 +1307,10 @@ def main(version="0.0.0"):
         pl=PlaylistManager.instance().openCurrent()
         device = newDevice(pl,plugin_path,kind=args.sound)
 
-        sys.stdout.write("Initializing application\n")
-        window = MainWindow( diag, device, version )
+        sys.stdout.write("Initializing application (%f)\n"%(time.time()-start))
+        window = MainWindow( diag, device, (version,buildtime) )
 
+        sys.stdout.write("Initialization Complete. Showing Window (%f)\n"%(time.time()-start))
         window.showWindow()
 
     sys.exit(app.exec_())
