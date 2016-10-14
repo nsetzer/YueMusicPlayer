@@ -495,7 +495,6 @@ class LHSError(ParseError):
         super(LHSError, self).__init__( msg )
 
 class FormatConversion(object):
-
     """
     FormatConversion handles conversion from string to another type.
     Using Object Composition simplifies computation out of SearchGrammar
@@ -618,7 +617,7 @@ class FormatConversion(object):
         # convert hours:minutes:seconds to seconds
         y = 0
         try:
-            y = self.fc.adjustYear(int(sValue))
+            y = self.adjustYear(int(sValue))
         except ValueError:
             raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
         return y
