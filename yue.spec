@@ -55,11 +55,18 @@ with open(target_script,"w") as wf:
 
 FULL_NAME = 'YueMusicPlayer-%s-%s%s'%(os.name,version,EXT)
 
+# needed on some linux platforms
+extra = ["six","packaging",'packaging.version',
+         'packaging.specifiers','packaging.requirements',
+         "yue.client"]
+
 #build a debug version and look for import errors,
 # add those import libraries to hidden imports list
-a = Analysis([target_script,],
-             pathex=[os.path.join(os.getcwd(),"yue"),],
-             hiddenimports=["pkg_resources","PyQt5"],
+
+a = Analysis([main_script,],
+             pathex=[os.path.join(os.getcwd(),"yue"),
+                     os.path.join(os.getcwd(),"yue","client") ],
+             hiddenimports=["pkg_resources","PyQt5"]+extra,
              hookspath=None,
              runtime_hooks=None)
 

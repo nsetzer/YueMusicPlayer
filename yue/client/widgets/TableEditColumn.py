@@ -96,7 +96,7 @@ class CellEditor(QObject):
 
 
     def format_string(self):
-        return self.buffer[:self.insert_index] + CellEditor.INSERT_TOKEN +  self.buffer[self.insert_index:]
+        return (self.buffer[:self.insert_index] + CellEditor.INSERT_TOKEN +  self.buffer[self.insert_index:]).replace(" ",u"\u00B7")
 
 class _sigmanager(QObject):
     """ small bug in my implementation, columns are not QObjects
@@ -135,12 +135,14 @@ class EditColumn(TableColumn):
 
         if self.editor != None and row in self.open_editors:
             painter.fillRect(x,y,w,h,self.parent.palette_brush(QPalette.Base))
-            item = self.editor.format_string().replace(" ",u"\u00B7")
-            sel = self.editor.selection
+
+            item = self.editor.format_string()
+            sel = self.editor.selection.replace(" ",u"\u00B7")
             if sel: # if there is a selection to highlight
                 #palette_brush(QPalette.Highlight)
 
-                w1 = painter.fontMetrics().width(self.editor.buffer[:self.editor.selection_start])
+                _sel_text_begin = self.editor.buffer[:self.editor.selection_start].replace(" ",u"\u00B7")
+                w1 = painter.fontMetrics().width(_sel_text_begin)
                 w2 = painter.fontMetrics().width(sel)
 
                 #if self.editor.selection_start <= self.editor.insert_index < self.editor.selection_end:
@@ -149,7 +151,7 @@ class EditColumn(TableColumn):
                     w1 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
                 else:
                     w2 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
-                painter.fillRect(x+w1+self.parent.text_padding_left,y,w2,h,self.parent.palette_brush(QPalette.Highlight))
+                painter.fillRect(x+w1+self.parent.text_padding_left,y+2,w2,h-3,self.parent.palette_brush(QPalette.Highlight))
 
             self.cellTextColor = self.parent.painter_brush_font.color()
             # check for index offset
