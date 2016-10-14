@@ -137,25 +137,9 @@ class EditColumn(TableColumn):
             painter.fillRect(x,y,w,h,self.parent.palette_brush(QPalette.Base))
 
             item = self.editor.format_string()
+            _text = self.editor.buffer[:self.editor.insert_index].replace(" ",u"\u00B7")
             sel = self.editor.selection.replace(" ",u"\u00B7")
-            if sel: # if there is a selection to highlight
-                #palette_brush(QPalette.Highlight)
-
-                _sel_text_begin = self.editor.buffer[:self.editor.selection_start].replace(" ",u"\u00B7")
-                w1 = painter.fontMetrics().width(_sel_text_begin)
-                w2 = painter.fontMetrics().width(sel)
-
-                #if self.editor.selection_start <= self.editor.insert_index < self.editor.selection_end:
-                #    w2 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
-                if self.editor.insert_index < self.editor.selection_start :
-                    w1 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
-                else:
-                    w2 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
-                painter.fillRect(x+w1+self.parent.text_padding_left,y+2,w2,h-3,self.parent.palette_brush(QPalette.Highlight))
-
             self.cellTextColor = self.parent.painter_brush_font.color()
-            # check for index offset
-            _text = self.editor.buffer[:self.editor.insert_index]
 
             self.text_edit_offset = 0
             if _text:
@@ -163,6 +147,22 @@ class EditColumn(TableColumn):
                 _avg = _width/(len(_text))
                 if _width - self.text_edit_offset > w-(_avg*4):
                     self.text_edit_offset = (w-(_avg*4)) - _width
+
+            if sel: # if there is a selection to highlight
+
+                _sel_text_begin = self.editor.buffer[:self.editor.selection_start].replace(" ",u"\u00B7")
+                w1 = painter.fontMetrics().width(_sel_text_begin)
+                w2 = painter.fontMetrics().width(sel)
+
+                if self.editor.insert_index < self.editor.selection_start :
+                    w1 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
+                else:
+                    w2 += painter.fontMetrics().width(CellEditor.INSERT_TOKEN)
+
+                # sx is the beginning of the selection highlight
+                sx = x+w1+self.text_edit_offset+self.parent.text_padding_left
+                pb =self.parent.palette_brush(QPalette.Highlight)
+                painter.fillRect(sx,y+2,w2,h-3,pb)
 
             self.paintItem_text(col,painter,row,item,x+self.text_edit_offset,y,w-self.text_edit_offset,h)
             self.cellTextColor = None
