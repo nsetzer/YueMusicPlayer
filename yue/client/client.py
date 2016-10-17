@@ -419,7 +419,7 @@ class MainWindow(QMainWindow):
         # init primary views
         self.libview = LibraryView(self);
         self.libview.create_playlist.connect(self.createNewPlaylist)
-        self.libview.insert_playlist.connect(self.setCurrentPlaylist)
+        self.libview.insert_playlist.connect(self.insertIntoCurrentPlaylist)
         self.libview.set_playlist.connect(self.setNewPlaylist)
         self.libview.setMenuCallback( self.addSongActions )
         self.libview.notify.connect( self.update_statusbar_message )
@@ -436,6 +436,7 @@ class MainWindow(QMainWindow):
         self.plview.play_index.connect( self.controller.play_index )
         self.plview.playlist_duration.connect( self.update_statusbar_duration )
         self.plview.playlist_changed.connect( self.update_song_view )
+        self.plview.playlist_generate.connect( self.rollCurrentPlaylist )
 
         self.historyview = HistoryView(self);
 
@@ -781,7 +782,7 @@ class MainWindow(QMainWindow):
 
         widget = PlaylistEditView(playlist_name)
         widget.on_rename.connect( self.renameTab )
-        widget.set_playlist.connect(self.setCurrentPlaylist)
+        widget.set_playlist.connect(self.insertIntoCurrentPlaylist)
         widget.notify.connect(self.update_statusbar_message)
         widget.set_playlist.connect(self.setNewPlaylist)
 
@@ -984,19 +985,20 @@ class MainWindow(QMainWindow):
         limit = s['playlist_size']
         presets = s['playlist_presets']
         dialog = NewPlaylistDialog(query,limit=limit,parent=self)
-        n=s["playlist_preset_names"]
-        q=s["playlist_presets"]
-        dialog.setPresets(n,q)
 
         if dialog.exec():
 
             params = dialog.getQueryParams()
             songs = Library.instance().search( \
                         params['query'],
-                        orderby=Song.random,
+                        orderby=dialog.getSortOrder(),
                         limit=params['limit'])
             lst = [ song[Song.uid] for song in songs ]
-            self.setNewPlaylist( lst )
+
+            if dialog.getCreatePlaylist():
+                self.setNewPlaylist( lst )
+            else:
+                self.insertIntoCurrentPlaylist(lst)
 
     def showSettings(self):
 
@@ -1015,11 +1017,7 @@ class MainWindow(QMainWindow):
         self.controller.play_index( 0 )
         self.plview.updateData()
 
-    def setCurrentPlaylist(self, uids,play=False):
-        # TODO: this is poorly named
-        # in both playlist editor, library view, and here
-        # is really should be called something to reflect that
-        # the songs are inserted and not overwritten
+    def insertIntoCurrentPlaylist(self, uids,play=False):
         pl = PlaylistManager.instance().openCurrent()
         pl.insert_next( uids )
         if play:
@@ -1063,6 +1061,11 @@ class MainWindow(QMainWindow):
     def update_statusbar_duration(self,duration,remaining):
         msg = "%s / %s"%(format_delta(remaining), format_delta(duration))
         self.lbl_pl_status.setText(msg)
+
+    def rollCurrentPlaylist(self):
+        self.controller.rollPlaylist();
+        self.plview.updateData()
+        self.update_song_view()
 
     def backup_database(self, force = False ):
 

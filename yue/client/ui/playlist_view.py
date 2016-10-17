@@ -99,6 +99,10 @@ class PlaylistTable(LargeTable):
         self.parent().playlist.shuffle_selection( self.getSelectionIndex() )
         self.parent().updateData()
 
+    def generateSongs(self):
+
+        self.parent().playlist_generate.emit()
+
     def mouseDoubleClick(self,row,col,event):
 
         if event is None or event.button() == Qt.LeftButton:
@@ -120,6 +124,10 @@ class PlaylistTable(LargeTable):
         else:
             menu.addAction( "Shuffle Selection", self.shuffleSelection)
 
+        menu.addSeparator()
+
+        menu.addAction( "Generate Songs", self.generateSongs)
+
         action = menu.exec_( event.globalPos() )
 
 
@@ -134,6 +142,8 @@ class PlayListViewWidget(QWidget):
     playlist_duration = pyqtSignal(int,int)
 
     playlist_changed = pyqtSignal()
+
+    playlist_generate = pyqtSignal()
 
     def __init__(self, parent=None):
         super(PlayListViewWidget, self).__init__(parent)
