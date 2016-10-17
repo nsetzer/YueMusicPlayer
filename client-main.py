@@ -8,13 +8,15 @@ changelog
     use Visual Studio 2015 to build C libraries
 
 """
-__version__ = "1.1.5"
+__version__ = "1.1.6"
 __datetime__ = ""
-import codecs,traceback
+import codecs,traceback,sys
 try:
     from yue.client.client import main
     main(__version__,__datetime__)
 except Exception as e:
     with codecs.open("yue-error.log","w","utf-8") as wf:
-        wf.write("%s\n"%e)
-        wf.write(traceback.format_exc())
+        msg = "%s\n\n"%e
+        msg += traceback.format_exc()
+        wf.write(msg)
+        sys.stderr.write(msg)
