@@ -150,6 +150,23 @@ class PlaybackController(object):
 
         return index, length
 
+    def getCurrentQuery(self):
+        """ return the current query string and suggested number of songs. """
+        s = Settings.instance()
+        presets = s['playlist_presets']
+        size =s['playlist_size']
+        idx = s['playlist_preset_default']
+
+        query = "ban=0" # default, always ignore banised songs
+
+        # use the default preset when available
+        if idx < len(presets):
+            query = presets[idx]
+        #elif len(presets) > 0:
+        #    query = presets[0]
+
+        return query,size
+
     def on_song_load(self, song):
 
         index,length = self.get_playlist_info()
@@ -192,6 +209,7 @@ class PlaybackController(object):
 
             Library.instance().incrementPlaycount(song[Song.uid])
             self.duration_fix( song, self.last_tick )
+
             # return to the first song in the playlist if the current
             # song does not match the song that just finished.
             # for example, when the user makes a new playlist
@@ -218,17 +236,8 @@ class PlaybackController(object):
         """
         create a new playlist using the default query, or a preset
         """
-        s = Settings.instance()
-        presets = s['playlist_presets']
-        size =s['playlist_size']
-        idx = s['playlist_preset_default']
 
-        query = "ban=0"
-        if idx < len(presets):
-            query = presets[idx]
-        elif len(presets) > 0:
-            query = presets[0]
-
+        query,size = self.getCurrentQuery()
         sys.stdout.write("create playlist `%s` limit %d\n"%(query,size))
 
         # TODO: set limit to size + 10
@@ -250,6 +259,34 @@ class PlaybackController(object):
         self.root.plview.updateData()
         self.root.plview.scrollToCurrent()
         self.root.backup_database()
+
+    def rollPlaylist(self):
+        """ generate new songs using the default query."""
+
+        index,_ = self.playlist.current()
+        length = len(self.playlist)
+        pcnt = 1.0 - index/length
+
+        query,plsize = self.getCurrentQuery()
+
+        size =int(plsize * .25)
+        size = max(plsize - length + min(index,size), size)
+
+        count = min(index,size) # number to deelte
+
+        sys.stdout.write("insert songs using `%s` limit %d\n"%(query,size))
+
+        try:
+            # generate a new list and insert it
+            songs = Library.instance().search(query, orderby=Song.random, limit=size)
+            lst = [ song[Song.uid] for song in songs ]
+            self.playlist.insert(length,lst);
+
+            # remove the same number of songs from the start of the list
+            if count > 0:
+                self.playlist.delete(list(range(count)));
+        except ParseError as e:
+            sys.stderr.write("%s"%e)
 
     def playOneShot(self, path):
         """ play a song, then return to the current playlist """
