@@ -549,7 +549,6 @@ class FormatConversion(object):
             dd *= -1
 
         dtn = self.datetime_now
-
         dt1 = self.computeDateDelta(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
         #dt1 = datetime(ncy,cm,cd) - timedelta( days )
         dt2 = dt1 + timedelta( 1 )
@@ -559,8 +558,10 @@ class FormatConversion(object):
         """ semantically simple and more obvious behavior than _m and _y variants
             and it works for negative deltas!
         """
-        y = y - (m - dm)//12 - dy
-        m = (m - dm)%12
+        y -= dy
+        if dm > 0:
+            y = y + (m - dm)//12
+            m = (m -  dm)%12
 
         # modulo fix the day by rolling up, feb 29 to march 1
         # or july 32 to aug 1st, if needed
@@ -1170,7 +1171,6 @@ class SearchGrammar(Grammar):
                 epochtime,epochtime2 = self.fc.formatDateDelta( value )
                 invert = True
         except ValueError as e:
-
             result = self.fc.parseNLPDate( value )
 
             if result is None:
