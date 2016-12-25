@@ -167,6 +167,16 @@ class TestSearchGrammar(unittest.TestCase):
         self.assertEqual(dt.month,3)
         self.assertEqual(dt.day,3)
 
+        # december is a special case, and subtracting (0,0) uncovered it.
+        dt = fc.computeDateDelta(2016,12,1,0,0)
+        self.assertEqual(dt.year,2016)
+        self.assertEqual(dt.month,12)
+        self.assertEqual(dt.day,1)
+
+        dt = fc.computeDateDelta(2016,11,1,1,0)
+        self.assertEqual(dt.year,2015)
+        self.assertEqual(dt.month,11)
+        self.assertEqual(dt.day,1)
 
         # show that days can be subtracted correctly
         t1,t2 = fc.formatDateDelta("1y1m1w1d")
@@ -186,7 +196,6 @@ class TestSearchGrammar(unittest.TestCase):
 
         t1,t2 = self.sg.fc.formatDate("75/06/15")
         self.assertEqual(t1,calendar.timegm(datetime.datetime(1975,6,15).timetuple()))
-
 
 
 
