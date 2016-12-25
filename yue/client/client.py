@@ -30,6 +30,7 @@ from ..core.sound.device import MediaState
 from ..core.song import Song , get_album_art_data, ArtNotFound
 from ..core.util import string_quote, backupDatabase, format_delta
 from ..core.repl import YueRepl, ReplArgumentParser
+from ..core.bass import pybass
 
 from . import resource
 from .controller import newDevice, PlaybackController
@@ -1278,9 +1279,7 @@ def main(version="",buildtime=""):
         start = time.time()
         sys.excepthook = handle_exception
 
-        plugin_path = "./lib/%s/x86_64"%sys.platform
-        if hasattr(sys,"_MEIPASS"):
-            plugin_path = sys._MEIPASS
+        plugin_path = pybass.get_plugin_path();
 
         settings_db_path = "./settings.db"
         db_path = "./yue.db"
