@@ -59,6 +59,9 @@ class Coverage(Command):
       #self._exec("coverage report -m")
       self._exec("coverage html")
 
+data_files = [("lib",["lib/linux/x86_64/libbass.so",]),
+]
+
 # entry_points in the form "genPron = viragelm.pron.genPron:main"
 #entry_points = [ "yue-music = yue.app:main", ]
 entry_points = []
@@ -66,11 +69,11 @@ entry_points = []
 setup(name=name,
       version='1.0',
       description="Encrypted Block File System",
-      packages=[name],
+      packages=[name,'yue.core',"yue.core.bass","yue.core.explorer"],
       install_requires=[
         'mutagen',
       ],
-      data_files=[],
+      data_files=data_files,
       cmdclass = {'test': UnitTest,
                   'cover' : Coverage},
       entry_points={"console_scripts":entry_points},

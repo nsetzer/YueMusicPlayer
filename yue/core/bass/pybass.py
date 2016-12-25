@@ -61,6 +61,7 @@ def get_platform_path():
     finds the correct place for the libraries, but should be
     fixed.
     """
+
     platform_name = sys.platform
     platform_path = os.getcwd()
 
@@ -85,13 +86,26 @@ def get_platform_path():
 
 def LookPath(relname):
     # todo: add more places to look
-    libpath = get_platform_path()
     if platform.system().lower() == 'windows':
         bname = "%s.dll"%relname
     else:
         bname = "lib%s.so"%relname
-    path= os.path.join(libpath,bname)
-    sys.stdout.write("%s\n"%path)
+
+    # first check site packages to see if we were installed
+    # this will only find a disutils intallation
+    site_parts = __file__.replace("\\","/").split('/')[:-4]
+    site_parts.append("lib")
+    site_path = os.sep.join(site_parts)
+    site_lib = os.path.join(site_path,bname)
+    if os.path.exists(site_lib):
+        sys.stdout.write("%s\n"%site_lib)
+        return site_lib;
+
+    libpath = get_platform_path()
+    platform_lib= os.path.join(libpath,bname)
+
+    sys.stdout.write("%s\n"%platform_lib)
+
     return path
 
 def LoadLibrary(libname):
@@ -101,6 +115,7 @@ def LoadLibrary(libname):
         returns a ctypes handle to the dll and a version
         specific func type. (windows/Linux)
     """
+
     if platform.system().lower() == 'windows':
         path = LookPath(libname)
         dirpath = os.path.split(path)[0]
