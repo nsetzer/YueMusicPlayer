@@ -55,6 +55,24 @@ Main Features
 
 import os,sys, ctypes, platform
 
+def get_plugin_path():
+  # TODO: this is a new function that should be integrated
+  # as a first pass step into get_platform_path
+
+  # first check site packages to see if we were installed
+  # this will only find a disutils intallation
+  site_parts = __file__.replace("\\","/").split('/')[:-4]
+  site_parts.append("lib")
+  site_path = os.sep.join(site_parts)
+  if os.path.isdir(site_path):
+      return site_path;
+
+  plugin_path = "./lib/%s/x86_64"%sys.platform
+  if hasattr(sys,"_MEIPASS"):
+      plugin_path = sys._MEIPASS
+
+  return plugin_path
+
 def get_platform_path():
     """ NOTE: this is duplicated from yue.settings
     this is currently the easiest way to ensure that this module
@@ -77,7 +95,7 @@ def get_platform_path():
                                     platform_name,
                                     arch)
     app_path = '/data/data/com.github.nsetzer.yue'
-    if os.path.exists(app_path):
+    if os.path.isdir(app_path):
         platform_name = "android"
         platform_path = '/data/data/com.github.nsetzer.yue/'
         arch = 'armeabi' # TODO, detect, x86, armeabi-v7a
@@ -106,7 +124,7 @@ def LookPath(relname):
 
     sys.stdout.write("%s\n"%platform_lib)
 
-    return path
+    return platform_lib
 
 def LoadLibrary(libname):
     """

@@ -1,4 +1,4 @@
-#! python2.7 setup.py test
+#! python setup.py install
 
 import imp,os,sys
 from setuptools import setup, Command
@@ -59,8 +59,20 @@ class Coverage(Command):
       #self._exec("coverage report -m")
       self._exec("coverage html")
 
-data_files = [("lib",["lib/linux/x86_64/libbass.so",]),
-]
+pkg_sys = "win32" if os.name=="nt" else "linux"
+pkg_fix = ""      if os.name=="nt" else "lib"
+pkg_ext = ".dll"  if os.name=="nt" else ".so"
+pkg_lib = os.path.join(".","lib",pkg_sys,"x86_64")
+libnames = ["bass","bassdsp",
+            "bass_aac","bass_alac","bassflac",
+            "bassmidi","bassopus","basswma",
+            "basswv"]
+lib_paths = []
+for libname in libnames:
+  path = os.path.join(pkg_lib,pkg_fix+libname+pkg_ext)
+  if os.path.exists(path):
+    lib_paths.append(path)
+data_files = [("lib",lib_paths),]
 
 # entry_points in the form "genPron = viragelm.pron.genPron:main"
 #entry_points = [ "yue-music = yue.app:main", ]
@@ -69,7 +81,7 @@ entry_points = []
 setup(name=name,
       version='1.0',
       description="Encrypted Block File System",
-      packages=[name,'yue.core',"yue.core.bass","yue.core.explorer"],
+      packages=[name,'yue.core',"yue.core.bass","yue.core.explorer","yue.core.sound","yue.core.vlc"],
       install_requires=[
         'mutagen',
       ],
