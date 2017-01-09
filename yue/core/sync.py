@@ -348,7 +348,7 @@ class ParallelTranscodeProcess(IterativeProcess):
 
     @staticmethod
     def num_steps(n,NPARALLEL):
-        return (n+NPARALLEL) // NPARALLEL
+        return (n+NPARALLEL-1) // NPARALLEL
 
     def __enter__(self):
         if not self.no_exec:
