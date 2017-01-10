@@ -1940,14 +1940,8 @@ class TableColumn(object):
 
         self.paintItem_text(col,painter,row,item,x,y,w,h)
 
-    def paintItem_text(self,col,painter,row,item,x,y,w,h):
-        """
-            this is a helper function for painting item data within a cell
+    def paintItem_text_aligned(self,col,painter,row,item,x,y,w,h,hvalign):
 
-            this is the standard method for painting an item within the given area.
-
-            this automatically handles positioning and text transforms
-        """
         _x = x+self.parent.text_padding_left
         #     y+self.parent.row_height-self.parent.text_padding_bottom
         _y = y+self.parent.text_padding_top
@@ -1967,11 +1961,24 @@ class TableColumn(object):
         if textcolor != None:
             painter.setPen(textcolor)
 
-        painter.drawText( _x,_y,_w,_h,self.text_H_align|self.text_V_align,
+        painter.drawText( _x,_y,_w,_h,hvalign,
                           self.text_transform(self.parent.data[row],item)
                         )
 
         painter.setPen(default_pen)
+
+    def paintItem_text(self,col,painter,row,item,x,y,w,h):
+        """
+            this is a helper function for painting item data within a cell
+
+            this is the standard method for painting an item within the given area.
+
+            this automatically handles positioning and text transforms
+        """
+        hvalign = self.text_H_align|self.text_V_align
+
+
+        self.paintItem_text_aligned(col,painter,row,item,x,y,w,h,hvalign)
 
     def paintHeader(self,painter,x,y,w,h):
 
