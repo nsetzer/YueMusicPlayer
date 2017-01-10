@@ -325,7 +325,7 @@ class MainWindow(QMainWindow):
         start = time.time()
 
         self.setAcceptDrops( True )
-        self.version,self.versiondate = version_info
+        self.version,self.versiondate,self.builddate = version_info
         self.device = device
         self.controller = PlaybackController( device, self );
         self.repl = YueRepl( device )
@@ -646,7 +646,9 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: %s\nDate:%s\n"%(self.version,self.versiondate)
+        about_text += "Version: %s\n"%(self.version)
+        about_text += "Commit Date:%s\n"%(self.versiondate)
+        about_text += "Build Date:%s\n"%(self.builddate)
         about_text += "Python Version: %d.%d.%d-%s\n"%(v.major,v.minor,v.micro,v.releaselevel)
         about_text += "Qt Version: %s\n"%QT_VERSION_STR
         about_text += "sip Version: %s\n"%SIP_VERSION_STR
@@ -1254,7 +1256,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         sys.stderr.write(line)
 
-def main(version="",buildtime=""):
+def main(version="",commitdate="",builddate=""):
 
     app = QApplication(sys.argv)
     if version == "":
@@ -1310,7 +1312,8 @@ def main(version="",buildtime=""):
         device = newDevice(pl,plugin_path,kind=args.sound)
 
         sys.stdout.write("Initializing application (%f)\n"%(time.time()-start))
-        window = MainWindow( diag, device, (version,buildtime) )
+        print("build info: `%s` `%s`"%(version,commitdate))
+        window = MainWindow( diag, device, (version,commitdate,builddate) )
 
         sys.stdout.write("Initialization Complete. Showing Window (%f)\n"%(time.time()-start))
         window.showWindow()
