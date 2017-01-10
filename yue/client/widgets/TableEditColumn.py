@@ -141,12 +141,19 @@ class EditColumn(TableColumn):
             sel = self.editor.selection.replace(" ",u"\u00B7")
             self.cellTextColor = self.parent.painter_brush_font.color()
 
-            self.text_edit_offset = 0
             if _text:
                 _width = painter.fontMetrics().width(_text)
                 _avg = _width/(len(_text))
-                if _width - self.text_edit_offset > w-(_avg*4):
-                    self.text_edit_offset = (w-(_avg*4)) - _width
+                _w2 = w-(_avg*4)
+
+                #if _width > self.text_edit_offset + w*.9:
+                #    self.text_edit_offset = -_width
+                #elif _width < self.text_edit_offset+w*.1:
+                #    self.text_edit_offset = -_width
+                if _width > _w2 + self.text_edit_offset:
+                    self.text_edit_offset = _w2 - _width
+            else:
+                self.text_edit_offset = 0
 
             if sel: # if there is a selection to highlight
 
@@ -164,7 +171,10 @@ class EditColumn(TableColumn):
                 pb =self.parent.palette_brush(QPalette.Highlight)
                 painter.fillRect(sx,y+2,w2,h-3,pb)
 
-            self.paintItem_text(col,painter,row,item,x+self.text_edit_offset,y,w-self.text_edit_offset,h)
+            hvalign = Qt.AlignLeft|Qt.AlignTop
+            self.paintItem_text_aligned(col,painter,row,item,
+                x+self.text_edit_offset,y,
+                w-self.text_edit_offset,h,hvalign)
             self.cellTextColor = None
         else:
             self.paintItem_text(col,painter,row,item,x,y,w,h)
