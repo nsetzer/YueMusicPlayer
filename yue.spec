@@ -1,6 +1,7 @@
 # -*- mode: python -*-
 import os,sys
 import subprocess
+import datetime
 
 from distutils.sysconfig import get_python_lib
 isPosix = os.name != 'nt'
@@ -27,10 +28,12 @@ def getCommit():
         commit,date,time,_  = o.split()
     except (OSError,ValueError) as e:
         print("%s"%e)
+        time = "%s"%(type(e))
     return commit,date,time
 
 commit,c_date,c_time = getCommit()
-
+b_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+print(commit,c_date,c_time)
 if isDebug:
   EXT="-debug"+EXT
 
@@ -48,8 +51,12 @@ with open(target_script,"w") as wf:
         wf.write("__version__ = \"%s.%s\"\n"%(version,commit))
         # adding commit is actually more annoying than you would believe
         #version += "." + commit
+        print("update version:%s"%version)
       elif temp.startswith("__datetime__"):
         wf.write("__datetime__ = \"%s %s\"\n"%(c_date,c_time))
+        print("update datetime %s %s"%(c_date,c_time))
+      elif temp.startswith("__builddate__"):
+        wf.write("__builddate__ = \"%s\"\n"%(b_datetime))
       else:
         wf.write( line )
 
@@ -63,7 +70,7 @@ extra = ["six","packaging",'packaging.version',
 #build a debug version and look for import errors,
 # add those import libraries to hidden imports list
 
-a = Analysis([main_script,],
+a = Analysis([target_script,],
              pathex=[os.path.join(os.getcwd(),"yue"),
                      os.path.join(os.getcwd(),"yue","client") ],
              hiddenimports=["pkg_resources","PyQt5"]+extra,
@@ -73,6 +80,11 @@ a = Analysis([main_script,],
 libpath = os.path.join(ROOT_PATH,"lib", sys.platform, "x86_64")
 
 def addDllFile(a,name):
+  current_path = os.path.join(libpath,name)
+  if os.path.exists( current_path ):
+    a.datas.append( ("lib/"+name, current_path, 'DATA') )
+
+def addDllFile_old(a,name):
   current_path = os.path.join(libpath,name)
   if os.path.exists( current_path ):
     a.datas.append( (name, current_path, 'DATA') )
@@ -86,8 +98,8 @@ addDllFile(a,"bassmidi.dll")
 addDllFile(a,"bassopus.dll")
 addDllFile(a,"basswma.dll")
 addDllFile(a,"basswv.dll")
-addDllFile(a,"libfftw3-3.dll")
-addDllFile(a,"hook.dll")
+addDllFile_old(a,"libfftw3-3.dll")
+addDllFile_old(a,"hook.dll")
 
 def addQtPlatformDllFile(a,plugtype,name):
   qtdll = os.path.join(get_python_lib(),"PyQt5","plugins",plugtype,name)

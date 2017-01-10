@@ -10,10 +10,11 @@ changelog
 """
 __version__ = "1.1.6"
 __datetime__ = ""
+__builddate__ = ""
 import codecs,traceback,sys
 try:
     from yue.client.client import main
-    main(__version__,__datetime__)
+    main(__version__,__datetime__,__builddate__)
 except Exception as e:
     with codecs.open("yue-error.log","w","utf-8") as wf:
         msg = "%s\n\n"%e
