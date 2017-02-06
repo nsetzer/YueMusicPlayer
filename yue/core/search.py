@@ -509,6 +509,9 @@ class FormatConversion(object):
         self.DATE_LOCALE_FMT_M = 1
         self.DATE_LOCALE_FMT_D = 2
 
+        self.DATE_LOCALE_FMT_Y_2 = 0
+        self.DATE_LOCALE_FMT_M_2 = 1
+
         self.datetime_now = dtn or datetime.now()
 
     def formatDateDelta( self, sValue ):
@@ -557,9 +560,11 @@ class FormatConversion(object):
     def computeDateDelta(self,y,m,d,dy,dm):
         """ semantically simple and more obvious behavior than _m and _y variants
             and it works for negative deltas!
+
+            given (y,m,d) a valid date, add dy years and dm months
         """
         y -= dy
-        if dm > 0:
+        if dm != 0:
             y = y + (m - dm)//12
             m = (m -  dm)%12
 
@@ -585,19 +590,49 @@ class FormatConversion(object):
         return y;
 
     def formatDate( self, sValue ):
-
+        """
+        accepts strings of the following form:
+            [YY]YY/
+            [YY]YY/MM
+            [YY]YY/MM/
+            [YY]YY/MM/DD
+        a slash is used to differentiate from a bare integer, which
+        is parsed elsware as a day-delta
+        """
         x = sValue.split('/')
+        x = [ y for y in x if y ]
 
-        y = int(x[self.DATE_LOCALE_FMT_Y])
-        m = int(x[self.DATE_LOCALE_FMT_M])
-        d = int(x[self.DATE_LOCALE_FMT_D])
+        if len(x) == 1:
+            # return a range covering the whole year
+            y = int(x[0])
+            y = self.adjustYear(y)
+            if y < 2000:
+                raise ParseError("Invalid Year `%s` at position %s."%(sValue,sValue.pos))
+            dt1 = datetime(y,1,1)
+            dt2 = self.computeDateDelta(y,1,1,-1,0)
+        elif len(x) == 2:
+            # return a range covering the whole month
+            y = int(x[self.DATE_LOCALE_FMT_Y_2])
+            m = int(x[self.DATE_LOCALE_FMT_M_2])
+            y = self.adjustYear(y)
+            if y < 2000:
+                raise ParseError("Invalid Year `%s` at position %s."%(sValue,sValue.pos))
+            dt1 = datetime(y,m,1)
+            dt2 = self.computeDateDelta(y,m,1,0,-1)
+        else:
+            # return a range covering the given day
+            y = int(x[self.DATE_LOCALE_FMT_Y])
+            m = int(x[self.DATE_LOCALE_FMT_M])
+            d = int(x[self.DATE_LOCALE_FMT_D])
+            y = self.adjustYear(y)
+            dt1 = datetime(y,m,d)
+            dt2 = dt1 + timedelta( 1 )
 
-        y = self.adjustYear(y)
-
-        dt1 = datetime(y,m,d)
-        dt2 = dt1 + timedelta( 1 )
-
-        return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+        result = calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
+        #print(result)
+        #print(time.gmtime(result[0]))
+        #print(time.gmtime(result[1]))
+        return result
 
     def parseDuration( self, sValue ):
         # input as "123" or "3:21"
@@ -1163,14 +1198,22 @@ class SearchGrammar(Grammar):
 
         invert = False
         try:
-            if c == 2:
+            if c > 0:
+                # if there are any slashes assume the user wants to
+                # parse the string as some form of YYYY/MM/DD
                 epochtime,epochtime2 = self.fc.formatDate( value )
-            elif c > 0:
+            elif c > 2:
+                # the user gave two many separators for the date to make sense
+                # TODO: create a special format for YY/MM/DD since that it can
+                # be modified for other orders
                 raise ParseError("Invalid Date format `%s` at position %d. Expected YY/MM/DD."%(value,value.pos))
             else:
+                # parse the bare integer as a day-delta
                 epochtime,epochtime2 = self.fc.formatDateDelta( value )
                 invert = True
         except ValueError as e:
+            # something went wrong trying to parse the date, try parsing
+            # it as a natural string instead
             result = self.fc.parseNLPDate( value )
 
             if result is None:
