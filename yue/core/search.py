@@ -547,26 +547,29 @@ class FormatConversion(object):
             dd += int(num) # make 'd' optional, and capture remainder
 
         if negate:
+            # invert the direction of the date delta (past or future)
             dy *= -1
             dm *= -1
             dd *= -1
 
         dtn = self.datetime_now
-        dt1 = self.computeDateDelta(dtn.year,dtn.month,dtn.day,dy,dm) - timedelta( dd )
-        #dt1 = datetime(ncy,cm,cd) - timedelta( days )
+        dt1 = self.computeDateDelta(dtn.year,dtn.month,dtn.day,dy,dm,dd)
         dt2 = dt1 + timedelta( 1 )
         return calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
 
-    def computeDateDelta(self,y,m,d,dy,dm):
-        """ semantically simple and more obvious behavior than _m and _y variants
-            and it works for negative deltas!
+    def computeDateDelta(self,y,m,d,dy,dm,dd=0):
+        """
+            given (y,m,d) a valid date, add dy years, dm months, dd days.
 
-            given (y,m,d) a valid date, add dy years and dm months
+            negative values will return a date in the future.
+            positive values will return a date in the past.
         """
         y -= dy
         if dm != 0:
-            y = y + (m - dm)//12
-            m = (m -  dm)%12
+            # add/sub 1 to convert range 1..12 to 0..11 for math reasons
+            t = (m - 1 - dm)
+            y = y + t//12
+            m = t%12 + 1
 
         # modulo fix the day by rolling up, feb 29 to march 1
         # or july 32 to aug 1st, if needed
@@ -574,10 +577,16 @@ class FormatConversion(object):
         if d>days:
             d -= days
             m += 1
+        # fix the year by rounding months that are out of bounds
         if m > 12:
             m -= 12;
             y += 1
-        return datetime(y,m,d)
+
+        new_date = datetime(y,m,d)
+        if dd!=0:
+            new_date = new_date - timedelta( dd )
+
+        return new_date
 
     def adjustYear(self,y):
         """ convert an integer year into a 4-digit year
@@ -600,13 +609,13 @@ class FormatConversion(object):
         is parsed elsware as a day-delta
         """
         x = sValue.split('/')
-        x = [ y for y in x if y ]
+        x = [ y for y in x if y ] # remove empty sections
 
         if len(x) == 1:
             # return a range covering the whole year
             y = int(x[0])
             y = self.adjustYear(y)
-            if y < 2000:
+            if y < 1900:
                 raise ParseError("Invalid Year `%s` at position %s."%(sValue,sValue.pos))
             dt1 = datetime(y,1,1)
             dt2 = self.computeDateDelta(y,1,1,-1,0)
@@ -615,7 +624,7 @@ class FormatConversion(object):
             y = int(x[self.DATE_LOCALE_FMT_Y_2])
             m = int(x[self.DATE_LOCALE_FMT_M_2])
             y = self.adjustYear(y)
-            if y < 2000:
+            if y < 1900:
                 raise ParseError("Invalid Year `%s` at position %s."%(sValue,sValue.pos))
             dt1 = datetime(y,m,1)
             dt2 = self.computeDateDelta(y,m,1,0,-1)
@@ -629,9 +638,6 @@ class FormatConversion(object):
             dt2 = dt1 + timedelta( 1 )
 
         result = calendar.timegm(dt1.timetuple()), calendar.timegm(dt2.timetuple())
-        #print(result)
-        #print(time.gmtime(result[0]))
-        #print(time.gmtime(result[1]))
         return result
 
     def parseDuration( self, sValue ):
@@ -649,13 +655,16 @@ class FormatConversion(object):
         return t
 
     def parseYear( self, sValue ):
-        # input as "123" or "3:21"
-        # convert hours:minutes:seconds to seconds
+        """ parse a string as a year
+
+            90 => 1990
+            15 => 2015
+        """
         y = 0
         try:
             y = self.adjustYear(int(sValue))
         except ValueError:
-            raise ParseError("Duration `%s` at position %d not well formed."%(sValue,sValue.pos))
+            raise ParseError("Year `%s` at position %d not well formed."%(sValue,sValue.pos))
         return y
 
     def parseNLPDate( self, value ):
@@ -836,7 +845,7 @@ class Grammar(object):
             if c == self.tok_escape:
                 # skip the next character, by erasing the
                 # current character from the input
-                # to allow escape characters in strings
+                # TODO: to allow escape characters in strings
                 # first check that we are quoted here
                 # then look at the next character to decide
                 # mode (e.g. \\ -> \, \a -> bell \x00 -> 0x00, etc)
