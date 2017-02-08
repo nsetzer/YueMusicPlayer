@@ -163,20 +163,30 @@ class TestSearchGrammar(unittest.TestCase):
         # there is no february 31st, so the month is incremented
         # to get the day value to agree
         dt = fc.computeDateDelta(2015,3,31,0,1)
-        self.assertEqual(dt.year,2015)
+        self.assertEqual(dt.year ,2015)
         self.assertEqual(dt.month,3)
-        self.assertEqual(dt.day,3)
+        self.assertEqual(dt.day  ,3)
 
         # december is a special case, and subtracting (0,0) uncovered it.
         dt = fc.computeDateDelta(2016,12,1,0,0)
-        self.assertEqual(dt.year,2016)
+        self.assertEqual(dt.year ,2016)
         self.assertEqual(dt.month,12)
-        self.assertEqual(dt.day,1)
+        self.assertEqual(dt.day  ,1)
 
         dt = fc.computeDateDelta(2016,11,1,1,0)
-        self.assertEqual(dt.year,2015)
+        self.assertEqual(dt.year ,2015)
         self.assertEqual(dt.month,11)
-        self.assertEqual(dt.day,1)
+        self.assertEqual(dt.day  ,1)
+
+        dt = fc.computeDateDelta(2017,2,1,0,2) # 0 month bug
+        self.assertEqual(dt.year ,2016)
+        self.assertEqual(dt.month,12)
+        self.assertEqual(dt.day  ,1)
+
+        dt = fc.computeDateDelta(2017,2,15,0,1,15) # check delta day
+        self.assertEqual(dt.year ,2016)
+        self.assertEqual(dt.month,12)
+        self.assertEqual(dt.day  ,31)
 
         # show that days can be subtracted correctly
         t1,t2 = fc.formatDateDelta("1y1m1w1d")
