@@ -4,6 +4,7 @@
 *.flac
 *.lib
 
+.DS_store
 .buildozer/
 
 # Byte-compiled / optimized / DLL files

@@ -104,8 +104,11 @@ def get_platform_path():
 
 def LookPath(relname):
     # todo: add more places to look
-    if platform.system().lower() == 'windows':
+    platname = platform.system().lower()
+    if platname == 'windows':
         bname = "%s.dll"%relname
+    elif platname == 'darwin':
+        bname = "lib%s.dylib"%relname
     else:
         bname = "lib%s.so"%relname
 
