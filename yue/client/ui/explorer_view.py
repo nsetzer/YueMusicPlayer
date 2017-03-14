@@ -148,7 +148,8 @@ class FileTable(LargeTable):
                     self.position_stack.append(row)
                     self.open_child_directory(item)
                 else:
-                    self.parent().action_play( item )
+                    # TODO this needs an abstraction
+                    self.parent().action_file( item )
 
     def open_parent_directory(self):
         self.parent().chdir( self.view.parent(self.view.pwd()) )
@@ -166,21 +167,16 @@ class FileTable(LargeTable):
         pass
 
     def item2img(self,item,isDir):
-        if isDir:
-            return self.rm.get(ResourceManager.DIRECTORY)
-        ext = os.path.splitext(item['name'])[1].lower()
-        if self.parent().supportedExtension( ext ):
-            return self.rm.get(ResourceManager.SONG)
-        return self.rm.get(ResourceManager.FILE)
+        return self.parent().item2img( item, isDir )
 
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
-    do_ingest = pyqtSignal(list) # list of absolute paths
     do_move   = pyqtSignal(object,object,object)
 
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
+        self.rm = ResourceManager() # TODO there are two copies of this...
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
 
@@ -191,7 +187,6 @@ class ExplorerModel(QWidget):
         self.controller = controller
 
         self.tbl_file = FileTable( self.view, self )
-        self.brush_library = self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         #self.txt_path.textEdited.connect(self.onTextChanged)
@@ -208,8 +203,6 @@ class ExplorerModel(QWidget):
         #self.tbl_file.setData(self.view)
         #self.txt_path.setText(self.view.pwd())
 
-        self.list_library_files = set()
-
     def setView(self,view):
         self.view = view
         self.tbl_file.view = view
@@ -219,9 +212,6 @@ class ExplorerModel(QWidget):
     def showSplitButton(self):
         self.btn_split.setHidden(False)
 
-    def indexInLibrary(self,idx):
-        return self.view[idx]['name'].lower() in self.list_library_files
-
     def refresh(self):
         self.chdir( self.view.pwd() )
 
@@ -229,9 +219,10 @@ class ExplorerModel(QWidget):
         pwd = self.view.pwd()
 
         try:
+            print("model chdir",type(self.view),path)
+            self.view.chdir(path)
             if clear_stack:
                 self.tbl_file.position_stack=[]
-            self.view.chdir(path)
 
         except OSError as e:
             sys.stderr.write(str(e))
@@ -239,19 +230,15 @@ class ExplorerModel(QWidget):
             # reopen the original current directory.
             self.view.chdir( pwd )
 
-        songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \
-                                       for song in songs )
-
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
-
-    def supportedExtension(self,ext):
-        return ext in Song.supportedExtensions()
+        print("done")
 
     def action_open(self):
-
         explorerOpen( self.view.pwd() )
+
+    def action_file(self, item):
+        pass
 
     def action_rename(self, item):
         name=item['name']
@@ -272,16 +259,6 @@ class ExplorerModel(QWidget):
             path = self.view.join(self.view.pwd(),diag.text())
             self.view.mkdir( path )
             self.chdir(self.view.pwd())
-
-    def action_ingest(self,items):
-        paths = [ self.view.realpath(item['name']) for item in items ]
-        self.do_ingest.emit( paths )
-
-    def action_play(self, item):
-        self.controller.action_play( self.view.realpath(item['name']) )
-
-    def canIngest( self ):
-        return self.controller.dialog is None
 
     def action_cut(self, items):
         self.controller.cut_items = [ self.view.realpath(item['name']) for item in items ]
@@ -311,6 +288,70 @@ class ExplorerModel(QWidget):
 
     def canPaste( self ):
         return self.controller.canPaste( self.view.pwd() )
+
+    def item2img(self,item,isDir):
+        if isDir:
+            return self.rm.get(ResourceManager.DIRECTORY)
+        return self.rm.get(ResourceManager.FILE)
+
+class YueExplorerModel(ExplorerModel):
+
+    do_ingest = pyqtSignal(list) # list of absolute paths
+
+    def __init__(self, view, controller, parent=None):
+        super(ExplorerModel, self).__init__(view, controller, parent)
+
+        self.list_library_files = set()
+
+        self.brush_library = self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
+
+    def indexInLibrary(self,idx):
+        return self.view[idx]['name'].lower() in self.list_library_files
+
+    def action_ingest(self,items):
+        paths = [ self.view.realpath(item['name']) for item in items ]
+        self.do_ingest.emit( paths )
+
+    def action_file(self, item):
+        self.action_play(item)
+
+    def action_play(self, item):
+        self.controller.action_play( self.view.realpath(item['name']) )
+
+    def canIngest( self ):
+        return self.controller.dialog is None
+
+    def supportedExtension(self,ext):
+        return ext in Song.supportedExtensions()
+
+    def chdir(self,path, clear_stack=False):
+        pwd = self.view.pwd()
+
+        try:
+            if clear_stack:
+                self.tbl_file.position_stack=[]
+            self.view.chdir(path)
+
+        except OSError as e:
+            sys.stderr.write(str(e))
+            QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
+            # reopen the original current directory.
+            self.view.chdir( pwd )
+
+        songs = Library.instance().searchDirectory(self.view.pwd(),False)
+        self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \
+                                       for song in songs )
+
+        self.txt_path.setText(self.view.pwd())
+        self.tbl_file.update()
+
+    def item2img(self,item,isDir):
+        if isDir:
+            return self.rm.get(ResourceManager.DIRECTORY)
+        ext = os.path.splitext(item['name'])[1].lower()
+        if self.supportedExtension( ext ):
+            return self.rm.get(ResourceManager.SONG)
+        return self.rm.get(ResourceManager.FILE)
 
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
@@ -359,8 +400,6 @@ class ExplorerController(DummyController):
         self.cut_items = None
         self.cut_root = ""
         self.parent = parent
-
-
 
     def contextMenu(self, event, model, items):
 
@@ -485,8 +524,8 @@ class ExplorerView(Tab):
 
         self.source = DirectorySource()
 
-        self.ex_main = ExplorerModel( None, self.controller, self )
-        self.ex_secondary = ExplorerModel( None, self.controller, self )
+        self.ex_main = YueExplorerModel( None, self.controller, self )
+        self.ex_secondary = YueExplorerModel( None, self.controller, self )
 
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
@@ -524,6 +563,8 @@ class ExplorerView(Tab):
 
         self.ex_main.chdir(path,True)
 
+        print("expview chdir",path)
+
     def refresh(self):
         print(self.ex_main.view.pwd())
         self.ex_main.refresh()
@@ -542,7 +583,7 @@ class ExplorerView(Tab):
         else:
             print("...")
             view=SourceListView(src,p['path'])
-            mdl = ExplorerModel( view , DummyController(), self )
+            mdl = YueExplorerModel( view , DummyController(), self )
 
             self.ftpdialog = ExplorerDialog( mdl, self )
             self.ftpdialog.show()
