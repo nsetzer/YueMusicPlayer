@@ -1,4 +1,8 @@
 
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
 #python34 setup.py build --compiler=mingw32
 #python34 setup.py install
 

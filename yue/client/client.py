@@ -1,5 +1,7 @@
 #! cd ../.. && python test/test_client.py
 
+# xx 1 G:\\Music /Users/nsetzer/Music/Library
+
 import os,sys
 import time
 from datetime import datetime
@@ -37,23 +39,29 @@ from .controller import newDevice, PlaybackController
 
 HookThread = None
 KeyHook = None
-try:
-    from .hook import KeyHook
-except ImportError as e:
-    sys.stderr.write("pyHook not supported: %s\n"%e)
-    KeyHook = None
-if KeyHook is None:
+
+sys.stdout.write(">>"+os.name+"\n");
+if sys.platform == 'darwin':
+    print("darwin")
+    from .hookosx import HookThread
+else:
     try:
-        if os.name == 'nt':
-            from .hook2 import HookThread
-        else:
-            HookThread = None
+        from .hook import KeyHook
     except ImportError as e:
-        sys.stderr.write("hook not supported: %s\n"%e)
-        HookThread = None
-    except OSError as e:
-        sys.stderr.write("hook not supported: %s\n"%e)
-        HookThread = None
+        sys.stderr.write("pyHook not supported: %s\n"%e)
+        KeyHook = None
+    if KeyHook is None:
+        try:
+            if os.name == 'nt':
+                from .hook2 import HookThread
+            else:
+                HookThread = None
+        except ImportError as e:
+            sys.stderr.write("hook not supported: %s\n"%e)
+            HookThread = None
+        except OSError as e:
+            sys.stderr.write("hook not supported: %s\n"%e)
+            HookThread = None
 
 try:
     from .remote import SocketListen
@@ -117,6 +125,7 @@ class ClientRepl(object):
         self.actions["xx"] = self.exxx
         self.actions["clear"] = self.exclear
         self.actions["clr"] = self.exclear
+        self.actions["settings"] = self.exset
 
         self.helptopics['search'] = """ information on search format
 
@@ -299,6 +308,30 @@ class ClientRepl(object):
         args.assertMinArgs( 1 )
         theme = args[0]
         self.client.set_style( theme )
+
+    def exset(self,args):
+        # TODO: at app level specify some settings as constants
+        # values that cannot be changed (by the user) and hide
+        # those values from the settings command (get, set, list)
+        # e.g. window position
+        args = ReplArgumentParser(args)
+        args.assertMinArgs( 1 )
+        cmd = args[0]
+        if cmd == 'set':
+            args.assertMinArgs( 3 )
+            field = args[1]
+            value = args[2]
+            Settings.instance()[field] = value
+            print("changing setting %s to `%s`"%(field,value))
+        elif cmd == 'get':
+            args.assertMinArgs( 2 )
+            field = args[1]
+            print("%s=%s"%(field,Settings.instance()[field]))
+        elif cmd == 'list':
+            print("\nSettings:")
+            for field,value in sorted(Settings.instance().items()):
+                print("%s=%s"%(field,Settings.instance()[field]))
+
 
     def exxx(self,args):
         """
@@ -735,9 +768,8 @@ class MainWindow(QMainWindow):
             sdat['current_song_id'] = int(0)
         #sdat['current_song_id']  =
 
-        # TODO: this doesnt work
-        #if self.keyhook is not None:
-        #    self.keyhook.join()
+        if self.keyhook is not None:
+            self.keyhook.join()
 
         # record the current volume, but prevent the application
         # from starting muted
@@ -1130,6 +1162,8 @@ class MainWindow(QMainWindow):
                 background:rgb(214,120,  0);
                 border: 2px solid black;
                 border-radius: 1px;
+                max-width: 6px;
+
             }
             QTextEdit {
                 font-family: "Lucida Console";
@@ -1230,7 +1264,7 @@ def setSettingsDefaults():
     data["keyhook_next"] =  0xB0
 
     data["enable_keyboard_hook"] = 1 # on by default
-    data["enable_remote_commands"] = 0 # on by default
+    data["enable_remote_commands"] = 0 # off by default
 
     data["enable_history"] = 1
     data["enable_history_update"] = 0

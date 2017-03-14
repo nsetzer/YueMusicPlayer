@@ -2614,11 +2614,19 @@ class LargeTable(LargeTableBase):
             self._sbar_ver_setrange();
 
         if isPython3:
-            velocity = (event.angleDelta()/120)*-1
-            h = self.offset_col_horizontal + int(velocity.x()*10)
-            self.sbar_hor.setValue( h )
-            v = self.offset_row_index + int(velocity.y())
-            self.sbar_ver.setValue( v )
+
+            if sys.platform == 'darwin':
+                x_vel = -1*int(event.angleDelta().x())
+                y_vel = event.angleDelta().y()
+                if y_vel != 0:
+                    y_vel = -1 if y_vel > 0 else 1
+            else:
+                velocity = (event.angleDelta()/120)*-1
+                x_vel = int(velocity.x()*10)
+                y_vel = int(velocity.y())
+
+            self.sbar_hor.setValue( self.offset_col_horizontal + x_vel )
+            self.sbar_ver.setValue( self.offset_row_index + y_vel )
         else:
             velocity = (event.delta()/120)*-1
 
