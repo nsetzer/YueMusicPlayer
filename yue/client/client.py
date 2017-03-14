@@ -905,9 +905,9 @@ class MainWindow(QMainWindow):
     def addSongActions(self, menu, song ):
         """ common actions for context menus dealing with a song """
 
-        q1 = "artist = %s"%(string_quote(song[Song.artist]))
+        q1 = "artist == %s"%(string_quote(song[Song.artist]))
         menu.addAction("Search for Artist", lambda : self.executeSearch(q1))
-        q2 = q1 + " && album = %s"%(string_quote(song[Song.album]))
+        q2 = q1 + " && album == %s"%(string_quote(song[Song.album]))
         menu.addAction("Search for Album", lambda : self.executeSearch(q2))
         menu.addSeparator()
         art = urllib.parse.quote(song[Song.artist])
@@ -1095,11 +1095,15 @@ class MainWindow(QMainWindow):
         cy = s.getDefault("window_y",dy)
         # the application should start wholly on the screen
         # otherwise, default its position to the center of the screen
-        if cx < 0 or cx+cw>sw:
+        if cx+cw < 0 or cx+cw>sw:
             cx = dx
             cw = dw
-        if cy < 0 or cy+ch>sh:
+        if cy+ch < 0 or cy+ch>sh:
             cy = dy
+            ch = dh
+        if cw <= 0:
+            cw = dw
+        if ch <= 0:
             ch = dh
         self.resize(cw,ch)
         self.move(cx,cy)
