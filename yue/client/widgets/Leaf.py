@@ -66,7 +66,7 @@ class Leaf(object):
             return 0
 
     def __getitem__(self,index):
-        if isinstance(index,basestring):
+        if isinstance(index,str):
             #this bit is a psudeo hack, to get around the
             # implementation of a TableColumn,
             if index == Leaf.column_token :
@@ -276,6 +276,17 @@ class Leaf(object):
         self.collapsed = False
         for child in self.children:
             child.expand_all()
+
+    def path(self,ignore=0):
+        path = []
+        item = self
+        while item is not None:
+            path.insert(0,item.text)
+            item = item.parent
+        if ignore:
+            path = path[ignore:]
+        path.insert(0,'')
+        return '/'.join(path)
 
     @staticmethod
     def items_to_tree(level_index,leaf_name,list_of_items):

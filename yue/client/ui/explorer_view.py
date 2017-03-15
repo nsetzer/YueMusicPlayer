@@ -53,6 +53,8 @@ def explorerOpen( url ):
 
     if os.name == "nt":
         os.startfile(url);
+    elif sys.platform == "darwin":
+        os.system("open %s"%url);
     else:
         # could also use kde-open, gnome-open etc
         # TODO: implement code that tries each one until one works
@@ -174,6 +176,8 @@ class ExplorerModel(QWidget):
 
     do_move   = pyqtSignal(object,object,object)
 
+    directoryChanged = pyqtSignal(str)
+
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
         self.rm = ResourceManager() # TODO there are two copies of this...
@@ -189,16 +193,30 @@ class ExplorerModel(QWidget):
         self.tbl_file = FileTable( self.view, self )
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
+        self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
         #self.txt_path.textEdited.connect(self.onTextChanged)
 
-        self.btn_split = FlatPushButton(QIcon(":/img/app_split.png"),self)
+        self.btn_split = QToolButton(self)
+        self.btn_split.setIcon(QIcon(":/img/app_split.png"))
         self.btn_split.setHidden(True)
         self.btn_split.clicked.connect( self.on_splitButton_clicked )
 
+        self.btn_prev = QToolButton(self)
+        self.btn_prev.setIcon(QIcon(":/img/app_split.png"))
+        self.btn_prev.clicked.connect( self.chdir_prev )
+        self.btn_next = QToolButton(self)
+        self.btn_next.setIcon(QIcon(":/img/app_split.png"))
+        self.btn_next.clicked.connect( self.chdir_next )
+
+        self.hbox.addWidget(self.btn_prev)
+        self.hbox.addWidget(self.btn_next)
         self.hbox.addWidget(self.txt_path)
         self.hbox.addWidget(self.btn_split)
         self.vbox.addLayout( self.hbox )
         self.vbox.addWidget( self.tbl_file.container )
+
+        self.directory_history = []
+        self.directory_history_index = 0
 
         #self.tbl_file.setData(self.view)
         #self.txt_path.setText(self.view.pwd())
@@ -209,20 +227,37 @@ class ExplorerModel(QWidget):
         self.tbl_file.setData(view)
         self.txt_path.setText(view.pwd())
 
+        self.directory_history.append(view.pwd())
+
     def showSplitButton(self):
         self.btn_split.setHidden(False)
 
     def refresh(self):
         self.chdir( self.view.pwd() )
 
-    def chdir(self,path, clear_stack=False):
+    def clearHistory(self):
+        self.directory_history = []
+        self.directory_history_index = 0
+
+    def chdir(self,path, clear_stack=False, push=True):
         pwd = self.view.pwd()
 
         try:
-            print("model chdir",type(self.view),path)
+
             self.view.chdir(path)
+
+            if push:
+                if self.directory_history_index > 0:
+                    index = len(self.directory_history) - self.directory_history_index
+                    if 0<=index<len(self.directory_history):
+                        self.directory_history = self.directory_history[:index]
+                    self.directory_history_index = 0
+                self.directory_history.append(self.view.pwd())
+
             if clear_stack:
                 self.tbl_file.position_stack=[]
+
+            self.directoryChanged.emit(self.view.pwd())
 
         except OSError as e:
             sys.stderr.write(str(e))
@@ -232,7 +267,26 @@ class ExplorerModel(QWidget):
 
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
-        print("done")
+
+    def chdir_prev(self):
+        print(self.directory_history_index,self.directory_history)
+
+        if self.directory_history_index < len(self.directory_history):
+            self.directory_history_index += 1
+            index = len(self.directory_history) - self.directory_history_index - 1
+            if 0<=index<len(self.directory_history):
+                path = self.directory_history[index]
+                self.chdir(path,True,False)
+
+    def chdir_next(self):
+        print(self.directory_history_index,self.directory_history)
+
+        if self.directory_history_index > 0:
+            self.directory_history_index -= 1
+            index = len(self.directory_history) - self.directory_history_index - 1
+            if 0<=index<len(self.directory_history):
+                path = self.directory_history[index]
+                self.chdir(path,True,False)
 
     def action_open(self):
         explorerOpen( self.view.pwd() )
@@ -299,7 +353,7 @@ class YueExplorerModel(ExplorerModel):
     do_ingest = pyqtSignal(list) # list of absolute paths
 
     def __init__(self, view, controller, parent=None):
-        super(ExplorerModel, self).__init__(view, controller, parent)
+        super(YueExplorerModel, self).__init__(view, controller, parent)
 
         self.list_library_files = set()
 
@@ -517,6 +571,9 @@ class ExplorerView(Tab):
     play_file = pyqtSignal(str)
     ingest_finished = pyqtSignal()
 
+    primaryDirectoryChanged = pyqtSignal(str)
+    secondaryDirectoryChanged = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super(ExplorerView, self).__init__(parent)
 
@@ -526,6 +583,9 @@ class ExplorerView(Tab):
 
         self.ex_main = YueExplorerModel( None, self.controller, self )
         self.ex_secondary = YueExplorerModel( None, self.controller, self )
+
+        self.ex_main.directoryChanged.connect(self.primaryDirectoryChanged)
+        self.ex_secondary.directoryChanged.connect(self.secondaryDirectoryChanged)
 
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)

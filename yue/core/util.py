@@ -132,15 +132,24 @@ def check_path_alternatives( alternatives, path, last=None ):
     """
     if last is not None:
         b,a = last
-        new_path = b + path[:len(a)]
-        if os.path.exists( new_path ):
+        res = update_path_alternatives(a,b,path)
+        if res != None:
             return (b,a), new_path
     for a in alternatives:
         if path.startswith(a):
             for b in alternatives:
                 if a == b:
                     continue
-                new_path = b + path[len(a):]
-                if os.path.exists( new_path ):
+                res = update_path_alternatives(a,b,path)
+                if res != None:
                     return (b,a), new_path
     return None, path
+
+def update_path_alternatives(a,b,path):
+    new_path = a + path[len(b):]
+    if sys.platform != "nt":
+        new_path = new_path.replace("\\",'/')
+    print(b,a,new_path)
+    if os.path.exists( new_path ):
+        return new_path
+    return None

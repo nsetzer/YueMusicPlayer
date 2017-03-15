@@ -27,6 +27,9 @@ class DataSource(object):
         # override for filesystems that restrict charactersets
         return path
 
+    def expanduser(self,path):
+        return path
+
     def normpath(self,path,root):
         raise SourceNotImplemented(self,"cannot list path.")
 
@@ -106,6 +109,11 @@ class DirectorySource(DataSource):
 
     def breakpath(self,path):
         return [ x for x in path.replace("/","\\").split("\\") if x ]
+
+    def expanduser(self,path):
+        if path.startswith("~"):
+            return os.path.expanduser(path)
+        return path
 
     def relpath(self,path,base):
         return os.path.relpath(path,base)
@@ -261,7 +269,9 @@ class SourceView(object):
         return self.source.isdir(path)
 
     def realpath(self,path):
-        return self.source.normpath(path,self.pwd())
+        path = self.source.expanduser(path)
+        path = self.source.normpath(path,self.pwd())
+        return path
 
     def listdir(self,path):
         path = self.realpath(path)
