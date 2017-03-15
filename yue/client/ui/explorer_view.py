@@ -4,6 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.util import format_date, format_bytes
+
 import os, sys
 dirpath = os.path.dirname(os.path.abspath(__file__))
 dirpath = os.path.dirname(dirpath)
@@ -14,7 +16,7 @@ if isPython3:
     unicode = str
 
 import yue
-from yue.client.widgets.LargeTable import LargeTable, TableDualColumn, TableColumnImage
+from yue.client.widgets.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
 from yue.client.widgets.LineEdit import LineEdit
 from yue.client.widgets.FlatPushButton import FlatPushButton
 from yue.client.widgets.Tab import Tab
@@ -39,15 +41,6 @@ TODO:
     but then each controller.action_* must be passed the acting view.
 
 """
-
-byte_labels = ['B','KB','MB','GB']
-def format_bytes(b):
-    kb=1024
-    for label in byte_labels:
-        if b < kb:
-            return "%d%s"%(b,label)
-        b /= kb
-    return "%d%s"%(b,byte_labels[-1])
 
 def explorerOpen( url ):
 
@@ -100,26 +93,22 @@ class ResourceManager(object):
     def width(self):
         return self.resources[ResourceManager.FILE].width()
 
-class FileTable(LargeTable):
+class ExplorerFileTable(LargeTable):
     """
     """
 
     def __init__(self, view, parent=None):
         self.rm = ResourceManager()
 
-        super(FileTable,self).__init__(parent)
-
-        self.setLastColumnExpanding( True )
-        self.showColumnHeader( False )
-        self.showRowHeader( False )
-
+        super(ExplorerFileTable,self).__init__(parent)
         self.view = view
 
         self.position_stack = []
 
     def initColumns(self):
 
-        self.columns.append( TableColumnImage(self,'isDir') )
+        self.columns.append( TableColumnImage(self,'isDir',"Icon") )
+        self.columns[-1].setShortName("")
         self.columns[-1].setTextTransform( self.item2img )
         self.columns[-1].width = self.rm.width() + 4 # arbitrary pad, image is centered
 
@@ -171,6 +160,10 @@ class FileTable(LargeTable):
     def item2img(self,item,isDir):
         return self.parent().item2img( item, isDir )
 
+    def getFormatedDate(self,item):
+        value = self.parent().getSlowData(item,"mtime")
+        return format_date(value)
+
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
@@ -190,7 +183,7 @@ class ExplorerModel(QWidget):
         self.view = view
         self.controller = controller
 
-        self.tbl_file = FileTable( self.view, self )
+        self.tbl_file = self._getNewFileTable(view)
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
@@ -202,10 +195,10 @@ class ExplorerModel(QWidget):
         self.btn_split.clicked.connect( self.on_splitButton_clicked )
 
         self.btn_prev = QToolButton(self)
-        self.btn_prev.setIcon(QIcon(":/img/app_split.png"))
+        self.btn_prev.setIcon(QIcon(":/img/app_prev.png"))
         self.btn_prev.clicked.connect( self.chdir_prev )
         self.btn_next = QToolButton(self)
-        self.btn_next.setIcon(QIcon(":/img/app_split.png"))
+        self.btn_next.setIcon(QIcon(":/img/app_next.png"))
         self.btn_next.clicked.connect( self.chdir_next )
 
         self.hbox.addWidget(self.btn_prev)
@@ -220,6 +213,15 @@ class ExplorerModel(QWidget):
 
         #self.tbl_file.setData(self.view)
         #self.txt_path.setText(self.view.pwd())
+
+        self.slow_data_history = {}
+
+    def _getNewFileTable(self,view):
+        tbl =  ExplorerFileTable(view,self)
+        tbl.showColumnHeader( False )
+        tbl.showRowHeader( False )
+        tbl.setLastColumnExpanding( True )
+        return tbl
 
     def setView(self,view):
         self.view = view
@@ -240,33 +242,46 @@ class ExplorerModel(QWidget):
         self.directory_history_index = 0
 
     def chdir(self,path, clear_stack=False, push=True):
-        pwd = self.view.pwd()
 
+        self._chdir(path,clear_stack,push)
+
+        self.btn_next.setHidden(self.directory_history_index == 0)
+        self.btn_prev.setHidden(self.directory_history_index == len(self.directory_history)-1)
+
+        self.txt_path.setText(self.view.pwd())
+        self.tbl_file.update()
+
+    def _chdir(self,path,clear_stack,push):
+        pwd = self.view.pwd()
         try:
 
             self.view.chdir(path)
 
+            # only push if the path is valid
             if push:
                 if self.directory_history_index > 0:
                     index = len(self.directory_history) - self.directory_history_index
                     if 0<=index<len(self.directory_history):
                         self.directory_history = self.directory_history[:index]
                     self.directory_history_index = 0
-                self.directory_history.append(self.view.pwd())
+                path = self.view.pwd()
+                # dont push if the path is the same
+                if len(self.directory_history)==0 or \
+                    path != self.directory_history[-1]:
+                    self.directory_history.append(self.view.pwd())
 
             if clear_stack:
                 self.tbl_file.position_stack=[]
 
             self.directoryChanged.emit(self.view.pwd())
 
+            self.slow_data_history = {}
+
         except OSError as e:
             sys.stderr.write(str(e))
             QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
             # reopen the original current directory.
             self.view.chdir( pwd )
-
-        self.txt_path.setText(self.view.pwd())
-        self.tbl_file.update()
 
     def chdir_prev(self):
         print(self.directory_history_index,self.directory_history)
@@ -287,6 +302,16 @@ class ExplorerModel(QWidget):
             if 0<=index<len(self.directory_history):
                 path = self.directory_history[index]
                 self.chdir(path,True,False)
+
+    def getSlowData(self,item,field):
+        #cache slow data for pwd to prevent hitting the disk
+        name = item['name']
+        if name not in self.slow_data_history:
+            try:
+                self.slow_data_history[name] = self.view.stat(name)
+            except PermissionError as e:
+                return None
+        return self.slow_data_history[name][field]
 
     def action_open(self):
         explorerOpen( self.view.pwd() )
@@ -378,19 +403,11 @@ class YueExplorerModel(ExplorerModel):
     def supportedExtension(self,ext):
         return ext in Song.supportedExtensions()
 
-    def chdir(self,path, clear_stack=False):
-        pwd = self.view.pwd()
+    def chdir(self,path, clear_stack=False, push = True):
+        self._chdir(path,clear_stack,push)
 
-        try:
-            if clear_stack:
-                self.tbl_file.position_stack=[]
-            self.view.chdir(path)
-
-        except OSError as e:
-            sys.stderr.write(str(e))
-            QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
-            # reopen the original current directory.
-            self.view.chdir( pwd )
+        self.btn_next.setHidden(self.directory_history_index == 0)
+        self.btn_prev.setHidden(self.directory_history_index == len(self.directory_history)-1)
 
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
         self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \

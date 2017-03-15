@@ -6,6 +6,7 @@ import natsort
 import threading
 import posixpath
 from .drives import get_drives
+import stat
 
 # for windows, the dummy path lists all available drive letters
 dummy_path="$"
@@ -74,6 +75,9 @@ class DataSource(object):
     def hidden(self,path):
         name = self.split(path)[1]
         return name.startswith(".") and name != ".."
+
+    def stat(self,path):
+        raise SourceNotImplemented(self,"cannot stat path")
 
     def stat_fast(self,path):
         result = {
@@ -172,6 +176,17 @@ class DirectorySource(DataSource):
     def splitext(self,path):
         return os.path.splitext(path)
 
+    def stat(self,path):
+        st = os.stat(path)
+        result = {
+            "isDir" : stat.S_ISDIR(st.st_mode),
+            "isLink" : stat.S_ISLNK(st.st_mode),
+            "isReg" : stat.S_ISREG(st.st_mode),
+            "mtime" : st.st_mtime,
+            "ctime" : st.st_ctime
+        }
+        return result
+
     def stat_fast(self,path):
         result = {
             "size"  : 0, #st.st_size,
@@ -184,7 +199,7 @@ class DirectorySource(DataSource):
                 pass
             finally:
                 result["size"] = st.st_size
-                result["isDir"] = os.path.isdir(path)
+                result["isDir"] = stat.S_ISDIR(st.st_mode)
         return result
 
     def getExportPath(self,path):
@@ -296,6 +311,10 @@ class SourceView(object):
     def open(self,path,mode):
         return self.source.open(path,mode)
 
+    def stat(self,path):
+        path = self.realpath(path)
+        return self.source.stat(path)
+
     def stat_fast(self,path):
         path = self.realpath(path)
         return self.source.stat_fast(path)
@@ -334,12 +353,18 @@ class SourceListView(SourceView):
 
         data = self.source.listdir(self.path)
 
-
         if self.show_hidden:
             data =  [ x for x in data ]
         else:
             data =  [ x for x in data if not self.source.hidden(x) ]
 
+        self._sort(data) # and assignt to this instance
+
+        if self.path!=dummy_path:
+            self.data.insert(0,"..")
+
+
+    def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
         if self.dirsOnly : # == QFileDialog.Directory:
             data = natsort.natsorted(filter( self.isdir, data),
@@ -354,8 +379,12 @@ class SourceListView(SourceView):
                                      reverse=self.sort_reverse)
         self.data = data
 
-        if self.path!=dummy_path:
-            self.data.insert(0,"..")
+    def sort(self,reverse=None):
+        """
+        """
+        if reverse is not None:
+            self.sort_reverse = reverse
+        self._sort(self.data)
 
     def chdir(self,path):
         if super().chdir(path):

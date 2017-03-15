@@ -2158,7 +2158,7 @@ class TableColumnImage(TableColumn):
     """
         implementation of a TableColumn that draw either a QIcon or QImage
     """
-    def __init__(self,parent,index,name=None):
+    def __init__(self,parent,index,name):
         super(TableColumnImage,self).__init__(parent,index,name)
         self.text_transform = lambda r,x : x
 
@@ -2669,12 +2669,7 @@ class LargeTable(LargeTableBase):
         if action != None:
             if action != rem_act and action != res_act:
                 name = action.text()
-                for col in self.columns_hidden:
-                    if col.name in name:
-                        self.columns.insert(cur_c,col)
-                        self.columns_hidden.remove(col)
-                        self.column_changed_signal.emit()
-                        break;
+                self._insert_column_by_name(cur_c,name)
 
         self._sbar_hor_setrange()
 
@@ -2689,6 +2684,28 @@ class LargeTable(LargeTableBase):
             self.columns_hidden.append(col)
             self.menu_column_remove_index = -1;
             self.column_changed_signal.emit()
+
+    def _insert_column_by_name(self,idx,name):
+        for col in self.columns_hidden:
+            if col.name in name:
+                self.columns.insert(idx,col)
+                self.columns_hidden.remove(col)
+                self.column_changed_signal.emit()
+                return True;
+        return False
+
+    def setColumnHidden(self,col_name,bHidden):
+        if bHidden:
+            for idx,col in enumerate(self.columns):
+                if col.name == col_name:
+                    self.menu_column_remove_index = idx
+                    self._remove_column()
+                    return
+        else:
+            if self._insert_column_by_name(len(self.columns),col_name):
+                return
+
+        raise Exception("no column: %s"%col_name)
 
     def mouseReleaseRight(self,event):
         pass
@@ -2944,8 +2961,6 @@ class MimeData(QMimeData):
 
     def getVarient(self):
         return self.custom_data.get("data/varient",None);
-
-
 
 if __name__ == '__main__':
 

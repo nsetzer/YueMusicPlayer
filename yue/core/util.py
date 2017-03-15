@@ -63,6 +63,15 @@ def format_delta(t):
         return "%d:%02d:%02d"%(h,m,s)
     return "%d:%02d"%(m,s)
 
+byte_labels = ['B','KB','MB','GB']
+def format_bytes(b):
+    kb=1024
+    for label in byte_labels:
+        if b < kb:
+            return "%d%s"%(b,label)
+        b /= kb
+    return "%d%s"%(b,byte_labels[-1])
+
 def days_elapsed( epochtime ):
     t1 = datetime.utcfromtimestamp( epochtime )
     delta = datetime.now() - t1
