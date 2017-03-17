@@ -140,7 +140,7 @@ class ExplorerFileTable(LargeTable):
                     self.open_child_directory(item)
                 else:
                     # TODO this needs an abstraction
-                    self.parent().action_file( item )
+                    self.parent().action_open_file( item )
 
     def open_parent_directory(self):
         self.parent().chdir( self.view.parent(self.view.pwd()) )
@@ -167,9 +167,9 @@ class ExplorerFileTable(LargeTable):
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
-    do_move   = pyqtSignal(object,object,object)
-
     directoryChanged = pyqtSignal(str)
+
+    toggleSecondaryView = pyqtSignal()
 
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
@@ -250,6 +250,7 @@ class ExplorerModel(QWidget):
 
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
+        self.tbl_file.scrollTo(0)
 
     def _chdir(self,path,clear_stack,push):
         pwd = self.view.pwd()
@@ -309,14 +310,29 @@ class ExplorerModel(QWidget):
         if name not in self.slow_data_history:
             try:
                 self.slow_data_history[name] = self.view.stat(name)
-            except PermissionError as e:
-                return None
+            except (FileNotFoundError,OSError) as e:
+                self.slow_data_history[name] = {
+                                                "isDir" : item['isDir'],
+                                                "isLink" : False,
+                                                "mtime" : 0,
+                                                "ctime" : 0,
+                                                "size"  : 0,
+                                                "name"  : name,
+                                                "mode"  : 0,
+                                            }
         return self.slow_data_history[name][field]
+
+    def showHiddenFiles(self):
+        return self.view.show_hidden
+
+    def action_set_hidden_visible(self,bVisible):
+        self.view.setShowHidden(bVisible)
+        self.refresh()
 
     def action_open(self):
         explorerOpen( self.view.pwd() )
 
-    def action_file(self, item):
+    def action_open_file(self):
         pass
 
     def action_rename(self, item):
@@ -340,14 +356,15 @@ class ExplorerModel(QWidget):
             self.chdir(self.view.pwd())
 
     def action_cut(self, items):
-        self.controller.cut_items = [ self.view.realpath(item['name']) for item in items ]
-        self.controller.cut_root = self.view.pwd()
+        cut_items =  [ self.view.realpath(item['name']) for item in items ]
+        self.controller.action_cut(self.view,cut_items)
+
+    def action_copy(self, items):
+        copy_items =  [ self.view.realpath(item['name']) for item in items ]
+        self.controller.action_copy(self.view,copy_items)
 
     def action_paste(self):
-        if self.canPaste():
-            tgt = self.view.pwd()
-            src = self.controller.cut_items
-            self.do_move.emit(self, tgt, src)
+        self.controller.action_paste(self.view,self.view.pwd())
 
     def action_refresh(self):
         self.chdir( self.view.pwd() )
@@ -360,10 +377,11 @@ class ExplorerModel(QWidget):
     def on_splitButton_clicked(self):
 
         #self.btn_split.setHidden( !self.secondaryHidden() )
-        if self.controller.secondaryHidden():
-            self.controller.action_open_view()
-        else:
-            self.controller.action_close_view()
+        #if self.controller.secondaryHidden():
+        #    self.controller.action_open_view()
+        #else:
+        #    self.controller.action_close_view()
+        self.toggleSecondaryView.emit()
 
     def canPaste( self ):
         return self.controller.canPaste( self.view.pwd() )
@@ -373,9 +391,13 @@ class ExplorerModel(QWidget):
             return self.rm.get(ResourceManager.DIRECTORY)
         return self.rm.get(ResourceManager.FILE)
 
+    def action_open_file(self, item):
+        self.controller.action_open_file( self.view.realpath(item['name']) )
+
 class YueExplorerModel(ExplorerModel):
 
     do_ingest = pyqtSignal(list) # list of absolute paths
+    do_move   = pyqtSignal(object,object,object)
 
     def __init__(self, view, controller, parent=None):
         super(YueExplorerModel, self).__init__(view, controller, parent)
@@ -390,12 +412,6 @@ class YueExplorerModel(ExplorerModel):
     def action_ingest(self,items):
         paths = [ self.view.realpath(item['name']) for item in items ]
         self.do_ingest.emit( paths )
-
-    def action_file(self, item):
-        self.action_play(item)
-
-    def action_play(self, item):
-        self.controller.action_play( self.view.realpath(item['name']) )
 
     def canIngest( self ):
         return self.controller.dialog is None
@@ -415,6 +431,7 @@ class YueExplorerModel(ExplorerModel):
 
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
+        self.tbl_file.scrollTo(0)
 
     def item2img(self,item,isDir):
         if isDir:
@@ -424,6 +441,12 @@ class YueExplorerModel(ExplorerModel):
             return self.rm.get(ResourceManager.SONG)
         return self.rm.get(ResourceManager.FILE)
 
+    def action_paste(self):
+        # TODO why is this reimplemented
+        if self.canPaste():
+            tgt = self.view.pwd()
+            src = self.controller.cut_items
+            self.do_move.emit(self, tgt, src)
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
     def __init__(self, widget, parent=None):
@@ -432,7 +455,7 @@ class ExplorerDialog(QDialog):
         self.vbox = QVBoxLayout(self)
         self.vbox.addWidget( widget )
 
-class DummyController(object):
+class DummyController(QObject):
     """ Dummy Controller takes no action
     """
     def __init__(self):
@@ -442,7 +465,7 @@ class DummyController(object):
         self.cut_items = None
         self.cut_root = ""
 
-    def contextMenu(self, event, model, items):
+    def contextMenu(self, event , model, items):
         pass
     def showMoveFileDialog(self, mdl,tgt,src):
         pass
@@ -456,13 +479,13 @@ class DummyController(object):
         pass
     def action_close_view(self):
         pass
-    def action_play(self, item):
-        pass
 
     def secondaryHidden(self):
         return True
 
 class ExplorerController(DummyController):
+
+    forceReload = pyqtSignal()
 
     def __init__(self, parent):
         super(ExplorerController, self).__init__()
@@ -470,6 +493,8 @@ class ExplorerController(DummyController):
         self.dialog = None
         self.cut_items = None
         self.cut_root = ""
+        self.copy_items = None
+        self.copy_root = ""
         self.parent = parent
 
     def contextMenu(self, event, model, items):
@@ -505,7 +530,7 @@ class ExplorerController(DummyController):
             act.setDisabled( not is_files or not model.canIngest())
 
         if len(items) == 1:
-            act = contextMenu.addAction("Play Song", lambda: model.action_play( items[0] ))
+            act = contextMenu.addAction("Play Song", lambda: model.action_open_file( items[0] ))
             ext = os.path.splitext(items[0]['name'])[1].lower()
             if not model.supportedExtension( ext ):
                 act.setDisabled( True )
@@ -513,10 +538,10 @@ class ExplorerController(DummyController):
         contextMenu.addSeparator()
         contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
 
-        if self.secondaryHidden():
-            act = contextMenu.addAction("Open Secondary View", self.action_open_view)
-        else:
-            act = contextMenu.addAction("Close Secondary View", self.action_close_view)
+        #if self.secondaryHidden():
+        #    act = contextMenu.addAction("Open Secondary View", self.action_open_view)
+        #else:
+        #    act = contextMenu.addAction("Close Secondary View", self.action_close_view)
 
         if len(items) == 1 and is_files:
             contextMenu.addSeparator()
@@ -546,7 +571,13 @@ class ExplorerController(DummyController):
 
     def canPaste( self, dirpath):
         """ return true if we can paste into the given directory """
-        return self.cut_items is not None and self.cut_root != dirpath
+        if self.cut_items is not None and self.cut_root != dirpath:
+            return True
+
+        if self.copy_items is not None and self.copy_root != dirpath:
+            return True
+
+        return False
 
     def action_update_replace(self, path):
 
@@ -568,19 +599,55 @@ class ExplorerController(DummyController):
             if match:
                 Library.instance().update(song[Song.uid],**{Song.path:path})
 
-    def action_open_view(self):
-        self.parent.ex_secondary.show()
-        # self.parent().ex_secondary.chdir( self.view.pwd() )
+    #def action_open_view(self):
+    #    self.parent.ex_secondary.show()
+    #    # self.parent().ex_secondary.chdir( self.view.pwd() )
 
-    def action_close_view(self):
-        self.parent.ex_secondary.hide()
+    #def action_close_view(self):
+    #    self.parent.ex_secondary.hide()
 
-    def action_play(self, path):
+    def action_open_file(self, path):
         print(path)
         self.parent.play_file.emit( path )
 
-    def secondaryHidden(self):
-        return self.parent.ex_secondary.isHidden()
+    def action_cut(self,view,fpaths):
+        """
+        view : a wrapper around the source for paths in fpaths
+        fpaths: list of absolute paths
+        """
+        self.cut_items = fpaths
+        self.cut_root = view.pwd()
+        self.cut_view = view
+
+    def action_copy(self,view,fpaths):
+        """
+        todo, there is an internal and external expectation for copy
+            Allow copy within Yue by storing meta data (source, list)
+            for local source (Directory) also place on the clipboard
+        QMimeData* mimeData = new QMimeData();
+        mimeData->setData("text/uri-list", "file:///C:/fileToCopy.txt");
+        clipboard->setMimeData(mimeData);
+        """
+        self.copy_items = fpaths
+        self.copy_root = view.pwd()
+        self.copy_view = view
+        print("copied...",self.canPaste("/"),self.copy_items,self.copy_root )
+
+    def action_paste(self,view,dir_path):
+        """
+        view: a wrapper around the source for paths
+        dir_path: absolute path existing in view
+
+        paste can copy across difference sources
+        a cut or copy -> paste on the same DIRECTORY is a noop
+        a cut -> paste on the same source is a move
+        a cut -> paste across different sources is a copy
+        a copy -> paste is always a copy, even on the same source
+        """
+        print("paste into",dir_path)
+
+    #def secondaryHidden(self):
+    #    return self.parent.ex_secondary.isHidden()
 
 class ExplorerView(Tab):
     """docstring for ExplorerView"""
@@ -600,6 +667,8 @@ class ExplorerView(Tab):
 
         self.ex_main = YueExplorerModel( None, self.controller, self )
         self.ex_secondary = YueExplorerModel( None, self.controller, self )
+
+        self.ex_main.toggleSecondaryView.connect(self.onToggleSecondaryView)
 
         self.ex_main.directoryChanged.connect(self.primaryDirectoryChanged)
         self.ex_secondary.directoryChanged.connect(self.secondaryDirectoryChanged)
@@ -664,6 +733,12 @@ class ExplorerView(Tab):
 
             self.ftpdialog = ExplorerDialog( mdl, self )
             self.ftpdialog.show()
+
+    def onToggleSecondaryView(self):
+        if self.ex_secondary.isHidden():
+            self.ex_secondary.show()
+        else:
+            self.ex_secondary.hide()
 
 def main():
     app = QApplication(sys.argv)

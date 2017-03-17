@@ -2319,6 +2319,8 @@ class LargeTable(LargeTableBase):
 
         self.container.setSizePolicy(QSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding))
 
+        self.scroll_accum_x = 0
+        self.scroll_accum_y = 0
     def update(self,new_row_index=-1,data=None):
         """
             Cause the table to redraw all cells
@@ -2613,13 +2615,32 @@ class LargeTable(LargeTableBase):
         if (self._sbar_ver_get_expected_range()!=self.sbar_ver.maximum()):
             self._sbar_ver_setrange();
 
+        def _divmod(n,d,maxv=2):
+            """something to help with darwin smooth scrolling"""
+            a = min(abs(n)//d,maxv)
+            b = abs(n)%d
+            s = -1 if n < 0 else 1
+            return a*s,b*s
+
         if isPython3:
 
             if sys.platform == 'darwin':
                 x_vel = -1*int(event.angleDelta().x())
                 y_vel = event.angleDelta().y()
                 if y_vel != 0:
-                    y_vel = -1 if y_vel > 0 else 1
+                    y_vel = -1 * int(y_vel)
+
+                xrate = 10
+                yrate = 30
+
+                self.scroll_accum_x += x_vel
+                x_vel,self.scroll_accum_x = _divmod(self.scroll_accum_x,xrate,20)
+
+                self.scroll_accum_y += y_vel
+                y_vel,self.scroll_accum_y = _divmod(self.scroll_accum_y,yrate)
+
+                #print(x_vel,y_vel,self.scroll_accum_x,self.scroll_accum_y)
+
             else:
                 velocity = (event.angleDelta()/120)*-1
                 x_vel = int(velocity.x()*10)

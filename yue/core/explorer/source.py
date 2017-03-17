@@ -80,9 +80,20 @@ class DataSource(object):
         raise SourceNotImplemented(self,"cannot stat path")
 
     def stat_fast(self,path):
+        """
+        fast_stat must at minimum return
+            isDir, isLink, size, name
+
+        size can be zero. on some platforms
+        a stat_fast can be implemented without
+        reading the inode for the file, using
+        only directory entry information
+        """
         result = {
             "size"  : 0,
             "isDir" : self.isdir(path),
+            "isLink" : False,
+            "name" : self.split(path)[1],
         }
         return result
 
@@ -178,36 +189,41 @@ class DirectorySource(DataSource):
 
     def stat(self,path):
         st = os.stat(path)
-        result = {
-            "isDir" : stat.S_ISDIR(st.st_mode),
-            "isLink" : stat.S_ISLNK(st.st_mode),
-            "isReg" : stat.S_ISREG(st.st_mode),
-            "mtime" : st.st_mtime,
-            "ctime" : st.st_ctime
-        }
+        if os.path.exists(path):
+            st = os.stat(path)
+            result = {
+                "isDir" : stat.S_ISDIR(st.st_mode),
+                "isLink" : stat.S_ISLNK(st.st_mode),
+                "mtime" : st.st_mtime,
+                "ctime" : st.st_ctime,
+                "size"  : st.st_size,
+                "name"  : self.split(path)[1],
+                "mode"  : stat.S_IMODE(st.st_mode)
+            }
+        else:
+            result = {
+                "isDir" : False,
+                "isLink" : False,
+                "mtime" : 0,
+                "ctime" : 0,
+                "size"  : 0,
+                "name"  : self.split(path)[1],
+                "mode"  : 0
+            }
         return result
 
     def stat_fast(self,path):
-        result = {
-            "size"  : 0, #st.st_size,
-            "isDir" : False,
-        }
-        if os.path.exists(path):
-            try:
-                st = os.stat(path)
-            except:
-                pass
-            finally:
-                result["size"] = st.st_size
-                result["isDir"] = stat.S_ISDIR(st.st_mode)
-        return result
+        """ there is no such thing as a "fast" stat
+        for this file system so just call stat
+        """
+        return self.stat(path)
 
     def getExportPath(self,path):
         return path # nothing to do
 
 class SourceView(object):
 
-    def __init__(self,source,dirpath):
+    def __init__(self,source,dirpath,show_hidden=False):
         super(SourceView,self).__init__()
         if isinstance(source,SourceView):
             self.source = source.source
@@ -217,7 +233,7 @@ class SourceView(object):
         self.path = dirpath
 
         self.statcache = {}
-        self.show_hidden = False;
+        self.show_hidden = show_hidden;
 
         self.chdir(dirpath)
 
@@ -340,12 +356,12 @@ class SourceView(object):
 #        that shoulld be done in a subclass specific to comic reader
 class SourceListView(SourceView):
 
-    def __init__(self,source,dirpath,dirsOnly=False):
+    def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
         self.data = []
         self.sort_reverse = False
         self.dirsOnly = dirsOnly;
 
-        super(SourceListView,self).__init__(source,dirpath)
+        super(SourceListView,self).__init__(source,dirpath,show_hidden)
 
     def load(self):
         #self.data = self.listdir( self.pwd() )
@@ -362,7 +378,6 @@ class SourceListView(SourceView):
 
         if self.path!=dummy_path:
             self.data.insert(0,"..")
-
 
     def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
@@ -408,6 +423,15 @@ class SourceListView(SourceView):
     def fileSize_cached(self,name):
         return self._statfast(name)["size"]
 
+    def stat(self,name):
+        # todo: need to mingle the statfast and stat caches
+        # must be one in a way that makes sense given the type of source
+        if name in self.statcache:
+            if 'mtime' not in self.statcache[name]:
+                self.statcache[name] = super().stat(name)
+            return self.statcache[name]
+        return super().stat(name)
+
     def _statfast(self,path):
         # create a cache of stat calls
         # also, collecting isDir and size attributes
@@ -437,6 +461,35 @@ class SourceListView(SourceView):
                 print("stat_fast OS error:",path,name)
                 print(s)
         return self.statcache[name]
+
+    def new(self,basename,isDir=False):
+        """
+        generate a new file name for the directory
+        """
+        name = basename
+        i = 1
+        while name in self.data:
+            name = basename + " (%d)"%i
+            i += 1
+        # create a dummy entry in the cache
+        # as far as the view is concerned, the file exist
+        # but the file system does not yet know about it yet.
+        index = len(self.data)
+        self.statcache[name] = {
+            "isDir" : isDir,
+            "isLink" : False,
+            "mtime" : 0,
+            "ctime" : 0,
+            "size"  : 0,
+            "name"  : name,
+            "mode"  : 0,
+        }
+        index = len(self.data)
+        self.data.append(name)
+        return index,name
+
+    def index(self,name):
+        return self.data.index(name)
 
 def source_copy_file(sourceA, pathA, sourceB, pathB, chunksize):
     """

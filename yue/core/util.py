@@ -77,6 +77,24 @@ def days_elapsed( epochtime ):
     delta = datetime.now() - t1
     return delta.days
 
+def format_mode_part(mode):
+    s = ""
+    s += "r" if 0x4&mode else "-"
+    s += "w" if 0x2&mode else "-"
+    s += "x" if 0x1&mode else "-"
+    return s
+
+def format_mode(mode):
+    """ format unix permissions as string
+    e.g. octal 0o755 to rwxr-xr-x
+    """
+    if isinstance(mode,int):
+        u = format_mode_part(mode >> 6) # user
+        g = format_mode_part(mode >> 3) # group
+        o = format_mode_part(mode)      # other
+        return u+g+o
+    return ""
+
 def string_escape(string):
     """escape special characters in a string for use in search"""
     return string.replace("\\","\\\\").replace("\"","\\\"")
