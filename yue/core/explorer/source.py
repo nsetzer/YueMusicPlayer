@@ -7,10 +7,8 @@ import threading
 import posixpath
 from .drives import get_drives
 import stat
-
+import traceback
 # for windows, the dummy path lists all available drive letters
-dummy_path="$"
-
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
         msg = "Source %s :"%cls.__class__.__name__ + msg
@@ -105,6 +103,8 @@ class DataSource(object):
             self.close()
 
 class DirectorySource(DataSource):
+    dummy_path="$"
+
     """docstring for DirectorySource"""
 
     # TODO: turn this into a directory generator
@@ -134,14 +134,14 @@ class DirectorySource(DataSource):
         return os.path.relpath(path,base)
 
     def normpath(self,path,root=None):
-        if path == dummy_path:
-            return dummy_path
+        if path == DirectorySource.dummy_path:
+            return DirectorySource.dummy_path
         if root and not path.startswith("/"):
             path = os.path.join(root,path)
         return os.path.normpath( path )
 
     def listdir(self,path):
-        if path == dummy_path:
+        if path == DirectorySource.dummy_path:
             return get_drives()
         return os.listdir(path)
 
@@ -149,7 +149,7 @@ class DirectorySource(DataSource):
         # TODO: if path is C:\\ return empty string ?
         # empty string returns drives
         if path[1:] == ":\\":
-            return dummy_path
+            return DirectorySource.dummy_path
         p,_ = os.path.split(path)
         return p
 
@@ -164,13 +164,16 @@ class DirectorySource(DataSource):
     def delete(self,path):
         # todo support removing directory rmdir()
         if self.exists( path ):
-            os.remove( path )
+            if self.isdir(path):
+                os.rmdir( path )
+            else:
+                os.remove( path )
 
     def open(self,path,mode):
         return open(path,mode)
 
     def exists(self,path):
-        if path == dummy_path:
+        if path == DirectorySource.dummy_path:
             return True
         return os.path.exists(path)
 
@@ -188,7 +191,7 @@ class DirectorySource(DataSource):
         return os.path.splitext(path)
 
     def stat(self,path):
-        st = os.stat(path)
+
         if os.path.exists(path):
             st = os.stat(path)
             result = {
@@ -235,7 +238,7 @@ class SourceView(object):
         self.statcache = {}
         self.show_hidden = show_hidden;
 
-        self.chdir(dirpath)
+        #self.chdir(dirpath)
 
     def name(self):
         p = self.breakpath(self.pwd())
@@ -255,6 +258,9 @@ class SourceView(object):
 
     def refresh(self,b=False):
         self.chdir(self.path)
+
+    def root(self):
+        return self.source.root()
 
     def pwd(self):
         return self.path
@@ -304,6 +310,9 @@ class SourceView(object):
         path = self.source.normpath(path,self.pwd())
         return path
 
+    def normpath(self,path,root=None):
+        return self.source.normpath(path,root)
+
     def listdir(self,path):
         path = self.realpath(path)
         return self.source.listdir(path)
@@ -325,6 +334,7 @@ class SourceView(object):
         return self.source.delete(path)
 
     def open(self,path,mode):
+        path = self.realpath(path)
         return self.source.open(path,mode)
 
     def stat(self,path):
@@ -374,10 +384,12 @@ class SourceListView(SourceView):
         else:
             data =  [ x for x in data if not self.source.hidden(x) ]
 
-        self._sort(data) # and assignt to this instance
+        data = self._sort(data) # and assignt to this instance
 
-        if self.path!=dummy_path:
-            self.data.insert(0,"..")
+        if self.path!=DirectorySource.dummy_path:
+            data.insert(0,"..")
+
+        self.data = data
 
     def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
@@ -392,7 +404,7 @@ class SourceListView(SourceView):
                                      key=lambda x: (not self.isdir(x),x), \
                                      alg=natsort.ns.IGNORECASE,
                                      reverse=self.sort_reverse)
-        self.data = data
+        return data
 
     def sort(self,reverse=None):
         """
@@ -402,6 +414,7 @@ class SourceListView(SourceView):
         self._sort(self.data)
 
     def chdir(self,path):
+        print("SLV: chdir: %s"%path)
         if super().chdir(path):
             self.load()
             return True
@@ -437,11 +450,11 @@ class SourceListView(SourceView):
         # also, collecting isDir and size attributes
         # can be done without looking at the inode on some file
         # systems, so this can overall be faster than calling stat
-        if self.path==dummy_path:
-            return {'name':path, "isDir":True,"size":0}
+        if self.path==DirectorySource.dummy_path:
+            return {'name':path, "isDir":True,"isLink":False,"size":0}
         _,name = self.source.split(path)
         if name == "." or name == "..":
-            return {'name':name, "isDir":True,"size":0}
+            return {'name':name, "isDir":True,"isLink":True,"size":0}
 
         if name not in self.statcache:
             path=self.source.join(self.path,name)
@@ -456,7 +469,7 @@ class SourceListView(SourceView):
                 st['name'] = name
                 self.statcache[name]=st
             except OSError:
-                self.statcache[name] = {'name':name, "isDir":False, "size":0}
+                self.statcache[name] = {'name':name, "isDir":False,"isLink":False, "size":0}
                 s='->'.join([s[2] for s in traceback.extract_stack()])
                 print("stat_fast OS error:",path,name)
                 print(s)

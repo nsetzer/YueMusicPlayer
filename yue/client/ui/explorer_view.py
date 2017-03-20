@@ -4,6 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+import traceback
+
 from yue.core.util import format_date, format_bytes
 
 import os, sys
@@ -76,9 +78,23 @@ class ResourceManager(object):
     """docstring for ResourceManager"""
     _instance = None
 
-    DIRECTORY = 1
-    FILE = 2
-    SONG = 3
+    LINK      = 0x100
+    DIRECTORY = 0x001
+    FILE      = 0x002
+    SONG      = 0x003
+    ARCHIVE   = 0x004
+
+    LINK_DIRECTORY = 0x101
+    LINK_FILE      = 0x102
+    LINK_SONG      = 0x103
+    LINK_ARCHIVE   = 0x104
+
+    @staticmethod
+    def instance():
+        # TODO: not thread safe....
+        if ResourceManager._instance is None:
+            ResourceManager._instance = ResourceManager()
+        return ResourceManager._instance
 
     def __init__(self):
         super(ResourceManager, self).__init__()
@@ -86,9 +102,46 @@ class ResourceManager(object):
         self.resources[ResourceManager.FILE]      = QPixmap(':/img/app_file.png')
         self.resources[ResourceManager.SONG]      = QPixmap(':/img/app_song.png')
         self.resources[ResourceManager.DIRECTORY] = QPixmap(':/img/app_folder.png')
+        self.resources[ResourceManager.ARCHIVE]   = QPixmap(':/img/app_archive.png')
+
+        self.img_link = QPixmap(':/img/app_shortcut.png')
+
+        for res in [ResourceManager.FILE,ResourceManager.SONG,
+                    ResourceManager.DIRECTORY,ResourceManager.ARCHIVE]:
+            img = self.compose(self.resources[res],self.img_link)
+            self.resources[ResourceManager.LINK|res] = img
+
+        self.map_ext = dict()
+
+        for ext in Song.supportedExtensions():
+            self.map_ext[ext] = ResourceManager.SONG
+
+        for ext in [".gz",".zip",".7z",".rar",".iz"]:
+            self.map_ext[ext] = ResourceManager.ARCHIVE
+
+    def compose(self,imga,imgb):
+
+        imgc = QImage(imga.size(), QImage.Format_ARGB32_Premultiplied);
+        painter = QPainter(imgc);
+
+        painter.setCompositionMode(QPainter.CompositionMode_Source);
+        painter.fillRect(imgc.rect(), Qt.transparent);
+
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver);
+        painter.drawPixmap(0, 0, imga);
+
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver);
+        painter.drawPixmap(0, 0, imgb);
+
+        painter.end();
+
+        return QPixmap.fromImage(imgc);
 
     def get(self,kind):
         return self.resources[kind]
+
+    def getExtType(self,ext):
+        return self.map_ext.get(ext,ResourceManager.FILE)
 
     def width(self):
         return self.resources[ResourceManager.FILE].width()
@@ -98,8 +151,6 @@ class ExplorerFileTable(LargeTable):
     """
 
     def __init__(self, view, parent=None):
-        self.rm = ResourceManager()
-
         super(ExplorerFileTable,self).__init__(parent)
         self.view = view
 
@@ -109,8 +160,8 @@ class ExplorerFileTable(LargeTable):
 
         self.columns.append( TableColumnImage(self,'isDir',"Icon") )
         self.columns[-1].setShortName("")
-        self.columns[-1].setTextTransform( self.item2img )
-        self.columns[-1].width = self.rm.width() + 4 # arbitrary pad, image is centered
+        self.columns[-1].setTextTransform( lambda item,_ : self.item2img(item) )
+        self.columns[-1].width = ResourceManager.instance().width() + 4 # arbitrary pad, image is centered
 
         self.columns.append( TableDualColumn(self,'name',"File Name") )
         self.columns[-1].setSecondaryTextTransform(lambda r,item : format_bytes(r['size']))
@@ -157,8 +208,8 @@ class ExplorerFileTable(LargeTable):
     def sortColumn(self,*args):
         pass
 
-    def item2img(self,item,isDir):
-        return self.parent().item2img( item, isDir )
+    def item2img(self,item):
+        return self.parent().item2img( item )
 
     def getFormatedDate(self,item):
         value = self.parent().getSlowData(item,"mtime")
@@ -173,7 +224,7 @@ class ExplorerModel(QWidget):
 
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
-        self.rm = ResourceManager() # TODO there are two copies of this...
+
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0,0,0,0)
 
@@ -281,8 +332,11 @@ class ExplorerModel(QWidget):
         except OSError as e:
             sys.stderr.write(str(e))
             QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
+            s='->'.join([s[2] for s in traceback.extract_stack()])
+            print("_chdir OS error:",path,name)
+            print(s)
             # reopen the original current directory.
-            self.view.chdir( pwd )
+            #self.view.chdir( pwd )
 
     def chdir_prev(self):
         print(self.directory_history_index,self.directory_history)
@@ -386,10 +440,16 @@ class ExplorerModel(QWidget):
     def canPaste( self ):
         return self.controller.canPaste( self.view.pwd() )
 
-    def item2img(self,item,isDir):
-        if isDir:
-            return self.rm.get(ResourceManager.DIRECTORY)
-        return self.rm.get(ResourceManager.FILE)
+    def item2img(self,item):
+
+        l = ResourceManager.LINK if item['isLink'] else 0
+
+
+        if item['isDir']:
+            return ResourceManager.instance().get(l|ResourceManager.DIRECTORY)
+
+        _,ext = self.view.splitext(item['name'])
+        return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
 
     def action_open_file(self, item):
         self.controller.action_open_file( self.view.realpath(item['name']) )
@@ -426,20 +486,21 @@ class YueExplorerModel(ExplorerModel):
         self.btn_prev.setHidden(self.directory_history_index == len(self.directory_history)-1)
 
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( os.path.split(song[Song.path])[1].lower() \
+        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
                                        for song in songs )
 
         self.txt_path.setText(self.view.pwd())
         self.tbl_file.update()
         self.tbl_file.scrollTo(0)
 
-    def item2img(self,item,isDir):
-        if isDir:
-            return self.rm.get(ResourceManager.DIRECTORY)
-        ext = os.path.splitext(item['name'])[1].lower()
-        if self.supportedExtension( ext ):
-            return self.rm.get(ResourceManager.SONG)
-        return self.rm.get(ResourceManager.FILE)
+    def item2img(self,item):
+
+        l = ResourceManager.LINK if item['isLink'] else 0
+        if item['isDir']:
+            return ResourceManager.instance().get(l|ResourceManager.DIRECTORY)
+
+        _,ext = self.view.splitext(item['name'])
+        return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
 
     def action_paste(self):
         # TODO why is this reimplemented
@@ -447,6 +508,7 @@ class YueExplorerModel(ExplorerModel):
             tgt = self.view.pwd()
             src = self.controller.cut_items
             self.do_move.emit(self, tgt, src)
+
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
     def __init__(self, widget, parent=None):
@@ -574,7 +636,7 @@ class ExplorerController(DummyController):
         if self.cut_items is not None and self.cut_root != dirpath:
             return True
 
-        if self.copy_items is not None and self.copy_root != dirpath:
+        if self.copy_items is not None:
             return True
 
         return False
@@ -631,7 +693,6 @@ class ExplorerController(DummyController):
         self.copy_items = fpaths
         self.copy_root = view.pwd()
         self.copy_view = view
-        print("copied...",self.canPaste("/"),self.copy_items,self.copy_root )
 
     def action_paste(self,view,dir_path):
         """
@@ -698,6 +759,10 @@ class ExplorerView(Tab):
             view1 = SourceListView(self.source,self.source.root())
             view2 = SourceListView(self.source,self.source.root())
 
+            # this is a hack, source views are currently in flux
+            view1.chdir(view1.pwd())
+            view2.chdir(view2.pwd())
+
             self.ex_main.setView(view1)
             self.ex_secondary.setView(view2)
 
@@ -748,7 +813,6 @@ def main():
     window.resize(640,480)
 
     sys.exit(app.exec_())
-
 
 if __name__ == '__main__':
     main()

@@ -217,6 +217,23 @@ class FTPSource(DataSource):
     def splitext(self,path):
         return posixpath.splitext(path)
 
+    def stat(self,path):
+        try:
+            size = self.ftp.size(path)
+        except error_perm:
+            size = None
+
+        result = {
+            "isDir" : size is None,
+            "isLink": False,
+            "mtime" : 0,
+            "ctime" : 0,
+            "size"  : size or 0,
+            "name"  : self.split(path)[1],
+            "mode"  : 0
+        }
+        return result
+
     def stat_fast(self,path):
         # not fast for thus file system :(
         try:
@@ -225,8 +242,10 @@ class FTPSource(DataSource):
             size = None
 
         result = {
+            "name"  : self.split(path)[1],
             "size"  : size or 0,
-            "isDir" : size is None ,
+            "isDir" : size is None,
+            "isLink" : False,
         }
         return result
 
