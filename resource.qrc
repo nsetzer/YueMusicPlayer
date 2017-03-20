@@ -1,29 +1,29 @@
  <!DOCTYPE RCC><RCC version="1.0">
  <qresource>
      <file>img/icon.png</file>
+     <file>img/app_archive.png</file>
+     <file>img/app_check.png</file>
+     <file>img/app_eq.png</file>
+     <file>img/app_export.png</file>
+     <file>img/app_fav.png</file>
      <file>img/app_file.png</file>
      <file>img/app_folder.png</file>
+     <file>img/app_import.png</file>
      <file>img/app_list.png</file>
      <file>img/app_newlist.png</file>
-     <file>img/app_export.png</file>
-     <file>img/app_import.png</file>
-     <file>img/app_note.png</file>
-     <file>img/app_song.png</file>
-     <file>img/app_open.png</file>
-     <file>img/app_save.png</file>
-     <file>img/app_play.png</file>
-     <file>img/app_fav.png</file>
-     <file>img/app_sync.png</file>
      <file>img/app_next.png</file>
-     <file>img/app_prev.png</file>
+     <file>img/app_note.png</file>
+     <file>img/app_open.png</file>
+     <file>img/app_play.png</file>
      <file>img/app_plus.png</file>
-     <file>img/app_check.png</file>
-     <file>img/app_trash.png</file>
+     <file>img/app_prev.png</file>
+     <file>img/app_save.png</file>
+     <file>img/app_shortcut.png</file>
+     <file>img/app_song.png</file>
      <file>img/app_split.png</file>
-     <file>img/app_x.png</file>
-     <file>img/app_eq.png</file>
+     <file>img/app_sync.png</file>
+     <file>img/app_trash.png</file>
      <file>img/app_volume.png</file>
-     <file>img/icon.png</file>
-     <file>img/icon.png</file>
+     <file>img/app_x.png</file>
  </qresource>
  </RCC>
