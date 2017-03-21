@@ -68,7 +68,10 @@ def format_bytes(b):
     kb=1024
     for label in byte_labels:
         if b < kb:
-            return "%d%s"%(b,label)
+            if label == "B" or label == "KB":
+                return "%d %s"%(b,label)
+            else:
+                return "%.2f %s"%(b,label)
         b /= kb
     return "%d%s"%(b,byte_labels[-1])
 

@@ -8,6 +8,8 @@ import posixpath
 from .drives import get_drives
 import stat
 import traceback
+import time
+import calendar
 # for windows, the dummy path lists all available drive letters
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
@@ -26,25 +28,44 @@ class DataSource(object):
         # override for filesystems that restrict charactersets
         return path
 
+    def islocal(self):
+        """ return True if the source represents the local file system
+
+        This means that an external program can easily access the file
+        """
+        return False
+
+    def readonly(self):
+        """ return true if write operations will fail """
+        return False
+
     def expanduser(self,path):
-        return path
+        """
+        expanduser is a leaky abstraction do not use it
+        realpath or normpath should expand environment variables
+        """
+        raise SourceNotImplemented("use realpath")
 
     def normpath(self,path,root):
         raise SourceNotImplemented(self,"cannot list path.")
 
     def listdir(self,path):
+        """ return a list of filenames in a given directory """
         raise SourceNotImplemented(self,"cannot list path.")
 
     def join(self,*args):
         raise SourceNotImplemented(self,"cannot join paths.")
 
     def breakpath(self,path):
-        raise SourceNotImplemented(self,"cannot break paths.")
+        return [ x for x in path.replace("/","\\").split("\\") if x ]
 
     def move(self,oldpath,newpath):
         raise SourceNotImplemented(self,"cannot move files.")
 
     def isdir(self,path):
+        raise SourceNotImplemented(self,"cannot stat path.")
+
+    def islink(self,path):
         raise SourceNotImplemented(self,"cannot stat path.")
 
     def mkdir(self,path):
@@ -68,11 +89,11 @@ class DataSource(object):
         raise SourceNotImplemented(self,"cannot export path")
 
     def basename(self,path):
-        return os.path.splitext(self.split(path)[1])[0]
+        return self.splitext(self.split(path)[1])[0]
 
     def hidden(self,path):
         name = self.split(path)[1]
-        return name.startswith(".") and name != ".."
+        return name.startswith(".")
 
     def stat(self,path):
         raise SourceNotImplemented(self,"cannot stat path")
@@ -90,7 +111,7 @@ class DataSource(object):
         result = {
             "size"  : 0,
             "isDir" : self.isdir(path),
-            "isLink" : False,
+            "isLink" : self.islink(path),
             "name" : self.split(path)[1],
         }
         return result
@@ -116,19 +137,14 @@ class DirectorySource(DataSource):
     def __init__(self):
         super(DirectorySource, self).__init__()
 
+    def islocal(self):
+        return True
+
     def root(self):
         return os.path.expanduser("~")
 
     def join(self,*args):
         return os.path.join(*args)
-
-    def breakpath(self,path):
-        return [ x for x in path.replace("/","\\").split("\\") if x ]
-
-    def expanduser(self,path):
-        if path.startswith("~"):
-            return os.path.expanduser(path)
-        return path
 
     def relpath(self,path,base):
         return os.path.relpath(path,base)
@@ -136,6 +152,7 @@ class DirectorySource(DataSource):
     def normpath(self,path,root=None):
         if path == DirectorySource.dummy_path:
             return DirectorySource.dummy_path
+        path = os.path.expanduser(path)
         if root and not path.startswith("/"):
             path = os.path.join(root,path)
         return os.path.normpath( path )
@@ -197,8 +214,8 @@ class DirectorySource(DataSource):
             result = {
                 "isDir" : stat.S_ISDIR(st.st_mode),
                 "isLink" : stat.S_ISLNK(st.st_mode),
-                "mtime" : st.st_mtime,
-                "ctime" : st.st_ctime,
+                "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
+                "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
                 "size"  : st.st_size,
                 "name"  : self.split(path)[1],
                 "mode"  : stat.S_IMODE(st.st_mode)
@@ -259,6 +276,12 @@ class SourceView(object):
     def refresh(self,b=False):
         self.chdir(self.path)
 
+    def islocal(self):
+        return self.source.islocal()
+
+    def readonly(self):
+        return self.source.readonly()
+
     def root(self):
         return self.source.root()
 
@@ -306,7 +329,7 @@ class SourceView(object):
         return self.source.isdir(path)
 
     def realpath(self,path):
-        path = self.source.expanduser(path)
+
         path = self.source.normpath(path,self.pwd())
         return path
 
@@ -468,8 +491,9 @@ class SourceListView(SourceView):
                 st = self.source.stat_fast(path)
                 st['name'] = name
                 self.statcache[name]=st
-            except OSError:
-                self.statcache[name] = {'name':name, "isDir":False,"isLink":False, "size":0}
+            except OSError as e:
+                print(e)
+                self.statcache[name] = {'name':name, "isDir":False,"isLink":False, "size":-1}
                 s='->'.join([s[2] for s in traceback.extract_stack()])
                 print("stat_fast OS error:",path,name)
                 print(s)

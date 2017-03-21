@@ -386,7 +386,7 @@ class ExplorerModel(QWidget):
     def action_open(self):
         explorerOpen( self.view.pwd() )
 
-    def action_open_file(self):
+    def action_open_file(self, path):
         pass
 
     def action_rename(self, item):
@@ -443,8 +443,6 @@ class ExplorerModel(QWidget):
     def item2img(self,item):
 
         l = ResourceManager.LINK if item['isLink'] else 0
-
-
         if item['isDir']:
             return ResourceManager.instance().get(l|ResourceManager.DIRECTORY)
 
