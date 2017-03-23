@@ -713,7 +713,6 @@ class LargeTableCore(QWidget):
             col_list = self.columns
             #if self.enable_last_column_expanding:
             #    col_list = col_list[:-1]
-
             for i in range(len(col_list)):
                 _xl = _x    #  _xl = left side boundary x position of column header
                 flag_skip_grip=False
@@ -735,7 +734,9 @@ class LargeTableCore(QWidget):
                     self.setCursor(Qt.SplitHCursor)
                     self.mouse_resize_col = i
                     self.mouse_move_col = -1
+
                     self.mouse_col_header_hover_index = i
+                    #print("LARGETABLE set:",self.mouse_col_header_hover_index)
                     self.update();
                     return;
                 # check  that the mouse is within the column header
@@ -745,7 +746,9 @@ class LargeTableCore(QWidget):
                     self.setCursor(Qt.ArrowCursor)
                     self.mouse_resize_col = -1
                     self.mouse_move_col = i
+
                     self.mouse_col_header_hover_index = i
+                    #print("LARGETABLE set:",self.mouse_col_header_hover_index)
                     self.update();
                     return;
 
@@ -766,9 +769,13 @@ class LargeTableCore(QWidget):
 
         self.mouse_enable_autoscroll_hor = False
 
-        if self.mouse_col_header_hover_index != -1 or cell_capture:
-            self.mouse_col_header_hover_index = -1
-            self.update()
+        #TODO: 3/22/2017 questionable change
+        # on OSX, this is triggered prior to a mouse release event
+        # reseting the header hover index and focing an extra update
+        #if self.mouse_col_header_hover_index != -1 or cell_capture:
+        #    self.mouse_col_header_hover_index = -1
+        #    print("LARGETABLE set (move):",self.mouse_col_header_hover_index)
+        #    self.update()
 
         self.setCursor(Qt.ArrowCursor)
 
@@ -942,8 +949,10 @@ class LargeTableCore(QWidget):
         _shift = event.modifiers()&Qt.ShiftModifier == Qt.ShiftModifier      # this generates a boolean type
         _ctrl = event.modifiers()&Qt.ControlModifier == Qt.ControlModifier
 
+        #print("LARGETABLE release left",my < self.col_header_height,self.mouse_disable_release)
         if my < self.col_header_height and not self.mouse_disable_release:
             # column move
+            #print("LARGETABLE RELEASE LEFT--",self.mouse_col_header_hover_index,self.mouse_col_header_hover_index >= 0 , self.enableSortColumn , not self.mouse_disable_col_click_event)
             if self.mouse_move_col_enable and self.mouse_move_col_target != -1 and self.mouse_move_col != self.mouse_move_col_target :
                     temp = self.columns[self.mouse_move_col]
                     self.columns.remove(temp)
@@ -951,6 +960,7 @@ class LargeTableCore(QWidget):
                     self.column_changed_signal.emit()
                     # update the variable which controls drawing of hover state for columns
                     self.mouse_col_header_hover_index = self.mouse_move_col_target
+                    #print("LARGETABLE set:",self.mouse_col_header_hover_index)
                     self.update();
             # column header was clicked
             elif self.mouse_col_header_hover_index >= 0 and self.enableSortColumn and not self.mouse_disable_col_click_event:
@@ -964,6 +974,7 @@ class LargeTableCore(QWidget):
                     #checkt that the mouse is hovering over resize grips
                     if mx > _x-self.tolerance_grips and mx < _x+self.tolerance_grips:
                         flag = True
+                #print("LARGTABLE release left ++",not flag)
                 if not flag: #user clicked within a column header
                     self.column_header_sort_request.emit(self.mouse_col_header_hover_index)
                 #self.setSortColumn(self.mouse_col_header_hover_index)
@@ -1067,6 +1078,7 @@ class LargeTableCore(QWidget):
         self.mouse_move_col = -1
         self.mouse_move_col_target = -1
         self.mouse_col_header_hover_index = -1
+        #print("LARGETABLE set (leave):",self.mouse_col_header_hover_index)
 
         self.mouse_enable_autoscroll_hor = False
 

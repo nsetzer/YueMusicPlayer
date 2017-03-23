@@ -210,10 +210,14 @@ class DirectorySource(DataSource):
     def stat(self,path):
 
         if os.path.exists(path):
-            st = os.stat(path)
+            st = os.lstat(path)
+            isLink = False
+            if stat.S_ISLNK(st.st_mode):
+                st = os.stat(path)
+                isLink = True
             result = {
                 "isDir" : stat.S_ISDIR(st.st_mode),
-                "isLink" : stat.S_ISLNK(st.st_mode),
+                "isLink" : isLink,
                 "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
                 "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
                 "size"  : st.st_size,
@@ -392,6 +396,7 @@ class SourceListView(SourceView):
     def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
         self.data = []
         self.sort_reverse = False
+        self.sort_column_name = 'name'
         self.dirsOnly = dirsOnly;
 
         super(SourceListView,self).__init__(source,dirpath,show_hidden)
@@ -414,27 +419,43 @@ class SourceListView(SourceView):
 
         self.data = data
 
-    def _sort(self,data):
+    def _sort(self,data,column_name=None):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
-        if self.dirsOnly : # == QFileDialog.Directory:
-            data = natsort.natsorted(filter( self.isdir, data),
+
+        # TODO: sort has a massive performance penalty
+        # add logic to use STAT_FAST in place of stat if sorting
+        # would not require a full stat.
+        # or, if only sorting by name, we can avoid the stat_fast probably.
+        data = [self.stat(name) for name in data]
+
+        col_name=self.sort_column_name
+
+        print("view sort--",col_name,self.sort_reverse)
+
+        if self.dirsOnly :
+            data = natsort.natsorted(filter( lambda x : x['isDir'], data),
+                                     key=lambda x: x[col_name], \
                                      alg=natsort.ns.IGNORECASE,
                                      reverse=self.sort_reverse)
         else:
             # key sorts by directories, then files
             # and by filename decending.
             data = natsort.natsorted(data,
-                                     key=lambda x: (not self.isdir(x),x), \
+                                     key=lambda x: (not x['isDir'], x[col_name]), \
                                      alg=natsort.ns.IGNORECASE,
                                      reverse=self.sort_reverse)
-        return data
+        return [ x['name'] for x in data ]
 
-    def sort(self,reverse=None):
+    def sort(self,column_name,toggle=False):
         """
         """
-        if reverse is not None:
-            self.sort_reverse = reverse
-        self._sort(self.data)
+        print("view sort++",toggle,self.sort_column_name,column_name,self.sort_reverse)
+        if toggle and self.sort_column_name == column_name:
+            self.sort_reverse = not self.sort_reverse
+        print("view sort++",self.sort_column_name,column_name,self.sort_reverse)
+
+        self.sort_column_name = column_name
+        self.data = self._sort(self.data)
 
     def chdir(self,path):
         print("SLV: chdir: %s"%path)

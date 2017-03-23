@@ -220,6 +220,17 @@ class Leaf(object):
             for item in child._getChecked(all):
                 yield item
 
+    def hasChild(self,text,case_sensitive=True):
+        for child in self.children:
+            if not case_sensitive:
+                if text.lower() == child.text.lower():
+                    return True
+            else:
+                if text == child.text:
+                    return True
+
+        return False
+
     def getChild(self,text,default_data=[],case_sensitive=True):
         # get the first child with 'text' as it's value for the text attribute
         # if it does not exist it will be created with default_data as the default data.

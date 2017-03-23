@@ -8,7 +8,7 @@ import tarfile
 try:
     import rarfile
 except ImportError:
-    sys.stderr.write("rar not supported by zipfs\n")
+    #sys.stderr.write("rar not supported by zipfs\n")
     rarfile = None
 
 import io

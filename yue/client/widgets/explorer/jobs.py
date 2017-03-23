@@ -326,8 +326,9 @@ class LoadDirectoryJob(Job):
             data = []
             self.getInput("Access Error",str(e), ["Ok"])
 
-        self.view.data = data
-        self.model.tbl_file.setData(self.view)
+        self.model.onLoadComplete(data)
+
+
 
 class Dashboard(QWidget):
     """the Dashboard is where long running jobs are displayed
