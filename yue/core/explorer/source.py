@@ -221,7 +221,6 @@ class DirectorySource(DataSource):
                 "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
                 "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
                 "size"  : st.st_size,
-                "name"  : self.split(path)[1],
                 "mode"  : stat.S_IMODE(st.st_mode)
             }
         else:
@@ -231,7 +230,6 @@ class DirectorySource(DataSource):
                 "mtime" : 0,
                 "ctime" : 0,
                 "size"  : 0,
-                "name"  : self.split(path)[1],
                 "mode"  : 0
             }
         return result
@@ -425,12 +423,11 @@ class SourceListView(SourceView):
         # TODO: sort has a massive performance penalty
         # add logic to use STAT_FAST in place of stat if sorting
         # would not require a full stat.
-        # or, if only sorting by name, we can avoid the stat_fast probably.
+        # or, if only sorting by name, we can avoid the stat_fast probably.\
+
         data = [self.stat(name) for name in data]
 
         col_name=self.sort_column_name
-
-        print("view sort--",col_name,self.sort_reverse)
 
         if self.dirsOnly :
             data = natsort.natsorted(filter( lambda x : x['isDir'], data),
@@ -449,10 +446,8 @@ class SourceListView(SourceView):
     def sort(self,column_name,toggle=False):
         """
         """
-        print("view sort++",toggle,self.sort_column_name,column_name,self.sort_reverse)
         if toggle and self.sort_column_name == column_name:
             self.sort_reverse = not self.sort_reverse
-        print("view sort++",self.sort_column_name,column_name,self.sort_reverse)
 
         self.sort_column_name = column_name
         self.data = self._sort(self.data)
@@ -480,14 +475,25 @@ class SourceListView(SourceView):
     def fileSize_cached(self,name):
         return self._statfast(name)["size"]
 
-    def stat(self,name):
+    def stat(self,path):
         # todo: need to mingle the statfast and stat caches
         # must be one in a way that makes sense given the type of source
-        if name in self.statcache:
-            if 'mtime' not in self.statcache[name]:
-                self.statcache[name] = super().stat(name)
+        path=self.realpath(path)
+        dir,name = self.split(path)
+        if not name:
+            name=path
+        if dir == self.path:
+
+            if name not in self.statcache or \
+                'mtime' not in self.statcache[name]:
+                st = super().stat(name)
+                st['name'] = name
+                self.statcache[name] = st
             return self.statcache[name]
-        return super().stat(name)
+
+        st = super().stat(path)
+        st['name'] = name
+        return st
 
     def _statfast(self,path):
         # create a cache of stat calls
