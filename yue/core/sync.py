@@ -45,7 +45,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.core.explorer.source import DirectorySource, source_copy_file
+from yue.core.explorer.source import DirectorySource
+from yue.core.explorer.fsutil import source_copy_file
 from yue.core.explorer.ftpsource import FTPSource, parseFTPurl
 
 # TODO: move to source

@@ -46,7 +46,15 @@ class DataSource(object):
         """
         raise SourceNotImplemented("use realpath")
 
-    def normpath(self,path,root):
+    def relpath(self,path,base):
+        """return a new path which is relative to the given base path"""
+        raise SourceNotImplemented(self,"cannot list path.")
+
+    def normpath(self,path,root=None):
+        """return an absolute path representing path
+        if path is relative, assume it is relative to the
+        given root directory
+        """
         raise SourceNotImplemented(self,"cannot list path.")
 
     def listdir(self,path):
@@ -124,16 +132,13 @@ class DataSource(object):
             self.close()
 
 class DirectorySource(DataSource):
-    dummy_path="$"
+    dummy_path="\\"
 
-    """docstring for DirectorySource"""
+    """DirectorySource wraps os.path into the Source Interface
+    a DirectorySource enables interacting with the local file system
+    in an abstract way
+    """
 
-    # TODO: turn this into a directory generator
-    # which first loads the directory, then loops over
-    # loaded items.
-
-    # TODO: on windows we need a way to view available
-    # drive letters
     def __init__(self):
         super(DirectorySource, self).__init__()
 
@@ -141,7 +146,9 @@ class DirectorySource(DataSource):
         return True
 
     def root(self):
-        return os.path.expanduser("~")
+        if sys.platform == "win32":
+            return DirectorySource.dummy_path
+        return "/"
 
     def join(self,*args):
         return os.path.join(*args)
@@ -150,8 +157,11 @@ class DirectorySource(DataSource):
         return os.path.relpath(path,base)
 
     def normpath(self,path,root=None):
+
         if path == DirectorySource.dummy_path:
             return DirectorySource.dummy_path
+        if sys.platform=="win32" and path.startswith(DirectorySource.dummy_path):
+            path = path[len(DirectorySource.dummy_path):]
         path = os.path.expanduser(path)
         if root and not path.startswith("/"):
             path = os.path.join(root,path)
@@ -244,20 +254,27 @@ class DirectorySource(DataSource):
         return path # nothing to do
 
 class SourceView(object):
+    """
+    A source view is a view into a directory of a source.
 
+    A source view has a current working directory, for which relative
+    paths can be automatically resolved. A cache is maintained for
+    the result of stat calls to items in the current directory
+
+    other than the addition of "chdir" and "pwd",
+    a source view is a drop in replacement for a source.
+    """
     def __init__(self,source,dirpath,show_hidden=False):
         super(SourceView,self).__init__()
         if isinstance(source,SourceView):
             self.source = source.source
         else:
             self.source = source
-        #self.path, self.name = source.split(path)
+
         self.path = dirpath
 
         self.statcache = {}
         self.show_hidden = show_hidden;
-
-        #self.chdir(dirpath)
 
     def name(self):
         p = self.breakpath(self.pwd())
@@ -273,7 +290,6 @@ class SourceView(object):
 
     def setShowHidden(self,b):
         self.show_hidden = b
-        #self.chdir(self.path)
 
     def refresh(self,b=False):
         self.chdir(self.path)
@@ -287,18 +303,6 @@ class SourceView(object):
     def root(self):
         return self.source.root()
 
-    def pwd(self):
-        return self.path
-
-    def kind(self,path):
-
-        path=self.realpath(path)
-
-        if self.isdir( path ):
-            return DataResource.DIRECTORY
-
-        return DataResource.kindFromPath( path )
-
     def relpath(self,path,base):
         return self.source.relpath(path,base)
 
@@ -306,6 +310,9 @@ class SourceView(object):
         return self.source.breakpath(path)
 
     # ----------------------------------------------
+
+    def pwd(self):
+        return self.path
 
     def chdir(self,path):
         # realpath == normpath
@@ -325,7 +332,6 @@ class SourceView(object):
         path = self.realpath(path)
         return self.source.exists(path)
 
-    # TODO: conflicting requirements...
     def isdir(self,path):
         path = self.realpath(path)
         return self.source.isdir(path)
@@ -362,13 +368,46 @@ class SourceView(object):
         path = self.realpath(path)
         return self.source.open(path,mode)
 
+    def _stat(self,stat,path):
+        """
+        perform a stat or fast stat of the given path.
+        if the given path is an item in the current directory, cache the result
+        """
+        _,name = self.split(path)
+        if name == "." or name == "..":
+            return {"name":name,"isDir":True,"isLink":True,\
+                    "size":0, "mtime":0, "ctime":0, "mode":0}
+        path=self.realpath(path)
+        dir,_ = self.split(path)
+
+        if not name:
+            name=path # root directory
+
+        if dir == self.path:
+
+            if name not in self.statcache or \
+                'mtime' not in self.statcache[name]:
+                st = stat(path)
+                st['name'] = name
+                self.statcache[name] = st
+            return self.statcache[name]
+
+        #except OSError as e:
+        #    print(e)
+        #    self.statcache[name] = {"isDir":False,"isLink":False, "size":-1}
+        #    s='->'.join([s[2] for s in traceback.extract_stack()])
+        #    print("stat_fast OS error:",path,name)
+        #   print(s)
+
+        st = stat(path)
+        st['name'] = name
+        return st
+
     def stat(self,path):
-        path = self.realpath(path)
-        return self.source.stat(path)
+        return self._stat(self.source.stat,path)
 
     def stat_fast(self,path):
-        path = self.realpath(path)
-        return self.source.stat_fast(path)
+        return self._stat(self.source.stat_fast,path)
 
     def split(self,path):
         #path = self.realpath(path)
@@ -386,9 +425,14 @@ class SourceView(object):
 
     def getExportPath(self,path):
         return self.source.getExportPath(path)
-# todo:  rename Iter View
-# todo: removre all reference to 'image'
-#        that shoulld be done in a subclass specific to comic reader
+
+    def isdir_cached(self,name):
+        return self.stat_fast(name)["isDir"]
+
+    def fileSize_cached(self,name):
+        return self.stat_fast(name)["size"]
+
+
 class SourceListView(SourceView):
 
     def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
@@ -400,9 +444,6 @@ class SourceListView(SourceView):
         super(SourceListView,self).__init__(source,dirpath,show_hidden)
 
     def load(self):
-        #self.data = self.listdir( self.pwd() )
-        #self.data.sort(key=lambda x: x.lower())
-
         data = self.source.listdir(self.path)
 
         if self.show_hidden:
@@ -445,15 +486,23 @@ class SourceListView(SourceView):
 
     def sort(self,column_name,toggle=False):
         """
+        sort the view by the given column (stat key)
+        return whether a reverse sort is being used
+
+        if toggle is true reverse the sort so long as column matches
+        the current sort order
         """
         if toggle and self.sort_column_name == column_name:
             self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_reverse = False
 
         self.sort_column_name = column_name
         self.data = self._sort(self.data)
 
+        return self.sort_reverse
+
     def chdir(self,path):
-        print("SLV: chdir: %s"%path)
         if super().chdir(path):
             self.load()
             return True
@@ -466,66 +515,12 @@ class SourceListView(SourceView):
         if 0 <= idx < len(self.data):
             name = self.data[idx]
             if not name:
-                name = "-"
-            return self._statfast( name )
+                raise Exception("empty file name in directory")
+            st = self.stat_fast( name )
+            return st
 
-    def isdir_cached(self,name):
-        return self._statfast(name)["isDir"]
-
-    def fileSize_cached(self,name):
-        return self._statfast(name)["size"]
-
-    def stat(self,path):
-        # todo: need to mingle the statfast and stat caches
-        # must be one in a way that makes sense given the type of source
-        path=self.realpath(path)
-        dir,name = self.split(path)
-        if not name:
-            name=path
-        if dir == self.path:
-
-            if name not in self.statcache or \
-                'mtime' not in self.statcache[name]:
-                st = super().stat(name)
-                st['name'] = name
-                self.statcache[name] = st
-            return self.statcache[name]
-
-        st = super().stat(path)
-        st['name'] = name
-        return st
-
-    def _statfast(self,path):
-        # create a cache of stat calls
-        # also, collecting isDir and size attributes
-        # can be done without looking at the inode on some file
-        # systems, so this can overall be faster than calling stat
-        if self.path==DirectorySource.dummy_path:
-            return {'name':path, "isDir":True,"isLink":False,"size":0}
-        _,name = self.source.split(path)
-        if name == "." or name == "..":
-            return {'name':name, "isDir":True,"isLink":True,"size":0}
-
-        if name not in self.statcache:
-            path=self.source.join(self.path,name)
-            #if not self.source.exists(path):
-            #    s='->'.join([s[2] for s in traceback.extract_stack()])
-            #    print("stat_fast ST error:",path,name)
-            #    print(s)
-            #    return {"isDir":True,"size":0}
-            try:
-
-                st = self.source.stat_fast(path)
-                st['name'] = name
-                self.statcache[name]=st
-            except OSError as e:
-                print(e)
-                self.statcache[name] = {'name':name, "isDir":False,"isLink":False, "size":-1}
-                s='->'.join([s[2] for s in traceback.extract_stack()])
-                print("stat_fast OS error:",path,name)
-                print(s)
-        return self.statcache[name]
-
+    # new and index are hacks enabling editing names for
+    # items which do not exist, is there a betterway?
     def new(self,basename,isDir=False):
         """
         generate a new file name for the directory
@@ -554,33 +549,3 @@ class SourceListView(SourceView):
 
     def index(self,name):
         return self.data.index(name)
-
-def source_copy_file(sourceA, pathA, sourceB, pathB, chunksize):
-    """
-    Perform file copy from one source to another.
-    chunksize is the number of bytes to read/write at one time.
-    """
-    with sourceA.open(pathA,"rb") as rb:
-        with sourceB.open(pathB,"wb") as wb:
-            buf = rb.read(chunksize)
-            while buf:
-                wb.write(buf)# TODO: write should return len buf
-                buf = rb.read(chunksize)
-
-def source_walk(source, dirpath ):
-    """ return all files from target source directory """
-    # i tried to write this without recursion, but it became
-    # too complicated - the problem was yielding the input last correctly
-
-    for item in source.listdir(dirpath):
-        if item == ".." or item == ".":
-            continue
-        path = source.join(dirpath,item)
-        if source.isdir(path):
-            for x in source_walk( source, path ):
-                yield x
-        else:
-            yield path
-
-    yield dirpath
-

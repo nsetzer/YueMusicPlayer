@@ -319,7 +319,7 @@ class LoadDirectoryJob(Job):
 
             data = self.view._sort(data) # and assignt to this instance
 
-            if self.view.path not in (self.view.root(),DirectorySource.dummy_path):
+            if self.view.path != self.view.root():
                 data.insert(0,"..")
 
         except OSError as e:

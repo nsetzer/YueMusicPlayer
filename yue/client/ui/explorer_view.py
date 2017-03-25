@@ -19,10 +19,13 @@ if isPython3:
 
 import yue
 from yue.client.widgets.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
+from yue.client.widgets.TableEditColumn import EditColumn
 from yue.client.widgets.LineEdit import LineEdit
 from yue.client.widgets.FlatPushButton import FlatPushButton
 from yue.client.widgets.Tab import Tab
-
+from yue.client.widgets.explorer.jobs import Job, JobRunner, \
+    RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
+from yue.core.util import format_date, format_bytes, format_mode
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
@@ -149,6 +152,10 @@ class ResourceManager(object):
 class ExplorerFileTable(LargeTable):
     """
     """
+    renamePaths = pyqtSignal(object) # given a list of jobs
+    createFile = pyqtSignal(str)
+    createDirectory = pyqtSignal(str)
+
 
     def __init__(self, view, parent=None):
         super(ExplorerFileTable,self).__init__(parent)
@@ -156,8 +163,25 @@ class ExplorerFileTable(LargeTable):
 
         self.position_stack = []
 
+        self.xcut_copy = QShortcut(QKeySequence("Ctrl+C"), self)
+        self.xcut_copy.setContext(Qt.WidgetShortcut)
+        self.xcut_copy.activated.connect(self.onShortcutCopy)
+
+        self.xcut_cut = QShortcut(QKeySequence("Ctrl+X"), self)
+        self.xcut_cut.setContext(Qt.WidgetShortcut)
+        self.xcut_cut.activated.connect(self.onShortcutCut)
+
+        self.xcut_paste = QShortcut(QKeySequence("Ctrl+V"), self)
+        self.xcut_paste.setContext(Qt.WidgetShortcut)
+        self.xcut_paste.activated.connect(self.onShortcutPaste)
+
+        self.xcut_refresh = QShortcut(QKeySequence("F5"), self)
+        self.xcut_refresh.activated.connect(self.onShortcutRefresh)
+
+
     def initColumns(self):
 
+        """
         self.columns.append( TableColumnImage(self,'isDir',"Icon") )
         self.columns[-1].setShortName("")
         self.columns[-1].setTextTransform( lambda item,_ : self.item2img(item) )
@@ -165,6 +189,62 @@ class ExplorerFileTable(LargeTable):
 
         self.columns.append( TableDualColumn(self,'name',"File Name") )
         self.columns[-1].setSecondaryTextTransform(lambda r,item : format_bytes(r['size']))
+        """
+        self.columns.append( TableColumnImage(self,'name',"Icon") )
+        self.columns[-1].setShortName("")
+        self.columns[-1].setTextTransform( lambda item,_ : self.item2img(item) )
+        self.columns[-1].width = ResourceManager.instance().width() + 4 # arbitrary pad, image is centered
+
+        self.columns.append( EditTextColumn(self,'name',"File Name") )
+        self.columns[-1].setWidthByCharCount(40)
+        self.columns[-1].commitText.connect(self._onCommitText)
+        self.columns[-1].createFile.connect(self._onCreateFile)
+        self.columns[-1].createDirectory.connect(self._onCreateDirectory)
+
+        self.columns.append( TableColumn(self,'size',"Size") )
+        self.columns[-1].setTextTransform( lambda item,_ : format_bytes(item['size']) )
+        self.columns[-1].setTextAlign(Qt.AlignRight)
+        self.columns[-1].setWidthByCharCount(9)
+
+        self.columns.append( TableColumn(self,'mtime',"Modified Date") )
+        self.columns[-1].setTextTransform( lambda item,_ : self.getFormatedDate(item) )
+        self.columns[-1].setShortName("Date")
+        self.columns[-1].setDefaultSortReversed(True)
+        self.columns[-1].setTextAlign(Qt.AlignRight)
+        self.columns[-1].setWidthByCharCount(13)
+
+        self.columns.append( TableColumn(self,'mode',"Permissions") )
+        self.columns[-1].setTextTransform( lambda _,v : format_mode(v) )
+        self.columns[-1].setShortName("Mode")
+        self.columns[-1].setTextAlign(Qt.AlignRight)
+        self.columns[-1].setWidthByCharCount(13)
+
+    def onShortcutCopy(self):
+
+        self.parent().action_copy( self.getSelection() )
+
+    def onShortcutCut(self):
+
+        self.parent().action_cut( self.getSelection() )
+
+    def onShortcutPaste(self):
+
+        self.parent().controller.action_paste( self.parent() )
+
+    def onShortcutRefresh(self):
+
+        self.parent().refresh()
+
+    def sortColumn(self,col_index):
+
+        # TODO: this api needs to be refactored somehow
+        reverse=self.view.sort(self.columns[col_index].index,True)
+        self.setSortColumn(col_index,-1 if reverse else 1)
+
+    def action_edit_column(self, row, col):
+        opts = self.columns[col].get_default_opts(row)
+        if opts:
+            self.columns[col].editor_start(*opts)
 
     def mouseReleaseRight(self,event):
         self.parent().controller.contextMenu( event, self.parent(), self.getSelection() )
@@ -214,6 +294,96 @@ class ExplorerFileTable(LargeTable):
     def getFormatedDate(self,item):
         value = self.parent().getSlowData(item,"mtime")
         return format_date(value)
+
+    def _onCommitText(self,jobs):
+        self.renamePaths.emit(jobs)
+
+    def _onCreateFile(self,name):
+        self.createFile.emit(name)
+
+    def _onCreateDirectory(self,name):
+        self.createDirectory.emit(name)
+
+class EditTextColumn(EditColumn,QObject):
+    # register a signal to update exif data when editing is done,.
+    # this will enable searching on data that has been modified.
+    commitText = pyqtSignal(object) # given a list of jobs
+    createFile = pyqtSignal(str)
+    createDirectory = pyqtSignal(str)
+
+    def __init__(self,parent,index,name=None,data_type=str):
+        EditColumn.__init__(self,parent,index,name,data_type)
+        QObject.__init__(self,parent)
+        #self.cell_modified.connect(self.editing_finished)
+
+    def editor_start(self,rows,text,mode=0):
+        self.edit_mode = mode
+        super().editor_start(rows,text)
+
+    def editor_save(self):
+        """
+            save the modified buffer to 'index; of each row in the data set
+        """
+        #print self.data_type,self.editor.buffer
+        try:
+            value = self.data_type(str(self.editor.buffer).strip())
+        except:
+            self.editor_close()
+            return
+
+        ## TODO: this is now broken by the Load Dir Job
+        ##changed = set()
+        ##for row in self.open_editors:
+        ##    item = self.parent.data[row]
+        ##    if item[self.index] != value:
+        ##        changed.add(row)
+
+
+        # only emits signals if a row changed, and only for rows
+        # that did in fact change
+        if self.edit_mode == 0:
+            self.editing_rename_finished(self.open_editors,value)
+        elif self.edit_mode==1:
+            self.editing_create_file_finished(self.open_editors,value)
+        elif self.edit_mode==2:
+            self.editing_create_dir_finished(self.open_editors,value)
+
+        self.parent.update()
+        self.editor_close()
+
+        # TODO: also broken for the same reason
+        ##if len(changed) > 0:
+        ##    self.cell_modified.emit(changed,value)
+        return
+
+    def editing_rename_finished(self,rows,new_value):
+        # do the commit here,
+
+        # todo: this should be done at a higher level
+        jobs = []
+        if len(rows) == 1:
+            row = list(rows)[0]
+            src_name = self.parent.data[row][self.index]
+            jobs.append( (src_name,new_value) )
+        else:
+            # TODO: need to use the view for this....
+            # renaming multiple files to the same name is bad mmkay
+            base_name, ext = os.path.splitext(new_value)
+
+            for idx,row in enumerate(rows):
+                src_name = self.parent.data[row][self.index]
+                tgt_name = "%s (%d)%s"%(base_name,idx+1,ext)
+                jobs.append( (src_name,tgt_name) )
+
+        # jobs contains a old_name.-> new_name map
+        # that a view could act on to move files
+        self.commitText.emit(jobs)
+
+    def editing_create_file_finished(self,rows,new_value):
+        self.createFile.emit(new_value)
+
+    def editing_create_dir_finished(self,rows,new_value):
+        self.createDirectory.emit(new_value)
 
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
@@ -272,6 +442,10 @@ class ExplorerModel(QWidget):
         tbl.showColumnHeader( False )
         tbl.showRowHeader( False )
         tbl.setLastColumnExpanding( True )
+
+        tbl.renamePaths.connect(self.action_rename)
+        tbl.createFile.connect(self.action_touch)
+        tbl.createDirectory.connect(self.action_mkdir)
         return tbl
 
     def setView(self,view):
@@ -282,8 +456,8 @@ class ExplorerModel(QWidget):
 
         self.directory_history.append(view.pwd())
 
-    def showSplitButton(self):
-        self.btn_split.setHidden(False)
+    def showSplitButton(self,bShow):
+        self.btn_split.setHidden(not bShow)
 
     def refresh(self):
         self.chdir( self.view.pwd() )
@@ -386,28 +560,87 @@ class ExplorerModel(QWidget):
     def action_open(self):
         explorerOpen( self.view.pwd() )
 
+    def action_file(self, item):
+        # double click file action
+        path = self.view.realpath(item['name'])
+        cmdstr = Settings.instance()['cmd_open_native']
+        os.system(cmdstr%path)
+
+
     def action_open_file(self, path):
         pass
 
-    def action_rename(self, item):
-        name=item['name']
-        diag = RenameDialog(name,parent=self)
-        if diag.exec_():
-            new_name=diag.text()
-            if new_name == name:
-                return
-            src = self.view.join( self.view.pwd(), name)
-            tgt = self.view.join( self.view.pwd(), new_name)
-            self.do_move.emit(self, tgt, src)
-        return
+    def action_rename_begin(self, items):
 
-    def action_newfolder(self):
+        row = list(self.tbl_file.selection)[0]
+        col = -1
+        for idx,column in enumerate(self.tbl_file.columns):
+            if column.name == "File Name":
+                col = idx
+        if col < 0:
+            return;
 
-        diag = RenameDialog("New Folder","Create Folder",parent=self)
-        if diag.exec_():
-            path = self.view.join(self.view.pwd(),diag.text())
-            self.view.mkdir( path )
-            self.chdir(self.view.pwd())
+        opts = self.tbl_file.columns[col].get_default_opts(row)
+        if opts:
+            self.tbl_file.columns[col].editor_start(*opts)
+
+    def action_rename(self,jobs):
+
+        job = RenameJob(self.view,jobs)
+        job.finished.connect(self.onJobFinished)
+        self.submitJob.emit(job)
+
+    def action_touch_begin(self):
+        self.action_create(1)
+
+    def action_touch(self,name):
+        # TODO handle OS errors
+        self.view.open(name,"w").close()
+        self.refresh()
+        # TODO: when load completes set selection to name
+        #if self.view.exists(name):
+        #    idx = self.view.index(name)
+        #    self.tbl_file.scrollTo(idx)
+        #    self.tbl_file.setSelection([idx,])
+        #else:
+        #    print("error")
+
+    def action_mkdir_begin(self):
+      self.action_create(2)
+
+    def action_mkdir(self,name):
+        # TODO handle OS errors
+        self.view.mkdir(name)
+        self.refresh()
+        if self.view.exists(name):
+            idx = self.view.index(name)
+            self.tbl_file.scrollTo(idx)
+            self.tbl_file.setSelection([idx,])
+        else:
+            print("error")
+
+    def action_create(self,mode):
+
+        isDir = mode==2
+        name = "Empty File" if mode == 1 else "New Directory"
+        index,name = self.view.new(name,isDir)
+        col = -1
+        for idx,column in enumerate(self.tbl_file.columns):
+            if column.name == "File Name":
+                col = idx
+        if col < 0:
+            return;
+
+        self.tbl_file.scrollTo(index)
+
+        opts = (set([index,]),name)
+        if opts:
+            self.tbl_file.columns[col].editor_start(*opts,mode)
+
+    def action_copy_path(self,item):
+
+        path = self.view.realpath(item['name'])
+        QApplication.instance().clipboard().setText(path)
 
     def action_cut(self, items):
         cut_items =  [ self.view.realpath(item['name']) for item in items ]
@@ -452,10 +685,31 @@ class ExplorerModel(QWidget):
     def action_open_file(self, item):
         self.controller.action_open_file( self.view.realpath(item['name']) )
 
+    def onJobFinished(self):
+
+        self.tbl_file.setSelection([])
+
+        self.refresh()
+
+    def onLoadComplete(self,data):
+        self.view.data = data
+        self.tbl_file.setData(self.view)
+        # -1 for ".."
+        self.infoNumFiles.emit(len(data)-1)
+
+class LazySourceListView(SourceListView,QObject):
+    """docstring for LazySourceListView"""
+    loadDirectory = pyqtSignal(object)
+
+    def load(self):
+
+        self.data = []
+
+        self.loadDirectory.emit(self)
+
 class YueExplorerModel(ExplorerModel):
 
     do_ingest = pyqtSignal(list) # list of absolute paths
-    do_move   = pyqtSignal(object,object,object)
 
     def __init__(self, view, controller, parent=None):
         super(YueExplorerModel, self).__init__(view, controller, parent)
@@ -500,13 +754,6 @@ class YueExplorerModel(ExplorerModel):
         _,ext = self.view.splitext(item['name'])
         return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
 
-    def action_paste(self):
-        # TODO why is this reimplemented
-        if self.canPaste():
-            tgt = self.view.pwd()
-            src = self.controller.cut_items
-            self.do_move.emit(self, tgt, src)
-
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
     def __init__(self, widget, parent=None):
@@ -545,70 +792,102 @@ class DummyController(QObject):
 
 class ExplorerController(DummyController):
 
+    submitJob = pyqtSignal(Job)
     forceReload = pyqtSignal()
 
-    def __init__(self, parent):
-        super(ExplorerController, self).__init__()
+    def __init__(self):
+        super(ExplorerController,self).__init__()
 
         self.dialog = None
         self.cut_items = None
         self.cut_root = ""
         self.copy_items = None
         self.copy_root = ""
-        self.parent = parent
+        self.act_diff_left_path = None
+
+        #self.parent = parent
+
+    def _ctxtMenu_addFileOperations1(self,ctxtmenu,model,items):
+
+        is_files = all(not item['isDir'] for item in items)
+        is_dirs  = all(item['isDir'] for item in items)
+
+        # file manipulation options
+        menu = ctxtmenu.addMenu("New")
+        menu.addAction("Empty File",lambda : model.action_touch_begin())
+        menu.addAction("Folder", lambda : model.action_mkdir_begin())
+
+        menu = ctxtmenu.addMenu("Archive")
+        if len(items) > 1:
+            menu.addAction("Add to 7z")
+            menu.addAction("Add to zip")
+        elif not is_dirs:
+            menu.addAction("Extract to *")
+
+        ctxtmenu.addSeparator()
+
+        act = ctxtmenu.addAction("Rename", lambda : model.action_rename_begin(items))
+        #act.setDisabled( len(items)!=1 )
+
+        if len(items) == 1 and items[0]['isLink']:
+            if items[0]['name'] != "..":
+                ctxtmenu.addAction("Edit Link")
+
+        act=ctxtmenu.addAction("Copy", lambda : model.action_copy( items ))
+        act.setShortcut(QKeySequence("Ctrl+C"))
+        act=ctxtmenu.addAction("Cut", lambda : model.action_cut( items ))
+        act.setShortcut(QKeySequence("Ctrl+X"))
+        if not model.view.readonly():
+            act = ctxtmenu.addAction("Paste", lambda : self.action_paste(model))
+            act.setShortcut(QKeySequence("Ctrl+V"))
+            act.setDisabled( not model.canPaste() )
+
+        ctxtmenu.addAction("Delete", lambda : self.action_delete( model, items ))
+
+    def _ctxtMenu_addFileOperations2(self,ctxtmenu,model,items):
+
+        #ctxtmenu.addSeparator()
+        #act = ctxtmenu.addAction("Refresh",model.action_refresh)
+
+        if model.showHiddenFiles():
+            act = ctxtmenu.addAction("hide Hidden Files",lambda:model.action_set_hidden_visible(False))
+        else:
+            act = ctxtmenu.addAction("show Hidden Files",lambda:model.action_set_hidden_visible(True))
+        ctxtmenu.addSeparator()
+
+        if len(items) == 1:
+            act = ctxtmenu.addAction("Copy Path To Clipboard",
+                lambda : model.action_copy_path(items[0]))
+            ctxtmenu.addSeparator()
+
+        if model.view.islocal():
+            ctxtmenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
+            ctxtmenu.addAction("Open in Terminal",model.action_open_term)
 
     def contextMenu(self, event, model, items):
 
-        is_files = all(not item['isDir'] for item in items)
+        ctxtmenu = QMenu(model)
 
-        contextMenu = QMenu(model)
+        self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
+        ctxtmenu.addSeparator()
+        self._ctxtMenu_addFileOperations2(ctxtmenu,model,items)
 
-        # file manipulation options
+        action = ctxtmenu.exec_( event.globalPos() )
 
-        act = contextMenu.addAction("Rename", lambda : model.action_rename( items[0] ))
-        act.setDisabled( len(items)!=1 )
+    """
+    if len(items) == 1:
+        act = contextMenu.addAction("Play Song", lambda: model.action_open_file( items[0] ))
+        ext = os.path.splitext(items[0]['name'])[1].lower()
+        if not model.supportedExtension( ext ):
+            act.setDisabled( True )
 
-        act = contextMenu.addAction("New Folder", lambda : model.action_newfolder())
-        act.setDisabled( len(items)!=1 )
-
-
-        contextMenu.addAction("Cut", lambda : model.action_cut( items ))
-        act = contextMenu.addAction("Paste", lambda : model.action_paste( ))
-        act.setDisabled( not model.canPaste() )
-
+    if len(items) == 1 and is_files:
         contextMenu.addSeparator()
-        act = contextMenu.addAction("Refresh",model.action_refresh)
-        contextMenu.addSeparator()
+        act = contextMenu.addAction("update/replace *", lambda: model.action_update_replace(items[0]))
 
-        # library options
+    """
 
-        if len(items) == 1 and not is_files:
-            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import Directory", lambda : model.action_ingest( items ))
-            act.setDisabled( not model.canIngest() )
-        else:
-            act = contextMenu.addAction(QIcon(":/img/app_import.png"),"Import", lambda : model.action_ingest( items ))
-            act.setDisabled( not is_files or not model.canIngest())
-
-        if len(items) == 1:
-            act = contextMenu.addAction("Play Song", lambda: model.action_open_file( items[0] ))
-            ext = os.path.splitext(items[0]['name'])[1].lower()
-            if not model.supportedExtension( ext ):
-                act.setDisabled( True )
-
-        contextMenu.addSeparator()
-        contextMenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
-
-        #if self.secondaryHidden():
-        #    act = contextMenu.addAction("Open Secondary View", self.action_open_view)
-        #else:
-        #    act = contextMenu.addAction("Close Secondary View", self.action_close_view)
-
-        if len(items) == 1 and is_files:
-            contextMenu.addSeparator()
-            act = contextMenu.addAction("update/replace *", lambda: model.action_update_replace(items[0]))
-
-        action = contextMenu.exec_( event.globalPos() )
-
+    """
     def showMoveFileDialog(self, mdl, tgt,src):
         self.dialog = MoveFileProgressDialog(mdl.view, tgt, src, self.parent)
         self.dialog.setOnCloseCallback(self.onDialogExit)
@@ -620,6 +899,7 @@ class ExplorerController(DummyController):
         self.dialog.setOnCloseCallback(self.onDialogExit)
         self.dialog.start()
         self.dialog.show()
+    """
 
     def onDialogExit(self):
         if isinstance(self.dialog,IngestProgressDialog):
@@ -659,16 +939,23 @@ class ExplorerController(DummyController):
             if match:
                 Library.instance().update(song[Song.uid],**{Song.path:path})
 
-    #def action_open_view(self):
-    #    self.parent.ex_secondary.show()
-    #    # self.parent().ex_secondary.chdir( self.view.pwd() )
+    def action_compare_set_left(self,model,item):
+        self.act_diff_left_path = model.view.realpath(item['name'])
 
-    #def action_close_view(self):
-    #    self.parent.ex_secondary.hide()
+    def action_compare(self,model,item):
+        self.act_diff_left_path = None
 
     def action_open_file(self, path):
         print(path)
         self.parent.play_file.emit( path )
+
+    def action_delete(self,model,items):
+
+        view = model.view
+        paths = [ view.realpath(item['name']) for item in items ]
+        job = DeleteJob(view,paths)
+        job.finished.connect(model.onJobFinished)
+        self.submitJob.emit(job)
 
     def action_cut(self,view,fpaths):
         """
@@ -692,7 +979,7 @@ class ExplorerController(DummyController):
         self.copy_root = view.pwd()
         self.copy_view = view
 
-    def action_paste(self,view,dir_path):
+    def action_paste(self, model):
         """
         view: a wrapper around the source for paths
         dir_path: absolute path existing in view
@@ -703,10 +990,37 @@ class ExplorerController(DummyController):
         a cut -> paste across different sources is a copy
         a copy -> paste is always a copy, even on the same source
         """
-        print("paste into",dir_path)
+        view = model.view
+        dir_path = view.pwd()
 
-    #def secondaryHidden(self):
-    #    return self.parent.ex_secondary.isHidden()
+        if not self.canPaste(dir_path):
+            return
+
+        if self.cut_items is not None:
+            job = self.createMoveJob()
+            job.finished.connect(model.onJobFinished)
+            self.submitJob.emit(job)
+            self.cut_items = None
+            self.cut_root = ""
+
+        elif self.copy_items is not None:
+            job = CopyJob(self.copy_view,self.copy_items,view,dir_path)
+            job.finished.connect(model.onJobFinished)
+            self.submitJob.emit(job)
+
+            self.copy_items = None
+            self.copy_root = ""
+
+    def createMoveJob(self,view):
+        if self.cut_view is not view:
+            job = CopyJob(self.cut_view,self.cut_items,view,dir_path)
+        else:
+            job = MoveJob(self.cut_view,self.cut_items,dir_path)
+        return job
+
+    def createCopyJob(self):
+        job = CopyJob(self.copy_view,self.copy_items,view,dir_path)
+        return job
 
 class ExplorerView(Tab):
     """docstring for ExplorerView"""
@@ -717,45 +1031,51 @@ class ExplorerView(Tab):
     primaryDirectoryChanged = pyqtSignal(str)
     secondaryDirectoryChanged = pyqtSignal(str)
 
+    submitJob = pyqtSignal(Job)
+
+
     def __init__(self, parent=None):
         super(ExplorerView, self).__init__(parent)
 
-        self.controller = ExplorerController( self )
+        self.controller = ExplorerController( )
 
         self.source = DirectorySource()
 
+        self.dashboard = Dashboard(self)
+
         self.ex_main = YueExplorerModel( None, self.controller, self )
         self.ex_secondary = YueExplorerModel( None, self.controller, self )
+        self.ex_secondary.btn_split.setIcon(QIcon(":/img/app_join.png"))
 
         self.ex_main.toggleSecondaryView.connect(self.onToggleSecondaryView)
+        self.ex_secondary.toggleSecondaryView.connect(self.onToggleSecondaryView)
 
         self.ex_main.directoryChanged.connect(self.primaryDirectoryChanged)
         self.ex_secondary.directoryChanged.connect(self.secondaryDirectoryChanged)
 
-        self.hbox = QHBoxLayout(self)
+        self.ex_main.showSplitButton(True)
+        self.ex_secondary.hide()
+
+        self.hbox = QHBoxLayout()
         self.hbox.setContentsMargins(0,0,0,0)
         self.hbox.addWidget(self.ex_main)
         self.hbox.addWidget(self.ex_secondary)
 
-        self.ex_main.showSplitButton()
-        self.ex_secondary.hide()
+        self.vbox = QVBoxLayout(self)
 
-        self.ex_main.do_ingest.connect(self.controller.showIngestDialog)
-        self.ex_secondary.do_ingest.connect(self.controller.showIngestDialog)
-
-        self.ex_main.do_move.connect(self.controller.showMoveFileDialog)
-        self.ex_secondary.do_move.connect(self.controller.showMoveFileDialog)
-
-        self.xcut_exec = QShortcut(QKeySequence("F5"), self)
-        self.xcut_exec.activated.connect(self.refresh)
+        self.vbox.addLayout(self.hbox)
+        self.vbox.addWidget(self.dashboard)
 
     def onEnter(self):
 
         # delay creating the views until the tab is entered for the first
         # time, this slightly improves startup performance
         if (self.ex_main.view is None):
-            view1 = SourceListView(self.source,self.source.root())
-            view2 = SourceListView(self.source,self.source.root())
+            view1 = LazySourceListView(self.source,self.source.root())
+            view2 = LazySourceListView(self.source,self.source.root())
+
+            view1.submitJob.connect(self.dashboard.startJob)
+            view2.submitJob.connect(self.dashboard.startJob)
 
             # this is a hack, source views are currently in flux
             view1.chdir(view1.pwd())
@@ -800,8 +1120,12 @@ class ExplorerView(Tab):
     def onToggleSecondaryView(self):
         if self.ex_secondary.isHidden():
             self.ex_secondary.show()
+            self.ex_main.showSplitButton(False)
+            self.ex_secondary.showSplitButton(True)
         else:
             self.ex_secondary.hide()
+            self.ex_main.showSplitButton(True)
+            self.ex_secondary.showSplitButton(False)
 
 def main():
     app = QApplication(sys.argv)
