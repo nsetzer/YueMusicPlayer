@@ -12,11 +12,15 @@
      <file>img/app_list.png</file>
      <file>img/app_newlist.png</file>
      <file>img/app_next.png</file>
+     <file>img/app_next_disabled.png</file>
      <file>img/app_note.png</file>
      <file>img/app_open.png</file>
      <file>img/app_play.png</file>
      <file>img/app_plus.png</file>
      <file>img/app_prev.png</file>
+     <file>img/app_prev_disabled.png</file>
+     <file>img/app_up.png</file>
+     <file>img/app_up_disabled.png</file>
      <file>img/app_save.png</file>
      <file>img/app_shortcut.png</file>
      <file>img/app_song.png</file>

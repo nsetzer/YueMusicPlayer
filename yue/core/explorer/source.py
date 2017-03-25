@@ -28,6 +28,13 @@ class DataSource(object):
         # override for filesystems that restrict charactersets
         return path
 
+    def equals(self,other):
+        """ return true if the given source/view matches this one
+        """
+        print(type(self))
+        print(type(other))
+        return isinstance(other,type(self))
+
     def islocal(self):
         """ return True if the source represents the local file system
 
@@ -288,6 +295,13 @@ class SourceView(object):
             return b+p[0]
         return b
 
+    def equals(self,other):
+        """ return true if the given source/view matches this one
+        """
+        if isinstance(other,SourceView):
+            other = other.source
+        return self.source.equals(other)
+
     def setShowHidden(self,b):
         self.show_hidden = b
 
@@ -354,6 +368,7 @@ class SourceView(object):
     def move(self,oldpath,newpath):
         oldpath = self.realpath(oldpath)
         newpath = self.realpath(newpath)
+
         return self.source.move(oldpath,newpath)
 
     def mkdir(self,path):
@@ -432,7 +447,6 @@ class SourceView(object):
     def fileSize_cached(self,name):
         return self.stat_fast(name)["size"]
 
-
 class SourceListView(SourceView):
 
     def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
@@ -453,8 +467,8 @@ class SourceListView(SourceView):
 
         data = self._sort(data) # and assignt to this instance
 
-        if self.path!=DirectorySource.dummy_path:
-            data.insert(0,"..")
+        #if self.path!=DirectorySource.dummy_path:
+        #    data.insert(0,"..")
 
         self.data = data
 
@@ -507,6 +521,22 @@ class SourceListView(SourceView):
             self.load()
             return True
         return False
+
+    def move(self,oldpath,newpath):
+        oldpath = self.realpath(oldpath)
+        newpath = self.realpath(newpath)
+
+        dir1,name1 = self.split(oldpath)
+        dir2,name2 = self.split(newpath)
+        print(dir1)
+        print(dir2)
+        print(self.path)
+        if (dir1==dir2 and dir1 == self.path):
+            for idx in range(len(self.data)):
+                name = self.data[idx]
+                if name == name1:
+                    self.data[idx]=name2
+        return self.source.move(oldpath,newpath)
 
     def __len__(self):
         return len(self.data)

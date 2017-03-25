@@ -54,6 +54,8 @@ class LargeTableCore(QWidget):
 
     scroll_horizontal = pyqtSignal('int') # emit whenever you want to scroll the window left (neg) or right (pos)
 
+    dragCompleted = pyqtSignal()
+
     def __init__(self,parent=None):
         if type(self) == LargeTableCore:
             raise RuntimeError("Cannot instantiate a LargeTableCore Class, use LargeTableBase or LargeTable instead")
@@ -1059,15 +1061,17 @@ class LargeTableCore(QWidget):
             delta = ( (self.mouse_pos_drag_start_x -mx)**2 + (self.mouse_pos_drag_start_y-my)**2 ) **.5
             if delta > 5: # 5 is an arbitrary small value
                 self.drag_start_enable = True;
-                mimeData = MimeData()
-                mimeData.setList(self.getSelection())
-                mimeData.setText(self.getSelectionString())
+                mimeData = self.selectionToMimeData()
                 drag = QDrag(self)
                 drag.setMimeData(mimeData)
-                if not isPython3:  #TODO check qt5
-                    drag.start()
-                else:
-                    drag.exec_()
+                drag.exec_()
+                self.dragCompleted.emit()
+
+    def selectionToMimeData(self):
+        mimeData = MimeData()
+        mimeData.setList(self.getSelection())
+        mimeData.setText(self.getSelectionString())
+        return mimeData
 
     def leaveEvent(self,event=None):
         self.mouse_resize_col_enable = False

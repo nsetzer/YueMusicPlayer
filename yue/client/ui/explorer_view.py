@@ -24,7 +24,8 @@ from yue.client.widgets.LineEdit import LineEdit
 from yue.client.widgets.FlatPushButton import FlatPushButton
 from yue.client.widgets.Tab import Tab
 from yue.client.widgets.explorer.jobs import Job, JobRunner, \
-    RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
+    RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, \
+    DropRequestJob, Dashboard, JobWidget
 from yue.core.util import format_date, format_bytes, format_mode
 from yue.core.song import Song
 from yue.core.search import ParseError
@@ -75,7 +76,7 @@ class LineEdit_Path(LineEdit):
 
     def keyReleaseEnter(self,text):
         self.table.scrollTo(0)
-        self.parent().chdir( self.text(), True )
+        self.parent().chdir( self.text() )
 
 class ResourceManager(object):
     """docstring for ResourceManager"""
@@ -161,23 +162,23 @@ class ExplorerFileTable(LargeTable):
         super(ExplorerFileTable,self).__init__(parent)
         self.view = view
 
-        self.position_stack = []
-
-        self.xcut_copy = QShortcut(QKeySequence("Ctrl+C"), self)
+        self.xcut_copy = QShortcut(QKeySequence(QKeySequence.Copy), self)
         self.xcut_copy.setContext(Qt.WidgetShortcut)
         self.xcut_copy.activated.connect(self.onShortcutCopy)
 
-        self.xcut_cut = QShortcut(QKeySequence("Ctrl+X"), self)
+        self.xcut_cut = QShortcut(QKeySequence(QKeySequence.Cut), self)
         self.xcut_cut.setContext(Qt.WidgetShortcut)
         self.xcut_cut.activated.connect(self.onShortcutCut)
 
-        self.xcut_paste = QShortcut(QKeySequence("Ctrl+V"), self)
+        self.xcut_paste = QShortcut(QKeySequence(QKeySequence.Paste), self)
         self.xcut_paste.setContext(Qt.WidgetShortcut)
         self.xcut_paste.activated.connect(self.onShortcutPaste)
 
-        self.xcut_refresh = QShortcut(QKeySequence("F5"), self)
+        self.xcut_refresh = QShortcut(QKeySequence(QKeySequence.Refresh), self)
+        self.xcut_refresh.setContext(Qt.WidgetShortcut)
         self.xcut_refresh.activated.connect(self.onShortcutRefresh)
 
+        self.dragCompleted.connect(self.onShortcutRefresh)
 
     def initColumns(self):
 
@@ -232,7 +233,7 @@ class ExplorerFileTable(LargeTable):
         self.parent().controller.action_paste( self.parent() )
 
     def onShortcutRefresh(self):
-
+        print("do refresh")
         self.parent().refresh()
 
     def sortColumn(self,col_index):
@@ -240,6 +241,83 @@ class ExplorerFileTable(LargeTable):
         # TODO: this api needs to be refactored somehow
         reverse=self.view.sort(self.columns[col_index].index,True)
         self.setSortColumn(col_index,-1 if reverse else 1)
+
+    def selectionToMimeData(self):
+        """
+        return an instance of mimedata representing the current selection
+        used when a drag is initiated from this
+        """
+        mimeData = MimeData()
+        view = self.parent().view
+        mimeData.setView(view)
+        paths = []
+
+        for row in self.selection:
+            name = view[row]['name']
+            path = view.realpath(name)
+            paths.append(path)
+
+        if view.islocal():
+            urls = [ QUrl.fromLocalFile(path) for path in paths ]
+            mimeData.setUrls(urls)
+        else:
+            mimeData.setText('\n'.join(paths))
+
+        return mimeData
+
+    def dragEnterEvent(self, event):
+
+        print("==",self.parent().view.name())
+        for f in event.mimeData().formats():
+            print("\t",f)
+            #print(event.mimeData().data(f))
+
+        if event.mimeData().hasUrls():
+            if event.source() is self:
+                event.ignore()
+                return
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            if event.source() is self:
+                event.ignore()
+                return
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+
+        if event.mimeData().hasUrls():
+
+            if event.source() is self:
+                event.ignore()
+                return
+
+            urls = event.mimeData().urls()
+            event.accept()
+
+            src_view = None
+            if event.mimeData().hasView():
+                src_view = event.mimeData().view()
+
+                if src_view.equals(self.parent().view) and \
+                    src_view.pwd() == self.parent().view.pwd():
+                    print("err drop same")
+                    return
+
+            # this might be  hack
+            src = None
+            if isinstance(event.source(),ExplorerFileTable):
+                src = event.source().parent()
+
+            self.parent().dropEvent( src, src_view, urls )
+
+        else:
+            event.ignore()
 
     def action_edit_column(self, row, col):
         opts = self.columns[col].get_default_opts(row)
@@ -255,7 +333,9 @@ class ExplorerFileTable(LargeTable):
         # directory, and not the parent directory.
         if event is not None:
             if event.button()==Qt.XButton1:
-                self.open_parent_directory()
+                self.parent().chdir_prev()
+            elif event.button()==Qt.XButton2:
+                self.parent().chdir_next()
             else:
                 print(event.button())
 
@@ -264,21 +344,11 @@ class ExplorerFileTable(LargeTable):
         if event is None or event.button() == Qt.LeftButton:
             if 0<= row < len(self.view):
                 item = self.view[row]
-                if item['name'] == '..':
-                    self.open_parent_directory()
-                elif item['isDir']:
-                    self.position_stack.append(row)
+                if item['isDir']:
                     self.open_child_directory(item)
                 else:
                     # TODO this needs an abstraction
                     self.parent().action_open_file( item )
-
-    def open_parent_directory(self):
-        self.parent().chdir( self.view.parent(self.view.pwd()) )
-        if self.position_stack:
-            idx = self.position_stack.pop()
-            self.scrollTo( idx )
-            self.setSelection([idx,])
 
     def open_child_directory(self,item):
         self.scrollTo( 0 )
@@ -303,6 +373,39 @@ class ExplorerFileTable(LargeTable):
 
     def _onCreateDirectory(self,name):
         self.createDirectory.emit(name)
+
+class MimeData(QMimeData):
+    custom_data = {}    # dictionary which houses the mimetype=>data
+    custom_types= ["data/x-view",] # list of supported types
+
+    def retrieveData(self,mimetype,prefered):
+        if mimetype in self.custom_types:
+            return self.custom_data.get(mimetype,None);
+        else:
+            return super(MimeData,self).retrieveData(mimetype,prefered)
+
+    def hasFormat (self, mimetype):
+        if mimetype in self.custom_types:
+            return mimetype in self.custom_data
+        else:
+            return super(MimeData,self).hasFormat(mimetype)
+
+    def formats(self):
+        f = super(MimeData,self).formats()
+        for key in self.custom_data.keys():
+            f.append(key)
+        return f
+
+    def setView(self,view):
+        self.custom_data['data/x-view'] = view
+
+    def hasView(self):
+        return 'data/x-view' in self.custom_data
+
+    def view(self):
+        return self.custom_data['data/x-view']
+
+
 
 class EditTextColumn(EditColumn,QObject):
     # register a signal to update exif data when editing is done,.
@@ -364,7 +467,8 @@ class EditTextColumn(EditColumn,QObject):
         if len(rows) == 1:
             row = list(rows)[0]
             src_name = self.parent.data[row][self.index]
-            jobs.append( (src_name,new_value) )
+            if src_name != new_value:
+                jobs.append( (src_name,new_value) )
         else:
             # TODO: need to use the view for this....
             # renaming multiple files to the same name is bad mmkay
@@ -373,11 +477,13 @@ class EditTextColumn(EditColumn,QObject):
             for idx,row in enumerate(rows):
                 src_name = self.parent.data[row][self.index]
                 tgt_name = "%s (%d)%s"%(base_name,idx+1,ext)
-                jobs.append( (src_name,tgt_name) )
+                if src_name != tgt_name:
+                    jobs.append( (src_name,tgt_name) )
 
         # jobs contains a old_name.-> new_name map
         # that a view could act on to move files
-        self.commitText.emit(jobs)
+        if len(jobs) > 0:
+            self.commitText.emit(jobs)
 
     def editing_create_file_finished(self,rows,new_value):
         self.createFile.emit(new_value)
@@ -416,12 +522,50 @@ class ExplorerModel(QWidget):
         self.btn_split.clicked.connect( self.on_splitButton_clicked )
 
         self.btn_prev = QToolButton(self)
-        self.btn_prev.setIcon(QIcon(":/img/app_prev.png"))
         self.btn_prev.clicked.connect( self.chdir_prev )
+        self.btn_prev.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_prev.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_prev_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
         self.btn_next = QToolButton(self)
-        self.btn_next.setIcon(QIcon(":/img/app_next.png"))
         self.btn_next.clicked.connect( self.chdir_next )
+        self.btn_next.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_next.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_next_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
 
+        self.btn_parent = QToolButton(self)
+        self.btn_parent.clicked.connect( self.chdir_parent )
+        self.btn_parent.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_up.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_up_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
+
+        self.hbox.addWidget(self.btn_parent)
         self.hbox.addWidget(self.btn_prev)
         self.hbox.addWidget(self.btn_next)
         self.hbox.addWidget(self.txt_path)
@@ -436,6 +580,9 @@ class ExplorerModel(QWidget):
         #self.txt_path.setText(self.view.pwd())
 
         self.slow_data_history = {}
+
+        # this is set to a name that should be selected after a load completes
+        self.chdir_on_load_select = None
 
     def _getNewFileTable(self,view):
         tbl =  ExplorerFileTable(view,self)
@@ -466,19 +613,12 @@ class ExplorerModel(QWidget):
         self.directory_history = []
         self.directory_history_index = 0
 
-    def chdir(self,path, clear_stack=False, push=True):
+    def chdir(self,path):
+        return self._chdir(path,True)
 
-        self._chdir(path,clear_stack,push)
-
-        self.btn_next.setHidden(self.directory_history_index == 0)
-        self.btn_prev.setHidden(self.directory_history_index == len(self.directory_history)-1)
-
-        self.txt_path.setText(self.view.pwd())
-        self.tbl_file.update()
-        self.tbl_file.scrollTo(0)
-
-    def _chdir(self,path,clear_stack,push):
+    def _chdir(self,path,push):
         pwd = self.view.pwd()
+        success = False
         try:
 
             self.view.chdir(path)
@@ -496,12 +636,11 @@ class ExplorerModel(QWidget):
                     path != self.directory_history[-1]:
                     self.directory_history.append(self.view.pwd())
 
-            if clear_stack:
-                self.tbl_file.position_stack=[]
-
             self.directoryChanged.emit(self.view.pwd())
 
             self.slow_data_history = {}
+
+            success = True
 
         except OSError as e:
             sys.stderr.write(str(e))
@@ -509,28 +648,50 @@ class ExplorerModel(QWidget):
             s='->'.join([s[2] for s in traceback.extract_stack()])
             print("_chdir OS error:",path,name)
             print(s)
-            # reopen the original current directory.
-            #self.view.chdir( pwd )
+
+        self.btn_next.setDisabled(self.directory_history_index == 0)
+        self.btn_prev.setDisabled(self.directory_history_index == len(self.directory_history)-1)
+
+        self.txt_path.setText(self.view.pwd())
+        self.tbl_file.update()
+        self.tbl_file.scrollTo(0)
+
+        return success
 
     def chdir_prev(self):
-        print(self.directory_history_index,self.directory_history)
-
         if self.directory_history_index < len(self.directory_history):
             self.directory_history_index += 1
             index = len(self.directory_history) - self.directory_history_index - 1
             if 0<=index<len(self.directory_history):
                 path = self.directory_history[index]
-                self.chdir(path,True,False)
+                self._chdir(path,False)
 
     def chdir_next(self):
-        print(self.directory_history_index,self.directory_history)
-
         if self.directory_history_index > 0:
             self.directory_history_index -= 1
             index = len(self.directory_history) - self.directory_history_index - 1
             if 0<=index<len(self.directory_history):
                 path = self.directory_history[index]
-                self.chdir(path,True,False)
+                self._chdir(path,False)
+
+    def chdir_parent(self):
+        # change to the parent directory then select
+        # this directory in the file listing
+        cwd = self.view.pwd()
+        _,cwn = self.view.split(cwd)
+        path=self.view.parent(self.view.pwd())
+        self._chdir(path,True)
+
+        self.chdir_on_load_select = cwn
+
+    def dropEvent(self,model,src_view,urls):
+        # model and src_view can be none if drop comes from outside
+        # the application
+        job=DropRequestJob(src_view,urls,self.view,self.view.pwd())
+        job.finished.connect(self.action_refresh)
+        if model:
+            job.finished.connect(model.action_refresh)
+        self.controller.submitJob.emit(job)
 
     def getSlowData(self,item,field):
         #cache slow data for pwd to prevent hitting the disk
@@ -566,7 +727,6 @@ class ExplorerModel(QWidget):
         cmdstr = Settings.instance()['cmd_open_native']
         os.system(cmdstr%path)
 
-
     def action_open_file(self, path):
         pass
 
@@ -586,9 +746,16 @@ class ExplorerModel(QWidget):
 
     def action_rename(self,jobs):
 
+        # a move on a SourceListView updates in place, requiring
+        # only to repaint the table.
+        # reunning the job in this thread enables editing multiple
+        # files by using the arrow keys
         job = RenameJob(self.view,jobs)
-        job.finished.connect(self.onJobFinished)
-        self.submitJob.emit(job)
+        job.doTask()
+
+        self.tbl_file.update()
+        #job.finished.connect(self.onJobFinished)
+        #self.submitJob.emit(job)
 
     def action_touch_begin(self):
         self.action_create(1)
@@ -642,18 +809,11 @@ class ExplorerModel(QWidget):
         path = self.view.realpath(item['name'])
         QApplication.instance().clipboard().setText(path)
 
-    def action_cut(self, items):
-        cut_items =  [ self.view.realpath(item['name']) for item in items ]
-        self.controller.action_cut(self.view,cut_items)
-
-    def action_copy(self, items):
-        copy_items =  [ self.view.realpath(item['name']) for item in items ]
-        self.controller.action_copy(self.view,copy_items)
-
     def action_paste(self):
         self.controller.action_paste(self.view,self.view.pwd())
 
     def action_refresh(self):
+
         self.chdir( self.view.pwd() )
         self.tbl_file.scrollTo(0)
         self.tbl_file.setSelection([])
@@ -695,7 +855,12 @@ class ExplorerModel(QWidget):
         self.view.data = data
         self.tbl_file.setData(self.view)
         # -1 for ".."
-        self.infoNumFiles.emit(len(data)-1)
+        self.infoNumFiles.emit(len(data))
+
+        if self.chdir_on_load_select:
+            index = self.view.index(self.chdir_on_load_select)
+            self.tbl_file.setSelection({index,})
+            self.chdir_on_load_select = None
 
 class LazySourceListView(SourceListView,QObject):
     """docstring for LazySourceListView"""
@@ -731,20 +896,6 @@ class YueExplorerModel(ExplorerModel):
     def supportedExtension(self,ext):
         return ext in Song.supportedExtensions()
 
-    def chdir(self,path, clear_stack=False, push = True):
-        self._chdir(path,clear_stack,push)
-
-        self.btn_next.setHidden(self.directory_history_index == 0)
-        self.btn_prev.setHidden(self.directory_history_index == len(self.directory_history)-1)
-
-        songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
-                                       for song in songs )
-
-        self.txt_path.setText(self.view.pwd())
-        self.tbl_file.update()
-        self.tbl_file.scrollTo(0)
-
     def item2img(self,item):
 
         l = ResourceManager.LINK if item['isLink'] else 0
@@ -753,6 +904,13 @@ class YueExplorerModel(ExplorerModel):
 
         _,ext = self.view.splitext(item['name'])
         return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
+
+    def onLoadComplete(self,data):
+        super().onLoadComplete(data)
+
+        songs = Library.instance().searchDirectory(self.view.pwd(),False)
+        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
+                                       for song in songs )
 
 class ExplorerDialog(QDialog):
     # display an explorer model inside a popup dialog
@@ -833,9 +991,9 @@ class ExplorerController(DummyController):
             if items[0]['name'] != "..":
                 ctxtmenu.addAction("Edit Link")
 
-        act=ctxtmenu.addAction("Copy", lambda : model.action_copy( items ))
+        act=ctxtmenu.addAction("Copy", lambda : self.action_copy( model, items ))
         act.setShortcut(QKeySequence("Ctrl+C"))
-        act=ctxtmenu.addAction("Cut", lambda : model.action_cut( items ))
+        act=ctxtmenu.addAction("Cut", lambda : self.action_cut( model, items ))
         act.setShortcut(QKeySequence("Ctrl+X"))
         if not model.view.readonly():
             act = ctxtmenu.addAction("Paste", lambda : self.action_paste(model))
@@ -957,16 +1115,19 @@ class ExplorerController(DummyController):
         job.finished.connect(model.onJobFinished)
         self.submitJob.emit(job)
 
-    def action_cut(self,view,fpaths):
+    def action_cut(self, model, items):
         """
         view : a wrapper around the source for paths in fpaths
         fpaths: list of absolute paths
         """
-        self.cut_items = fpaths
+        view = model.view
+        cut_items =  [ view.realpath(item['name']) for item in items ]
+
+        self.cut_items = cut_items
         self.cut_root = view.pwd()
         self.cut_view = view
 
-    def action_copy(self,view,fpaths):
+    def action_copy(self, model, items):
         """
         todo, there is an internal and external expectation for copy
             Allow copy within Yue by storing meta data (source, list)
@@ -975,7 +1136,10 @@ class ExplorerController(DummyController):
         mimeData->setData("text/uri-list", "file:///C:/fileToCopy.txt");
         clipboard->setMimeData(mimeData);
         """
-        self.copy_items = fpaths
+        view = model.view
+        copy_items =  [ view.realpath(item['name']) for item in items ]
+
+        self.copy_items = copy_items
         self.copy_root = view.pwd()
         self.copy_view = view
 
@@ -1090,7 +1254,7 @@ class ExplorerView(Tab):
         # if that happens run the onEnter first time setup.
         self.onEnter()
 
-        self.ex_main.chdir(path,True)
+        self.ex_main.chdir(path)
 
         print("expview chdir",path)
 

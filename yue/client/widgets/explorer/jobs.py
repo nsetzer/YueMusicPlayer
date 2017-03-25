@@ -251,6 +251,7 @@ class MoveJob(Job):
         self.src_paths = src_paths
         self.dst_path = dst_path
 
+
     def doTask(self):
         for i,path in enumerate(self.src_paths):
 
@@ -266,6 +267,61 @@ class MoveJob(Job):
         """ this could be reimplented, say to update a database? """
 
         self.view.move(src_path,dst_path)
+
+
+
+class DropRequestJob(Job):
+    def __init__(self, src_view, urls, dst_view, dst_path):
+        """ args as list of 2-tuple (src,tgt)
+
+        rename the set of files in the cwd.
+        """
+        super(DropRequestJob, self).__init__()
+
+        if src_view is None:
+            src_view = DirectorySource()
+
+        self.src_view = src_view
+        self.src_urls = urls
+        self.dst_view = dst_view
+        self.dst_path = dst_path
+
+        self.chunksize = 1024*32
+
+    def doTask(self):
+
+
+        print(self.src_view)
+        print(self.src_urls)
+
+        paths = []
+        for url in self.src_urls:
+            if url.isLocalFile():
+                paths.append( url.toLocalFile() )
+
+        print(paths)
+
+        for i,path in enumerate(paths):
+
+            name = self.src_view.split(path)[1]
+            dst_path = self.src_view.join(self.dst_path,name)
+            dst_path = generateUniquePath(self.src_view,dst_path)
+
+            self.move_one(path,dst_path)
+
+            self.setProgress(100*(i+1)/len(paths))
+
+
+    def move_one(self,src_path,dst_path):
+        """ this could be reimplented, say to update a database? """
+
+        if self.src_view.equals(self.dst_view):
+            self.dst_view.move(src_path,dst_path)
+        else:
+            source_copy(self.src_view,src_path, \
+                        self.dst_view,dst_path,self.chunksize)
+
+
 
 class DeleteJob(Job):
     """docstring for RenameJob"""
@@ -302,10 +358,15 @@ class DeleteJob(Job):
 
 class LoadDirectoryJob(Job):
     """docstring for LoadDirectoryJob"""
+
+    loadComplete = pyqtSignal(list)
+
     def __init__(self, model):
         super(LoadDirectoryJob, self).__init__()
         self.model = model
         self.view = model.view
+
+        self.loadComplete.connect(self.model.onLoadComplete)
 
     def doTask(self):
 
@@ -319,16 +380,15 @@ class LoadDirectoryJob(Job):
 
             data = self.view._sort(data) # and assignt to this instance
 
-            if self.view.path != self.view.root():
-                data.insert(0,"..")
+            #if self.view.path != self.view.root():
+            #    data.insert(0,"..")
 
         except OSError as e:
             data = []
             self.getInput("Access Error",str(e), ["Ok"])
 
-        self.model.onLoadComplete(data)
 
-
+        self.loadComplete.emit(data)
 
 class Dashboard(QWidget):
     """the Dashboard is where long running jobs are displayed
