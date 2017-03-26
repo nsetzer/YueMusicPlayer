@@ -472,7 +472,7 @@ class SourceListView(SourceView):
 
         self.data = data
 
-    def _sort(self,data,column_name=None):
+    def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
 
         # TODO: sort has a massive performance penalty
@@ -480,9 +480,13 @@ class SourceListView(SourceView):
         # would not require a full stat.
         # or, if only sorting by name, we can avoid the stat_fast probably.\
 
-        data = [self.stat(name) for name in data]
-
         col_name=self.sort_column_name
+
+        if col_name in {"name","size"}:
+            data = [self.stat_fast(name) for name in data]
+        else:
+            data = [self.stat(name) for name in data]
+
 
         if self.dirsOnly :
             data = natsort.natsorted(filter( lambda x : x['isDir'], data),
@@ -512,6 +516,7 @@ class SourceListView(SourceView):
             self.sort_reverse = False
 
         self.sort_column_name = column_name
+        print(self.sort_column_name,self.sort_reverse)
         self.data = self._sort(self.data)
 
         return self.sort_reverse

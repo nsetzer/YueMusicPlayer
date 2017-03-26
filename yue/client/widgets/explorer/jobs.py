@@ -198,7 +198,8 @@ class CopyJob(Job):
 
         print(self.tot_size,self.num_files)
 
-        self.getInput("title",format_bytes(self.tot_size))
+        if self.tot_size > 10*1024:
+            self.getInput("title",format_bytes(self.tot_size),["ok","cancel"])
 
         nfiles = 0
         for src_path,dst_path in iter_copy(self.src_view,self.src_paths,

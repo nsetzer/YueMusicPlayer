@@ -772,11 +772,11 @@ class LargeTableCore(QWidget):
         self.mouse_enable_autoscroll_hor = False
 
         #TODO: 3/22/2017 questionable change
+        #TODO: this is needed for proper painting ...
         # on OSX, this is triggered prior to a mouse release event
         # reseting the header hover index and focing an extra update
         #if self.mouse_col_header_hover_index != -1 or cell_capture:
         #    self.mouse_col_header_hover_index = -1
-        #    print("LARGETABLE set (move):",self.mouse_col_header_hover_index)
         #    self.update()
 
         self.setCursor(Qt.ArrowCursor)
@@ -976,7 +976,6 @@ class LargeTableCore(QWidget):
                     #checkt that the mouse is hovering over resize grips
                     if mx > _x-self.tolerance_grips and mx < _x+self.tolerance_grips:
                         flag = True
-                #print("LARGTABLE release left ++",not flag)
                 if not flag: #user clicked within a column header
                     self.column_header_sort_request.emit(self.mouse_col_header_hover_index)
                 #self.setSortColumn(self.mouse_col_header_hover_index)
@@ -2575,6 +2574,7 @@ class LargeTable(LargeTableBase):
             setSortColumn will automatically manage the arrow indicator, for the
             selected column, toggling when needing, or changing to a new column
         """
+        print("sort")
         dir = self.setSortColumn(col_index)
 
         index = self.columns[col_index].index   # col_index is the index of the column clicked,

@@ -233,12 +233,9 @@ class ExplorerFileTable(LargeTable):
         self.parent().controller.action_paste( self.parent() )
 
     def onShortcutRefresh(self):
-        print("do refresh")
         self.parent().refresh()
 
     def sortColumn(self,col_index):
-
-        # TODO: this api needs to be refactored somehow
         reverse=self.view.sort(self.columns[col_index].index,True)
         self.setSortColumn(col_index,-1 if reverse else 1)
 
@@ -354,9 +351,6 @@ class ExplorerFileTable(LargeTable):
         self.scrollTo( 0 )
         self.parent().chdir( item['name'] )
         self.setSelection([])
-
-    def sortColumn(self,*args):
-        pass
 
     def item2img(self,item):
         return self.parent().item2img( item )
@@ -498,6 +492,10 @@ class ExplorerModel(QWidget):
 
     toggleSecondaryView = pyqtSignal()
 
+    submitJob = pyqtSignal(Job)
+
+    infoNumFiles = pyqtSignal(int)
+
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
 
@@ -586,9 +584,9 @@ class ExplorerModel(QWidget):
 
     def _getNewFileTable(self,view):
         tbl =  ExplorerFileTable(view,self)
-        tbl.showColumnHeader( False )
+        tbl.showColumnHeader( True )
         tbl.showRowHeader( False )
-        tbl.setLastColumnExpanding( True )
+        tbl.setLastColumnExpanding( False )
 
         tbl.renamePaths.connect(self.action_rename)
         tbl.createFile.connect(self.action_touch)
@@ -860,6 +858,7 @@ class ExplorerModel(QWidget):
         if self.chdir_on_load_select:
             index = self.view.index(self.chdir_on_load_select)
             self.tbl_file.setSelection({index,})
+            self.tbl_file.scrollTo(index)
             self.chdir_on_load_select = None
 
 class LazySourceListView(SourceListView,QObject):
@@ -1018,9 +1017,7 @@ class ExplorerController(DummyController):
                 lambda : model.action_copy_path(items[0]))
             ctxtmenu.addSeparator()
 
-        if model.view.islocal():
-            ctxtmenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
-            ctxtmenu.addAction("Open in Terminal",model.action_open_term)
+
 
     def contextMenu(self, event, model, items):
 
@@ -1029,6 +1026,10 @@ class ExplorerController(DummyController):
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
         ctxtmenu.addSeparator()
         self._ctxtMenu_addFileOperations2(ctxtmenu,model,items)
+
+        if model.view.islocal():
+            ctxtmenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open)
+
 
         action = ctxtmenu.exec_( event.globalPos() )
 
@@ -1126,6 +1127,7 @@ class ExplorerController(DummyController):
         self.cut_items = cut_items
         self.cut_root = view.pwd()
         self.cut_view = view
+        self.cut_model = model
 
     def action_copy(self, model, items):
         """
@@ -1142,6 +1144,7 @@ class ExplorerController(DummyController):
         self.copy_items = copy_items
         self.copy_root = view.pwd()
         self.copy_view = view
+        self.copy_model = model
 
     def action_paste(self, model):
         """
@@ -1161,28 +1164,33 @@ class ExplorerController(DummyController):
             return
 
         if self.cut_items is not None:
-            job = self.createMoveJob()
+            job = self.createMoveJob(view,dir_path)
             job.finished.connect(model.onJobFinished)
+            if self.cut_model is not model:
+                print("woop")
+                job.finished.connect(self.cut_model.onJobFinished)
             self.submitJob.emit(job)
             self.cut_items = None
             self.cut_root = ""
 
         elif self.copy_items is not None:
-            job = CopyJob(self.copy_view,self.copy_items,view,dir_path)
+            job = self.createCopyJob(view,dir_path)
             job.finished.connect(model.onJobFinished)
+            if self.copy_model is not model:
+                job.finished.connect(self.cut_model.onJobFinished)
             self.submitJob.emit(job)
 
             self.copy_items = None
             self.copy_root = ""
 
-    def createMoveJob(self,view):
-        if self.cut_view is not view:
+    def createMoveJob(self,view,dir_path):
+        if not self.cut_view.equals(view):
             job = CopyJob(self.cut_view,self.cut_items,view,dir_path)
         else:
             job = MoveJob(self.cut_view,self.cut_items,dir_path)
         return job
 
-    def createCopyJob(self):
+    def createCopyJob(self,view,dir_path):
         job = CopyJob(self.copy_view,self.copy_items,view,dir_path)
         return job
 
@@ -1226,6 +1234,7 @@ class ExplorerView(Tab):
         self.hbox.addWidget(self.ex_secondary)
 
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.vbox.addLayout(self.hbox)
         self.vbox.addWidget(self.dashboard)
@@ -1234,19 +1243,28 @@ class ExplorerView(Tab):
 
         # delay creating the views until the tab is entered for the first
         # time, this slightly improves startup performance
+        print("on enter yue",self.ex_main.view)
         if (self.ex_main.view is None):
             view1 = LazySourceListView(self.source,self.source.root())
             view2 = LazySourceListView(self.source,self.source.root())
-
-            view1.submitJob.connect(self.dashboard.startJob)
-            view2.submitJob.connect(self.dashboard.startJob)
 
             # this is a hack, source views are currently in flux
             view1.chdir(view1.pwd())
             view2.chdir(view2.pwd())
 
+            view1.loadDirectory.connect(lambda : self.onLazyLoadDirectory(self.ex_main))
+            view2.loadDirectory.connect(lambda : self.onLazyLoadDirectory(self.ex_secondary))
+
             self.ex_main.setView(view1)
             self.ex_secondary.setView(view2)
+
+            self.ex_main.submitJob.connect(self.dashboard.startJob)
+            self.ex_secondary.submitJob.connect(self.dashboard.startJob)
+            self.controller.submitJob.connect(self.dashboard.startJob)
+
+            print("chdir")
+            self.ex_main.chdir("C:\\Users\\Nick\\Documents\\playground")
+            self.ex_secondary.chdir("~")
 
     def chdir(self, path):
 
@@ -1257,6 +1275,12 @@ class ExplorerView(Tab):
         self.ex_main.chdir(path)
 
         print("expview chdir",path)
+
+    def onLazyLoadDirectory(self,model):
+
+        print("on lazy load")
+        job = LoadDirectoryJob(model)
+        self.dashboard.startJob(job)
 
     def refresh(self):
         print(self.ex_main.view.pwd())
