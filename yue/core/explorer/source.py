@@ -138,12 +138,22 @@ class DataSource(object):
         if typ is None:
             self.close()
 
+def pretty_trace():
+    s='->'.join([s[2] for s in traceback.extract_stack()])
+    print(s)
+
 def has_hidden_attribute(filepath):
     try:
         attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
-        assert attrs != -1
-        result = bool(attrs & 2)
-    except (AttributeError, AssertionError):
+
+        if attrs != -1:
+            result = bool(attrs & 2)
+        else:
+            result = False
+    except AttributeError as e:
+        print(e)
+        result = False
+    except AssertionError as e:
         result = False
     return result
 
@@ -249,10 +259,9 @@ class DirectorySource(DataSource):
                 "size"  : st.st_size,
                 "mode"  : stat.S_IMODE(st.st_mode)
             }
-            if sys.platform == "win32":
+            if sys.platform == "win32" and path[1:] != ":\\":
                 if has_hidden_attribute(path):
                     result['isHidden'] = True
-
         else:
             result = {
                 "isDir" : False,
@@ -411,7 +420,8 @@ class SourceView(object):
         if not name:
             name=path # root directory
 
-        if dir == self.path:
+        if (self.path == DirectorySource.dummy_path and dir==name) or \
+            dir == self.path:
 
             if name not in self.statcache or \
                 'mtime' not in self.statcache[name]:
@@ -531,7 +541,14 @@ class SourceListView(SourceView):
 
         self.sort_column_name = column_name
         print(self.sort_column_name,self.sort_reverse)
-        self.data = self._sort(self.data)
+
+        if self.sort_column_name in {"name","size"}:
+            items = [self.stat_fast(name) for name in self.data]
+        else:
+            items = [self.stat(name) for name in self.data]
+
+        items = self._sort(items)
+        self.data = [ x['name'] for x in items ]
 
         return self.sort_reverse
 
@@ -575,8 +592,7 @@ class SourceListView(SourceView):
             name = self.data[idx]
             if not name:
                 raise Exception("empty file name in directory")
-            st = self.stat_fast( name )
-            return st
+            return self.stat_fast( name )
 
     # new and index are hacks enabling editing names for
     # items which do not exist, is there a betterway?
