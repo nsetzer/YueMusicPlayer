@@ -260,7 +260,6 @@ class SongTable(LargeTable):
     #    for row in rows:
     #        self.modify_song.emit(self.data[row])
 
-
 class TableColumn_Rating(TableColumn):
     """
         A custom table column for displaying the current rating

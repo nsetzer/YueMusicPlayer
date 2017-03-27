@@ -1,4 +1,5 @@
 
+import os,sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -374,15 +375,25 @@ class LoadDirectoryJob(Job):
         try:
             data = self.view.source.listdir(self.view.path)
 
-            if self.view.show_hidden:
-                data =  [ x for x in data ]
-            else:
+            if not self.view.show_hidden:
                 data =  [ x for x in data if not self.view.source.hidden(x) ]
 
-            data = self.view._sort(data) # and assignt to this instance
+            st = self.view.stat
+            if self.view.sort_column_name in {"name","size"}:
+                st = self.view.stat_fast
 
-            #if self.view.path != self.view.root():
-            #    data.insert(0,"..")
+            # stat all the files, emit progress for slow directories
+            items = []
+            for idx,name in enumerate(data):
+                self.setProgress( int(100*(idx+1)/len(data)) )
+                items.append(st(name))
+            # on windows, stat uncovers additional hidden resources
+            if sys.platform == "win32" and not self.view.show_hidden:
+                items = [ x for x in items if "isHidden" not in x]
+
+            items = self.view._sort(items)
+
+            data = [ x['name'] for x in items ]
 
         except OSError as e:
             data = []
@@ -436,10 +447,20 @@ class JobWidget(QWidget):
         self.pbar = QProgressBar(self)
         self.job.progressChanged.connect(self.setProgress)
 
+        # delay showing this widget
+        # quick jobs will not appear in the gui
+        self.timer_show = QTimer(self)
+        self.timer_show.setSingleShot(True)
+        self.timer_show.setInterval(500)
+        self.timer_show.timeout.connect(self.onShowTimerEnd)
+
+        # delay hiding the result from the job.
+        # if the job ran long enough to be shown
+        # we want to see what it did.
         self.timer_delete = QTimer(self)
         self.timer_delete.setSingleShot(True)
         self.timer_delete.setInterval(2000)
-        self.timer_delete.timeout.connect(self.onTimerEnd)
+        self.timer_delete.timeout.connect(self.onDeleteTimerEnd)
 
         self.job.finished.connect(self.onJobFinished)
 
@@ -447,18 +468,22 @@ class JobWidget(QWidget):
         self.hbox.addWidget(self.label)
         self.hbox.addWidget(self.pbar)
 
+        self.setVisible(False)
+        self.timer_show.start()
+
     def setProgress(self,iValue):
-        print(iValue)
         self.pbar.setValue(iValue)
 
     def onJobFinished(self):
         if isinstance(self.job,LoadDirectoryJob):
             self.deleteJob.emit(self)
+        elif self.isHidden():
+            self.timer_show.stop()
         else:
-            print("start timer")
             self.timer_delete.start()
 
-    def onTimerEnd(self):
-        print("delete job (timer)")
+    def onShowTimerEnd(self):
+        self.setVisible(True)
 
+    def onDeleteTimerEnd(self):
         self.deleteJob.emit(self)

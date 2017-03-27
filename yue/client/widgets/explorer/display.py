@@ -1,0 +1,414 @@
+
+
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
+import traceback
+
+from yue.client.widgets.LineEdit import LineEdit
+
+from yue.core.util import format_date, format_bytes, format_mode
+
+from yue.client.widgets.explorer.filetable import ResourceManager
+from yue.client.widgets.explorer.jobs import Job, \
+    RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
+
+class LineEdit_Path(LineEdit):
+
+    def __init__(self,parent,table):
+        super(LineEdit_Path,self).__init__(parent)
+        self.table = table
+
+    def keyReleaseEvent(self,event=None):
+        super(LineEdit_Path,self).keyReleaseEvent(event)
+        if event.key() == Qt.Key_Down:
+            self.table.clearSelection( )
+            self.table.setSelection( [0,] )
+            self.table.update(0)
+            self.table.setFocus()
+
+    def keyReleaseEnter(self,text):
+        self.table.scrollTo(0)
+        self.parent().chdir( self.text() )
+
+class ExplorerModel(QWidget):
+    """docstring for MainWindow"""
+
+    # TODO: ExplorerModel should be renamed "ExplorerDisplayBase"
+    # an ExplorerDisplayBase combines the source/view (model) of the directory
+    # with a set of qt widgets (view on the model)
+
+    directoryChanged = pyqtSignal(str)
+
+    toggleSecondaryView = pyqtSignal()
+
+    submitJob = pyqtSignal(Job)
+
+    infoNumFiles = pyqtSignal(int)
+
+    def __init__(self, view, controller, parent=None):
+        super(ExplorerModel, self).__init__(parent)
+
+        self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
+
+        self.hbox = QHBoxLayout()
+        self.hbox.setContentsMargins(0,0,0,0)
+
+        self.view = view
+        self.controller = controller
+
+        self.tbl_file = self._getNewFileTable(view)
+
+        self.txt_path = LineEdit_Path(self,self.tbl_file)
+        self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
+        #self.txt_path.textEdited.connect(self.onTextChanged)
+
+        self.btn_split = QToolButton(self)
+        self.btn_split.setIcon(QIcon(":/img/app_split.png"))
+        self.btn_split.setHidden(True)
+        self.btn_split.clicked.connect( self.on_splitButton_clicked )
+
+        self.btn_prev = QToolButton(self)
+        self.btn_prev.clicked.connect( self.chdir_prev )
+        self.btn_prev.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_prev.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_prev_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
+        self.btn_next = QToolButton(self)
+        self.btn_next.clicked.connect( self.chdir_next )
+        self.btn_next.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_next.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_next_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
+
+        self.btn_parent = QToolButton(self)
+        self.btn_parent.clicked.connect( self.chdir_parent )
+        self.btn_parent.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_up.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            QToolButton::disabled {
+                background:url(":/img/app_up_disabled.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
+
+        self.hbox.addWidget(self.btn_parent)
+        self.hbox.addWidget(self.btn_prev)
+        self.hbox.addWidget(self.btn_next)
+        self.hbox.addWidget(self.txt_path)
+        self.hbox.addWidget(self.btn_split)
+        self.vbox.addLayout( self.hbox )
+        self.vbox.addWidget( self.tbl_file.container )
+
+        self.directory_history = []
+        self.directory_history_index = 0
+
+        #self.tbl_file.setData(self.view)
+        #self.txt_path.setText(self.view.pwd())
+
+        self.slow_data_history = {}
+
+        # this is set to a name that should be selected after a load completes
+        self.chdir_on_load_select = None
+
+    def _getNewFileTable(self,view):
+        raise NotImplementedError("return a table in a subclass")
+
+    def setView(self,view):
+        self.view = view
+        self.tbl_file.view = view
+        self.tbl_file.setData(view)
+        self.txt_path.setText(view.pwd())
+
+        self.directory_history.append(view.pwd())
+
+    def showSplitButton(self,bShow):
+        self.btn_split.setHidden(not bShow)
+
+    def refresh(self):
+        self.chdir( self.view.pwd() )
+
+    def clearHistory(self):
+        self.directory_history = []
+        self.directory_history_index = 0
+
+    def chdir(self,path):
+        return self._chdir(path,True)
+
+    def _chdir(self,path,push):
+        pwd = self.view.pwd()
+        success = False
+        try:
+
+            self.view.chdir(path)
+
+            # only push if the path is valid
+            if push:
+                if self.directory_history_index > 0:
+                    index = len(self.directory_history) - self.directory_history_index
+                    if 0<=index<len(self.directory_history):
+                        self.directory_history = self.directory_history[:index]
+                    self.directory_history_index = 0
+                path = self.view.pwd()
+                # dont push if the path is the same
+                if len(self.directory_history)==0 or \
+                    path != self.directory_history[-1]:
+                    self.directory_history.append(self.view.pwd())
+
+                if len(self.directory_history)>20:
+                    self.directory_history = self.directory_history[-20:]
+
+            self.directoryChanged.emit(self.view.pwd())
+
+            self.slow_data_history = {}
+
+            success = True
+
+        except OSError as e:
+            sys.stderr.write(str(e))
+            QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
+            s='->'.join([s[2] for s in traceback.extract_stack()])
+            print("_chdir OS error:",path,name)
+            print(s)
+
+        self.btn_next.setDisabled(self.directory_history_index == 0)
+        self.btn_prev.setDisabled(self.directory_history_index == len(self.directory_history)-1)
+
+        self.txt_path.setText(self.view.pwd())
+        self.tbl_file.update()
+        self.tbl_file.scrollTo(0)
+
+        return success
+
+    def chdir_prev(self):
+        if self.directory_history_index < len(self.directory_history):
+            self.directory_history_index += 1
+            index = len(self.directory_history) - self.directory_history_index - 1
+            if 0<=index<len(self.directory_history):
+                path = self.directory_history[index]
+                self._chdir(path,False)
+
+    def chdir_next(self):
+        if self.directory_history_index > 0:
+            self.directory_history_index -= 1
+            index = len(self.directory_history) - self.directory_history_index - 1
+            if 0<=index<len(self.directory_history):
+                path = self.directory_history[index]
+                self._chdir(path,False)
+
+    def chdir_parent(self):
+        # change to the parent directory then select
+        # this directory in the file listing
+        cwd = self.view.pwd()
+        _,cwn = self.view.split(cwd)
+        path=self.view.parent(self.view.pwd())
+        self._chdir(path,True)
+
+        self.chdir_on_load_select = cwn
+
+    def dropEvent(self,model,src_view,urls):
+        # model and src_view can be none if drop comes from outside
+        # the application
+        job=DropRequestJob(src_view,urls,self.view,self.view.pwd())
+        job.finished.connect(self.action_refresh)
+        if model:
+            job.finished.connect(model.action_refresh)
+        self.controller.submitJob.emit(job)
+
+    def getSlowData(self,item,field):
+        #cache slow data for pwd to prevent hitting the disk
+        name = item['name']
+        if name not in self.slow_data_history:
+            try:
+                self.slow_data_history[name] = self.view.stat(name)
+            except (FileNotFoundError,OSError) as e:
+                self.slow_data_history[name] = {
+                                                "isDir" : item['isDir'],
+                                                "isLink" : False,
+                                                "mtime" : 0,
+                                                "ctime" : 0,
+                                                "size"  : 0,
+                                                "name"  : name,
+                                                "mode"  : 0,
+                                            }
+        return self.slow_data_history[name][field]
+
+    def showHiddenFiles(self):
+        return self.view.show_hidden
+
+    def action_set_hidden_visible(self,bVisible):
+        self.view.setShowHidden(bVisible)
+        self.refresh()
+
+    def action_open_directory(self):
+        pass
+
+    def action_file(self, item):
+        # double click file action
+        path = self.view.realpath(item['name'])
+        cmdstr = Settings.instance()['cmd_open_native']
+        os.system(cmdstr%path)
+
+    def action_open_file(self, path):
+        pass
+
+    def action_rename_begin(self, items):
+
+        row = list(self.tbl_file.selection)[0]
+        col = -1
+        for idx,column in enumerate(self.tbl_file.columns):
+            if column.name == "File Name":
+                col = idx
+        if col < 0:
+            return;
+
+        opts = self.tbl_file.columns[col].get_default_opts(row)
+        if opts:
+            self.tbl_file.columns[col].editor_start(*opts)
+
+    def action_rename(self,jobs):
+
+        # a move on a SourceListView updates in place, requiring
+        # only to repaint the table.
+        # reunning the job in this thread enables editing multiple
+        # files by using the arrow keys
+        job = RenameJob(self.view,jobs)
+        job.doTask()
+
+        self.tbl_file.update()
+        #job.finished.connect(self.onJobFinished)
+        #self.submitJob.emit(job)
+
+    def action_touch_begin(self):
+        self.action_create(1)
+
+    def action_touch(self,name):
+        # TODO handle OS errors
+        self.view.open(name,"w").close()
+        self.refresh()
+        # TODO: when load completes set selection to name
+        #if self.view.exists(name):
+        #    idx = self.view.index(name)
+        #    self.tbl_file.scrollTo(idx)
+        #    self.tbl_file.setSelection([idx,])
+        #else:
+        #    print("error")
+
+    def action_mkdir_begin(self):
+      self.action_create(2)
+
+    def action_mkdir(self,name):
+        # TODO handle OS errors
+        self.view.mkdir(name)
+        self.refresh()
+        if self.view.exists(name):
+            idx = self.view.index(name)
+            self.tbl_file.scrollTo(idx)
+            self.tbl_file.setSelection([idx,])
+        else:
+            print("error")
+
+    def action_create(self,mode):
+
+        isDir = mode==2
+        name = "Empty File" if mode == 1 else "New Directory"
+        index,name = self.view.new(name,isDir)
+        col = -1
+        for idx,column in enumerate(self.tbl_file.columns):
+            if column.name == "File Name":
+                col = idx
+        if col < 0:
+            return;
+
+        self.tbl_file.scrollTo(index)
+
+        opts = (set([index,]),name)
+        if opts:
+            self.tbl_file.columns[col].editor_start(*opts,mode)
+
+    def action_copy_path(self,item):
+
+        path = self.view.realpath(item['name'])
+        QApplication.instance().clipboard().setText(path)
+
+    def action_paste(self):
+        self.controller.action_paste(self.view,self.view.pwd())
+
+    def action_refresh(self):
+
+        self.chdir( self.view.pwd() )
+        self.tbl_file.scrollTo(0)
+        self.tbl_file.setSelection([])
+
+    def action_update_replace(self, item):
+        self.controller.action_update_replace( self.view.realpath(item['name']) )
+
+    def on_splitButton_clicked(self):
+
+        #self.btn_split.setHidden( !self.secondaryHidden() )
+        #if self.controller.secondaryHidden():
+        #    self.controller.action_open_view()
+        #else:
+        #    self.controller.action_close_view()
+        self.toggleSecondaryView.emit()
+
+    def canPaste( self ):
+        return self.controller.canPaste( self.view.pwd() )
+
+    def item2img(self,item):
+
+        l = ResourceManager.LINK if item['isLink'] else 0
+        if item['isDir']:
+            return ResourceManager.instance().get(l|ResourceManager.DIRECTORY)
+
+        _,ext = self.view.splitext(item['name'])
+        return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
+
+    def action_open_file(self, item):
+        self.controller.action_open_file( self.view.realpath(item['name']) )
+
+    def onJobFinished(self):
+
+        self.tbl_file.setSelection([])
+
+        self.refresh()
+
+    def onDeleteJobFinished(self):
+
+        self.tbl_file.setSelection([])
+
+        self.tbl_file.update()
+
+    def onLoadComplete(self,data):
+        self.view.data = data
+        self.tbl_file.setData(self.view)
+        # -1 for ".."
+        self.infoNumFiles.emit(len(data))
+
+        if self.chdir_on_load_select:
+            index = self.view.index(self.chdir_on_load_select)
+            self.tbl_file.setSelection({index,})
+            self.tbl_file.scrollTo(index)
+            self.chdir_on_load_select = None

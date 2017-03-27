@@ -10,6 +10,7 @@ import stat
 import traceback
 import time
 import calendar
+import ctypes
 # for windows, the dummy path lists all available drive letters
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
@@ -127,7 +128,6 @@ class DataSource(object):
             "size"  : 0,
             "isDir" : self.isdir(path),
             "isLink" : self.islink(path),
-            "name" : self.split(path)[1],
         }
         return result
 
@@ -137,6 +137,15 @@ class DataSource(object):
     def __exit__(self,typ,val,tb):
         if typ is None:
             self.close()
+
+def has_hidden_attribute(filepath):
+    try:
+        attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
+        assert attrs != -1
+        result = bool(attrs & 2)
+    except (AttributeError, AssertionError):
+        result = False
+    return result
 
 class DirectorySource(DataSource):
     dummy_path="\\"
@@ -240,6 +249,10 @@ class DirectorySource(DataSource):
                 "size"  : st.st_size,
                 "mode"  : stat.S_IMODE(st.st_mode)
             }
+            if sys.platform == "win32":
+                if has_hidden_attribute(path):
+                    result['isHidden'] = True
+
         else:
             result = {
                 "isDir" : False,
@@ -447,6 +460,9 @@ class SourceView(object):
     def fileSize_cached(self,name):
         return self.stat_fast(name)["size"]
 
+    def hidden(self,name):
+        return self.source.hidden(name)
+
 class SourceListView(SourceView):
 
     def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
@@ -460,47 +476,45 @@ class SourceListView(SourceView):
     def load(self):
         data = self.source.listdir(self.path)
 
-        if self.show_hidden:
-            data =  [ x for x in data ]
-        else:
+        # remove hidden files to limit the number of elements
+        # that we will eventually have to stat.
+        if not self.show_hidden:
             data =  [ x for x in data if not self.source.hidden(x) ]
+
+        # stat the names, certain sort orders can be optimized
+        if self.sort_column_name in {"name","size"}:
+            data = [self.stat_fast(name) for name in data]
+        else:
+            data = [self.stat(name) for name in data]
+
+        # on windows, stat uncovers additional hidden resources
+        if sys.platform == "win32" and not self.show_hidden:
+            data = [ x for x in data if "isHidden" not in x]
 
         data = self._sort(data) # and assignt to this instance
 
         #if self.path!=DirectorySource.dummy_path:
         #    data.insert(0,"..")
 
-        self.data = data
+        # TODO: is there any reason to have 'data' be the sorted names only?
+        self.data = [ x['name'] for x in data ]
 
     def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
 
-        # TODO: sort has a massive performance penalty
-        # add logic to use STAT_FAST in place of stat if sorting
-        # would not require a full stat.
-        # or, if only sorting by name, we can avoid the stat_fast probably.\
-
-        col_name=self.sort_column_name
-
-        if col_name in {"name","size"}:
-            data = [self.stat_fast(name) for name in data]
-        else:
-            data = [self.stat(name) for name in data]
-
-
         if self.dirsOnly :
             data = natsort.natsorted(filter( lambda x : x['isDir'], data),
-                                     key=lambda x: x[col_name], \
+                                     key=lambda x: x[self.sort_column_name], \
                                      alg=natsort.ns.IGNORECASE,
                                      reverse=self.sort_reverse)
         else:
             # key sorts by directories, then files
             # and by filename decending.
             data = natsort.natsorted(data,
-                                     key=lambda x: (not x['isDir'], x[col_name]), \
+                                     key=lambda x: (not x['isDir'], x[self.sort_column_name]), \
                                      alg=natsort.ns.IGNORECASE,
                                      reverse=self.sort_reverse)
-        return [ x['name'] for x in data ]
+        return data
 
     def sort(self,column_name,toggle=False):
         """
@@ -533,15 +547,25 @@ class SourceListView(SourceView):
 
         dir1,name1 = self.split(oldpath)
         dir2,name2 = self.split(newpath)
-        print(dir1)
-        print(dir2)
-        print(self.path)
         if (dir1==dir2 and dir1 == self.path):
             for idx in range(len(self.data)):
                 name = self.data[idx]
                 if name == name1:
                     self.data[idx]=name2
+                    break;
         return self.source.move(oldpath,newpath)
+
+    def delete(self,path):
+
+        path = self.realpath(path)
+        dir1,name1 = self.split(path)
+        if dir1 == self.path:
+            for idx in range(len(self.data)):
+                name = self.data[idx]
+                if name == name1:
+                    self.data.pop(idx)
+                    break;
+        return self.source.delete(path)
 
     def __len__(self):
         return len(self.data)
