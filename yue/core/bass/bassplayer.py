@@ -9,7 +9,6 @@ import traceback
 
 isPosix = os.name == 'posix'
 
-# exec import cPyBASS; print cPyBASS.pybass.LookPath("bassdsp")
 if sys.version > '3':
     unicode = str
 

@@ -337,6 +337,11 @@ class ClientRepl(object):
         """
         1: xx 1 alt alt [alt ...]
             update song path in db based on provided update alternatives list
+        2: xx 2
+            write history database to a file (history.log)
+            wipe the history database
+        3: xx 3
+            read back the history log and place the values in the database
         """
         args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
         args.assertMinArgs( 1 )
@@ -347,6 +352,20 @@ class ClientRepl(object):
             print(alternatives)
             Library.instance().songPathHack( alternatives )
 
+        elif value == 2:
+            with open("history.log","a") as af:
+                for record in History.instance().db.query("select * from history"):
+                    af.write("%d %-6d %s=%s\n"%(\
+                        record['date'],record['uid'],\
+                        record['column'],record['value']));
+            History.instance().db.store.conn.execute("DELETE FROM history")
+        elif value == 3:
+            with open("history.log","r") as rf:
+                for line in rf:
+                    line = line.strip()
+                    timestamp,uid,record = line.split(None,3)
+                    column,value = record.split('=',2)
+                    print(timestamp,uid,column,value)
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 
