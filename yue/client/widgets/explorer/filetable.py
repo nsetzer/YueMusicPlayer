@@ -179,12 +179,11 @@ class ExplorerFileTable(LargeTable):
         self.columns[-1].setWidthByCharCount(13)
 
     def onShortcutCopy(self):
-
-        self.parent().action_copy( self.getSelection() )
+        self.parent().controller.action_copy( self.parent(),self.getSelection() )
 
     def onShortcutCut(self):
 
-        self.parent().action_cut( self.getSelection() )
+        self.parent().controller.action_cut( self.parent(),self.getSelection() )
 
     def onShortcutPaste(self):
 

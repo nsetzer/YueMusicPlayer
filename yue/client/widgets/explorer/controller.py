@@ -58,10 +58,6 @@ class ExplorerController(DummyController):
         self.copy_view = None
         self.copy_model = None
 
-        self.act_diff_left_path = None
-
-        #self.parent = parent
-
     def _ctxtMenu_addFileOperations1(self,ctxtmenu,model,items):
 
         is_files = all(not item['isDir'] for item in items)
@@ -195,12 +191,6 @@ class ExplorerController(DummyController):
             sys.stdout.write( "[%d] %s\n"%(match,Song.toString(song)) )
             if match:
                 Library.instance().update(song[Song.uid],**{Song.path:path})
-
-    def action_compare_set_left(self,model,item):
-        self.act_diff_left_path = model.view.realpath(item['name'])
-
-    def action_compare(self,model,item):
-        self.act_diff_left_path = None
 
     def action_open_file(self, path):
         print(path)

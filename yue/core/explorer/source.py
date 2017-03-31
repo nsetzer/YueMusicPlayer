@@ -11,6 +11,7 @@ import traceback
 import time
 import calendar
 import ctypes
+from fnmatch import fnmatch
 # for windows, the dummy path lists all available drive letters
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
@@ -249,11 +250,14 @@ class DirectorySource(DataSource):
             st = os.lstat(path)
             isLink = False
             if stat.S_ISLNK(st.st_mode):
+                # only links are stated twice. we first need to know
+                # if it is a link, and if it is, what does it point to.
                 st = os.stat(path)
                 isLink = True
             result = {
                 "isDir" : stat.S_ISDIR(st.st_mode),
                 "isLink" : isLink,
+                # TODO: always store time without timezone info....?
                 "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
                 "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
                 "size"  : st.st_size,
@@ -354,8 +358,8 @@ class SourceView(object):
         # realpath == normpath
         fullpath = self.realpath(path)
         if self.source.exists(fullpath):
-            if fullpath != self.path:
-                self.statcache = {}
+            #if fullpath != self.path: # need to clear the cache anyway
+            #    self.statcache = {}
             self.path = fullpath
             return True
         return False
@@ -477,10 +481,12 @@ class SourceListView(SourceView):
 
     def __init__(self,source,dirpath,dirsOnly=False,show_hidden=False):
         self.data = []
+        self.data_filtered = []
         self.sort_reverse = False
         self.sort_column_name = 'name'
         self.dirsOnly = dirsOnly;
 
+        self.text_filter = None
         super(SourceListView,self).__init__(source,dirpath,show_hidden)
 
     def load(self):
@@ -503,11 +509,15 @@ class SourceListView(SourceView):
 
         data = self._sort(data) # and assignt to this instance
 
-        #if self.path!=DirectorySource.dummy_path:
-        #    data.insert(0,"..")
+        self.setData([ x['name'] for x in data ])
 
-        # TODO: is there any reason to have 'data' be the sorted names only?
-        self.data = [ x['name'] for x in data ]
+    def setData(self,data):
+        self.data = data
+        if self.text_filter is not None:
+            f = lambda x: self.statcache[x]['isDir'] or fnmatch(x,self.text_filter)
+            self.data_filtered = [ x for x in data if f(x) ]
+        else:
+            self.data_filtered = data
 
     def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
@@ -548,7 +558,8 @@ class SourceListView(SourceView):
             items = [self.stat(name) for name in self.data]
 
         items = self._sort(items)
-        self.data = [ x['name'] for x in items ]
+
+        self.setData([ x['name'] for x in items ])
 
         return self.sort_reverse
 
@@ -585,15 +596,24 @@ class SourceListView(SourceView):
         return self.source.delete(path)
 
     def __len__(self):
+        if self.text_filter is not None:
+            return len(self.data_filtered)
         return len(self.data)
 
     def __getitem__(self,idx):
-        if 0 <= idx < len(self.data):
-            name = self.data[idx]
+        dat=self.data
+        if self.text_filter is not None:
+            dat=self.data_filtered
+
+        if 0 <= idx < len(dat):
+            name = dat[idx]
             if not name:
                 raise Exception("empty file name in directory")
             return self.stat_fast( name )
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
     # new and index are hacks enabling editing names for
     # items which do not exist, is there a betterway?
     def new(self,basename,isDir=False):
@@ -624,3 +644,16 @@ class SourceListView(SourceView):
 
     def index(self,name):
         return self.data.index(name)
+
+    def setTextFilter(self,filter):
+        filter = filter.strip()
+        if filter == "*.*" or filter == "":
+            self.text_filter = None
+        else:
+            filter = filter.strip()
+            if not filter.startswith("*"):
+                filter = '*' + filter
+            if not filter.endswith("*"):
+                filter = filter + '*'
+            self.text_filter = filter
+        self.setData(self.data)

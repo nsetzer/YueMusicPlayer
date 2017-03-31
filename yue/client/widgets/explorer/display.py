@@ -47,6 +47,8 @@ class ExplorerModel(QWidget):
 
     infoNumFiles = pyqtSignal(int)
 
+    filterFiles = pyqtSignal(str)
+
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
 
@@ -61,9 +63,15 @@ class ExplorerModel(QWidget):
 
         self.tbl_file = self._getNewFileTable(view)
 
+        self.tbl_file.selection_changed.connect(self.onTableSelectionChanged)
+
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
         #self.txt_path.textEdited.connect(self.onTextChanged)
+
+        self.txt_filter = LineEdit(self)
+        self.txt_filter.setText("")
+        self.txt_filter.textEdited.connect(self.onFilterTextChanged)
 
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
@@ -114,13 +122,30 @@ class ExplorerModel(QWidget):
             }
         """)
 
+        self.btn_refresh = QToolButton(self)
+        self.btn_refresh.clicked.connect( self.action_refresh )
+        self.btn_refresh.setIcon(QIcon(':/img/app_plus.png'))
+
+        self.lbl_st_nfiles = QLabel("",self)
+        self.lbl_st_nsel   = QLabel("",self)
+        self.lbl_st_src    = QLabel("",self)
+        self.hbox_st = QHBoxLayout()
+        self.hbox_st.addWidget(self.lbl_st_src)
+        self.hbox_st.addWidget(self.lbl_st_nfiles)
+        self.hbox_st.addWidget(self.lbl_st_nsel)
+        self.hbox_st.addStretch(1)
+
+        self.hbox.addWidget(self.btn_refresh)
         self.hbox.addWidget(self.btn_parent)
         self.hbox.addWidget(self.btn_prev)
         self.hbox.addWidget(self.btn_next)
-        self.hbox.addWidget(self.txt_path)
+        self.hbox.addStretch(1)
+        self.hbox.addWidget(self.txt_filter)
         self.hbox.addWidget(self.btn_split)
         self.vbox.addLayout( self.hbox )
+        self.vbox.addWidget( self.txt_path )
         self.vbox.addWidget( self.tbl_file.container )
+        self.vbox.addLayout( self.hbox_st )
 
         self.directory_history = []
         self.directory_history_index = 0
@@ -402,13 +427,53 @@ class ExplorerModel(QWidget):
         self.tbl_file.update()
 
     def onLoadComplete(self,data):
-        self.view.data = data
+        self.view.setData(data)
         self.tbl_file.setData(self.view)
-        # -1 for ".."
-        self.infoNumFiles.emit(len(data))
+
+        self._update_status_text()
+
 
         if self.chdir_on_load_select:
             index = self.view.index(self.chdir_on_load_select)
             self.tbl_file.setSelection({index,})
             self.tbl_file.scrollTo(index)
             self.chdir_on_load_select = None
+
+    def onFilterTextChanged(self,text):
+        self.filterFiles.emit(text)
+        self.view.setTextFilter(text)
+        self.tbl_file.update()
+        self.tbl_file.scrollTo(0)
+
+        self._update_status_text()
+
+    def onTableSelectionChanged(self):
+        nsel = len(self.tbl_file.selection)
+        if nsel > 0:
+            self.lbl_st_nsel.setText("%d selected"%nsel)
+        else:
+            self.lbl_st_nsel.setText("")
+
+    def _update_status_text(self):
+        nd = 0
+        for item in self.view:
+            if item['isDir']:
+                nd += 1
+        nf0= len(self.view.data)-nd
+        nf1= len(self.view.data_filtered)-nd
+
+        ntxt = []
+        if nd > 0:
+            ntxt.append("%d dirs"%nd)
+        if nf1 < nf0:
+            ntxt.append("%d of %d files"%(nf1,nf0))
+        else:
+            ntxt.append("%d files"%(nf0))
+
+        self.lbl_st_nfiles.setText(' | '.join(ntxt))
+
+        n = self.view.source.__class__.__name__
+        n = n .replace("Source","")
+        self.lbl_st_src.setText(n)
+
+

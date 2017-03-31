@@ -414,11 +414,13 @@ class Dashboard(QWidget):
 
         self.job_runner = JobRunner(self)
 
-        #self.setHidden(True)
-
         self.vbox = QVBoxLayout(self)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.widgets = []
+
+        self.setMinimumHeight(0)
+        self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
 
     def startJob(self,job):
 
