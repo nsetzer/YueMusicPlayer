@@ -1,4 +1,4 @@
-#! cd ../.. && python test/test_client.py
+#! cd ../.. && python client-main.py
 
 # xx 1 G:\\Music /Users/nsetzer/Music/Library
 
@@ -8,6 +8,7 @@ from datetime import datetime
 import urllib
 import argparse
 import traceback
+import codecs
 
 from PyQt5.QtCore import *
 # this is required so that the frozen executable
@@ -337,11 +338,13 @@ class ClientRepl(object):
         """
         1: xx 1 alt alt [alt ...]
             update song path in db based on provided update alternatives list
-        2: xx 2
+        2: xx 2 path
             write history database to a file (history.log)
             wipe the history database
-        3: xx 3
+        3: xx 3 path
             read back the history log and place the values in the database
+        4: xx 4 name path
+            export playlist metadata given by name to path
         """
         args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
         args.assertMinArgs( 1 )
@@ -353,19 +356,68 @@ class ClientRepl(object):
             Library.instance().songPathHack( alternatives )
 
         elif value == 2:
-            with open("history.log","a") as af:
-                for record in History.instance().db.query("select * from history"):
+            args.assertMinArgs( 2 )
+            path = args[1]
+
+            if os.path.exists(path):
+                print("EEXIST %s"%path) # prevent overwriting
+                return
+
+            with codecs.open(path,"w","utf-8") as af:
+                for record in History.instance().export():
                     af.write("%d %-6d %s=%s\n"%(\
                         record['date'],record['uid'],\
                         record['column'],record['value']));
             History.instance().db.store.conn.execute("DELETE FROM history")
+
         elif value == 3:
-            with open("history.log","r") as rf:
-                for line in rf:
-                    line = line.strip()
-                    timestamp,uid,record = line.split(None,3)
-                    column,value = record.split('=',2)
-                    print(timestamp,uid,column,value)
+            #for record in remote_history.export():
+            #    self.parent.library._import_record( c, record )
+            args.assertMinArgs( 2 )
+            path = args[1]
+
+            if not os.path.exists(path):
+                print("EEXIST %s"%path)
+                return
+
+            Library.instance().import_record_file(path)
+
+        elif value == 4:
+            args.assertMinArgs( 3 )
+            name = args[1]
+            path = args[2]
+
+            if not PlaylistManager.instance().exists(name):
+                print("EEXIST %s"%name) # prevent overwriting
+                return
+
+            pl = PlaylistManager.instance().openPlaylist(name)
+
+            if os.path.exists(path):
+                print("EEXIST %s"%path) # prevent overwriting
+                return
+
+            print(len(pl))
+
+            with codecs.open(path,"w","utf-8") as wf:
+                for song in Library.instance().songFromIds(pl):
+                    s = song[Song.last_played]
+                    t = (s,song[Song.uid],Song.last_played,s)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    c = song[Song.play_count]
+                    t = (s,song[Song.uid],Song.play_count,c)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    r = song[Song.rating]
+                    t = (s,song[Song.uid],Song.rating,r)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    a = song[Song.artist]
+                    t = (s,song[Song.uid],Song.artist,a)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    a = song[Song.title]
+                    t = (s,song[Song.uid],Song.title,a)
+                    wf.write("%d %-6d %s=%s\n"%t)
+
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
 

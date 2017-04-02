@@ -91,8 +91,21 @@ class PlaylistManager(object):
             items = c.fetchmany()
             while items:
                 for item in items:
-                    yield item[0] # song_id
+                    yield item[0]
                 items = c.fetchmany()
+
+    def exists(self,name):
+        with self.db_names.conn() as conn:
+            c = conn.cursor()
+            c.execute("SELECT name from playlists ORDER BY name")
+            items = c.fetchmany()
+            while items:
+                for item in items:
+                    print(item[0],name)
+                    if item[0] == name:
+                        return True
+                items = c.fetchmany()
+        return False
 
 class PlayListView(object):
     def __init__(self, db_names, db_lists, uid):

@@ -723,6 +723,39 @@ class Library(object):
                 if (new_path != old_path):
                     self._update_one(c, song[Song.uid], **{Song.path:new_path})
 
+    def import_record_file(self, path):
+        """
+        read in a file containing history records and apply them to
+        the library to update the current state
+
+        a record file has the following format
+            date uid column=value
+        e.g.
+            1485759510 6317   artist=The Agonist
+            1485759510 6317   rating=5
+            1485759510 6317   playtime=None
+
+        date and uid are integers (date is the unix time stamp of the record)
+        column and vlaue are strings, value must be None if column is 'playtime'
+        column can be any column name in the library table.
+        value is taken literally, including any whitespace terminating at a
+        newline. thus there must be one record per line.
+
+        """
+        with self.sqlstore.conn as conn:
+            c = conn.cursor()
+            with codecs.open(path,"r","utf-8") as rf:
+                for line in rf:
+                    line = line.strip()
+                    timestamp,uid,record = line.split(None,3)
+                    column,value = record.split('=',2)
+                    record = {"column":column,
+                              "uid":int(uid),
+                              "date":int(timestamp)}
+                    if column != Song.playtime:
+                        record['value'] = value
+                    self._import_record( c, record )
+
     def import_record(self, record):
 
         with self.sqlstore.conn as conn:
@@ -736,7 +769,6 @@ class Library(object):
         else:
             self.import_record_update(c,record)
 
-    # TODO these should probably be moved to the Library()
     def import_record_playtime(self, c, record):
         """
         update playcount for a song given a record
