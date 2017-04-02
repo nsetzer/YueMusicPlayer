@@ -253,8 +253,13 @@ class MoveJob(Job):
         self.src_paths = src_paths
         self.dst_path = dst_path
 
-
     def doTask(self):
+        """
+        TODO: make this library aware. If not library is configured
+        (instance returns none) thn don't bother.
+        Rename also needs to be away
+        Rename Should be removed entirely
+        """
         for i,path in enumerate(self.src_paths):
 
             name = self.view.split(path)[1]
@@ -269,8 +274,6 @@ class MoveJob(Job):
         """ this could be reimplented, say to update a database? """
 
         self.view.move(src_path,dst_path)
-
-
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):
@@ -322,8 +325,6 @@ class DropRequestJob(Job):
         else:
             source_copy(self.src_view,src_path, \
                         self.dst_view,dst_path,self.chunksize)
-
-
 
 class DeleteJob(Job):
     """docstring for RenameJob"""

@@ -76,7 +76,10 @@ data_files = [("lib",lib_paths),]
 
 # entry_points in the form "genPron = viragelm.pron.genPron:main"
 #entry_points = [ "yue-music = yue.app:main", ]
-entry_points = []
+# windows 10 requires the following registry change for entry points to work
+# [HKEY_CLASSES_ROOT\Applications\python.exe\shell\open\command]
+# @="\"C:\\Python25\\python.exe\" \"%1\" %*"
+entry_points = ["explor=yue.explor.explor:main"]
 
 setup(name=name,
       version='1.0',
@@ -88,12 +91,16 @@ setup(name=name,
                 "yue.core.sound",
                 "yue.core.vlc",
                 "yue.client",
-                "yue.client.widgets"],
+                "yue.client.SymTr",
+                "yue.client.ui",
+                "yue.client.widgets",
+                "yue.client.widgets.explorer",
+                "yue.explor"],
       install_requires=[
         'mutagen',
       ],
       data_files=data_files,
       cmdclass = {'test': UnitTest,
                   'cover' : Coverage},
-      entry_points={"console_scripts":entry_points},
+      entry_points={"gui_scripts":entry_points},
       )
