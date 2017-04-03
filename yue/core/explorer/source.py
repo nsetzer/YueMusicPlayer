@@ -263,6 +263,7 @@ class DirectorySource(DataSource):
                 "size"  : st.st_size,
                 "mode"  : stat.S_IMODE(st.st_mode)
             }
+            # if on windows and path is not a plain drive letter
             if sys.platform == "win32" and path[1:] != ":\\":
                 if has_hidden_attribute(path):
                     result['isHidden'] = True
@@ -358,8 +359,7 @@ class SourceView(object):
         # realpath == normpath
         fullpath = self.realpath(path)
         if self.source.exists(fullpath):
-            #if fullpath != self.path: # need to clear the cache anyway
-            #    self.statcache = {}
+            self.statcache = {}
             self.path = fullpath
             return True
         return False
@@ -432,6 +432,7 @@ class SourceView(object):
                 st = stat(path)
                 st['name'] = name
                 self.statcache[name] = st
+
             return self.statcache[name]
 
         #except OSError as e:

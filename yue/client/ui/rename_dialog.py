@@ -7,6 +7,11 @@ from PyQt5.QtGui import *
 from yue.client.widgets.LineEdit import LineEdit
 
 class RenameDialog(QDialog):
+    """
+    A dialog that allows the user to modify a single line of text
+
+    on accept() text() returns the new text.
+    """
 
     def __init__(self,text='',title='Rename', prompt='', parent=None):
 
