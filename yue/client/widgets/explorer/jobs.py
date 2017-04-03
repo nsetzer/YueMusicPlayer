@@ -11,6 +11,9 @@ from yue.core.explorer.fsutil import generateUniquePath, \
     iter_remove
 from yue.core.util import format_bytes
 
+from yue.core.song import Song
+from yue.core.library import Library
+
 class JobMessageBox(QDialog):
     """docstring for JobMessage"""
     def __init__(self, arg):
@@ -154,6 +157,26 @@ class Job(QThread):
             self.msgbox_result = result
             self.cond.wakeOne()
 
+def move_one_lib(src,lib,src_path,dst_path):
+    """
+    Library aware file move
+
+    if the move from src_path to dst_path would effect a song
+    in the library, the database is updated to reflect the song
+    """
+    if src.isdir(src_path):
+        songs = lib.searchDirectory( src_path ,True)
+        src.move(src_path,dst_path)
+        for song in songs:
+            tmp = tgt + song[Song.path][len(src_path):]
+            lib.update(song[Song.uid],path=tmp)
+            self.updated_count += 1
+    else:
+        songs = lib.searchPath( src_path )
+        src.move(src_path,dst_path)
+        for song in songs: # this will update duplicate songs by path
+            lib.update(song[Song.uid],path=dst_path)
+
 class RenameJob(Job):
     """docstring for RenameJob"""
     def __init__(self, view, args):
@@ -165,13 +188,21 @@ class RenameJob(Job):
         self.view = view
         self.wd = view.pwd()
         self.args = args
+        self.lib = None
 
     def doTask(self):
+
+        if Library.instance():
+            self.lib = Library.instance().reopen()
 
         for i,(src,dst) in enumerate(self.args):
             src=self.view.normpath(src,self.wd)
             dst=self.view.normpath(dst,self.wd)
-            self.view.move(src,dst)
+
+            if self.lib:
+                move_one_lib(self.view,self.lib,src,dst)
+            else:
+                self.view.move(src,dst)
             self.setProgress(100*(i+1)/len(self.args))
 
 class CopyJob(Job):
@@ -252,6 +283,7 @@ class MoveJob(Job):
         self.view = src_view
         self.src_paths = src_paths
         self.dst_path = dst_path
+        self.lib = None
 
     def doTask(self):
         """
@@ -260,19 +292,27 @@ class MoveJob(Job):
         Rename also needs to be away
         Rename Should be removed entirely
         """
+
+        # get a thread local copy of the library
+        # must compare to None, otherwise when it is a DB instance,
+        # a thread access violation is thrown
+        if Library.instance() is not None:
+            self.lib = Library.instance().reopen()
+
         for i,path in enumerate(self.src_paths):
 
             name = self.view.split(path)[1]
             dst_path = self.view.join(self.dst_path,name)
             dst_path = generateUniquePath(self.view,dst_path)
 
-            self.move_one(path,dst_path)
+            if self.lib:
+                move_one_lib(self.view,self.lib,path,dst_path)
+            else:
+                self.move_one(path,dst_path)
 
             self.setProgress(100*(i+1)/len(self.src_paths))
 
     def move_one(self,src_path,dst_path):
-        """ this could be reimplented, say to update a database? """
-
         self.view.move(src_path,dst_path)
 
 class DropRequestJob(Job):

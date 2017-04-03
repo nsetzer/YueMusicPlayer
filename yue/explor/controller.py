@@ -21,6 +21,18 @@ class ExplorController(ExplorerController):
 
         ctxtmenu = QMenu(model)
 
+        # file manipulation options
+        menu = ctxtmenu.addMenu("New")
+        menu.addAction("Empty File",lambda : model.action_touch_begin())
+        menu.addAction("Folder", lambda : model.action_mkdir_begin())
+
+        menu = ctxtmenu.addMenu("Archive")
+        if len(items) > 1:
+            menu.addAction("Add to 7z")
+            menu.addAction("Add to zip")
+        elif not is_dirs:
+            menu.addAction("Extract to *")
+
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
 
         ctxtmenu.addSeparator()

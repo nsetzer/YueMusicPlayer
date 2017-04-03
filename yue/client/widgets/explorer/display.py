@@ -296,9 +296,6 @@ class ExplorerModel(QWidget):
         cmdstr = Settings.instance()['cmd_open_native']
         os.system(cmdstr%path)
 
-    def action_open_file(self, path):
-        pass
-
     def action_rename_begin(self, items):
 
         row = list(self.tbl_file.selection)[0]
@@ -320,8 +317,9 @@ class ExplorerModel(QWidget):
         # reunning the job in this thread enables editing multiple
         # files by using the arrow keys
         job = RenameJob(self.view,jobs)
+        # job will not emit finished if run directly
         job.doTask()
-
+        self.onRenameFinished()
         self.tbl_file.update()
         #job.finished.connect(self.onJobFinished)
         #self.submitJob.emit(job)
@@ -412,6 +410,7 @@ class ExplorerModel(QWidget):
         return ResourceManager.instance().get(l|ResourceManager.instance().getExtType(ext))
 
     def action_open_file(self, item):
+        # TODO this function seems inappropriate
         self.controller.action_open_file( self.view.realpath(item['name']) )
 
     def onJobFinished(self):
@@ -431,7 +430,6 @@ class ExplorerModel(QWidget):
         self.tbl_file.setData(self.view)
 
         self._update_status_text()
-
 
         if self.chdir_on_load_select:
             index = self.view.index(self.chdir_on_load_select)
@@ -476,4 +474,5 @@ class ExplorerModel(QWidget):
         n = n .replace("Source","")
         self.lbl_st_src.setText(n)
 
-
+    def onRenameFinished(self):
+        pass

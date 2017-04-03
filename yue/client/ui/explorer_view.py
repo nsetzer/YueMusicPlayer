@@ -41,8 +41,53 @@ def explorerOpen( url ):
         #subprocess.call(["xdg-open",filepath])
         sys.stderr.write("open unsupported on %s"%os.name)
 
+class YueExplorerController(ExplorerController):
+
+    def __init__(self):
+        super(YueExplorerController,self).__init__()
+
+        self.dialog = None
+
+    def contextMenu(self, event, model, items):
+
+        is_files = all(not item['isDir'] for item in items)
+        is_dirs  = all(item['isDir'] for item in items)
+
+        ctxtmenu = QMenu(model)
+
+        # file manipulation options
+        menu = ctxtmenu.addMenu("New")
+        menu.addAction("Empty File",lambda : model.action_touch_begin())
+        menu.addAction("Folder", lambda : model.action_mkdir_begin())
+
+        if len(items) == 1:
+            ctxtmenu.addAction("Play Song",lambda : model.action_play_song(items[0]))
+
+        if model.canIngest():
+            ctxtmenu.addAction("Ingest Selection", lambda : model.action_ingest(items))
+
+        ctxtmenu.addSeparator()
+
+        self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
+
+        ctxtmenu.addSeparator()
+
+
+
+
+        self._ctxtMenu_addFileOperations2(ctxtmenu,model,items)
+
+        if model.view.islocal():
+            ctxtmenu.addAction(QIcon(":/img/app_open.png"),"Open in Explorer",model.action_open_directory)
+
+        ctxtmenu.addAction("Refresh",model.action_refresh)
+
+        action = ctxtmenu.exec_( event.globalPos() )
+
+
 class YueExplorerModel(ExplorerModel):
 
+    play_file = pyqtSignal(str)
     do_ingest = pyqtSignal(list) # list of absolute paths
 
     def __init__(self, view, controller, parent=None):
@@ -66,9 +111,18 @@ class YueExplorerModel(ExplorerModel):
     def indexInLibrary(self,idx):
         return self.view[idx]['name'].lower() in self.list_library_files
 
+    def action_play_song(self,item):
+        path = self.view.realpath(item['name'])
+        self.play_file.emit(path)
+
     def action_ingest(self,items):
         paths = [ self.view.realpath(item['name']) for item in items ]
         self.do_ingest.emit( paths )
+
+    def action_open_file(self,item):
+        path = self.view.realpath(item['name'])
+        _,ext = self.view.splitext(path)
+        self.play_file.emit(path)
 
     def canIngest( self ):
         return self.controller.dialog is None
@@ -96,6 +150,14 @@ class YueExplorerModel(ExplorerModel):
         # open the cwd in explorer
         explorerOpen( self.view.pwd() )
 
+    def onRenameFinished(self):
+
+        songs = Library.instance().searchDirectory(self.view.pwd(),False)
+        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
+                                       for song in songs )
+        self.tbl_file.update()
+
+
 class ExplorerView(Tab):
     """docstring for ExplorerView"""
 
@@ -111,7 +173,7 @@ class ExplorerView(Tab):
     def __init__(self, parent=None):
         super(ExplorerView, self).__init__(parent)
 
-        self.controller = ExplorerController( )
+        self.controller = YueExplorerController( )
 
         self.source = DirectorySource()
 
@@ -120,6 +182,9 @@ class ExplorerView(Tab):
         self.ex_main = YueExplorerModel( None, self.controller, self )
         self.ex_secondary = YueExplorerModel( None, self.controller, self )
         self.ex_secondary.btn_split.setIcon(QIcon(":/img/app_join.png"))
+
+        self.ex_main.do_ingest.connect(self.onIngestPaths)
+        self.ex_secondary.do_ingest.connect(self.onIngestPaths)
 
         self.ex_main.toggleSecondaryView.connect(self.onToggleSecondaryView)
         self.ex_secondary.toggleSecondaryView.connect(self.onToggleSecondaryView)
@@ -160,12 +225,14 @@ class ExplorerView(Tab):
             self.ex_main.setView(view1)
             self.ex_secondary.setView(view2)
 
+            self.ex_main.play_file.connect(self.onPlayFile)
+            self.ex_secondary.play_file.connect(self.onPlayFile)
+
             self.ex_main.submitJob.connect(self.dashboard.startJob)
             self.ex_secondary.submitJob.connect(self.dashboard.startJob)
             self.controller.submitJob.connect(self.dashboard.startJob)
 
-            print("chdir")
-            self.ex_main.chdir("C:\\Users\\Nick\\Documents\\playground")
+            self.ex_main.chdir("C:\\Users\\Nick\\Music")
             self.ex_secondary.chdir("~")
 
     def chdir(self, path):
@@ -180,7 +247,6 @@ class ExplorerView(Tab):
 
     def onLazyLoadDirectory(self,model):
 
-        print("on lazy load")
         job = LoadDirectoryJob(model)
         self.dashboard.startJob(job)
 
@@ -201,3 +267,19 @@ class ExplorerView(Tab):
             self.ex_main.showSplitButton(True)
             self.ex_secondary.showSplitButton(False)
 
+    def onIngestPaths(self,paths):
+        print(paths)
+
+        self.controller.dialog = IngestProgressDialog(paths,self)
+        self.controller.dialog.finished.connect(self.onDialogFinished)
+
+        self.controller.dialog.show()
+        self.controller.dialog.start()
+
+    def onDialogFinished(self):
+        self.controller.dialog = None
+        self.ex_main.refresh()
+        self.ex_secondary.refresh()
+
+    def onPlayFile(self,path):
+        self.play_file.emit(path)

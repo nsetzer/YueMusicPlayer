@@ -63,18 +63,6 @@ class ExplorerController(DummyController):
         is_files = all(not item['isDir'] for item in items)
         is_dirs  = all(item['isDir'] for item in items)
 
-        # file manipulation options
-        menu = ctxtmenu.addMenu("New")
-        menu.addAction("Empty File",lambda : model.action_touch_begin())
-        menu.addAction("Folder", lambda : model.action_mkdir_begin())
-
-        menu = ctxtmenu.addMenu("Archive")
-        if len(items) > 1:
-            menu.addAction("Add to 7z")
-            menu.addAction("Add to zip")
-        elif not is_dirs:
-            menu.addAction("Extract to *")
-
         ctxtmenu.addSeparator()
 
         act = ctxtmenu.addAction("Rename", lambda : model.action_rename_begin(items))
@@ -191,10 +179,6 @@ class ExplorerController(DummyController):
             sys.stdout.write( "[%d] %s\n"%(match,Song.toString(song)) )
             if match:
                 Library.instance().update(song[Song.uid],**{Song.path:path})
-
-    def action_open_file(self, path):
-        print(path)
-        self.parent.play_file.emit( path )
 
     def action_delete(self,model,items):
 

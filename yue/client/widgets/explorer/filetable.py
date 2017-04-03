@@ -301,7 +301,6 @@ class ExplorerFileTable(LargeTable):
                 if item['isDir']:
                     self.open_child_directory(item)
                 else:
-                    # TODO this needs an abstraction
                     self.parent().action_open_file( item )
 
     def open_child_directory(self,item):
