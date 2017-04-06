@@ -337,6 +337,15 @@ class ExplorerFileTable(LargeTable):
     def _onCreateDirectory(self,name):
         self.createDirectory.emit(name)
 
+    def update(self):
+        #if self.parent().view:
+        #    for x,c in self.parent().view._stat_data.items():
+        #        print("    %4d"%c,x)
+        #    self.parent().view._stat_data.clear()
+
+        super().update()
+
+
 class MimeData(QMimeData):
     custom_data = {}    # dictionary which houses the mimetype=>data
     custom_types= ["data/x-view",] # list of supported types

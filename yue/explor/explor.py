@@ -197,7 +197,6 @@ def parse_args(script_file):
             if opt in modes:
                 # allows --edit or -e
                 mode,xcut = modes[opt]
-                print("++")
                 procv.pop(idx+1)
                 break;
             elif len(opt)>=2:
@@ -214,7 +213,6 @@ def parse_args(script_file):
                     print_help(binpath);
                     sys.exit(0)
     procv[0] = binpath + " " + xcut
-    print(procv)
 
     parser = argparse.ArgumentParser(\
         description="Cross Platform File Explorer and FTP Browser",

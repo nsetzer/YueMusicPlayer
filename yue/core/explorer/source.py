@@ -12,6 +12,7 @@ import time
 import calendar
 import ctypes
 from fnmatch import fnmatch
+from collections import defaultdict
 # for windows, the dummy path lists all available drive letters
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
@@ -139,9 +140,12 @@ class DataSource(object):
         if typ is None:
             self.close()
 
+def trace():
+    return '->'.join([s[2] for s in traceback.extract_stack()])
+
 def pretty_trace():
-    s='->'.join([s[2] for s in traceback.extract_stack()])
-    print(s)
+    print(trace())
+
 
 def has_hidden_attribute(filepath):
     try:
@@ -308,7 +312,10 @@ class SourceView(object):
         self.path = dirpath
 
         self.statcache = {}
+        self.statcache_index = {}
         self.show_hidden = show_hidden;
+
+        self._stat_data = defaultdict(int)
 
     def name(self):
         p = self.breakpath(self.pwd())
@@ -360,6 +367,7 @@ class SourceView(object):
         fullpath = self.realpath(path)
         if self.source.exists(fullpath):
             self.statcache = {}
+            self.statcache_index = {}
             self.path = fullpath
             return True
         return False
@@ -414,6 +422,8 @@ class SourceView(object):
         perform a stat or fast stat of the given path.
         if the given path is an item in the current directory, cache the result
         """
+
+
         _,name = self.split(path)
         if name == "." or name == "..":
             return {"name":name,"isDir":True,"isLink":True,\
@@ -423,6 +433,8 @@ class SourceView(object):
 
         if not name:
             name=path # root directory
+
+        #self._stat_data[trace()]+=1
 
         if (self.path == DirectorySource.dummy_path and dir==name) or \
             dir == self.path:
@@ -434,6 +446,7 @@ class SourceView(object):
                 self.statcache[name] = st
 
             return self.statcache[name]
+
 
         #except OSError as e:
         #    print(e)
@@ -519,6 +532,7 @@ class SourceListView(SourceView):
             self.data_filtered = [ x for x in data if f(x) ]
         else:
             self.data_filtered = data
+        self.statcache_index = {}
 
     def _sort(self,data):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
@@ -607,10 +621,13 @@ class SourceListView(SourceView):
             dat=self.data_filtered
 
         if 0 <= idx < len(dat):
-            name = dat[idx]
-            if not name:
-                raise Exception("empty file name in directory")
-            return self.stat_fast( name )
+            # cache the result for a given index in the statcache_index
+            if idx not in self.statcache_index:
+                name = dat[idx]
+                if not name:
+                    raise Exception("empty file name in directory")
+                self.statcache_index[idx] = self.stat_fast( name )
+            return self.statcache_index[idx]
 
     def __iter__(self):
         for i in range(len(self)):
