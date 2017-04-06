@@ -8,6 +8,8 @@
 #ifdef __linux__
 // empty define of symbol for linux
 #	define DSPFUNC
+#elif __APPLE__
+#   define DSPFUNC
 #else
 #   ifdef bassdsp_EXPORTS
 #       define DSPFUNC __declspec(dllexport)
@@ -17,7 +19,7 @@
 #endif
 
 #undef CALLBACK
-#define CALLBACK 
+#define CALLBACK
 
 // enum for set of required channel parameters.
 // These are hints a DSP can give to ensure correct performance.

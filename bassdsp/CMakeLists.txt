@@ -12,7 +12,17 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(BASE_PATH "${PROJECT_SOURCE_DIR}/src")
-set(TARGET_PATH "${PROJECT_SOURCE_DIR}/../lib/win32/x86_64")
+if(${APPLE})
+  set(BASS_PLATFORM "darwin")
+  set(BASS_LIB "libbass.dylib")
+elseif (${WIN32})
+  set(BASS_PLATFORM "win32")
+  set(BASS_LIB "bass.lib")
+else()
+  set(BASS_PLATFORM "linux")
+  set(BASS_LIB "libbass.so")
+endif()
+set(TARGET_PATH "${PROJECT_SOURCE_DIR}/../lib/${BASS_PLATFORM}/x86_64")
 
 set(src_alien
         ${BASE_PATH}/alien/bass/bass_util.c
@@ -88,4 +98,4 @@ set_target_properties(bassdsp
 endif()
 
 # TARGET_LINK_LIBRARIES(bassdsp ${LIBBASS})
-TARGET_LINK_LIBRARIES(bassdsp ${TARGET_PATH}/bass.lib)
+TARGET_LINK_LIBRARIES(bassdsp ${TARGET_PATH}/${BASS_LIB})
