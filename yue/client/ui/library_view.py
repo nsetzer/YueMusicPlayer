@@ -244,18 +244,20 @@ class LibraryView(Tab):
         # needed for song sort
         self.tbl_song.update_data.connect(self.onUpdate)
 
-        self.btn_quick = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
+        self.btn_quick = QToolButton(self)
+        self.btn_quick.setIcon(QIcon(":/img/app_newlist.png"))
         self.btn_quick.clicked.connect(self.showQuickMenu)
-        self.btn_quick.setFlat(True)
+        #self.btn_quick.setFlat(True)
 
         self.txt_search = LineEdit_Search(self,self.tbl_song)
         self.txt_search.textEdited.connect(self.onTextChanged)
         self.lbl_search = QLabel("/")
         self.lbl_error  = QLabel("")
 
-        self.btn_newlist = FlatPushButton(QIcon(":/img/app_newlist.png"),self)
+        self.btn_newlist = QToolButton(self)
+        self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
         self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
-        self.btn_newlist.setFlat(True)
+        #self.btn_newlist.setFlat(True)
 
         self.hbox.addWidget( self.btn_quick )
         self.hbox.addWidget( self.txt_search )

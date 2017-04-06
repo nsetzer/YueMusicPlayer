@@ -151,10 +151,12 @@ class ExplorerFileTable(LargeTable):
         self.columns[-1].width = ResourceManager.instance().width() + 4 # arbitrary pad, image is centered
 
         self.columns.append( EditTextColumn(self,'name',"File Name") )
-        self.columns[-1].setWidthByCharCount(40)
+        self.columns[-1].setWidthByCharCount(35)
         self.columns[-1].commitText.connect(self._onCommitText)
         self.columns[-1].createFile.connect(self._onCreateFile)
         self.columns[-1].createDirectory.connect(self._onCreateDirectory)
+        self.columns[-1].editorStart.connect(self.onEditorStart)
+        self.columns[-1].editorFinished.connect(self.onEditorFinished)
 
         rule1 = lambda item : "isHidden" in item or self.data.hidden(item['name'])
         rule = lambda row: rule1(self.data[row])
@@ -163,7 +165,7 @@ class ExplorerFileTable(LargeTable):
         self.columns.append( TableColumn(self,'size',"Size") )
         self.columns[-1].setTextTransform( lambda item,_ : format_bytes(item['size']) )
         self.columns[-1].setTextAlign(Qt.AlignRight)
-        self.columns[-1].setWidthByCharCount(9)
+        self.columns[-1].setWidthByCharCount(7)
 
         self.columns.append( TableColumn(self,'mtime',"Modified Date") )
         self.columns[-1].setTextTransform( lambda item,_ : self.getFormatedDate(item) )
@@ -176,7 +178,7 @@ class ExplorerFileTable(LargeTable):
         self.columns[-1].setTextTransform( lambda _,v : format_mode(v) )
         self.columns[-1].setShortName("Mode")
         self.columns[-1].setTextAlign(Qt.AlignRight)
-        self.columns[-1].setWidthByCharCount(13)
+        self.columns[-1].setWidthByCharCount(10)
 
     def onShortcutCopy(self):
         self.parent().controller.action_copy( self.parent(),self.getSelection() )
@@ -315,6 +317,17 @@ class ExplorerFileTable(LargeTable):
         value = self.parent().getSlowData(item,"mtime")
         return format_date(value)
 
+    def onEditorStart(self):
+
+        for xcut in [self.xcut_copy,self.xcut_cut,
+                     self.xcut_refresh,self.xcut_paste]:
+            xcut.setEnabled(False)
+
+    def onEditorFinished(self):
+        for xcut in [self.xcut_copy,self.xcut_cut,
+                     self.xcut_refresh,self.xcut_paste]:
+            xcut.setEnabled(True)
+
     def _onCommitText(self,jobs):
         self.renamePaths.emit(jobs)
 
@@ -361,6 +374,8 @@ class EditTextColumn(EditColumn,QObject):
     commitText = pyqtSignal(object) # given a list of jobs
     createFile = pyqtSignal(str)
     createDirectory = pyqtSignal(str)
+    editorStart = pyqtSignal()
+    editorFinished = pyqtSignal()
 
     def __init__(self,parent,index,name=None,data_type=str):
         EditColumn.__init__(self,parent,index,name,data_type)
@@ -370,6 +385,7 @@ class EditTextColumn(EditColumn,QObject):
     def editor_start(self,rows,text,mode=0):
         self.edit_mode = mode
         super().editor_start(rows,text)
+        self.editorStart.emit()
 
     def editor_save(self):
         """
@@ -405,6 +421,7 @@ class EditTextColumn(EditColumn,QObject):
         # TODO: also broken for the same reason
         ##if len(changed) > 0:
         ##    self.cell_modified.emit(changed,value)
+        self.editorFinished.emit()
         return
 
     def editing_rename_finished(self,rows,new_value):

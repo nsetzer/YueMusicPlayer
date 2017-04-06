@@ -1176,7 +1176,7 @@ class MainWindow(QMainWindow):
     def backup_database(self, force = False ):
 
         s = Settings.instance();
-        if s['backup_enabled']:
+        if s['backup_enabled'] or force:
             dir = s['backup_directory']
             backupDatabase( Library.instance().sqlstore, dir, force=force)
 

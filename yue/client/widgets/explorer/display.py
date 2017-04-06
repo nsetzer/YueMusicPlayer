@@ -78,6 +78,7 @@ class ExplorerModel(QWidget):
         self.btn_split.setHidden(True)
         self.btn_split.clicked.connect( self.on_splitButton_clicked )
 
+
         self.btn_prev = QToolButton(self)
         self.btn_prev.clicked.connect( self.chdir_prev )
         self.btn_prev.setStyleSheet("""
@@ -124,7 +125,14 @@ class ExplorerModel(QWidget):
 
         self.btn_refresh = QToolButton(self)
         self.btn_refresh.clicked.connect( self.action_refresh )
-        self.btn_refresh.setIcon(QIcon(':/img/app_plus.png'))
+        #self.btn_refresh.setIcon(QIcon(':/img/app_plus.png'))
+        self.btn_refresh.setStyleSheet("""
+            QToolButton {
+                background:url(":/img/app_plus.png");
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
 
         self.lbl_st_nfiles = QLabel("",self)
         self.lbl_st_nsel   = QLabel("",self)
@@ -187,6 +195,10 @@ class ExplorerModel(QWidget):
         success = False
         try:
 
+            if not self.view.exists(path):
+                QMessageBox.critical(self,"Access Error","Error Opening:\n`%s`\nDirectory Does Not Exist"%path)
+                return;
+
             self.view.chdir(path)
 
             # only push if the path is valid
@@ -213,7 +225,7 @@ class ExplorerModel(QWidget):
 
         except OSError as e:
             sys.stderr.write(str(e))
-            QMessageBox.critical(self,"Access Error","Error Opening `%s`"%path)
+            QMessageBox.critical(self,"Access Error","Error Opening\n:`%s`\nOS Error"%path)
             s='->'.join([s[2] for s in traceback.extract_stack()])
             print("_chdir OS error:",path,name)
             print(s)

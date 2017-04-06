@@ -42,12 +42,22 @@ class SQLStore(object):
 
     def backup(self, backup_path):
 
+        #https://bugs.python.org/issue28518
+        #https://hg.python.org/cpython/rev/284676cf2ac8
+        # a bug was introduced in sept 2016 affecting 3.6.0
+        # when this bug is present, perform an unsafe backup
+        # I believe the begin immediate is only to lockdown
+        # other processes which may be using th db
+        safe_backup = sys.version_info[:3]!=(3,6,0)
+
         with self.conn:
             cursor = self.conn.cursor()
-            cursor.execute('begin immediate')
+            if safe_backup:
+                cursor.execute('begin immediate')
             sys.stdout.write("saving database to `%s`\n"%backup_path)
             shutil.copyfile(self.filepath, backup_path)
-            cursor.execute('begin')
+            if safe_backup:
+                cursor.execute('begin')
             #cursor.execute('rollback')
 
     def path(self):

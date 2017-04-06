@@ -740,20 +740,20 @@ class Library(object):
         column can be any column name in the library table.
         value is taken literally, including any whitespace terminating at a
         newline. thus there must be one record per line.
-
         """
         with self.sqlstore.conn as conn:
             c = conn.cursor()
             with codecs.open(path,"r","utf-8") as rf:
                 for line in rf:
                     line = line.strip()
-                    timestamp,uid,record = line.split(None,3)
+                    timestamp,uid,record = line.split(None,2)
                     column,value = record.split('=',2)
                     record = {"column":column,
                               "uid":int(uid),
                               "date":int(timestamp)}
                     if column != Song.playtime:
                         record['value'] = value
+                    print(record)
                     self._import_record( c, record )
 
     def import_record(self, record):

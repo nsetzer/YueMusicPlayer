@@ -1,5 +1,4 @@
 
-
 from yue.explor.explor import main
+main(__file__)
 
-main()

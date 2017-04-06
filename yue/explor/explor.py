@@ -4,7 +4,19 @@
 support for symlinks
     if is link : show an extra icon in the icon place
 
+if an editor is open, shortcuts such as ctrl+c ctrl+v need to be disabled.
+
 http://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
+
+launchctl load -w /System/Library/LaunchAgents/com.apple.rcd.plist
+cd /Applications/iTunes.app/Contents/MacOS
+sudo chmod -x iTunes
+
+sudo mkdir /Volumes/mount
+sudo mount -t afp afp://user:pass@ipaddress/user /Volumes/Shared
+    afp://nsetzer:password@nas-ha.cogitohealth.net/Signals_Audio
+    afp://nsetzer:password@nas-ha.cogitohealth.net/Software
+
 """
 import os,sys
 if (sys.version_info[0]==2):
@@ -52,15 +64,17 @@ def initSettings():
     data = {}
 
     # basic associations by extension
-    data['ext_text'] = [".txt",".c",".cpp",".h",".hpp", ".py", ".sh", "pl"]
+    data['ext_text'] = [".txt",".log",".md",
+                        ".c",".cpp",".c++",".h",".hpp", ".h++",
+                        ".py", ".sh", ".pl",".bat",]
     data['ext_image'] = [".bmp",".png","jpg"]
 
     if sys.platform == 'darwin':
-        cmd_edit_text = "/Applications/Sublime\ Text.app/Contents/SharedSupport/bin/subl \"%s\""
+        cmd_edit_text = "\"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl\" \"%s\""
         cmd_edit_image = ""
         cmd_open_native = "open \"%s\""
         cmd_launch_terminal = "open -b com.apple.terminal \"%s\""
-        cmd_diff_files = "/Applications/Beyond\ Compare.app/Contents/MacOS/bcomp \"%s\" \"%s\""
+        cmd_diff_files = "/Applications/Beyond Compare.app/Contents/MacOS/bcomp \"%s\" \"%s\""
     elif sys.platform=="win32":
 
         cmd_edit_text = "\"C:\\Program Files\\Sublime Text 3\\subl.exe\" \"%s\""
@@ -92,10 +106,11 @@ def initSettings():
             "/Favorites/Documents=:/img/app_folder.png=~/Documents",
             "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
             "/Favorites/Music=:/img/app_folder.png=~/Music",
-            "/Favorites/kws=:/img/app_folder.png=/Users/nsetzer/git/kws",
+            "/Favorites/git/kws=:/img/app_folder.png=/Users/nsetzer/git/kws",
+            "/Favorites/git=:/img/app_folder.png=/Users/nsetzer/git",
             "/Favorites=:/img/app_fav.png=",
             "/NAS/Software=:/img/app_folder.png=/Volumes/Software",
-            "/NAS/kws=:/img/app_folder.png=/Volumes/Software/KeywordSpotting",
+            "/NAS/KWS=:/img/app_folder.png=/Volumes/Software/KeywordSpotting",
             "/NAS/Signals_Audio=:/img/app_folder.png=/Volumes/Signals_Audio",
             "/NAS=:/img/app_fav.png=",
         ]
@@ -129,23 +144,9 @@ def initSettings():
     # each widget supports an individual setting, which can be toggled.
     data['view_show_hidden'] = True
 
-    Settings.instance().setMulti(data,False)
+    Settings.instance().setMulti(data,True)
 
-def print_help(binpath):
-    sys.stdout.write("Cross Platform File Explorer and FTP Browser\n\n")
-    sys.stdout.write("usage:\n  %s [-b|-c|-d|-e|-o|-x] options\n"%binpath)
-    sys.stdout.write("extended help:\n  %s [-b|-c|-d|-e|-o|-x] -h\n"%binpath)
-
-def parse_args():
-
-    procv = sys.argv[:]
-    binpath = sys.argv[0]
-    argv = sys.argv[1:]
-    if len(argv)>0 and argv[0] in ("-h","--help"):
-        print_help(binpath);
-        sys.exit(0)
-
-
+def get_modes():
     # modes change the command line syntax
     modes = {} # string -> (long-name, shortcut-flag)
     def add_mode(x,y):
@@ -159,18 +160,61 @@ def parse_args():
     add_mode("x","extract")
     add_mode("c","compress")
 
+    return modes
+
+def print_help(binpath):
+    sys.stdout.write("Cross Platform File Explorer and FTP Browser\n\n")
+    sys.stdout.write("usage:\n  %s [-b|-c|-d|-e|-o|-x] options\n"%binpath)
+
+    modes = [
+        ("b","browse",   "open file browser"),
+        ("e","edit",     "open a file for editing"),
+        ("o","open",     "open a file using OS native application"),
+        ("d","diff",     "compare two files"),
+        ("x","extract",  "extract a file"),
+        ("c","compress", "compress a set of files"),
+    ]
+
+    sys.stdout.write("extended help:\n\n")
+    for x,l,h in modes:
+        sys.stdout.write("  -%s  --%-8s  %s\n"%(x,l,h))
+
+def parse_args(script_file):
+
+    procv = sys.argv[:]
+    binpath = sys.argv[0]
+    argv = sys.argv[1:]
+    if len(argv)>0 and argv[0] in ("-h","--help"):
+        print_help(binpath);
+        sys.exit(0)
+
+    modes = get_modes()
+
     mode,xcut = "browse","-b"
     if len(argv)>0:
         for idx in range(len(argv)):
             opt = argv[idx]
-            if len(opt)==2 and opt[0]=="-":
-                mode,xcut = modes.get(argv[idx],("browse","-b"))
-                procv[0] = binpath + " " + xcut
-                if procv[idx+1] == xcut:
-                    procv.pop(idx+1)
+            if opt in modes:
+                # allows --edit or -e
+                mode,xcut = modes[opt]
+                print("++")
+                procv.pop(idx+1)
                 break;
-
+            elif len(opt)>=2:
+                # allows "-eh" for "edit help"
+                if opt[:2] in modes:
+                    mode,xcut = modes[opt[:2]]
+                    new_opt = "-" + opt[2:]
+                    if len(new_opt) == 1:
+                        procv.pop(idx+1)
+                    else:
+                        procv[idx+1] = new_opt
+                    break;
+                elif opt[0]=="-" and opt[1]!="-": # illegal letter
+                    print_help(binpath);
+                    sys.exit(0)
     procv[0] = binpath + " " + xcut
+    print(procv)
 
     parser = argparse.ArgumentParser(\
         description="Cross Platform File Explorer and FTP Browser",
@@ -212,7 +256,9 @@ def parse_args():
         if mode == "open":
             # open the file using user defined the OS native method
             cmdstr = Settings.instance()['cmd_open_native']
-            os.system(cmdstr%args.path)
+            cmdstr = cmdstr%args.path
+            args=shlex.split(cmdstr)
+            subprocess.Popen(args)
             sys.exit(0)
 
         if os.path.isfile(args.path):
@@ -220,7 +266,9 @@ def parse_args():
             if mode == "edit":
                 # open the file for editing using the
                 cmdstr = Settings.instance()['cmd_edit_text']
-                os.system(cmdstr%(args.path))
+                cmdstr = cmdstr%(args.path)
+                args=shlex.split(cmdstr)
+                subprocess.Popen(args)
                 sys.exit(0)
             else:
                 # its a file, display the containing directory
@@ -250,10 +298,17 @@ def parse_args():
         # (the double fork trick doesnt play nicely with Qt)
         # this wont work when frozen
         # detach stdout from the current shell
-        argv=[sys.executable,__file__,"-b",args.path,args.path_r]
+
+        argv=[sys.executable,script_file,"-b",args.path]
+        if args.path_r:
+            argv.append(args.path_r)
+        environ=os.environ.copy()
+        # TODO: this breaks windows
+        environ['PATH']=':'.join(sys.path)
         subprocess.Popen(argv,cwd=os.getcwd(), \
                 stderr= subprocess.DEVNULL,
-                stdout= subprocess.DEVNULL)
+                stdout= subprocess.DEVNULL,
+                env = environ)
         sys.exit(0)
 
     return args
@@ -262,11 +317,9 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         print(line)
 
-def main():
-
+def main(script_file=__file__):
     initSettings()
-    print(sys.argv)
-    args = parse_args()
+    args = parse_args(script_file)
 
     app = QApplication(sys.argv)
     app.setApplicationName("explor")

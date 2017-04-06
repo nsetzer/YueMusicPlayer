@@ -79,7 +79,7 @@ data_files = [("lib",lib_paths),]
 # windows 10 requires the following registry change for entry points to work
 # [HKEY_CLASSES_ROOT\Applications\python.exe\shell\open\command]
 # @="\"C:\\Python25\\python.exe\" \"%1\" %*"
-entry_points = ["explor=yue.explor.explor:main"]
+entry_points = ["explor2=yue.explor.explor:main"]
 
 setup(name=name,
       version='1.0',

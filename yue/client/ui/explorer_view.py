@@ -230,7 +230,7 @@ class ExplorerView(Tab):
             self.ex_secondary.submitJob.connect(self.dashboard.startJob)
             self.controller.submitJob.connect(self.dashboard.startJob)
 
-            self.ex_main.chdir("C:\\Users\\Nick\\Music")
+            self.ex_main.chdir("~")
             self.ex_secondary.chdir("~")
 
     def chdir(self, path):

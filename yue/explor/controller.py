@@ -38,7 +38,8 @@ class ExplorController(ExplorerController):
         ctxtmenu.addSeparator()
 
         if model.view.islocal():
-            if len(items) == 1:
+            if len(items) == 1 and not items[0]['isDir']:
+
                 ctxtmenu.addAction("Edit", lambda : model.action_edit( items[0] ))
 
         ctxtmenu.addSeparator()
