@@ -21,6 +21,11 @@ class SourceNotImplemented(NotImplementedError):
 
 class DataSource(object):
     """docstring for DataSource"""
+
+    IS_REG = 0
+    IS_LNK = 1
+    IS_LNK_BROKEN = 3
+
     def __init__(self):
         super(DataSource, self).__init__()
 
@@ -88,6 +93,10 @@ class DataSource(object):
 
     def mkdir(self,path):
         raise SourceNotImplemented(self,"cannot create directories.")
+
+    def readlink(self,path):
+        """ return the target path of a symlink """
+        raise SourceNotImplemented(self,"cannot read link.")
 
     def delete(self,path):
         raise SourceNotImplemented(self,"cannot delete path.")
@@ -198,6 +207,12 @@ class DirectorySource(DataSource):
             path = os.path.join(root,path)
         return os.path.normpath( path )
 
+    def readlink(self,path):
+        """ return the target path of a symlink """
+        if path == DirectorySource.dummy_path:
+            return path
+        return os.readlink(path)
+
     def listdir(self,path):
         if path == DirectorySource.dummy_path:
             return get_drives()
@@ -250,28 +265,9 @@ class DirectorySource(DataSource):
 
     def stat(self,path):
 
-        if os.path.exists(path):
+        try:
             st = os.lstat(path)
-            isLink = False
-            if stat.S_ISLNK(st.st_mode):
-                # only links are stated twice. we first need to know
-                # if it is a link, and if it is, what does it point to.
-                st = os.stat(path)
-                isLink = True
-            result = {
-                "isDir" : stat.S_ISDIR(st.st_mode),
-                "isLink" : isLink,
-                # TODO: always store time without timezone info....?
-                "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
-                "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
-                "size"  : st.st_size,
-                "mode"  : stat.S_IMODE(st.st_mode)
-            }
-            # if on windows and path is not a plain drive letter
-            if sys.platform == "win32" and path[1:] != ":\\":
-                if has_hidden_attribute(path):
-                    result['isHidden'] = True
-        else:
+        except FileNotFoundError:
             result = {
                 "isDir" : False,
                 "isLink" : False,
@@ -280,6 +276,33 @@ class DirectorySource(DataSource):
                 "size"  : 0,
                 "mode"  : 0
             }
+            return result
+
+        isLink = DirectorySource.IS_REG
+        if stat.S_ISLNK(st.st_mode):
+            # only links are stated twice. we first need to know
+            # if it is a link, and if it is, what does it point to.
+            try:
+                st = os.stat(path)
+            except FileNotFoundError:
+                isLink = DirectorySource.IS_LNK_BROKEN
+            else:
+                isLink = DirectorySource.IS_LNK
+
+        result = {
+            "isDir" : stat.S_ISDIR(st.st_mode),
+            "isLink" : isLink,
+            # TODO: always store time without timezone info....?
+            "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
+            "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
+            "size"  : st.st_size,
+            "mode"  : stat.S_IMODE(st.st_mode)
+        }
+        # if on windows and path is not a plain drive letter
+        if sys.platform == "win32" and path[1:] != ":\\":
+            if has_hidden_attribute(path):
+                result['isHidden'] = True
+
         return result
 
     def stat_fast(self,path):
@@ -385,12 +408,15 @@ class SourceView(object):
         return self.source.isdir(path)
 
     def realpath(self,path):
-
         path = self.source.normpath(path,self.pwd())
         return path
 
     def normpath(self,path,root=None):
         return self.source.normpath(path,root)
+
+    def readlink(self,path):
+        path = self.realpath(path)
+        return self.source.readlink(path)
 
     def listdir(self,path):
         path = self.realpath(path)

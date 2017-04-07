@@ -68,10 +68,6 @@ class ExplorerController(DummyController):
         act = ctxtmenu.addAction("Rename", lambda : model.action_rename_begin(items))
         #act.setDisabled( len(items)!=1 )
 
-        if len(items) == 1 and items[0]['isLink']:
-            if items[0]['name'] != "..":
-                ctxtmenu.addAction("Edit Link")
-
         act=ctxtmenu.addAction("Copy", lambda : self.action_copy( model, items ))
         act.setShortcut(QKeySequence("Ctrl+C"))
         act=ctxtmenu.addAction("Cut", lambda : self.action_cut( model, items ))

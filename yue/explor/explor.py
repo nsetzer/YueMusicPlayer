@@ -74,7 +74,7 @@ def initSettings():
         cmd_edit_image = ""
         cmd_open_native = "open \"%s\""
         cmd_launch_terminal = "open -b com.apple.terminal \"%s\""
-        cmd_diff_files = "/Applications/Beyond Compare.app/Contents/MacOS/bcomp \"%s\" \"%s\""
+        cmd_diff_files = "\"/Applications/Beyond Compare.app/Contents/MacOS/bcomp\" \"%s\" \"%s\""
     elif sys.platform=="win32":
 
         cmd_edit_text = "\"C:\\Program Files\\Sublime Text 3\\subl.exe\" \"%s\""
@@ -106,7 +106,8 @@ def initSettings():
             "/Favorites/Documents=:/img/app_folder.png=~/Documents",
             "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
             "/Favorites/Music=:/img/app_folder.png=~/Music",
-            "/Favorites/git/kws=:/img/app_folder.png=/Users/nsetzer/git/kws",
+            "/Favorites/git/kws=:/img/app_folder.png=~/git/kws",
+            "/Favorites/git/vagrant=:/img/app_folder.png=~/git/vagrant",
             "/Favorites/git=:/img/app_folder.png=/Users/nsetzer/git",
             "/Favorites=:/img/app_fav.png=",
             "/NAS/Software=:/img/app_folder.png=/Volumes/Software",
@@ -312,8 +313,14 @@ def parse_args(script_file):
     return args
 
 def handle_exception(exc_type, exc_value, exc_traceback):
+
+    lines = ""
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         print(line)
+        lines += line + "\n"
+
+    QMessageBox.critical(None,"Unhandled Error",lines)
+
 
 def main(script_file=__file__):
     initSettings()

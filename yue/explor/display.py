@@ -36,6 +36,43 @@ def fileIsBinary(view,path):
 
     return False;
 
+class EditLinkDialog(QDialog):
+    """docstring for EditLinkDialog"""
+    def __init__(self, view, path, parent=None):
+        super(EditLinkDialog, self).__init__(parent)
+        self.view = view
+        self.path = path
+
+        self.setWindowTitle("Edit Link")
+        self.vbox=QVBoxLayout(self)
+        self.vbox.setContentsMargins(16,0,16,0)
+
+        self.grid = QGridLayout()
+
+        self.btn_accept = QPushButton("Save",self)
+        self.btn_cancel = QPushButton("Cancel",self)
+
+        target = view.readlink(path)
+        self.edit_target = QLineEdit(target,self)
+
+
+        self.grid.addWidget(QLabel("Link Name:"),0,0)
+        self.grid.addWidget(QLabel(view.split(path)[1]),0,1)
+        self.grid.addWidget(QLabel("Target:"),1,0)
+        self.grid.addWidget(self.edit_target,1,1)
+
+        self.btn_accept.clicked.connect(self.accept)
+        self.btn_cancel.clicked.connect(self.reject)
+
+        self.hbox_btns = QHBoxLayout()
+        self.hbox_btns.addStretch(1)
+        self.hbox_btns.addWidget(self.btn_cancel)
+        self.hbox_btns.addWidget(self.btn_accept)
+
+        self.vbox.addLayout(self.grid)
+        self.vbox.addLayout(self.hbox_btns)
+
+
 
 class ExplorModel(ExplorerModel):
     # TODO rename ExplorerModel / ExplorModel to
@@ -69,6 +106,16 @@ class ExplorModel(ExplorerModel):
 
             cmdstr = Settings.instance()['cmd_edit_text']
             proc_exec(cmdstr%(path))
+
+
+    def action_edit_link(self,item):
+
+        if self.view.islocal():
+            pass
+        path = self.view.realpath(item['name'])
+
+        dlg = EditLinkDialog(self.view,path,self)
+        dlg.exec_()
 
     def action_open_term(self):
 

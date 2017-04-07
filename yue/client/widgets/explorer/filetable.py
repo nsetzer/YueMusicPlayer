@@ -14,7 +14,7 @@ from yue.client.widgets.explorer.jobs import Job, JobRunner, \
 
 from yue.core.util import format_date, format_bytes, format_mode
 
-from yue.core.explorer.source import DirectorySource,SourceListView
+from yue.core.explorer.source import DataSource,DirectorySource,SourceListView
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 
 from yue.core.song import Song
@@ -158,9 +158,13 @@ class ExplorerFileTable(LargeTable):
         self.columns[-1].editorStart.connect(self.onEditorStart)
         self.columns[-1].editorFinished.connect(self.onEditorFinished)
 
-        rule1 = lambda item : "isHidden" in item or self.data.hidden(item['name'])
-        rule = lambda row: rule1(self.data[row])
-        self.addRowTextColorComplexRule(rule,QColor(0,0,200))
+        _rule1 = lambda item : "isHidden" in item or self.data.hidden(item['name'])
+        rule1 = lambda row: _rule1(self.data[row])
+        self.addRowTextColorComplexRule(rule1,QColor(0,0,200))
+
+        _rule2 = lambda item : item['isLink'] == DataSource.IS_LNK_BROKEN
+        rule2 = lambda row: _rule2(self.data[row])
+        self.addRowTextColorComplexRule(rule2,QColor(200,0,0))
 
         self.columns.append( TableColumn(self,'size',"Size") )
         self.columns[-1].setTextTransform( lambda item,_ : format_bytes(item['size']) )

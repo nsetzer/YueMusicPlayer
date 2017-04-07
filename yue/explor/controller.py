@@ -6,7 +6,10 @@ from PyQt5.QtGui import *
 from yue.core.settings import Settings
 
 from yue.client.widgets.explorer.controller import ExplorerController
+from yue.core.explorer.source import DataSource
 
+import shlex
+import subprocess
 
 class ExplorController(ExplorerController):
 
@@ -40,7 +43,11 @@ class ExplorController(ExplorerController):
         if model.view.islocal():
             if len(items) == 1 and not items[0]['isDir']:
 
-                ctxtmenu.addAction("Edit", lambda : model.action_edit( items[0] ))
+                if not items[0]['isDir'] and items[0]['isLink'] != DataSource.IS_LNK_BROKEN:
+                    ctxtmenu.addAction("Edit", lambda : model.action_edit( items[0] ))
+
+                if items[0]['isLink']:
+                    ctxtmenu.addAction("Edit Link", lambda : model.action_edit_link( items[0] ))
 
         ctxtmenu.addSeparator()
 
