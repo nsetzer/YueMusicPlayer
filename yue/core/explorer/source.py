@@ -98,6 +98,13 @@ class DataSource(object):
         """ return the target path of a symlink """
         raise SourceNotImplemented(self,"cannot read link.")
 
+    def mklink(self,target,path):
+        """ create a new symlink at path pointing at target
+
+        path must not exist
+        """
+        raise SourceNotImplemented(self,"cannot create link.")
+
     def delete(self,path):
         raise SourceNotImplemented(self,"cannot delete path.")
 
@@ -236,11 +243,12 @@ class DirectorySource(DataSource):
 
     def delete(self,path):
         # todo support removing directory rmdir()
-        if self.exists( path ):
-            if self.isdir(path):
-                os.rmdir( path )
-            else:
-                os.remove( path )
+        if self.isdir(path):
+            os.rmdir( path )
+        elif self.islink(path):
+            os.unlink(path)
+        else:
+            os.remove( path )
 
     def open(self,path,mode):
         return open(path,mode)
@@ -253,9 +261,16 @@ class DirectorySource(DataSource):
     def isdir(self,path):
         return os.path.isdir(path)
 
+    def islink(self,path):
+        st = os.lstat(path )
+        return stat.S_ISLNK(st.st_mode)
+
     def mkdir(self,path):
         if not self.exists( path ):
             os.makedirs( path )
+
+    def mklink(self,target,path):
+        os.symlink(target,path)
 
     def split(self,path):
         return os.path.split(path)
@@ -265,18 +280,18 @@ class DirectorySource(DataSource):
 
     def stat(self,path):
 
-        try:
-            st = os.lstat(path)
-        except FileNotFoundError:
-            result = {
-                "isDir" : False,
-                "isLink" : False,
-                "mtime" : 0,
-                "ctime" : 0,
-                "size"  : 0,
-                "mode"  : 0
-            }
-            return result
+        #try:
+        st = os.lstat(path)
+        #except FileNotFoundError:
+        #    result = {
+        #        "isDir" : False,
+        #        "isLink" : False,
+        #        "mtime" : 0,
+        #        "ctime" : 0,
+        #        "size"  : 0,
+        #        "mode"  : 0
+        #    }
+        #    return result
 
         isLink = DirectorySource.IS_REG
         if stat.S_ISLNK(st.st_mode):
@@ -417,6 +432,9 @@ class SourceView(object):
     def readlink(self,path):
         path = self.realpath(path)
         return self.source.readlink(path)
+
+    def mklink(self,target,path):
+        return self.source.mklink(target,path)
 
     def listdir(self,path):
         path = self.realpath(path)
@@ -591,7 +609,6 @@ class SourceListView(SourceView):
             self.sort_reverse = False
 
         self.sort_column_name = column_name
-        print(self.sort_column_name,self.sort_reverse)
 
         if self.sort_column_name in {"name","size"}:
             items = [self.stat_fast(name) for name in self.data]
@@ -621,8 +638,14 @@ class SourceListView(SourceView):
                 name = self.data[idx]
                 if name == name1:
                     self.data[idx]=name2
+                    self.statcache_index={} # TODO: a better way?
                     break;
         return self.source.move(oldpath,newpath)
+
+    def mklink(self,target,path):
+        path = self.realpath(path)
+        # need to update statcache and data
+        self.source.mklink(target,path)
 
     def delete(self,path):
 
@@ -633,6 +656,7 @@ class SourceListView(SourceView):
                 name = self.data[idx]
                 if name == name1:
                     self.data.pop(idx)
+                    self.statcache_index={} # TODO: a better way?
                     break;
         return self.source.delete(path)
 

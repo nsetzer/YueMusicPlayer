@@ -72,6 +72,31 @@ class EditLinkDialog(QDialog):
         self.vbox.addLayout(self.grid)
         self.vbox.addLayout(self.hbox_btns)
 
+    def text(self):
+        return self.edit_target.text()
+
+def mklink(view,path,target):
+
+    try:
+        st = view.stat(path)
+
+        # if it exists and is not a link
+        if not st['isLink']:
+            raise Exception("EEXISTS %s"%st)
+
+        # remove the existing link
+        if st['isLink']>0:
+            # TODO bypass the view cache, where delete would remove
+            # the item from the cache,
+            # the whole caching thing needs to be rethought
+            view.source.delete(path)
+
+    except FileNotFoundError as e:
+        pass # if it doesnt exist, just create the link
+
+    view.mklink(target,path)
+
+
 
 
 class ExplorModel(ExplorerModel):
@@ -115,7 +140,8 @@ class ExplorModel(ExplorerModel):
         path = self.view.realpath(item['name'])
 
         dlg = EditLinkDialog(self.view,path,self)
-        dlg.exec_()
+        if dlg.exec_():
+            mklink(self.view,path,dlg.text())
 
     def action_open_term(self):
 
