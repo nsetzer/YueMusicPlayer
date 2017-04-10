@@ -280,18 +280,23 @@ class DirectorySource(DataSource):
 
     def stat(self,path):
 
-        #try:
-        st = os.lstat(path)
-        #except FileNotFoundError:
-        #    result = {
-        #        "isDir" : False,
-        #        "isLink" : False,
-        #        "mtime" : 0,
-        #        "ctime" : 0,
-        #        "size"  : 0,
-        #        "mode"  : 0
-        #    }
-        #    return result
+        # most of this try catch is to handle shenanigans on windows
+        # with secret files (found.000) and removeable drives
+        # which are listed bu not accessable.
+        try:
+            if sys.platform=="win32" and not os.access(path,os.F_OK):
+                raise PermissionError()
+            st = os.lstat(path)
+        except PermissionError as e:
+            result = {
+                "isDir" : False,
+                "isLink" : False,
+                "mtime" : 0,
+                "ctime" : 0,
+                "size"  : 0,
+                "mode"  : 0
+            }
+            return result
 
         isLink = DirectorySource.IS_REG
         if stat.S_ISLNK(st.st_mode):

@@ -1,4 +1,4 @@
-#! python34 $this
+#! python $this
 
 import sys
 import string

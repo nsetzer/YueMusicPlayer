@@ -101,8 +101,8 @@ class MainWindow(QMainWindow):
 
     def newFtpTabTest(self):
 
-        url = "ftp://nsetzer:password@192.168.1.9:2121//Music"
-        url = "ftp://cogito:!bbn_kws#@e-ftp-02.bbn.com//"
+        url = "ftp://nsetzer:password@192.168.1.9:2121//"
+        #url = "ftp://cogito:!bbn_kws#@e-ftp-02.bbn.com//"
         p = parseFTPurl(url)
         p['hostname'] = p['hostname'].replace("/","")
 

@@ -444,9 +444,14 @@ class ExplorerModel(QWidget):
         self._update_status_text()
 
         if self.chdir_on_load_select:
-            index = self.view.index(self.chdir_on_load_select)
-            self.tbl_file.setSelection({index,})
-            self.tbl_file.scrollTo(index)
+            try:
+                index = self.view.index(self.chdir_on_load_select)
+
+                self.tbl_file.setSelection({index,})
+                self.tbl_file.scrollTo(index)
+            except ValueError:
+                pass
+
             self.chdir_on_load_select = None
 
     def onFilterTextChanged(self,text):

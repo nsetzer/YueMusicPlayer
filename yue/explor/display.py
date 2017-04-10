@@ -10,10 +10,10 @@ from yue.explor.assoc import FileAssoc
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 
 import subprocess, shlex
+import os,sys
 
 def proc_exec(cmdstr):
     args=shlex.split(cmdstr)
-    print(args)
     subprocess.Popen(args)
 
 def fileIsBinary(view,path):
@@ -153,7 +153,6 @@ class ExplorModel(ExplorerModel):
     def action_open_file(self, item):
         path = self.view.realpath(item['name'])
 
-        print("open path",path)
         if isArchiveFile(path):
             self.openAsTab.emit(self.view,path)
 
