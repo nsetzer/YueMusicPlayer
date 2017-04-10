@@ -253,24 +253,7 @@ class ClientRepl(object):
         """ backup the database """
         self.client.backup_database( True )
 
-    def exhistory(self,args):
-        """
-        0 : disable
-        1 : enable logging
-        2 : enable logging of record changes
-        3 : enable logging + record logging
-        """
-        args = ReplArgumentParser(args)
-        args.assertMinArgs( 1 )
 
-        enable_log    = bool(int(args[0]) & 1)
-        enable_update = bool(int(args[0]) & 2)
-
-        History.instance().setLogEnabled( enable_log )
-        History.instance().setUpdateEnabled( enable_update )
-
-        print("history log: %d"%(enable_log))
-        print("history update: %d"%(enable_update))
 
     def exexplorer(self, args):
         """ open directory of the database in explorer """
@@ -334,6 +317,129 @@ class ClientRepl(object):
                 print("%s=%s"%(field,Settings.instance()[field]))
 
 
+    def exhistory_old(self,args):
+        """
+        0 : disable
+        1 : enable logging
+        2 : enable logging of record changes
+        3 : enable logging + record logging
+        """
+        args = ReplArgumentParser(args)
+        args.assertMinArgs( 1 )
+
+        enable_log    = bool(int(args[0]) & 1)
+        enable_update = bool(int(args[0]) & 2)
+
+        History.instance().setLogEnabled( enable_log )
+        History.instance().setUpdateEnabled( enable_update )
+
+        print("history log: %d"%(enable_log))
+        print("history update: %d"%(enable_update))
+
+    def exhistory(self,args):
+        """ manage history
+
+        $0 enable [log|update]
+            log: enable history logging of playback
+            update: enable history logging of metadata
+        $0 disable [log|update]
+            log: disable history logging of playback
+            update: disable history logging of metadata
+        $0 export path
+            write history database to a file (history.log)
+        $0 import path
+            read back the history log and place the values in the database
+        $0 clear
+            wipe the history database
+        $0 pl name path
+            export playlist metadata given by name to path
+
+        """
+        args = ReplArgumentParser(args,{})
+        args.assertMinArgs( 1 )
+        cmd = args[0]
+
+        if cmd == "enable":
+            args.assertMinArgs( 2 )
+            mode = args[1]
+            if mode == "log":
+                History.instance().setLogEnabled( True )
+            elif mode == "update":
+                History.instance().setUpdateEnabled( True )
+
+        elif cmd == "disable":
+            args.assertMinArgs( 2 )
+            mode = args[1]
+            if mode == "log":
+                History.instance().setLogEnabled( False )
+            elif mode == "update":
+                History.instance().setUpdateEnabled( False )
+
+        elif cmd == "export":
+            args.assertMinArgs( 2 )
+            path = args[1]
+
+            if os.path.exists(path):
+                print("EEXIST %s"%path) # prevent overwriting
+                return
+
+            with codecs.open(path,"w","utf-8") as af:
+                for record in History.instance().export():
+                    af.write("%d %-6d %s=%s\n"%(\
+                        record['date'],record['uid'],\
+                        record['column'],record['value']));
+
+        elif cmd == "import":
+            #for record in remote_history.export():
+            #    self.parent.library._import_record( c, record )
+            args.assertMinArgs( 2 )
+            path = args[1]
+
+            if not os.path.exists(path):
+                print("EEXIST %s"%path)
+                return
+
+            Library.instance().import_record_file(path)
+
+        elif cmd == "clear":
+            History.instance().db.store.conn.execute("DELETE FROM history")
+
+        elif cmd == "pl":
+            args.assertMinArgs( 3 )
+            name = args[1]
+            path = args[2]
+
+            if not PlaylistManager.instance().exists(name):
+                print("EEXIST %s"%name) # prevent overwriting
+                return
+
+            pl = PlaylistManager.instance().openPlaylist(name)
+
+            if os.path.exists(path):
+                print("EEXIST %s"%path) # prevent overwriting
+                return
+
+            with codecs.open(path,"w","utf-8") as wf:
+                for song in Library.instance().songFromIds(pl):
+                    s = song[Song.last_played]
+                    t = (s,song[Song.uid],Song.last_played,s)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    c = song[Song.play_count]
+                    t = (s,song[Song.uid],Song.play_count,c)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    r = song[Song.rating]
+                    t = (s,song[Song.uid],Song.rating,r)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    a = song[Song.artist]
+                    t = (s,song[Song.uid],Song.artist,a)
+                    wf.write("%d %-6d %s=%s\n"%t)
+                    a = song[Song.title]
+                    t = (s,song[Song.uid],Song.title,a)
+                    wf.write("%d %-6d %s=%s\n"%t)
+        elif cmd == "info":
+            print("history log: %d"%(History.instance().isLogEnabled()))
+            print("history update: %d"%(History.instance().isUpdateEnabled()))
+
     def exxx(self,args):
         """
         1: xx 1 alt alt [alt ...]
@@ -355,67 +461,6 @@ class ClientRepl(object):
             print(alternatives)
             Library.instance().songPathHack( alternatives )
 
-        elif value == 2:
-            args.assertMinArgs( 2 )
-            path = args[1]
-
-            if os.path.exists(path):
-                print("EEXIST %s"%path) # prevent overwriting
-                return
-
-            with codecs.open(path,"w","utf-8") as af:
-                for record in History.instance().export():
-                    af.write("%d %-6d %s=%s\n"%(\
-                        record['date'],record['uid'],\
-                        record['column'],record['value']));
-            History.instance().db.store.conn.execute("DELETE FROM history")
-
-        elif value == 3:
-            #for record in remote_history.export():
-            #    self.parent.library._import_record( c, record )
-            args.assertMinArgs( 2 )
-            path = args[1]
-
-            if not os.path.exists(path):
-                print("EEXIST %s"%path)
-                return
-
-            Library.instance().import_record_file(path)
-
-        elif value == 4:
-            args.assertMinArgs( 3 )
-            name = args[1]
-            path = args[2]
-
-            if not PlaylistManager.instance().exists(name):
-                print("EEXIST %s"%name) # prevent overwriting
-                return
-
-            pl = PlaylistManager.instance().openPlaylist(name)
-
-            if os.path.exists(path):
-                print("EEXIST %s"%path) # prevent overwriting
-                return
-
-            print(len(pl))
-
-            with codecs.open(path,"w","utf-8") as wf:
-                for song in Library.instance().songFromIds(pl):
-                    s = song[Song.last_played]
-                    t = (s,song[Song.uid],Song.last_played,s)
-                    wf.write("%d %-6d %s=%s\n"%t)
-                    c = song[Song.play_count]
-                    t = (s,song[Song.uid],Song.play_count,c)
-                    wf.write("%d %-6d %s=%s\n"%t)
-                    r = song[Song.rating]
-                    t = (s,song[Song.uid],Song.rating,r)
-                    wf.write("%d %-6d %s=%s\n"%t)
-                    a = song[Song.artist]
-                    t = (s,song[Song.uid],Song.artist,a)
-                    wf.write("%d %-6d %s=%s\n"%t)
-                    a = song[Song.title]
-                    t = (s,song[Song.uid],Song.title,a)
-                    wf.write("%d %-6d %s=%s\n"%t)
 
 
 class MainWindow(QMainWindow):
