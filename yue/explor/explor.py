@@ -303,7 +303,15 @@ def parse_args(script_file):
             argv.append(args.path_r)
         environ=os.environ.copy()
         # TODO: this breaks windows
-        environ['PATH']=':'.join(sys.path)
+        envpath = sys.path + environ['PATH'].split(":")
+        envset = set()
+        envpath_unique = []
+        for path in envpath:
+            if path not in envset:
+                envpath_unique.append(path)
+                envset.add(path)
+        environ['PATH']=':'.join(envpath_unique)
+        print(environ['PATH'])
         subprocess.Popen(argv,cwd=os.getcwd(), \
                 stderr= subprocess.DEVNULL,
                 stdout= subprocess.DEVNULL,

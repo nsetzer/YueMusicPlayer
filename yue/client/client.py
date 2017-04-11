@@ -345,20 +345,23 @@ class ClientRepl(object):
         $0 disable [log|update]
             log: disable history logging of playback
             update: disable history logging of metadata
-        $0 export path
+        $0 [-s] export path
             write history database to a file (history.log)
+            -s --simple : write playtime records as last_played.
+
         $0 import path
             read back the history log and place the values in the database
         $0 clear
             wipe the history database
         $0 pl name path
-            export playlist metadata given by name to path
+            export playlist metadata given by name to path as a history log file
+        $0 info
+            print information about the current history state
 
         """
-        args = ReplArgumentParser(args,{})
+        args = ReplArgumentParser(args,{'s':'simple'})
         args.assertMinArgs( 1 )
         cmd = args[0]
-
         if cmd == "enable":
             args.assertMinArgs( 2 )
             mode = args[1]
@@ -384,10 +387,18 @@ class ClientRepl(object):
                 return
 
             with codecs.open(path,"w","utf-8") as af:
+                nrecs=0
                 for record in History.instance().export():
+
+                    if 'simple' in args and record['column']==Song.playtime:
+                        record['column'] = Song.last_played
+                        record['value'] = record['date']
+
                     af.write("%d %-6d %s=%s\n"%(\
                         record['date'],record['uid'],\
                         record['column'],record['value']));
+                    nrecs+=1
+                print("exported %d records simple=%s"%(nrecs,'simple' in args))
 
         elif cmd == "import":
             #for record in remote_history.export():

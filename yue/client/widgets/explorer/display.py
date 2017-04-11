@@ -180,17 +180,17 @@ class ExplorerModel(QWidget):
     def showSplitButton(self,bShow):
         self.btn_split.setHidden(not bShow)
 
-    def refresh(self):
-        self.chdir( self.view.pwd() )
+    def refresh(self,resetScroll=True):
+        self.chdir( self.view.pwd() ,resetScroll)
 
     def clearHistory(self):
         self.directory_history = []
         self.directory_history_index = 0
 
-    def chdir(self,path):
-        return self._chdir(path,True)
+    def chdir(self,path,resetScroll=True):
+        return self._chdir(path,True,resetScroll)
 
-    def _chdir(self,path,push):
+    def _chdir(self,path,push,resetScroll=True):
         pwd = self.view.pwd()
         success = False
         try:
@@ -234,8 +234,10 @@ class ExplorerModel(QWidget):
         self.btn_prev.setDisabled(self.directory_history_index == len(self.directory_history)-1)
 
         self.txt_path.setText(self.view.pwd())
+
         self.tbl_file.update()
-        self.tbl_file.scrollTo(0)
+        if resetScroll:
+            self.tbl_file.scrollTo(0)
 
         return success
 
@@ -340,30 +342,21 @@ class ExplorerModel(QWidget):
         self.action_create(1)
 
     def action_touch(self,name):
-        # TODO handle OS errors
-        self.view.open(name,"w").close()
-        self.refresh()
-        # TODO: when load completes set selection to name
-        #if self.view.exists(name):
-        #    idx = self.view.index(name)
-        #    self.tbl_file.scrollTo(idx)
-        #    self.tbl_file.setSelection([idx,])
-        #else:
-        #    print("error")
+        try:
+            self.view.open(name,"w").close()
+            self.chdir_on_load_select = name
+        finally:
+            self.refresh()
 
     def action_mkdir_begin(self):
       self.action_create(2)
 
     def action_mkdir(self,name):
-        # TODO handle OS errors
-        self.view.mkdir(name)
-        self.refresh()
-        if self.view.exists(name):
-            idx = self.view.index(name)
-            self.tbl_file.scrollTo(idx)
-            self.tbl_file.setSelection([idx,])
-        else:
-            print("error")
+        try:
+            self.view.mkdir(name)
+            self.chdir_on_load_select = name
+        finally:
+            self.refresh()
 
     def action_create(self,mode):
 
@@ -429,7 +422,7 @@ class ExplorerModel(QWidget):
 
         self.tbl_file.setSelection([])
 
-        self.refresh()
+        self.refresh(resetScroll=False)
 
     def onDeleteJobFinished(self):
 

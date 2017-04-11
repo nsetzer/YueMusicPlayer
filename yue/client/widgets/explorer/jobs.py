@@ -13,6 +13,7 @@ from yue.core.util import format_bytes
 
 from yue.core.song import Song
 from yue.core.library import Library
+import time
 
 class JobMessageBox(QDialog):
     """docstring for JobMessage"""
@@ -225,7 +226,7 @@ class CopyJob(Job):
 
     def doTask(self):
 
-
+        self.setProgress(0)
         self.calculate_totals()
 
         print(self.tot_size,self.num_files)
@@ -266,12 +267,37 @@ class CopyJob(Job):
             elif idx == 1:
                 dst_path = generateUniquePath(self.dst_view,dst_path)
 
-        print("copy",dst_path)
-        self.dst_view.mkdir( dst_dir )
-        source_copy(self.src_view,src_path, \
-                    self.dst_view,dst_path,self.chunksize)
+        print("cp",src_path,dst_path)
+        self.source_copy(src_path, dst_path)
 
-        #print(self.showDialog(JobMessageType.Question,"hello world"))
+    def source_copy(self, input, target):
+
+        for src,dst in iter_copy(self.src_view, input, self.dst_view, target):
+            dname,_ = self.dst_view.split(dst)
+            self.dst_view.mkdir( dname )
+            self.source_copy_file(src, dst)
+
+    def source_copy_file(self, pathA, pathB):
+        """
+        Perform file copy from one source to another.
+        chunksize is the number of bytes to read/write at one time.
+        """
+        st = self.src_view.stat_fast(pathA)
+        if st['isLink']:
+            target = self.src_view.readlink(pathA)
+            self.dst_view.mklink(target,pathB)
+            self.tot_size_copied += st['size']
+            self.setProgress(100*self.tot_size_copied/self.tot_size)
+            return
+        with self.src_view.open(pathA,"rb") as rb:
+            with self.dst_view.open(pathB,"wb") as wb:
+                buf = rb.read(self.chunksize)
+                while buf:
+                    wb.write(buf)# TODO: write should return len buf
+                    self.tot_size_copied += len(buf)
+                    self.setProgress(100*self.tot_size_copied/self.tot_size)
+                    buf = rb.read(self.chunksize)
+
 
 class MoveJob(Job):
     def __init__(self, src_view, src_paths, dst_path):

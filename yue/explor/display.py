@@ -13,8 +13,13 @@ import subprocess, shlex
 import os,sys
 
 def proc_exec(cmdstr):
-    args=shlex.split(cmdstr)
-    subprocess.Popen(args)
+    if sys.platform!="win32":
+        print(cmdstr)
+    try:
+        args=shlex.split(cmdstr)
+        subprocess.Popen(args)
+    except:
+        raise Exception(cmdstr)
 
 def fileIsBinary(view,path):
     """
@@ -153,12 +158,13 @@ class ExplorModel(ExplorerModel):
     def action_open_file(self, item):
         path = self.view.realpath(item['name'])
 
+        cmdstr_img = Settings.instance()['cmd_edit_image']
+
         if isArchiveFile(path):
             self.openAsTab.emit(self.view,path)
 
-        elif FileAssoc.isImage(path):
-            cmdstr = Settings.instance()['cmd_edit_image']
-            proc_exec(cmdstr%(path))
+        elif FileAssoc.isImage(path) and cmdstr_img:
+            proc_exec(cmdstr_img%(path))
         elif FileAssoc.isText(path):
             cmdstr = Settings.instance()['cmd_edit_text']
             proc_exec(cmdstr%(path))

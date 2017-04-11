@@ -43,10 +43,9 @@ class ReplArgumentParser(object):
                     self.switch.add(c)
                 if tmp[-1] in self.shortcuts:
                     value = True
-                    if len(args) > i:
-                        value = args.pop(i)
+                    #if len(args) > i:
+                    #    value = args.pop(i)
                     key = self.shortcuts[tmp[-1]]
-                    print(key,value)
                     self.kwargs[key]=value
             else:
                 parse_opts = False;

@@ -177,6 +177,7 @@ class HistorySearchGrammar(SearchGrammar):
                         "title"  : "title",
                         "data"   : "column",
                         "action" : "column",
+                        "id"     : "uid",
                     }
 
     def translateColumn(self,colid):
