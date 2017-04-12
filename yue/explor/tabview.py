@@ -21,6 +21,7 @@ class ExplorerView(Tab):
     submitJob = pyqtSignal(Job)
 
     openAsTab = pyqtSignal(object,str)  # view, path
+    openRemote = pyqtSignal(object,str)  # model, path
 
     directoryInfo = pyqtSignal(bool,int) # signature for now...
 
@@ -48,6 +49,9 @@ class ExplorerView(Tab):
 
         self.ex_main.openAsTab.connect(self.onOpenAsTab)
         self.ex_secondary.openAsTab.connect(self.onOpenAsTab)
+
+        self.ex_main.openRemote.connect(self.onOpenRemote)
+        self.ex_secondary.openRemote.connect(self.onOpenRemote)
 
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
@@ -127,6 +131,10 @@ class ExplorerView(Tab):
     def onOpenAsTab(self,view,path):
 
         self.openAsTab.emit(view,path)
+
+    def onOpenRemote(self,model,path):
+
+        self.openRemote.emit(model,path)
 
     def onInfoNumFiles(self,onLeft,nFiles):
 

@@ -29,8 +29,12 @@ class DataSource(object):
     def __init__(self):
         super(DataSource, self).__init__()
 
+
     def close(self):
         print("closing %s."%self.__class__.__name__)
+
+    def name(self):
+        return self.__class__.__name__.replace("Source","")
 
     def fix(self,path):
         # override for filesystems that restrict charactersets
@@ -47,6 +51,16 @@ class DataSource(object):
         """ return True if the source represents the local file system
 
         This means that an external program can easily access the file
+        """
+        return False
+
+    def isOpenSupported(self):
+        """ can a filepath be opened and returna file-like object?
+        """
+        return True
+
+    def isGetPutSupported(self):
+        """ is get/put/getfo/putfo implemented for this source
         """
         return False
 
@@ -116,6 +130,24 @@ class DataSource(object):
 
     def open(self,path,mode):
         raise SourceNotImplemented(self,"cannot open path")
+
+    def getfo(self,path,fo,callback=None):
+        """
+        copy path and write to an open file-like object fo
+
+        callback(int bytes_transfered,int bytes_total)
+        """
+        raise SourceNotImplemented(self,"cannot get file.")
+
+
+    def putfo(self,path,fo,callback=None):
+        """
+        copy the contents of an open file-like object to path
+
+        callback(int bytes_transfered,int bytes_total)
+            bytes_total may/will be zero since the size of fo is unknown
+        """
+        raise SourceNotImplemented(self,"cannot put file.")
 
     def getExportPath(self,path):
         # return a filepath that can be opened by the base file system
@@ -361,16 +393,7 @@ class SourceView(object):
         self._stat_data = defaultdict(int)
 
     def name(self):
-        p = self.breakpath(self.pwd())
-        b = self.source.__class__.__name__+":/"
-        j="/"
-        if len(p) > 2:
-            j = "/.../"
-        if len(p) > 1:
-            return b+p[0]+j+p[-1]
-        if len(p) > 0:
-            return b+p[0]
-        return b
+        return self.source.name()
 
     def equals(self,other):
         """ return true if the given source/view matches this one
@@ -387,6 +410,12 @@ class SourceView(object):
 
     def islocal(self):
         return self.source.islocal()
+
+    def isOpenSupported(self):
+        return self.source.isOpenSupported()
+
+    def isGetPutSupported(self):
+        return self.source.isGetPutSupported()
 
     def readonly(self):
         return self.source.readonly()
@@ -465,6 +494,14 @@ class SourceView(object):
     def open(self,path,mode):
         path = self.realpath(path)
         return self.source.open(path,mode)
+
+    def getfo(self,path,fo,callback=None):
+        path = self.realpath(path)
+        return self.source.getfo(path,fo,callback)
+
+    def putfo(self,path,fo,callback=None):
+        path = self.realpath(path)
+        return self.source.putfo(path,fo,callback)
 
     def _stat(self,stat,path):
         """

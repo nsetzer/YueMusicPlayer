@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.explorer.source import DirectorySource
 from yue.core.settings import Settings
 from yue.client.widgets.explorer.display import ExplorerModel
 from yue.client.widgets.explorer.filetable import ResourceManager, ExplorerFileTable
@@ -101,9 +102,6 @@ def mklink(view,path,target):
 
     view.mklink(target,path)
 
-
-
-
 class ExplorModel(ExplorerModel):
     # TODO rename ExplorerModel / ExplorModel to
     # ExplorDisplay, to prevent confusion
@@ -111,6 +109,7 @@ class ExplorModel(ExplorerModel):
 
 
     openAsTab = pyqtSignal(object,str)  # view, path
+    openRemote = pyqtSignal(object,str) # model, path
 
     def _getNewFileTable(self,view):
         tbl = ExplorerFileTable(view,self)
@@ -158,17 +157,33 @@ class ExplorModel(ExplorerModel):
     def action_open_file(self, item):
         path = self.view.realpath(item['name'])
 
+
+        if not self.view.isOpenSupported():
+            # not local, but supports get/put api
+            if self.view.isGetPutSupported():
+                return self._action_open_file_remote(path)
+        elif self.view.islocal():
+            return self._action_open_file_local(self.view,path)
+
+        QMessageBox.critical(None,"Error","open not supported")
+
+    def _action_open_file_remote(self,path):
+
+        self.openRemote.emit(self,path)
+
+
+    def _action_open_file_local(self,view,path):
         cmdstr_img = Settings.instance()['cmd_edit_image']
 
         if isArchiveFile(path):
-            self.openAsTab.emit(self.view,path)
+            self.openAsTab.emit(view,path)
 
         elif FileAssoc.isImage(path) and cmdstr_img:
             proc_exec(cmdstr_img%(path))
         elif FileAssoc.isText(path):
             cmdstr = Settings.instance()['cmd_edit_text']
             proc_exec(cmdstr%(path))
-        elif not fileIsBinary(self.view,path):
+        elif not fileIsBinary(view,path):
             cmdstr = Settings.instance()['cmd_edit_text']
             proc_exec(cmdstr%(path))
         else:

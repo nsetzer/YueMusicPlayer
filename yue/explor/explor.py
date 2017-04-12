@@ -61,6 +61,8 @@ def initSettings():
     sqlstore = SQLStore(settings_db_path)
     Settings.init( sqlstore )
 
+    Settings.instance()['database_directory']=path
+
     data = {}
 
     # basic associations by extension
@@ -176,7 +178,11 @@ def print_help(binpath):
         ("c","compress", "compress a set of files"),
     ]
 
-    sys.stdout.write("extended help:\n\n")
+    sys.stdout.write("extended help:\n")
+    sys.stdout.write("select a mode and pass -h or --help for more info.\n")
+    sys.stdout.write("e.g. %s -eh\n\n"%binpath)
+    sys.stdout.write("e.g. %s --edit --help\n\n"%binpath)
+
     for x,l,h in modes:
         sys.stdout.write("  -%s  --%-8s  %s\n"%(x,l,h))
 
@@ -185,7 +191,13 @@ def parse_args(script_file):
     procv = sys.argv[:]
     binpath = sys.argv[0]
     argv = sys.argv[1:]
-    if len(argv)>0 and argv[0] in ("-h","--help"):
+
+    help_arg=""
+    if len(argv)>0:
+        help_arg = argv[0]
+        if help_arg == "--bg" and len(argv)>1:
+            help_arg = argv[1]
+    if help_arg in ("-h","--help"):
         print_help(binpath);
         sys.exit(0)
 
@@ -214,26 +226,36 @@ def parse_args(script_file):
                     print_help(binpath);
                     sys.exit(0)
     procv[0] = binpath + " " + xcut
+    if binpath.endswith(".py"):
+        procv[0] = sys.executable + " " + procv[0]
 
     parser = argparse.ArgumentParser(\
-        description="Cross Platform File Explorer and FTP Browser",
-        usage = "explor [-b|-c|-d|-e|-o|-x] options")
+        description="Cross Platform File Explorer and FTP Browser")
 
-    parser.add_argument("--bg",dest="bg",action="store_true",
-                        help="run gui as background task")
     parser.add_argument("--pwd",dest="pwd",type=str,default=os.getcwd(),
                         help="working directory for relative paths given")
+
+    if mode == "browse":
+        parser.add_argument("--bg",dest="bg",action="store_true",
+                            help="run gui as background task")
+    else:
+        if "--bg" in procv:
+            procv.pop(procv.index("--bg"))
+
+    if mode == "edit":
+        parser.add_argument("-t","--touch",dest="touch",action="store_true",
+                            help="create file if it does not exist")
 
     if mode == "compress":
         parser.add_argument("archive_path",type=str,nargs='?',
                         help="a secondary file or directory to display")
-        parser.add_argument("files",type=str,nargs='+',
+        parser.add_argument("path",type=str,nargs='+',
                         help="a secondary file or directory to display")
     elif mode == "extract":
-        parser.add_argument("archive_path",type=str,nargs='?',
+        parser.add_argument("archive_path",type=str,
                         help="a secondary file or directory to display")
-        parser.add_argument("directory",type=str,nargs='+',
-                        help="a secondary file or directory to display")
+        parser.add_argument("directory",type=str,default=".",nargs="?",
+                        help="directory to extract to. default is pwd")
     else:
         parser.add_argument("path",type=str,nargs='?', default = "",
                         help="a file or directory path to open")
@@ -241,6 +263,16 @@ def parse_args(script_file):
             parser.add_argument("path_r",type=str,nargs='?',default="",
                             help="a secondary file or directory to display")
 
+    pos_opts = []
+    for p in parser._get_positional_actions():
+        t = p.dest
+        if p.default is not None:
+            t = "[%s]"%t
+        if p.nargs=="+":
+            t = "%s..."%t
+        pos_opts.append(t)
+    pos_opts = " ".join(pos_opts)
+    parser.usage="%s [options] %s"%(procv[0],pos_opts)
     args = parser.parse_args(procv[1:])
 
     if mode not in {"diff","browse"}:
@@ -248,7 +280,6 @@ def parse_args(script_file):
 
     if args.path:
         args.path = os.path.expanduser(args.path)
-
         if not args.path.startswith("/"):
             args.path = os.path.join(args.pwd,args.path)
 
@@ -260,24 +291,28 @@ def parse_args(script_file):
             subprocess.Popen(args)
             sys.exit(0)
 
-        if os.path.isfile(args.path):
+        if mode == "edit":
             #if mode == "edit" or FileAssoc.isText(args.path):
-            if mode == "edit":
-                # open the file for editing using the
-                cmdstr = Settings.instance()['cmd_edit_text']
-                cmdstr = cmdstr%(args.path)
-                args=shlex.split(cmdstr)
-                subprocess.Popen(args)
-                sys.exit(0)
-            else:
-                # its a file, display the containing directory
-                args.path,_ = os.path.split(args.path)
+
+            # open the file for editing using the
+            if not os.path.isfile(args.path):
+                if args.touch:
+                    open(args.path,"wb+").close()
+                else:
+                    sys.stderr.write("Error: Path not Found or not a File\n")
+                    sys.stderr.write("%s\n"%args.path)
+                    sys.exit(1)
+            cmdstr = Settings.instance()['cmd_edit_text']
+            cmdstr = cmdstr%(args.path)
+            args=shlex.split(cmdstr)
+            subprocess.Popen(args)
+            sys.exit(0)
+
     else:
         args.path = args.pwd
 
     if args.path_r:
         args.path_r = os.path.expanduser(args.path_r)
-
         if not args.path_r.startswith("/"):
             args.path_r = os.path.join(args.pwd,args.path_r)
 

@@ -480,8 +480,7 @@ class ExplorerModel(QWidget):
 
         self.lbl_st_nfiles.setText(' | '.join(ntxt))
 
-        n = self.view.source.__class__.__name__
-        n = n .replace("Source","")
+        n = self.view.name()
         self.lbl_st_src.setText(n)
 
     def onRenameFinished(self):

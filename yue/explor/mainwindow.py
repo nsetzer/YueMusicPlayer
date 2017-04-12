@@ -10,6 +10,7 @@ from yue.core.settings import Settings
 from yue.client.widgets.Tab import TabWidget
 
 from yue.core.explorer.source import DirectorySource,SourceListView
+from yue.core.explorer.sshsource import SSHClientSource
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 
@@ -25,6 +26,16 @@ from yue.explor.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
 
+""""
+FTP protocol
+    server:port
+    url: ftp://server:port
+    username
+    password
+    [] anonymous login -> ftp://anonymous@server:port
+    ssh private key
+
+"""
 class SettingsDialog(QDialog):
     """docstring for SettingsDialog"""
     def __init__(self, parent=None):
@@ -126,6 +137,9 @@ class MainWindow(QMainWindow):
         act = menu.addAction("Open FTP")
         act.triggered.connect(self.newFtpTabTest)
 
+        act = menu.addAction("Open SSH+FTP")
+        act.triggered.connect(self.newSshTabTest)
+
         menu.addAction("Open SMB")
         menu.addSeparator()
         menu.addAction("Exit")
@@ -164,6 +178,25 @@ class MainWindow(QMainWindow):
 
             view.chdir(p['path'])
 
+    def newSshTabTest(self):
+
+        host="localhost"
+        port=2222
+        username="root"
+        password=None
+        private_key="/Users/nsetzer/git/vagrant/cogito/.vagrant/machines/default/virtualbox/private_key"
+
+        try:
+            print("++create")
+            src = SSHClientSource.fromPrivateKey(host,port,username,password,private_key)
+            print("--create")
+        except ConnectionRefusedError as e:
+            sys.stderr.write("error: %s\n"%e)
+        else:
+            view = self._newTab(src)
+            view.chdir(src.root())
+
+
     def newArchiveTab(self,view,path):
 
         name=view.split(path)[1]
@@ -192,6 +225,7 @@ class MainWindow(QMainWindow):
         view.primaryDirectoryChanged.connect(lambda path: self.onDirectoryChanged(view,path))
         view.submitJob.connect(self.dashboard.startJob)
         view.openAsTab.connect(self.newArchiveTab)
+        view.openRemote.connect(lambda model,path :self.onOpenRemote(view,model,path))
         view.directoryInfo.connect(self.onUpdateStatus)
 
         self.tabview.addTab(view,QIcon(icon_path),"temp name")
@@ -282,6 +316,21 @@ class MainWindow(QMainWindow):
             self.sbar_lbl_p_nfiles.setText("nfiles: %d"%nFiles)
         else:
             self.sbar_lbl_s_nfiles.setText("nfiles: %d"%nFiles)
+
+    def onOpenRemote(self, tab, display, path):
+
+        src = DirectorySource()
+        view = display.view
+        dtemp = src.join(Settings.instance()['database_directory'],"remote")
+        src.mkdir(dtemp)
+
+        remote_dname,remote_fname = view.split(path)
+        ftemp = src.join(dtemp,remote_fname)
+
+        with src.open(ftemp,"wb") as wb:
+            view.getfo(path,wb)
+
+        display._action_open_file_local(src,ftemp)
 
 class Pane(QWidget):
     """docstring for Pane"""

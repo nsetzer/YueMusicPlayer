@@ -4,6 +4,17 @@ from yue.core.sqlstore import SQLTable
 
 import random
 
+def random_shuffle(lst):
+    """
+    todo: combine this with an algorithm to prevent repeated artists
+
+    https://labs.spotify.com/2014/02/28/how-to-shuffle-songs/
+    """
+    for j in reversed(range(len(lst))):
+        i = random.randint(0,j)
+        lst[i],lst[j] = lst[j],lst[i]
+    return lst
+
 class PlaylistManager(object):
     """docstring for PlaylistManager"""
     __instance = None
