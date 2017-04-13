@@ -270,6 +270,10 @@ class CopyJob(Job):
         print("cp",src_path,dst_path)
         self.source_copy(src_path, dst_path)
 
+    # TODO: eventually. refactor source_copy and source_copy_file
+    # and merge with the functions in fsutil. this will require providing
+    # a callback mechanism.
+
     def source_copy(self, input, target):
 
         for src,dst in iter_copy(self.src_view, input, self.dst_view, target):
@@ -282,22 +286,63 @@ class CopyJob(Job):
         Perform file copy from one source to another.
         chunksize is the number of bytes to read/write at one time.
         """
-        st = self.src_view.stat_fast(pathA)
+        st = self.src_view.stat(pathA)
         if st['isLink']:
             target = self.src_view.readlink(pathA)
             self.dst_view.mklink(target,pathB)
             self.tot_size_copied += st['size']
             self.setProgress(100*self.tot_size_copied/self.tot_size)
             return
-        with self.src_view.open(pathA,"rb") as rb:
-            with self.dst_view.open(pathB,"wb") as wb:
-                buf = rb.read(self.chunksize)
-                while buf:
-                    wb.write(buf)# TODO: write should return len buf
-                    self.tot_size_copied += len(buf)
-                    self.setProgress(100*self.tot_size_copied/self.tot_size)
-                    buf = rb.read(self.chunksize)
 
+        # 4 possible casses
+        #   assuming at least one ove open or get/put is supported
+        # | src     | dst     |
+        # | open    | open    | open -> open
+        # | open    | get/put | open -> put
+        # | get/put | open    | get  -> open
+        # | get/put | get/put | get / put : requires a temporary file.
+        # the 4th case can be implemented in the future
+
+        so = self.src_view.isOpenSupported()
+        do = self.dst_view.isOpenSupported()
+        sg = self.src_view.isGetPutSupported()
+        dg = self.dst_view.isGetPutSupported()
+
+        if so and do:
+
+            with self.src_view.open(pathA,"rb") as rb:
+                with self.dst_view.open(pathB,"wb") as wb:
+                    buf = rb.read(self.chunksize)
+                    while buf:
+                        wb.write(buf)# TODO: write should return len buf
+                        self.tot_size_copied += len(buf)
+                        self.setProgress(100*self.tot_size_copied/self.tot_size)
+                        buf = rb.read(self.chunksize)
+
+        elif so and dg:
+            with self.src_view.open(pathA,"rb") as rb:
+                self.dst_view.putfo(pathB,rb,self.fo_cbk)
+            self.tot_size_copied += self.src_view.stat_fast(pathA)['size']
+            self.setProgress(100*self.tot_size_copied/self.tot_size)
+
+        elif sg and do:
+            with self.dst_view.open(pathB,"wb") as wb:
+                self.src_view.getfo(pathA,wb,self.fo_cbk)
+            self.tot_size_copied += self.src_view.stat_fast(pathB)['size']
+            self.setProgress(100*self.tot_size_copied/self.tot_size)
+
+        elif sg and dg:
+            sys.stderr.write("copy not implemented between %s and %s"%(
+                self.src_view.__class__.__name__,
+                self.dst_view.__class__.__name__))
+
+        else:
+            sys.stderr.write("copy not supported between %s and %s"%(
+                self.src_view.__class__.__name__,
+                self.dst_view.__class__.__name__))
+
+    def fo_cbk(self,tr,to):
+        self.setProgress(100*(self.tot_size_copied+tr)/self.tot_size)
 
 class MoveJob(Job):
     def __init__(self, src_view, src_paths, dst_path):
