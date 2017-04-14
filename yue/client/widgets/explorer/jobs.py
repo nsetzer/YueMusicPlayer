@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from enum import Enum
+import traceback
 
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.fsutil import generateUniquePath, \
@@ -92,6 +93,7 @@ class Job(QThread):
         except AbortJob as e:
             print("job aborted")
         except Exception as e:
+            traceback.print_exc()
             print(e)
 
         print("complete",self.__class__.__name__)
@@ -307,7 +309,7 @@ class CopyJob(Job):
         do = self.dst_view.isOpenSupported()
         sg = self.src_view.isGetPutSupported()
         dg = self.dst_view.isGetPutSupported()
-
+        print(so,sg,do,dg)
         if so and do:
 
             with self.src_view.open(pathA,"rb") as rb:
@@ -320,12 +322,14 @@ class CopyJob(Job):
                         buf = rb.read(self.chunksize)
 
         elif so and dg:
+            print("open/put")
             with self.src_view.open(pathA,"rb") as rb:
                 self.dst_view.putfo(pathB,rb,self.fo_cbk)
             self.tot_size_copied += self.src_view.stat_fast(pathA)['size']
             self.setProgress(100*self.tot_size_copied/self.tot_size)
 
         elif sg and do:
+            print("get/open")
             with self.dst_view.open(pathB,"wb") as wb:
                 self.src_view.getfo(pathA,wb,self.fo_cbk)
             self.tot_size_copied += self.src_view.stat_fast(pathB)['size']
