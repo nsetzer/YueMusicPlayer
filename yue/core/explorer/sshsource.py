@@ -129,11 +129,11 @@ class SSHClientSource(DataSource):
 
     def delete(self,path):
         if self.isdir(path):
-            self.ftp.unlink.rmdir( path )
+            self.ftp.rmdir( path )
         elif self.islink(path):
             self.ftp.unlink(path)
         else:
-            self.ftp.unlink.remove( path )
+            self.ftp.remove( path )
 
     def open(self,path,mode):
         raise SourceNotImplemented("files cannot be opened natively by ssh")
@@ -146,13 +146,25 @@ class SSHClientSource(DataSource):
         return True
 
     def isdir(self,path):
-        return stat.S_ISDIR(self.ftp.stat(path).st_mode)
+        try:
+            return stat.S_ISDIR(self.ftp.stat(path).st_mode)
+        except:
+            return False
 
     def islink(self,path):
-        return stat.S_ISLNK(self.ftp.stat(path).st_mode)
+        try:
+            return stat.S_ISLNK(self.ftp.stat(path).st_mode)
+        except:
+            return False
 
     def mkdir(self,path):
-        self.ftp.mkdir(path,0o755)
+        # TODO: this model should be used everywhere...
+        if not self.exists(path):
+            self.ftp.mkdir(path,0o755)
+            return
+        elif not self.isdir(path):
+            raise SourceException("path exists and is not directory")
+
 
     def mklink(self,target,path):
         self.ftp.symlink(target,path)

@@ -26,6 +26,7 @@ from yue.explor.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
 
+import subprocess
 """"
 FTP protocol
     server:port
@@ -34,6 +35,24 @@ FTP protocol
     password
     [] anonymous login -> ftp://anonymous@server:port
     ssh private key
+
+File watcher protocol
+    inotify too hard this early.
+    create a list of files to watch,
+    add a sync button that is only visible
+    when there are remote files opened locally.
+
+remote ssh directories
+    export path, should return an ssh command that
+    will cd into that directory. open a terminal
+    and execute that command.
+
+open terminal here
+    hide this if the directory is not local or ssh
+
+mount -t vboxsf -o uid=0,gid=0 vagrant /vagrant
+
+
 
 """
 class SettingsDialog(QDialog):
@@ -51,7 +70,8 @@ class SettingsDialog(QDialog):
                                    ("cmd_edit_image","Image Editor"),
                                    ("cmd_open_native","Open Native"),
                                    ("cmd_launch_terminal","Open Terminal"),
-                                   ("cmd_diff_files","Diff Tool")]):
+                                   ("cmd_diff_files","Diff Tool"),
+                                   ("cmd_vagrant","Vagrant Binary")]):
             edit = QLineEdit(self)
             edit.setText(Settings.instance()[s])
             edit.setCursorPosition(0)
@@ -72,6 +92,169 @@ class SettingsDialog(QDialog):
 
         self.vbox.addLayout(self.grid)
         self.vbox.addLayout(self.hbox_btns)
+
+class SshCredentialsDialog(QDialog):
+    """docstring for SettingsDialog"""
+    def __init__(self, parent=None):
+        super(SshCredentialsDialog, self).__init__(parent)
+
+        self.vbox=QVBoxLayout(self)
+        self.vbox.setContentsMargins(16,8,16,8)
+
+        self.grid = QGridLayout()
+
+        i=1
+
+        self.cbox_proto = QComboBox(self)
+        self.lbl_proto = QLabel("Protocol:",self)
+        self.lbl_proto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_proto,i,0)
+        self.grid.addWidget(self.cbox_proto,i,1,1,4)
+        i+=1
+
+        self.edit_host = QLineEdit(self)
+        self.spbx_port = QSpinBox(self)
+        self.spbx_port.setRange(0,65536)
+        self.spbx_port.setValue(22)
+        self.lbl_server = QLabel("Server:",self)
+        self.lbl_server.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_server,i,0)
+        self.grid.addWidget(self.edit_host,i,1,1,2)
+        self.lbl_port = QLabel("Port:",self)
+        self.lbl_port.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_port,i,3)
+        self.grid.addWidget(self.spbx_port,i,4,)
+        i+=1
+
+        self.lbl_url = QLabel("ssh://",self)
+        self.lbl_url_ = QLabel("URL:",self)
+        self.lbl_url_.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_url_,i,0)
+        self.grid.addWidget(self.lbl_url,i,1)
+        i+=1
+
+        self.edit_user = QLineEdit(self)
+        self.lbl_user = QLabel("User Name:",self)
+        self.lbl_user.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_user,i,0)
+        self.grid.addWidget(self.edit_user,i,1,1,2)
+        i+=1
+
+        self.edit_pass = QLineEdit(self)
+        self.lbl_pass = QLabel("Password:",self)
+        self.lbl_pass.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_pass,i,0)
+        self.grid.addWidget(self.edit_pass,i,1,1,2)
+        i+=1
+
+        self.edit_ikey = QLineEdit(self)
+        self.lbl_ikey = QLabel("Private Key:",self)
+        self.lbl_ikey.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_ikey,i,0)
+        self.grid.addWidget(self.edit_ikey,i,1,1,4)
+        i+=1
+
+        self.btn_accept = QPushButton("Connect",self)
+        self.btn_cancel = QPushButton("Cancel",self)
+
+        self.btn_accept.clicked.connect(self.accept)
+        self.btn_cancel.clicked.connect(self.reject)
+
+        self.hbox_btns = QHBoxLayout()
+        self.hbox_btns.setContentsMargins(0,0,0,0)
+        self.hbox_btns.addStretch(1)
+        self.hbox_btns.addWidget(self.btn_accept)
+        self.hbox_btns.addWidget(self.btn_cancel)
+
+        self.vbox.addLayout(self.grid)
+        self.vbox.addLayout(self.hbox_btns)
+
+    def getConfig(self):
+
+        cfg = {}
+        cfg['host'] = self.edit_host.text()
+        cfg['port'] = self.spbx_port.value()
+        cfg['user'] = self.edit_user.text()
+        cfg['password'] = self.edit_pass.text() or None
+        cfg['key'] = self.edit_ikey.text() or None
+        return cfg
+
+
+def getVagrantInstances():
+    proc = subprocess.Popen(["vagrant","global-status"],
+                 stdout=subprocess.PIPE,
+                 stderr=subprocess.PIPE,)
+    out,err = proc.communicate()
+    out = out.decode("utf-8")
+
+    available = []
+    for line in out.split("\n"):
+        x = line.strip().split(None,4)
+        if len(x) != 5:
+            continue
+        state = x[3]
+        directory = x[4]
+        print(state,directory)
+        if state.lower() == "running":
+            available.append(directory)
+    return available
+
+def getVagrantSSH(cwd):
+    proc = subprocess.Popen(["vagrant","ssh-config"],
+                 cwd=cwd,
+                 stdout=subprocess.PIPE,
+                 stderr=subprocess.PIPE,)
+    out,err = proc.communicate()
+    out = out.decode("utf-8")
+
+    host=None
+    port=None
+    user=None
+    pswd=None
+    ikey=None
+
+    for line in out.split("\n"):
+        x = line.strip().split(None,1)
+        if len(x) != 2:
+            continue
+        key=x[0].lower()
+        val=x[1]
+        if key == "hostname":
+            host = val
+        elif key == "user":
+            user = val
+        elif key == "port":
+            port = int(val)
+        elif key == "identityfile":
+            ikey = val
+
+    d = {"host":host,"port":port,"user":user,"password":pswd,"key":ikey}
+
+    return d
+
+class NewVagrantTabJob(Job):
+    """docstring for NewVagrantTabJob"""
+
+    newSource = pyqtSignal(object)
+
+    def __init__(self, mainwindow, vagrant_dir):
+
+        super(NewVagrantTabJob, self).__init__()
+        self.mainwindow = mainwindow
+        self.vagrant_dir = vagrant_dir
+
+    def doTask(self):
+        #vagrant_dir = "/Users/nsetzer/git/vagrant/cogito"
+        #vagrant_dir = "/Users/nsetzer/git/Cogito/Product/EnterpriseCommonServices"
+        cfg = getVagrantSSH(self.vagrant_dir)
+        try:
+            print("++create")
+            src = SSHClientSource.fromPrivateKey(cfg['host'],cfg['port'],
+                    cfg['user'],cfg['password'],cfg['key'])
+            print("--create")
+            self.newSource.emit(src)
+        except ConnectionRefusedError as e:
+            sys.stderr.write("error: %s\n"%e)
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
@@ -97,7 +280,6 @@ class MainWindow(QMainWindow):
         self.tabview.setCornerWidget(self.btn_newTab)
         self.tabview.tabCloseRequested.connect(self.onTabCloseRequest)
         self.tabview.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-
 
         self.dashboard = Dashboard(self)
 
@@ -133,16 +315,38 @@ class MainWindow(QMainWindow):
         act = menu.addAction("Preferences")
         act.triggered.connect(self.openSettings)
 
-        menu.addSeparator()
         act = menu.addAction("Open FTP")
         act.triggered.connect(self.newFtpTabTest)
 
-        act = menu.addAction("Open SSH+FTP")
+        act = menu.addAction("Open SSH")
         act.triggered.connect(self.newSshTabTest)
+
+        menu.addSeparator()
+
+        if Settings.instance()['cmd_vagrant']:
+            self.vagrant_menu = menu.addMenu("Vagrant SSH")
+            self.vagrant_menu.aboutToShow.connect(self.initVagrantMenuBar)
+
+        menu.addSeparator()
+
+        #act = menu.addAction("Open SSH+FTP")
+        #act.triggered.connect(self.newSshTabTest)
+
+        #act = menu.addAction("Open AWS")
+        #act.triggered.connect(self.newSshTabTest)
 
         menu.addAction("Open SMB")
         menu.addSeparator()
         menu.addAction("Exit")
+
+    def initVagrantMenuBar(self):
+
+        self.vagrant_menu.clear()
+
+        for dir in getVagrantInstances():
+            _,n = os.path.split(dir)
+            act = self.vagrant_menu.addAction(n)
+            act.triggered.connect(lambda : self.newVagrantTab(dir))
 
     def initStatusBar(self):
 
@@ -178,24 +382,39 @@ class MainWindow(QMainWindow):
 
             view.chdir(p['path'])
 
+    def newVagrantTab(self,vagrant_dir):
+
+        job = NewVagrantTabJob(self,vagrant_dir)
+        job.newSource.connect(self.newTabFromSource)
+        self.dashboard.startJob(job)
+
+    def newTabFromSource(self,src):
+
+        view = self._newTab(src)
+        view.chdir(src.root())
+
     def newSshTabTest(self):
 
-        host="localhost"
-        port=2222
-        username="root"
-        password=None
-        private_key="/Users/nsetzer/git/vagrant/cogito/.vagrant/machines/default/virtualbox/private_key"
+        dlg = SshCredentialsDialog()
+
+        if not dlg.exec_():
+            return;
+
+        cfg = dlg.getConfig()
 
         try:
             print("++create")
-            src = SSHClientSource.fromPrivateKey(host,port,username,password,private_key)
+            print(cfg)
+            src = SSHClientSource.fromPrivateKey(cfg['host'],cfg['port'],
+                    cfg['user'],cfg['password'],cfg['key'])
             print("--create")
-        except ConnectionRefusedError as e:
-            sys.stderr.write("error: %s\n"%e)
+        except Exception as e:
+            #sys.stderr.write("error: %s\n"%e)
+            QMessageBox.critical(None,"Connection Error",str(e))
         else:
             view = self._newTab(src)
             view.chdir(src.root())
-
+            return
 
     def newArchiveTab(self,view,path):
 

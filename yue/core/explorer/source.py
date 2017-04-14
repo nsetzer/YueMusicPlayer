@@ -14,6 +14,10 @@ import ctypes
 from fnmatch import fnmatch
 from collections import defaultdict
 # for windows, the dummy path lists all available drive letters
+
+class SourceException(Exception):
+    pass
+
 class SourceNotImplemented(NotImplementedError):
     def __init__(self,cls,msg):
         msg = "Source %s :"%cls.__class__.__name__ + msg
@@ -394,6 +398,12 @@ class SourceView(object):
 
     def name(self):
         return self.source.name()
+
+    def uid(self):
+        """
+        returns the name + a truncated hash
+        """
+        return ""
 
     def equals(self,other):
         """ return true if the given source/view matches this one

@@ -77,6 +77,7 @@ def initSettings():
         cmd_open_native = "open \"%s\""
         cmd_launch_terminal = "open -b com.apple.terminal \"%s\""
         cmd_diff_files = "\"/Applications/Beyond Compare.app/Contents/MacOS/bcomp\" \"%s\" \"%s\""
+        cmd_vagrant = "vagrant"
     elif sys.platform=="win32":
 
         cmd_edit_text = "\"C:\\Program Files\\Sublime Text 3\\subl.exe\" \"%s\""
@@ -85,6 +86,7 @@ def initSettings():
         cmd_open_native = "explorer \"%s\""
         cmd_launch_terminal = "start /D \"%s\""
         cmd_diff_files = ""
+        cmd_vagrant = ""
     else:
         cmd_edit_text = "subl3 \"%s\""
         cmd_edit_image = ""
@@ -92,12 +94,14 @@ def initSettings():
         cmd_open_native = "nemo \"%s\""
         cmd_launch_terminal = "xterm -e \"cd %s; bash\""
         cmd_diff_files = ""
+        cmd_vagrant = ""
 
     data["cmd_edit_text"] = cmd_edit_text
     data["cmd_edit_image"] = cmd_edit_image
     data["cmd_open_native"] = cmd_open_native
     data["cmd_launch_terminal"] = cmd_launch_terminal
     data["cmd_diff_files"] = cmd_diff_files
+    data["cmd_vagrant"] = cmd_vagrant
 
     #~/projects/android/YueMusicPlayer/explor.py
     if sys.platform == 'darwin':
