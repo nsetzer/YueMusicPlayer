@@ -90,17 +90,27 @@ class ZipFSImpl(DictFSImpl):
     def stat(self,path):
         zippath = path[1:]
         if self.isdir(path):
-            return {'size':0, "isDir":True}
+            return {'size':0,
+                    "isDir":True,
+                    "isLink":False,
+                    "mtime":0,
+                "ctime":0,
+                "mode":0}
         info = self.zip.getinfo(zippath)
-        data = {'size':info.file_size,"isDir":False}
+        data = {'size':info.file_size,
+                    "isDir":False,
+                    "isLink":False,
+                    "mtime":0,
+                "ctime":0,
+                "mode":0}
         return data
 
     def stat_fast(self,path):
         zippath = path[1:]
         if self.isdir(path):
-            return {'size':0, "isDir":True}
+            return {'size':0, "isDir":True,"isLink":False,}
         info = self.zip.getinfo(zippath)
-        data = {'size':info.file_size,"isDir":False}
+        data = {'size':info.file_size,"isDir":False,"isLink":False,}
         return data
 
     def close(self):
@@ -160,16 +170,18 @@ class TarFSImpl(DictFSImpl):
         _,name = self.split(path)
         if self.isdir(path):
             return {'size':0,
-                    'name':name,
                     "isDir":True,
                     "isLink":False,
-                    "mtime":0}
+                    "mtime":0,
+                "ctime":0,
+                "mode":0}
         info = self.ark.gettarinfo(tarpath)
         data = {'size':info.size,
-                'name':name,
                 "isDir":False,
                 "isLink":False,
-                "mtime":0}
+                "mtime":0,
+                "ctime":0,
+                "mode":0}
         return data
 
     def stat_fast(self,path):
@@ -177,12 +189,10 @@ class TarFSImpl(DictFSImpl):
         _,name = self.split(path)
         if self.isdir(path):
             return {'size':0,
-                    'name':name,
                     "isDir":True,
                     "isLink":False}
         info = self.ark.getmember(tarpath)
         data = {'size':info.size,
-                'name':name,
                 "isDir":False,
                 "isLink":False}
         return data

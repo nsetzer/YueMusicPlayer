@@ -32,10 +32,24 @@ This will complicate closing source
     - fast close : ignore watch files
     - safe close : copy modified watch files then close
 
+how do we close watch files?
+    need some way to garbage collect files
+    that have not been modified in a long time.
+    couple different use cases:
+        code file : opened, modified, then tested for some time
+        log file: opened, read, and then closed.
+    these are the same from the outside looking in, but removing
+        the code file if it is still opened in an editor is bad
+
 """
 
-from yue.client.widgets.explorer.jobs import Job
 
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
+from yue.client.widgets.explorer.jobs import Job
+import os,sys
 
 class WatchFile(object):
     """docstring for WatchFile"""
@@ -53,33 +67,62 @@ class WatchFile(object):
         return st['mtime'] != self.st['mtime'] or st['size'] != self.st['size']
 
 
-class WatchFiles(QObject):
-    """docstring for WatchFiles"""
+    def sync(self):
+
+        st = self.localSource.stat(self.localPath)
+
+        with self.localSource.open(self.localPath,"rb") as rf:
+            self.remoteSource.putfo(self.remotePath,rf)
+
+        st_r = self.remoteSource.stat(self.remotePath)
+
+        if st_r['size'] != st['size']:
+            sys.stderr.write("error syncing file: %s"%self.remotePath)
+
+        self.st = st
+
+class WatchFileController(QObject):
+    """docstring for WatchFileController"""
 
     submitJob = pyqtSignal(Job)
+    watchersChanged =  pyqtSignal(int)
+
     def __init__(self,localSource):
         """
         localSouce is any source that implements the file open API
         if it is a directory source, a per platform notify system
         will be attached.
         """
-        super(WatchFiles, self).__init__()
+        super(WatchFileController, self).__init__()
 
         self.source = localSource
 
-        self watch_list = []
+        self.watch_list = {}
 
-    def addFile(self,localPath,source,remotePath)
+    def addFile(self,localPath,source,remotePath):
 
+        """
+        TODO: what happens when a watch file is already watched?
+        currently the new one replaces the old one.
+        but we need to somehow delete any listener before replacing.s
+        """
         wf = WatchFile(self.source,localPath,source,remotePath)
-        self.watch_list.append(wf)
+        self.watch_list[localPath] = wf
+
+        self.watchersChanged.emit(len(self.watch_list))
 
     def onPostAll(self):
         """
         iterate through all watch files, if the mtime has changed
         queue a job for
         """
-        pass
+
+        for _,wf in self.watch_list.items():
+            if wf.hasChanged():
+                print("sync file",wf.remotePath)
+                wf.sync()
+            else:
+                print("file has not changed",wf.remotePath)
 
     def onChange(self,localPath):
         pass

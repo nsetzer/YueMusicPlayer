@@ -25,6 +25,7 @@ from yue.explor.quicklist import ShortcutEditDialog, QuickAccessTable
 from yue.explor.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
+from yue.explor.watchfile import WatchFileController
 
 import subprocess
 """"
@@ -51,6 +52,21 @@ open terminal here
     hide this if the directory is not local or ssh
 
 mount -t vboxsf -o uid=0,gid=0 vagrant /vagrant
+
+
+copy jobs (and similar) need to clone the source/view.
+    ordinarily this wouldnt be an issue
+    ssh sources can lock up when one thread is fully
+    utilizing the channel. Further more it is an assumption
+    that sources are single threaded only -- so i am violating
+    a basic assumption from the get go.
+    clone needs to copy crednetials to establish a new one
+    which incurs a heavy delay in some cases (blocking main thread)
+    and some sources may not be cloneable at all. is there
+    a way to get copy jobs to play fair?
+
+    adding a thread safe layer to all sources may
+    impact performance, but may be required
 
 
 
@@ -154,6 +170,9 @@ class SshCredentialsDialog(QDialog):
         self.grid.addWidget(self.edit_ikey,i,1,1,4)
         i+=1
 
+        self.cbox_proto.addItem("SSH")
+        self.cbox_proto.addItem("FTP")
+
         self.btn_accept = QPushButton("Connect",self)
         self.btn_cancel = QPushButton("Cancel",self)
 
@@ -178,7 +197,6 @@ class SshCredentialsDialog(QDialog):
         cfg['password'] = self.edit_pass.text() or None
         cfg['key'] = self.edit_ikey.text() or None
         return cfg
-
 
 def getVagrantInstances():
     proc = subprocess.Popen(["vagrant","global-status"],
@@ -304,6 +322,9 @@ class MainWindow(QMainWindow):
         self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape),self)
         self.xcut_refresh.activated.connect(self.refresh)
 
+        self.wfctrl = WatchFileController(self.source)
+        self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
+
         self.initMenuBar()
         self.initStatusBar()
 
@@ -311,23 +332,34 @@ class MainWindow(QMainWindow):
 
         menubar = self.menuBar()
 
-        menu = menubar.addMenu("File")
-        act = menu.addAction("Preferences")
+        # each time the file menu is opened, invalidate
+        # the vagrant menu. the vagrant menu results are cached
+        # until the file menu is closed -- increasing resonse time
+        self.invalidate_vagrant_menu = True
+
+        self.file_menu = menubar.addMenu("File")
+        self.file_menu.aboutToShow.connect(self.onAboutToShowFileMenu)
+
+        act = self.file_menu.addAction("Preferences")
         act.triggered.connect(self.openSettings)
 
-        act = menu.addAction("Open FTP")
+        act = self.file_menu.addAction("Open FTP")
         act.triggered.connect(self.newFtpTabTest)
 
-        act = menu.addAction("Open SSH")
+        act = self.file_menu.addAction("Open SSH")
         act.triggered.connect(self.newSshTabTest)
 
-        menu.addSeparator()
+        self.file_menu.addSeparator()
 
         if Settings.instance()['cmd_vagrant']:
-            self.vagrant_menu = menu.addMenu("Vagrant SSH")
+            self.vagrant_menu = self.file_menu.addMenu("Vagrant SSH")
             self.vagrant_menu.aboutToShow.connect(self.initVagrantMenuBar)
 
-        menu.addSeparator()
+        self.file_menu.addSeparator()
+
+
+        act = self.file_menu.addAction("Sync")
+        act.triggered.connect(self.onSyncRemoteFiles)
 
         #act = menu.addAction("Open SSH+FTP")
         #act.triggered.connect(self.newSshTabTest)
@@ -335,11 +367,17 @@ class MainWindow(QMainWindow):
         #act = menu.addAction("Open AWS")
         #act.triggered.connect(self.newSshTabTest)
 
-        menu.addAction("Open SMB")
-        menu.addSeparator()
-        menu.addAction("Exit")
+        self.file_menu.addAction("Open SMB")
+        self.file_menu.addSeparator()
+        self.file_menu.addAction("Exit")
+
+    def onAboutToShowFileMenu(self):
+        self.invalidate_vagrant_menu = True
 
     def initVagrantMenuBar(self):
+
+        if not self.invalidate_vagrant_menu:
+            return
 
         self.vagrant_menu.clear()
 
@@ -347,14 +385,17 @@ class MainWindow(QMainWindow):
             _,n = os.path.split(dir)
             act = self.vagrant_menu.addAction(n)
             act.triggered.connect(lambda : self.newVagrantTab(dir))
+            self.invalidate_vagrant_menu = False
 
     def initStatusBar(self):
 
         statusbar = self.statusBar()
 
-        self.sbar_lbl_p_nfiles = QLabel()
-        self.sbar_lbl_s_nfiles = QLabel()
+        self.sbar_lbl_w_nfiles = QLabel() #watchers
+        self.sbar_lbl_p_nfiles = QLabel() # delete me
+        self.sbar_lbl_s_nfiles = QLabel() # delete me
 
+        statusbar.addWidget(self.sbar_lbl_w_nfiles)
         statusbar.addWidget(self.sbar_lbl_p_nfiles)
         statusbar.addWidget(self.sbar_lbl_s_nfiles)
 
@@ -550,6 +591,16 @@ class MainWindow(QMainWindow):
             view.getfo(path,wb)
 
         display._action_open_file_local(src,ftemp)
+
+        self.wfctrl.addFile(ftemp,view,path)
+
+    def onWatchersChanged(self,nfiles):
+
+        self.sbar_lbl_w_nfiles.setText("watching: %d"%nfiles)
+
+    def onSyncRemoteFiles(self):
+
+        self.wfctrl.onPostAll()
 
 class Pane(QWidget):
     """docstring for Pane"""

@@ -359,14 +359,20 @@ def parse_args(script_file):
 
     return args
 
+
+iExceptionMessages=0
 def handle_exception(exc_type, exc_value, exc_traceback):
+
+    global iExceptionMessages
 
     lines = ""
     for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
         print(line)
         lines += line + "\n"
 
-    QMessageBox.critical(None,"Unhandled Error",lines)
+    if iExceptionMessages < 5:
+        QMessageBox.critical(None,"Unhandled Error",lines)
+        iExceptionMessages += 1
 
 
 def main(script_file=__file__):
