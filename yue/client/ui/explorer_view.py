@@ -266,7 +266,6 @@ class ExplorerView(Tab):
             self.ex_secondary.showSplitButton(False)
 
     def onIngestPaths(self,paths):
-        print(paths)
 
         self.controller.dialog = IngestProgressDialog(paths,self)
         self.controller.dialog.finished.connect(self.onDialogFinished)
@@ -275,6 +274,8 @@ class ExplorerView(Tab):
         self.controller.dialog.start()
 
     def onDialogFinished(self):
+        if isinstance(self.controller.dialog,IngestProgressDialog):
+            self.ingest_finished.emit()
         self.controller.dialog = None
         self.ex_main.refresh()
         self.ex_secondary.refresh()
