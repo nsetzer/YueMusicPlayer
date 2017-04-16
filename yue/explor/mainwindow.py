@@ -1,3 +1,5 @@
+#! python ../../explor.py C:\\Users\\Nick\\Documents\\playground C:\\Users\\Nick\\Documents\\playground
+
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -26,8 +28,10 @@ from yue.explor.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
 from yue.explor.watchfile import WatchFileController
+from yue.explor.dialog.sshcred import SshCredentialsDialog
+from yue.explor.dialog.settings import SettingsDialog
+from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
 
-import subprocess
 """"
 FTP protocol
     server:port
@@ -71,184 +75,7 @@ copy jobs (and similar) need to clone the source/view.
 
 
 """
-class SettingsDialog(QDialog):
-    """docstring for SettingsDialog"""
-    def __init__(self, parent=None):
-        super(SettingsDialog, self).__init__(parent)
 
-        self.vbox=QVBoxLayout(self)
-        self.vbox.setContentsMargins(16,8,16,8)
-
-        self.grid = QGridLayout()
-
-        self.edit_tools =[]
-        for i,(s,n) in enumerate([ ("cmd_edit_text","Text Editor"),
-                                   ("cmd_edit_image","Image Editor"),
-                                   ("cmd_open_native","Open Native"),
-                                   ("cmd_launch_terminal","Open Terminal"),
-                                   ("cmd_diff_files","Diff Tool"),
-                                   ("cmd_vagrant","Vagrant Binary")]):
-            edit = QLineEdit(self)
-            edit.setText(Settings.instance()[s])
-            edit.setCursorPosition(0)
-            self.grid.addWidget(QLabel(n,self),i,0)
-            self.grid.addWidget(edit,i,1)
-
-        self.btn_accept = QPushButton("Save",self)
-        self.btn_cancel = QPushButton("Cancel",self)
-
-        self.btn_accept.clicked.connect(self.accept)
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.hbox_btns = QHBoxLayout()
-        self.hbox_btns.setContentsMargins(0,0,0,0)
-        self.hbox_btns.addStretch(1)
-        self.hbox_btns.addWidget(self.btn_accept)
-        self.hbox_btns.addWidget(self.btn_cancel)
-
-        self.vbox.addLayout(self.grid)
-        self.vbox.addLayout(self.hbox_btns)
-
-class SshCredentialsDialog(QDialog):
-    """docstring for SettingsDialog"""
-    def __init__(self, parent=None):
-        super(SshCredentialsDialog, self).__init__(parent)
-
-        self.vbox=QVBoxLayout(self)
-        self.vbox.setContentsMargins(16,8,16,8)
-
-        self.grid = QGridLayout()
-
-        i=1
-
-        self.cbox_proto = QComboBox(self)
-        self.lbl_proto = QLabel("Protocol:",self)
-        self.lbl_proto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_proto,i,0)
-        self.grid.addWidget(self.cbox_proto,i,1,1,4)
-        i+=1
-
-        self.edit_host = QLineEdit(self)
-        self.spbx_port = QSpinBox(self)
-        self.spbx_port.setRange(0,65536)
-        self.spbx_port.setValue(22)
-        self.lbl_server = QLabel("Server:",self)
-        self.lbl_server.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_server,i,0)
-        self.grid.addWidget(self.edit_host,i,1,1,2)
-        self.lbl_port = QLabel("Port:",self)
-        self.lbl_port.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_port,i,3)
-        self.grid.addWidget(self.spbx_port,i,4,)
-        i+=1
-
-        self.lbl_url = QLabel("ssh://",self)
-        self.lbl_url_ = QLabel("URL:",self)
-        self.lbl_url_.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_url_,i,0)
-        self.grid.addWidget(self.lbl_url,i,1)
-        i+=1
-
-        self.edit_user = QLineEdit(self)
-        self.lbl_user = QLabel("User Name:",self)
-        self.lbl_user.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_user,i,0)
-        self.grid.addWidget(self.edit_user,i,1,1,2)
-        i+=1
-
-        self.edit_pass = QLineEdit(self)
-        self.lbl_pass = QLabel("Password:",self)
-        self.lbl_pass.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_pass,i,0)
-        self.grid.addWidget(self.edit_pass,i,1,1,2)
-        i+=1
-
-        self.edit_ikey = QLineEdit(self)
-        self.lbl_ikey = QLabel("Private Key:",self)
-        self.lbl_ikey.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid.addWidget(self.lbl_ikey,i,0)
-        self.grid.addWidget(self.edit_ikey,i,1,1,4)
-        i+=1
-
-        self.cbox_proto.addItem("SSH")
-        self.cbox_proto.addItem("FTP")
-
-        self.btn_accept = QPushButton("Connect",self)
-        self.btn_cancel = QPushButton("Cancel",self)
-
-        self.btn_accept.clicked.connect(self.accept)
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.hbox_btns = QHBoxLayout()
-        self.hbox_btns.setContentsMargins(0,0,0,0)
-        self.hbox_btns.addStretch(1)
-        self.hbox_btns.addWidget(self.btn_accept)
-        self.hbox_btns.addWidget(self.btn_cancel)
-
-        self.vbox.addLayout(self.grid)
-        self.vbox.addLayout(self.hbox_btns)
-
-    def getConfig(self):
-
-        cfg = {}
-        cfg['host'] = self.edit_host.text()
-        cfg['port'] = self.spbx_port.value()
-        cfg['user'] = self.edit_user.text()
-        cfg['password'] = self.edit_pass.text() or None
-        cfg['key'] = self.edit_ikey.text() or None
-        return cfg
-
-def getVagrantInstances():
-    proc = subprocess.Popen(["vagrant","global-status"],
-                 stdout=subprocess.PIPE,
-                 stderr=subprocess.PIPE,)
-    out,err = proc.communicate()
-    out = out.decode("utf-8")
-
-    available = []
-    for line in out.split("\n"):
-        x = line.strip().split(None,4)
-        if len(x) != 5:
-            continue
-        state = x[3]
-        directory = x[4]
-        print(state,directory)
-        if state.lower() == "running":
-            available.append(directory)
-    return available
-
-def getVagrantSSH(cwd):
-    proc = subprocess.Popen(["vagrant","ssh-config"],
-                 cwd=cwd,
-                 stdout=subprocess.PIPE,
-                 stderr=subprocess.PIPE,)
-    out,err = proc.communicate()
-    out = out.decode("utf-8")
-
-    host=None
-    port=None
-    user=None
-    pswd=None
-    ikey=None
-
-    for line in out.split("\n"):
-        x = line.strip().split(None,1)
-        if len(x) != 2:
-            continue
-        key=x[0].lower()
-        val=x[1]
-        if key == "hostname":
-            host = val
-        elif key == "user":
-            user = val
-        elif key == "port":
-            port = int(val)
-        elif key == "identityfile":
-            ikey = val
-
-    d = {"host":host,"port":port,"user":user,"password":pswd,"key":ikey}
-
-    return d
 
 class NewVagrantTabJob(Job):
     """docstring for NewVagrantTabJob"""

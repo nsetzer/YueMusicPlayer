@@ -6,6 +6,7 @@ from PyQt5.QtGui import *
 from yue.client.widgets.LargeTree import LargeTree
 from yue.client.widgets.Leaf import Leaf
 from yue.core.settings import Settings
+
 class ShortcutEditDialog(QDialog):
     """docstring for ShortcutEditDialog"""
     def __init__(self, qpath, ipath, lpath, parent=None):
