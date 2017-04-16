@@ -14,9 +14,9 @@ if isPython3:
     unicode = str
 
 import yue
-from yue.client.widgets.LargeTable import LargeTable, TableColumn
-from yue.client.widgets.SongTable import SongTable
-from yue.client.widgets.LineEdit import LineEdit, LineEditHistory
+from yue.qtcommon.LargeTable import LargeTable, TableColumn
+from yue.qtcommon.SongTable import SongTable
+from yue.qtcommon.LineEdit import LineEdit, LineEditHistory
 
 from yue.core.song import Song
 from yue.core.search import ParseError

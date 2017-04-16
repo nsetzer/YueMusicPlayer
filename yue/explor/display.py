@@ -5,8 +5,8 @@ from PyQt5.QtGui import *
 
 from yue.core.explorer.source import DirectorySource
 from yue.core.settings import Settings
-from yue.client.widgets.explorer.display import ExplorerModel
-from yue.client.widgets.explorer.filetable import ResourceManager, ExplorerFileTable
+from yue.qtcommon.explorer.display import ExplorerModel
+from yue.qtcommon.explorer.filetable import ResourceManager, ExplorerFileTable
 from yue.explor.assoc import FileAssoc
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 

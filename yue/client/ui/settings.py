@@ -6,12 +6,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.LargeTable import LargeTable, TableColumn
-from yue.client.widgets.TableEditColumn import EditColumn
+from yue.qtcommon.LargeTable import LargeTable, TableColumn
+from yue.qtcommon.TableEditColumn import EditColumn
 from yue.core.song import SongSearchGrammar
 from yue.core.sqlstore import SQLStore
 from yue.core.search import ParseError
-from yue.client.SymTr import SymTr
+from yue.core.SymTr import SymTr
 
 from yue.client.style import currentStyle
 

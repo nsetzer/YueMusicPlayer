@@ -14,9 +14,9 @@ if isPython3:
     unicode = str
 
 import yue
-from yue.client.widgets.SongTable import SongTable
-from yue.client.widgets.LineEdit import LineEdit
-from yue.client.widgets.TableEditColumn import EditColumn
+from yue.qtcommon.SongTable import SongTable
+from yue.qtcommon.LineEdit import LineEdit
+from yue.qtcommon.TableEditColumn import EditColumn
 
 from yue.client.ui.rename_dialog import RenameDialog
 from yue.client.ui.openpl_dialog import OpenPlaylistDialog

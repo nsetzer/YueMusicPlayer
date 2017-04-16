@@ -14,13 +14,13 @@ if isPython3:
     unicode = str
 
 import yue
-from yue.client.widgets.TableEditColumn import EditColumn
-from yue.client.widgets.SongTable import SongTable, SongDateColumn
-from yue.client.widgets.LargeTable import TableColumn, LargeTable
-from yue.client.widgets.LibraryTree import LibraryTree
-from yue.client.widgets.LineEdit import LineEdit
-from yue.client.widgets.FlatPushButton import FlatPushButton
-from yue.client.widgets.Tab import Tab
+from yue.qtcommon.TableEditColumn import EditColumn
+from yue.qtcommon.SongTable import SongTable, SongDateColumn
+from yue.qtcommon.LargeTable import TableColumn, LargeTable
+from yue.qtcommon.LibraryTree import LibraryTree
+from yue.qtcommon.LineEdit import LineEdit
+from yue.qtcommon.FlatPushButton import FlatPushButton
+from yue.qtcommon.Tab import Tab
 
 from yue.core.song import Song
 from yue.core.search import ParseError

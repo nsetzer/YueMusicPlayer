@@ -6,7 +6,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.explorer.jobs import Job, CopyJob, MoveJob, DeleteJob
+from yue.qtcommon.explorer.jobs import Job, CopyJob, MoveJob, DeleteJob
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 

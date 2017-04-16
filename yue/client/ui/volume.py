@@ -3,7 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from ..widgets.slider import PositionSlider
+from yue.qtcommon.slider import PositionSlider
 
 class VolumeController(QWidget):
     def __init__(self, parent):

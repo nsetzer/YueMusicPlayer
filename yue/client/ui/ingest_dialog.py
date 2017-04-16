@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 
 from yue.core.song import Song
 from yue.core.library import Library
-from ..widgets.ProgressDialog import ProgressDialog
+from yue.qtcommon.ProgressDialog import ProgressDialog
 
 class IngestProgressDialog(ProgressDialog):
 

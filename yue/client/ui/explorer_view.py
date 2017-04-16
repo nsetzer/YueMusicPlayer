@@ -8,15 +8,15 @@ from PyQt5.QtGui import *
 
 import traceback
 
-from yue.client.widgets.Tab import Tab
+from yue.qtcommon.Tab import Tab
 
-from yue.client.widgets.explorer.controller import ExplorerController
-from yue.client.widgets.explorer.jobs import Job, JobRunner, \
+from yue.qtcommon.explorer.controller import ExplorerController
+from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, \
     DropRequestJob, Dashboard
-from yue.client.widgets.explorer.source import LazySourceListView
-from yue.client.widgets.explorer.filetable import ResourceManager, ExplorerFileTable
-from yue.client.widgets.explorer.display import ExplorerModel
+from yue.qtcommon.explorer.source import LazySourceListView
+from yue.qtcommon.explorer.filetable import ResourceManager, ExplorerFileTable
+from yue.qtcommon.explorer.display import ExplorerModel
 
 from yue.core.song import Song
 from yue.core.search import ParseError

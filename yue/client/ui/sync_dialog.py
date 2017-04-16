@@ -10,7 +10,7 @@ from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.sync import SyncManager
-from ..widgets.ProgressDialog import ProgressDialog
+from yue.qtcommon.ProgressDialog import ProgressDialog
 
 class QtSyncManager(SyncManager):
     """docstring for QtSyncManager"""

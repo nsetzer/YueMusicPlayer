@@ -9,22 +9,18 @@ import os
 
 from yue.core.settings import Settings
 
-from yue.client.widgets.Tab import TabWidget
+from yue.qtcommon.Tab import TabWidget
 
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.sshsource import SSHClientSource
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 
-#from yue.core.util import format_date, format_bytes, format_mode
-#from yue.client.widgets.LargeTable import TableColumn, TableColumnImage
-#from yue.client.widgets.TableEditColumn import EditColumn
-
-from yue.client.widgets.explorer.jobs import Job, JobRunner, \
+from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
 
-from yue.explor.quicklist import ShortcutEditDialog, QuickAccessTable
-from yue.explor.tabview import ExplorerView
+from yue.explor.ui.quicklist import ShortcutEditDialog, QuickAccessTable
+from yue.explor.ui.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
 from yue.explor.watchfile import WatchFileController

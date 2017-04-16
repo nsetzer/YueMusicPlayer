@@ -4,12 +4,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.explorer.source import LazySourceListView
-from yue.client.widgets.explorer.jobs import Job, JobRunner, \
+from yue.qtcommon.explorer.source import LazySourceListView
+from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
 
 from yue.core.settings import Settings
-from yue.client.widgets.Tab import Tab
+from yue.qtcommon.Tab import Tab
 
 from yue.explor.display import ExplorModel
 

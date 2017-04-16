@@ -9,7 +9,7 @@ from yue.core.song import Song
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
-from ..widgets.ProgressDialog import ProgressDialog
+from yue.qtcommon.ProgressDialog import ProgressDialog
 
 class ImportM3uDialog(ProgressDialog):
 

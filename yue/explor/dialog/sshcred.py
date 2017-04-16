@@ -3,8 +3,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.LargeTable import LargeTable
-from yue.client.widgets.TableEditColumn import EditColumn
+from yue.qtcommon.LargeTable import LargeTable
+from yue.qtcommon.TableEditColumn import EditColumn
 
 class SshSessionsTable(LargeTable):
     """

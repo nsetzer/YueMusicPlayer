@@ -6,12 +6,12 @@ from PyQt5.QtGui import *
 
 import traceback
 
-from yue.client.widgets.LineEdit import LineEdit
+from yue.qtcommon.LineEdit import LineEdit
 
 from yue.core.util import format_date, format_bytes, format_mode
 
-from yue.client.widgets.explorer.filetable import ResourceManager
-from yue.client.widgets.explorer.jobs import Job, \
+from yue.qtcommon.explorer.filetable import ResourceManager
+from yue.qtcommon.explorer.jobs import Job, \
     RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
 
 class LineEdit_Path(LineEdit):

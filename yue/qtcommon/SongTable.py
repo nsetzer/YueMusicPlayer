@@ -11,13 +11,13 @@ from PyQt5.QtGui import *
 
 from functools import lru_cache
 
-from ...core.library import Library
-from ...core.song import Song
-from ...core.util import format_date, format_time
+from yue.core.library import Library
+from yue.core.song import Song
+from yue.core.util import format_date, format_time
 from .LargeTable import LargeTable, TableColumn
 from .TableEditColumn import EditColumn
 
-from yue.client.SymTr import SymTr
+from yue.core.SymTr import SymTr
 
 import time
 

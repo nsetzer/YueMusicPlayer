@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 import unittest
 
-from yue.client.SymTr.SymTr import SymTr
+from yue.core.SymTr.SymTr import SymTr
 
 class TestSymTr(unittest.TestCase):
 

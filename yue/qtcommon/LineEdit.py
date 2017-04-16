@@ -7,7 +7,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 #from UnicodeTranslate import Translate
-from yue.client.SymTr import SymTr
+from yue.core.SymTr import SymTr
 #from Kana import Translate
 
 class LineEdit(QLineEdit):

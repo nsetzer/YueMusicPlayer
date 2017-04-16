@@ -10,8 +10,8 @@ import os,sys
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
-from yue.client.widgets.LargeTable import LargeTable
-from yue.client.widgets.LineEdit import LineEdit
+from yue.qtcommon.LargeTable import LargeTable
+from yue.qtcommon.LineEdit import LineEdit
 
 class SelectTable(LargeTable):
     """docstring for SelectTable"""

@@ -4,7 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.LineEdit import LineEdit
+from yue.qtcommon.LineEdit import LineEdit
 
 class RenameDialog(QDialog):
     """

@@ -5,7 +5,7 @@ from PyQt5.QtGui import *
 
 from yue.core.settings import Settings
 
-from yue.client.widgets.explorer.controller import ExplorerController
+from yue.qtcommon.explorer.controller import ExplorerController
 from yue.core.explorer.source import DataSource
 
 import shlex

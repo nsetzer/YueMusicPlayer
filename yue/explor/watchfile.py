@@ -48,7 +48,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.explorer.jobs import Job
+from yue.qtcommon.explorer.jobs import Job
 import os,sys
 
 class WatchFile(object):

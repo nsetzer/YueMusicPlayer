@@ -16,9 +16,9 @@ if isPython3:
     unicode = str
 
 import yue
-from yue.client.widgets.LargeTable import LargeTable, TableColumn
-from yue.client.widgets.LineEdit import LineEdit
-from yue.client.widgets.Tab import Tab
+from yue.qtcommon.LargeTable import LargeTable, TableColumn
+from yue.qtcommon.LineEdit import LineEdit
+from yue.qtcommon.Tab import Tab
 
 from yue.core.util import format_delta, string_quote
 from yue.core.song import Song

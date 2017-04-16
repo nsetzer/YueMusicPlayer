@@ -4,8 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.LineEdit import LineEdit
-from ..widgets.ProgressDialog import ProgressDialog
+from yue.qtcommon.LineEdit import LineEdit
+from yue.qtcommon.ProgressDialog import ProgressDialog
 
 from yue.core.song import Song, write_tags, UnsupportedFormatError
 from yue.core.library import Library

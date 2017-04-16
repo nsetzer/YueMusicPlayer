@@ -5,10 +5,10 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from yue.client.widgets.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
-from yue.client.widgets.TableEditColumn import EditColumn
+from yue.qtcommon.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
+from yue.qtcommon.TableEditColumn import EditColumn
 
-from yue.client.widgets.explorer.jobs import Job, JobRunner, \
+from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, \
     DropRequestJob, Dashboard, JobWidget
 
