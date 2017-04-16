@@ -14,6 +14,7 @@ from mutagen.mp4 import MP4
 from mutagen.asf import ASF # *.wma
 from mutagen.oggvorbis import OggVorbis
 
+ext_raw  = (".wav",)
 ext_mp3  = (".mp3",)
 ext_mp4  = ('.m4a', '.m4b', '.m4p', '.mpeg4', '.aac')
 ext_asf  = ('.asf','.wma')
@@ -211,7 +212,7 @@ class Song(object):
 
     @staticmethod
     def supportedExtensions():
-        return ext_mp3+ext_mp4+ext_asf+ext_flac+ext_ogg
+        return ext_raw+ext_mp3+ext_mp4+ext_asf+ext_flac+ext_ogg
 
     @staticmethod
     def toString(song):
@@ -284,6 +285,8 @@ def read_tags( path ):
         read_asf_tags( song, path )
     elif ext in ext_ogg:
         read_ogg_tags( song, path )
+    elif ext in ext_raw:
+        pass
     else:
         raise UnsupportedFormatError(ext)
 
