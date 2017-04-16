@@ -18,11 +18,11 @@ from yue.qtcommon.SongTable import SongTable
 from yue.qtcommon.LineEdit import LineEdit
 from yue.qtcommon.TableEditColumn import EditColumn
 
-from yue.client.ui.rename_dialog import RenameDialog
-from yue.client.ui.openpl_dialog import OpenPlaylistDialog
-from yue.client.ui.plexport_dialog import ExportM3uDialog
-from yue.client.ui.plimport_dialog import ImportM3uDialog
-from yue.client.ui.sync_dialog import SyncProfileDialog, SyncDialog
+from yue.client.dialog.rename_dialog import RenameDialog
+from yue.client.dialog.openpl_dialog import OpenPlaylistDialog
+from yue.client.dialog.plexport_dialog import ExportM3uDialog
+from yue.client.dialog.plimport_dialog import ImportM3uDialog
+from yue.client.dialog.sync_dialog import SyncProfileDialog, SyncDialog
 
 from yue.core.song import Song
 from yue.core.search import ParseError

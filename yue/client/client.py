@@ -77,13 +77,13 @@ from .ui.quickselect_view import QuickSelectView
 from .ui.explorer_view import ExplorerView, explorerOpen
 from .ui.playlist_view import PlayListViewWidget
 from .ui.playlistedit_view import PlaylistEditView
-from .ui.rename_dialog import RenameDialog
-from .ui.openpl_dialog import OpenPlaylistDialog
-from .ui.newpl_dialog import NewPlaylistDialog
 from .ui.visualizer import BassVisualizer
-from .ui.ingest_dialog import IngestProgressDialog
-from .ui.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
-from .ui.settings import SettingsDialog
+from .dialog.rename_dialog import RenameDialog
+from .dialog.openpl_dialog import OpenPlaylistDialog
+from .dialog.newpl_dialog import NewPlaylistDialog
+from .dialog.ingest_dialog import IngestProgressDialog
+from .dialog.updatetags_dialog import SelectSongsDialog,UpdateTagProgressDialog
+from .dialog.settings_dialog import SettingsDialog
 from .ui.song_view import CurrentSongView
 from .ui.art_view import AlbumArtView
 from .ui.volume import VolumeController

@@ -23,7 +23,7 @@ from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 
-from yue.client.ui.ingest_dialog import IngestProgressDialog
+from yue.client.dialog.ingest_dialog import IngestProgressDialog
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 
