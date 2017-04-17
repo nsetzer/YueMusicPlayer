@@ -84,25 +84,26 @@ class TreeColumn(TableColumn):
         ymid = y+(h//2)
         wxh = 0
         if row_item.icon != None or row_item.checkable:
-            wxh = self.parent.row_height-3
+            wxh = self.parent.row_height-1
         ################################################
         # draw the icon
+        icon_offset_x=5
+        icon_offset_y=2
         if row_item.icon != None and not self.parent.checkable:
             x_ = x+offset+self.paint_control_width
-            painter.drawPixmap(x_+2,y+2,wxh,wxh,row_item.icon)
+            painter.drawPixmap(x_+icon_offset_x,y+icon_offset_y,wxh,wxh,row_item.icon)
         ################################################
         # draw text
         rr = 4*self.paint_image_scale # rect radius
         ri = 2*self.paint_image_scale # item radius
         rc = 5*self.paint_image_scale # check box radius
-        sc = int((2.5*rr)) # check box start
+        sc = int((2.5*rr))            # check box start
         ss = self.paint_image_scale + 1 # scale + 1
 
         self.paintItem_text(col,painter,row,item,x+wxh+offset+self.paint_control_width+rr,y,w,h)
 
         # rect is ...
         # x+self.parent.row_height+(((row_item.depth - (not self.bool_display_root) ) * self.paint_control_width)/2)self.paint_control_width+1
-
 
         default_pen = painter.pen()
         linecolor = QPen(QColor(164,164,164))
@@ -138,7 +139,7 @@ class TreeColumn(TableColumn):
         else:
             painter.setPen(linecolor)
             #  draw 'is'
-            painter.drawLine(xmid,ymid,xmid+ri,ymid)
+            painter.drawLine(xmid,ymid,xmid+ri+1,ymid)
             # draw 'has sibling above'
             painter.drawLine(xmid,y+1,xmid,ymid)
             if row_item.fold&(1<<Leaf.fold_SIBLINGB):

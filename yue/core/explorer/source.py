@@ -332,6 +332,9 @@ class DirectorySource(DataSource):
                 "size"  : 0,
                 "mode"  : 0
             }
+            # mark unmounted drives as hidden
+            if path[1:] == ":\\":
+                result['isHidden'] = True
             return result
 
         isLink = DirectorySource.IS_REG
@@ -552,6 +555,7 @@ class SourceView(object):
         #   print(s)
 
         st = stat(path)
+
         st['name'] = name
         return st
 
@@ -634,17 +638,18 @@ class SourceListView(SourceView):
         # TODO: tristate, BOTH, FILES-ONLY, DIRECTORIES-ONLY
 
         if self.dirsOnly :
-            data = natsort.natsorted(filter( lambda x : x['isDir'], data),
-                                     key=lambda x: x[self.sort_column_name], \
-                                     alg=natsort.ns.IGNORECASE,
-                                     reverse=self.sort_reverse)
+            data = filter( lambda x : x['isDir'], data)
+            key = lambda x: x[self.sort_column_name]
+        elif self.sort_column_name == "type":
+            key= lambda x: (not x['isDir'], x['isLink'], self.splitext(x['name'])[1])
         else:
+            key= lambda x: (not x['isDir'], x[self.sort_column_name])
             # key sorts by directories, then files
             # and by filename decending.
-            data = natsort.natsorted(data,
-                                     key=lambda x: (not x['isDir'], x[self.sort_column_name]), \
-                                     alg=natsort.ns.IGNORECASE,
-                                     reverse=self.sort_reverse)
+        data = natsort.natsorted(data,
+                                 key=key,
+                                 alg=natsort.ns.IGNORECASE,
+                                 reverse=self.sort_reverse)
         return data
 
     def sort(self,column_name,toggle=False):
@@ -654,6 +659,9 @@ class SourceListView(SourceView):
 
         if toggle is true reverse the sort so long as column matches
         the current sort order
+
+        the special column name "type" can be used to sort by the type
+        of item, first by directory, then by file extension
         """
         if toggle and self.sort_column_name == column_name:
             self.sort_reverse = not self.sort_reverse

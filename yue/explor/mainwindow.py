@@ -368,10 +368,15 @@ class MainWindow(QMainWindow):
 
     def onChangeDirectory(self,path):
         w = self.tabview.currentWidget()
+        if not isinstance(w.source,DirectorySource):
+            raise Exception("Change to Directory Tab")
+
         w.chdir(path)
 
     def onChangeDirectoryRight(self,path):
         w = self.tabview.currentWidget()
+        if not isinstance(w.source,DirectorySource):
+            raise Exception("Change to Directory Tab")
         w.chdir_r(path)
 
     def onTabCloseRequest(self,idx):

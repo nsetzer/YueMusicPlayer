@@ -128,7 +128,7 @@ class ExplorerModel(QWidget):
         #self.btn_refresh.setIcon(QIcon(':/img/app_plus.png'))
         self.btn_refresh.setStyleSheet("""
             QToolButton {
-                background:url(":/img/app_plus.png");
+                background:url(":/img/app_refresh.png");
                 background-repeat: no-repeat;
                 background-position: center;
             }
@@ -372,9 +372,7 @@ class ExplorerModel(QWidget):
 
         self.tbl_file.scrollTo(index)
 
-        opts = (set([index,]),name)
-        if opts:
-            self.tbl_file.columns[col].editor_start(*opts,mode)
+        self.tbl_file.columns[col].editor_start(set([index,]),name,mode)
 
     def action_copy_path(self,item):
 

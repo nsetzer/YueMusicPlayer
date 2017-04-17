@@ -28,7 +28,14 @@ class ShortcutEditDialog(QDialog):
         #self.cbox_ipath.setEditable(True)
         supported_icons = [
             (":/img/app_folder.png","Folder"),
+            (":/img/app_open.png","Open Folder"),
+            (":/img/app_archive.png","Archive"),
             (":/img/app_fav.png","Favorite"),
+            (":/img/app_file.png","File"),
+            (":/img/app_list.png","List"),
+            (":/img/app_newlist.png","Plus"),
+            (":/img/app_note.png","Note"),
+            (":/img/app_eq.png","Mixer"),
         ]
         for i,(p,t) in enumerate(supported_icons):
             self.cbox_ipath.addItem(QIcon(p),t,p)
@@ -63,7 +70,63 @@ class ShortcutEditDialog(QDialog):
         ipath = self.cbox_ipath.currentData()
         lpath = self.edit_lpath.text()
 
-        return '='.join([qpath,ipath,lpath])
+        return fmtSpec(qpath,ipath,lpath)
+
+def fmtSpec(qpath,ipath,lpath):
+    # qpath : path in the quick list
+    # ipath : internal resource or file path for the icon
+    # lpath : localpath for the shortcut
+    return '='.join([qpath,ipath,lpath])
+
+def splitSpec(spec):
+    """return 3-tuple: qpath,ipath,lpath"""
+    return spec.split("=",2)
+
+def addShortcut(new_spec):
+    q,_,_ = splitSpec(new_spec)
+    items = Settings.instance()['quick_access_paths']
+    lenb=len(items)
+    for item in items:
+        p,_,_ = splitSpec(item)
+        if p==q:
+            raise Exception("Shortcut Already Exists")
+    else:
+        items.append(new_spec)
+        Settings.instance()['quick_access_paths'] = items
+
+    print("quick_access_paths: %d->%d."%(lenb,len(items)))
+    return True
+
+def editShortcut(old_spec,new_spec):
+    items = Settings.instance()['quick_access_paths']
+    lenb = len(items)
+    for i in range(len(items)):
+        if items[i] == old_spec:
+            items[i] = new_spec
+            Settings.instance()['quick_access_paths'] = items
+            break
+    else:
+        # this path does not exist for some reason, so add it
+        items.append(new_spec)
+        Settings.instance()['quick_access_paths'] = items
+    print("quick_access_paths: %d->%d."%(lenb,len(items)))
+
+def removeShortcut(spec):
+    qpath,_,_ = splitSpec(spec)
+
+    items = Settings.instance()['quick_access_paths']
+    lenb=len(items)
+    i=0
+    while i < len(items):
+        item=items[i]
+        p,_,_ = splitSpec(item)
+        if p==qpath:
+            items.pop(i)
+            Settings.instance()['quick_access_paths'] = items
+            break
+        i+=1
+    print("quick_access_paths: %d->%d."%(lenb,len(items)))
+
 
 class QuickAccessTable(LargeTree):
 
@@ -76,7 +139,12 @@ class QuickAccessTable(LargeTree):
         self.setLastColumnExpanding( True )
         self.showColumnHeader( False )
         self.showRowHeader( False )
+        self.setRowHeight(18)
         self.checkable = False
+
+        _rule2 = lambda item : item.data==""
+        rule2 = lambda row: _rule2(self.data[row])
+        self.addRowTextColorComplexRule(rule2,QColor(128,128,128))
 
         self.refreshData()
 
@@ -106,11 +174,12 @@ class QuickAccessTable(LargeTree):
         menu.addSeparator()
 
         act = menu.addAction("Add Shortcut",lambda : self.action_add_child(child))
-        if path:
-            menu.addAction("Edit Shortcut",lambda : self.action_edit_child(child))
-        else:
-            menu.addAction("Edit Group",lambda : self.action_edit_child(child))
-        menu.addAction("Remove Shortcut",lambda : self.action_remove_child(child))
+        if child is not self.root:
+            if path:
+                menu.addAction("Edit Shortcut",lambda : self.action_edit_child(child))
+            else:
+                menu.addAction("Edit Group",lambda : self.action_edit_child(child))
+            menu.addAction("Remove Shortcut",lambda : self.action_remove_child(child))
 
         action = menu.exec_( event.globalPos() )
 
@@ -121,17 +190,18 @@ class QuickAccessTable(LargeTree):
 
         items = Settings.instance()['quick_access_paths']
         for item in items:
-            # qpath : path in the quick list
-            # ipath : internal resource or file path for the icon
-            # lpath : localpath for the shortcut
-            qpath,ipath,lpath = item.split("=",3)
+            qpath,ipath,lpath = splitSpec(item)
             child = root
             for dname in qpath.split("/")[1:]:
                 child.collapsed = False
-                child = child.getChild(dname)
-                if not hasattr(child,ipath):
-                    child.ipath=""
+                if not child.hasChild(dname):
+                    child = child.getChild(dname)
+                    #if not hasattr(child,ipath):
+                    child.ipath=":/img/app_folder.png"
                     child.data=""
+                    child.setIcon(QPixmap(child.ipath))
+                else:
+                    child = child.getChild(dname)
 
             child.data = lpath
             child.ipath = ipath
@@ -201,79 +271,46 @@ class QuickAccessTable(LargeTree):
     def action_add_child(self, node):
         # node is the currently selected node in the tree
 
-        qpath=node.path(1)
-        ipath=node.ipath
-        lpath=node.data
+        if node is self.root:
+            qpath="/"
+            ipath=":/img/app_folder.png"
+            lpath=""
+        else:
+            qpath=node.path(1)
+            ipath=node.ipath
+            lpath=node.data
         data = '='.join([qpath,ipath,lpath])
         print(data)
 
         dialog = ShortcutEditDialog(qpath,ipath,lpath,self)
-        accept = dialog.exec_()
-
-        if accept:
+        if dialog.exec_():
             new_spec = dialog.getSpecifierString()
-            q,_,_ = new_spec.split("=")
-            items = Settings.instance()['quick_access_paths']
-            for item in items:
-                p,_,_ = item.split("=")
-                if p==q:
-                    break
-            else:
-                items.append(new_spec)
-                Settings.instance()['quick_access_paths'] = items
-                self.refreshData()
-        # each child has a file-like path name
-        # and a system level file path
+            addShortcut(new_spec)
+            self.refreshData()
         return
 
     def action_edit_child(self, node):
         # node is the currently selected node in the tree
         # if node is not a leaf, changing it could modify many shortcuts
-        print(type(node),node)
+        if node is self.root:
+            raise Exception("cannot edit root node")
+
         qpath=node.path(1)
         ipath=node.ipath
         lpath=node.data
-        print(node,"<%s>"%node.ipath)
         old_spec = '='.join([qpath,ipath,lpath])
 
         dialog = ShortcutEditDialog(qpath,ipath,lpath,self)
-        accept = dialog.exec_()
-
-        if accept:
+        if dialog.exec_():
             new_spec = dialog.getSpecifierString()
-
-            items = Settings.instance()['quick_access_paths']
-            print(old_spec,new_spec)
-
-            for i in range(len(items)):
-                if items[i] == old_spec:
-                    items[i] = new_spec
-                    Settings.instance()['quick_access_paths'] = items
-                    break
-            else:
-                # this path does not exist for some reason, so add it
-                items.append(new_spec)
-                Settings.instance()['quick_access_paths'] = items
-
+            editShortcut(old_spec,new_spec)
             self.refreshData()
         return
 
     def action_remove_child(self, node):
-
-        print(type(node),node)
         qpath=node.path(1)
         ipath=node.ipath
         lpath=node.data
-        old_spec = '='.join([qpath,ipath,lpath])
-
-        items = Settings.instance()['quick_access_paths']
-        i=0
-        while i < len(items):
-            item=items[i]
-            p,_,_ = item.split("=")
-            if p==qpath:
-                items.pop(i)
-                Settings.instance()['quick_access_paths'] = items
-                self.refreshData()
-                return
-            i+=1
+        spec = fmtSpec(qpath,ipath,lpath)
+        removeShortcut(spec)
+        self.refreshData()

@@ -151,7 +151,7 @@ def initSettings():
     # each widget supports an individual setting, which can be toggled.
     data['view_show_hidden'] = True
 
-    Settings.instance().setMulti(data,True)
+    Settings.instance().setMulti(data,False)
 
 def get_modes():
     # modes change the command line syntax

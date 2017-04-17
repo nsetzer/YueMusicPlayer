@@ -30,6 +30,7 @@ class ResourceManager(object):
     ARCHIVE   = 0x004
     IMAGE     = 0x005
     MOVIE     = 0x006
+    DOCUMENT  = 0x007
 
     LINK_DIRECTORY = 0x101
     LINK_FILE      = 0x102
@@ -37,6 +38,7 @@ class ResourceManager(object):
     LINK_ARCHIVE   = 0x104
     LINK_IMAGE     = 0x105
     LINK_MOVIE     = 0x106
+    LINK_DOCUMENT  = 0x107
 
     @staticmethod
     def instance():
@@ -53,13 +55,15 @@ class ResourceManager(object):
         self.resources[ResourceManager.DIRECTORY] = QPixmap(':/img/app_folder.png')
         self.resources[ResourceManager.ARCHIVE]   = QPixmap(':/img/app_archive.png')
         self.resources[ResourceManager.IMAGE]     = QPixmap(':/img/app_media.png')
-        self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_movie.png')
+        self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_video.png')
+        self.resources[ResourceManager.DOCUMENT]     = QPixmap(':/img/app_document.png')
 
         self.img_link = QPixmap(':/img/app_shortcut.png')
 
         for res in [ResourceManager.FILE,ResourceManager.SONG,
                     ResourceManager.DIRECTORY,ResourceManager.ARCHIVE,
-                    ResourceManager.IMAGE]:
+                    ResourceManager.IMAGE,ResourceManager.MOVIE,
+                    ResourceManager.DOCUMENT]:
             img = self.compose(self.resources[res],self.img_link)
             self.resources[ResourceManager.LINK|res] = img
 
@@ -68,14 +72,17 @@ class ResourceManager(object):
         for ext in Song.supportedExtensions():
             self.map_ext[ext] = ResourceManager.SONG
 
-        for ext in [".gz",".zip",".7z",".rar",".iz"]:
+        for ext in [".gz",".zip",".7z",".rar",".iz",".bz2"]:
             self.map_ext[ext] = ResourceManager.ARCHIVE
 
-        for ext in [".jpg",".png",".bmp",".jpeg"]:
+        for ext in [".jpg",".png",".bmp",".jpeg",".gif"]:
             self.map_ext[ext] = ResourceManager.IMAGE
 
-        for ext in [".avi",".mp4",".webm",".gif",".mkv"]:
+        for ext in [".avi",".mp4",".webm",".mkv"]:
             self.map_ext[ext] = ResourceManager.MOVIE
+
+        for ext in [".doc",".docx",".xls",".xlsx",".pdf"]:
+            self.map_ext[ext] = ResourceManager.DOCUMENT
 
     def compose(self,imga,imgb):
 
@@ -145,7 +152,7 @@ class ExplorerFileTable(LargeTable):
         self.columns.append( TableDualColumn(self,'name',"File Name") )
         self.columns[-1].setSecondaryTextTransform(lambda r,item : format_bytes(r['size']))
         """
-        self.columns.append( TableColumnImage(self,'name',"Icon") )
+        self.columns.append( TableColumnImage(self,'type',"Icon") )
         self.columns[-1].setShortName("")
         self.columns[-1].setTextTransform( lambda item,_ : self.item2img(item) )
         self.columns[-1].width = ResourceManager.instance().width() + 4 # arbitrary pad, image is centered

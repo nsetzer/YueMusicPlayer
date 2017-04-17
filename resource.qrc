@@ -3,6 +3,7 @@
      <file>img/icon.png</file>
      <file>img/app_archive.png</file>
      <file>img/app_check.png</file>
+     <file>img/app_document.png</file>
      <file>img/app_eq.png</file>
      <file>img/app_export.png</file>
      <file>img/app_fav.png</file>
@@ -23,6 +24,7 @@
      <file>img/app_prev_disabled.png</file>
      <file>img/app_up.png</file>
      <file>img/app_up_disabled.png</file>
+     <file>img/app_refresh.png</file>
      <file>img/app_save.png</file>
      <file>img/app_shortcut.png</file>
      <file>img/app_song.png</file>
@@ -31,6 +33,7 @@
      <file>img/app_sync.png</file>
      <file>img/app_trash.png</file>
      <file>img/app_volume.png</file>
+     <file>img/app_video.png</file>
      <file>img/app_x.png</file>
  </qresource>
  </RCC>
