@@ -513,7 +513,8 @@ class LoadDirectoryJob(Job):
 
         except OSError as e:
             data = []
-            self.getInput("Access Error",str(e), ["Ok"])
+            traceback.print_exc()
+            self.getInput("Access Error",str(e)+"\n"+self.view.pwd(), ["Ok"])
 
 
         self.loadComplete.emit(data)

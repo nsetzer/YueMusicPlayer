@@ -53,17 +53,28 @@ class SSHClientSource(DataSource):
     @staticmethod
     def fromPrivateKey(host,port=22,username=None,password=None,private_key=None):
 
+        if SSHClient is None:
+            raise Exception("Paramiko not installed")
+
         src = SSHClientSource()
+        print(host,port,username,password,private_key)
+
         pkey = None
-        if private_key:
+        if private_key is not None:
             pkey=paramiko.RSAKey.from_private_key_file(private_key,"")
 
         client = SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host,port=port,
-                       username=username,password=password,
-                       pkey=pkey,timeout=1.0,compress=True)
+        print(host,port,username,password,pkey)
+        if pkey:
+            client.connect(host,port=port,
+                           username=username,password=password,
+                           pkey=pkey,timeout=1.0,compress=True)
+        else:
+            client.connect(host,port=port,
+                           username=username,password=password,
+                           timeout=1.0,compress=True)
         src.client = client
         src.ftp = client.open_sftp()
 

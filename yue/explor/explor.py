@@ -66,10 +66,15 @@ def initSettings():
     data = {}
 
     # basic associations by extension
+    # TODO: pull the defaults out the resource manager,
+    # settings menu can modify these (and update resource manager)
     data['ext_text'] = [".txt",".log",".md",
                         ".c",".cpp",".c++",".h",".hpp", ".h++",
                         ".py", ".sh", ".pl",".bat",]
-    data['ext_image'] = [".bmp",".png","jpg"]
+    data['ext_archive'] = [".gz",]
+    data['ext_image'] = [".bmp",".png",".jpg"]
+    data['ext_video'] = [".mp4"]
+    data['ext_document'] = [".docx"]
 
     if sys.platform == 'darwin':
         cmd_edit_text = "\"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl\" \"%s\""

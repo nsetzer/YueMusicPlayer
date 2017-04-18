@@ -113,21 +113,22 @@ class SshCredentialsDialog(QDialog):
         if "host" in cfg:
             self.edit_host.setText(cfg['host'])
         if "port" in cfg:
-            self.spbx_port.setText(cfg['port'])
+            self.spbx_port.setValue(cfg['port'])
         if "user" in cfg:
             self.edit_user.setText(cfg['user'])
         if "password" in cfg:
             self.edit_pass.setText(cfg['password'])
         if "key" in cfg:
             self.edit_ikey.setText(cfg['key'])
+        print("cfg",cfg)
 
     def getConfig(self):
 
         cfg = {}
         cfg['proto'] = self.cbox_proto.currentText()
 
-        cfg['host'] = self.edit_host.strip().text()
-        cfg['port'] = self.spbx_port.strip().value()
+        cfg['host'] = self.edit_host.text().strip()
+        cfg['port'] = self.spbx_port.value()
         # user/pass I will take literally incase whitespace is significant
         cfg['user'] = self.edit_user.text()
         cfg['password'] = self.edit_pass.text() or None

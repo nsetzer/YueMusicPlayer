@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 import os
+import traceback
 
 from yue.core.settings import Settings
 
@@ -87,6 +88,8 @@ class NewVagrantTabJob(Job):
     def doTask(self):
         #vagrant_dir = "/Users/nsetzer/git/vagrant/cogito"
         #vagrant_dir = "/Users/nsetzer/git/Cogito/Product/EnterpriseCommonServices"
+
+
         cfg = getVagrantSSH(self.vagrant_dir)
         try:
             print("++create")
@@ -261,6 +264,14 @@ class MainWindow(QMainWindow):
 
         dlg = SshCredentialsDialog()
 
+        print("set")
+        dlg.setConfig({
+            "host":"192.168.1.9",
+            "port":2222,
+            "user":"admin",
+            "password":"admin",
+            })
+
         if not dlg.exec_():
             return;
 
@@ -273,6 +284,9 @@ class MainWindow(QMainWindow):
                     cfg['user'],cfg['password'],cfg['key'])
             print("--create")
         except Exception as e:
+            for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
+                print(line)
+
             #sys.stderr.write("error: %s\n"%e)
             QMessageBox.critical(None,"Connection Error",str(e))
         else:
