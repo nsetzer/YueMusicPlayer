@@ -41,7 +41,7 @@ from .controller import newDevice, PlaybackController
 HookThread = None
 KeyHook = None
 
-sys.stdout.write(">>"+os.name+"\n");
+sys.stdout.write(">>"+os.name+"\n");¡
 if sys.platform == 'darwin':
     print("darwin")
     from .hookosx import HookThread
@@ -410,7 +410,13 @@ class ClientRepl(object):
                 print("EEXIST %s"%path)
                 return
 
-            Library.instance().import_record_file(path)
+            #disable logging updates while importing
+            bUpdate=History.instance().isUpdateEnabled()
+            History.instance().setUpdateEnabled( False )
+            try:
+                Library.instance().import_record_file(path)
+            finally:
+                History.instance().setUpdateEnabled( bUpdate )
 
         elif cmd == "clear":
             History.instance().db.store.conn.execute("DELETE FROM history")

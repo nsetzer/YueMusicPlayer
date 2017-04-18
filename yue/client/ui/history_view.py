@@ -51,7 +51,7 @@ class HistoryTable(LargeTable):
         self.columns[-1].setTextAlign(Qt.AlignRight)
         self.columns[-1].text_transform = lambda r,c : format_date(c)
         self.columns.append( TableColumn(self,"column","Action") )
-        self.columns[-1].text_transform = lambda r,c : "%s %s"%(r["column"],r["value"])
+        self.columns[-1].text_transform = lambda r,c : "%s=%s"%(r["column"],r["value"])
         self.columns[-1].setWidthByCharCount(15)
         self.columns.append( TableColumn(self,"artist","Artist") )
         self.columns[-1].setWidthByCharCount(25)
