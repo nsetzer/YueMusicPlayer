@@ -69,6 +69,14 @@ copy jobs (and similar) need to clone the source/view.
     adding a thread safe layer to all sources may
     impact performance, but may be required
 
+implement a find in files type feature...
+    find . -name "*.java" | xargs grep -i "compute"
+    maybe only for the local file system, or only for systems
+    that implement the open API. need to solve the threading
+    problem before this can be implementeds
+
+copy paste a directory within  a directory fails...
+    duplicates internal items instead of creating a new directory.
 
 
 """
@@ -186,6 +194,9 @@ class MainWindow(QMainWindow):
 
         act = self.file_menu.addAction("Sync")
         act.triggered.connect(self.onSyncRemoteFiles)
+
+        act = self.file_menu.addAction("Clear Watch List")
+        act.triggered.connect(self.onWatchersDelete)
 
         #act = menu.addAction("Open SSH+FTP")
         #act.triggered.connect(self.newSshTabTest)
@@ -439,6 +450,9 @@ class MainWindow(QMainWindow):
     def onWatchersChanged(self,nfiles):
 
         self.sbar_lbl_w_nfiles.setText("watching: %d"%nfiles)
+
+    def onWatchersDelete(self):
+        self.wfctrl.clear()
 
     def onSyncRemoteFiles(self):
 

@@ -81,6 +81,12 @@ class WatchFile(object):
 
         self.st = st
 
+    def close(self):
+        """
+        todo: undefined cleanup process
+        """
+        pass
+
 class WatchFileController(QObject):
     """docstring for WatchFileController"""
 
@@ -99,14 +105,22 @@ class WatchFileController(QObject):
 
         self.watch_list = {}
 
+    def clear(self):
+
+        #TODO: move this to a task
+        for _,wf in self.watch_list.items():
+            wf.close()
+        self.watch_list = {}
+        self.watchersChanged.emit(0)
+
     def addFile(self,localPath,source,remotePath):
 
-        """
-        TODO: what happens when a watch file is already watched?
-        currently the new one replaces the old one.
-        but we need to somehow delete any listener before replacing.s
-        """
+        if localPath in self.watch_list:
+            self.watch_list[localPath].close()
+            del self.watch_list[localPath]
+
         wf = WatchFile(self.source,localPath,source,remotePath)
+
         self.watch_list[localPath] = wf
 
         self.watchersChanged.emit(len(self.watch_list))
@@ -125,6 +139,13 @@ class WatchFileController(QObject):
                 print("file has not changed",wf.remotePath)
 
     def onChange(self,localPath):
-        pass
+        """
+        a watch file given by localPath has changed, sync with remote
+        """
+
+        # TODO: move this to a task
+        if localPath in self.watch_list:
+            wf = self.watch_list[localPath]
+            wf.sync()
 
 
