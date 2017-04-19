@@ -43,6 +43,7 @@ from yue.core.sqlstore import SQLStore
 from yue.core.settings import Settings
 
 from yue.qtcommon import resource
+from yue.qtcommon.ResourceManager import ResourceManager
 
 from yue.explor.mainwindow import MainWindow, FileAssoc
 
@@ -68,13 +69,17 @@ def initSettings():
     # basic associations by extension
     # TODO: pull the defaults out the resource manager,
     # settings menu can modify these (and update resource manager)
+    fAssoc = ResourceManager.instance().getFileAssociation
+
+    # TODO: resource manager doesnt keep track of text files, should it?
     data['ext_text'] = [".txt",".log",".md",
                         ".c",".cpp",".c++",".h",".hpp", ".h++",
                         ".py", ".sh", ".pl",".bat",]
-    data['ext_archive'] = [".gz",]
-    data['ext_image'] = [".bmp",".png",".jpg"]
-    data['ext_video'] = [".mp4"]
-    data['ext_document'] = [".docx"]
+
+    data['ext_archive'] = fAssoc(ResourceManager.ARCHIVE)
+    data['ext_image'] = fAssoc(ResourceManager.IMAGE)
+    data['ext_movie'] = fAssoc(ResourceManager.MOVIE)
+    data['ext_document'] = fAssoc(ResourceManager.DOCUMENT)
 
     if sys.platform == 'darwin':
         cmd_edit_text = "\"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl\" \"%s\""
@@ -125,6 +130,7 @@ def initSettings():
             "/NAS/KWS=:/img/app_folder.png=/Volumes/Software/KeywordSpotting",
             "/NAS/Signals_Audio=:/img/app_folder.png=/Volumes/Signals_Audio",
             "/NAS=:/img/app_fav.png=",
+            # /Users/nsetzer/git/vagrant/cogito/git/Cogito/Library/C/Compute/cogito/compute/nodes
         ]
     elif os.name == 'nt':
         data["quick_access_paths"] = [
@@ -391,6 +397,7 @@ def main(script_file=__file__):
     app.setQuitOnLastWindowClosed(True)
 
     sys.excepthook = handle_exception
+    ResourceManager.instance().load()
 
     window = MainWindow(args.path,args.path_r)
 

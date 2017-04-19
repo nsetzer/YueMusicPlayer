@@ -1,5 +1,5 @@
 
-import os, sys
+import os, sys, stat
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -18,7 +18,6 @@ from yue.core.explorer.source import DataSource,DirectorySource,SourceListView
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 
 from yue.core.song import Song
-
 
 class ExplorerFileTable(LargeTable):
     """
@@ -81,6 +80,10 @@ class ExplorerFileTable(LargeTable):
         _rule2 = lambda item : item['isLink'] == DataSource.IS_LNK_BROKEN
         rule2 = lambda row: _rule2(self.data[row])
         self.addRowTextColorComplexRule(rule2,QColor(200,0,0))
+
+        _rule3 = lambda item : stat.S_IXUSR&item['mode'] and not item['isDir']
+        rule3 = lambda row: _rule3(self.data[row])
+        self.addRowTextColorComplexRule(rule3,QColor(30,125,45))
 
         self.columns.append( TableColumn(self,'size',"Size") )
         self.columns[-1].setTextTransform( lambda item,_ : format_bytes(item['size']) )

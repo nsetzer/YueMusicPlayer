@@ -67,7 +67,7 @@ class SettingsDialog(QDialog):
         self.assoc_info = [("ext_text","Text Files"),
                             ("ext_archive","Archive Files"),
                             ("ext_image","Image Files"),
-                            ("ext_video","Video Files"),
+                            ("ext_movie","Video Files"),
                             ("ext_document","Document Files")]
         self.assoc_tools = []
 

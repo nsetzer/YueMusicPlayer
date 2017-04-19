@@ -1452,6 +1452,8 @@ def main(version="",commitdate="",builddate=""):
         start = time.time()
         sys.excepthook = handle_exception
 
+        ResourceManager.instance().load()
+
         plugin_path = pybass.get_plugin_path();
 
         settings_db_path = "./settings.db"

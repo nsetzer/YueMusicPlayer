@@ -40,6 +40,19 @@ class ResourceManager(object):
     def __init__(self):
         super(ResourceManager, self).__init__()
         self.resources = {}
+
+        # configure default file associations
+        self.ext_archive  = [".gz",".zip",".7z",".rar",".iz",".bz2"]
+        self.ext_image    = [".jpg",".png",".bmp",".jpeg",".gif"]
+        self.ext_movie    = [".avi",".mp4",".webm",".mkv"]
+        self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
+
+        self.rebuildFileAssociations()
+
+    def load(self):
+
+        self.resources = {}
+
         self.resources[ResourceManager.FILE]      = QPixmap(':/img/app_file.png')
         self.resources[ResourceManager.SONG]      = QPixmap(':/img/app_song.png')
         self.resources[ResourceManager.DIRECTORY] = QPixmap(':/img/app_folder.png')
@@ -56,15 +69,6 @@ class ResourceManager(object):
                     ResourceManager.DOCUMENT]:
             img = self.compose(self.resources[res],self.img_link)
             self.resources[ResourceManager.LINK|res] = img
-
-
-        # configure default file associations
-        self.ext_archive  = [".gz",".zip",".7z",".rar",".iz",".bz2"]
-        self.ext_image    = [".jpg",".png",".bmp",".jpeg",".gif"]
-        self.ext_movie    = [".avi",".mp4",".webm",".mkv"]
-        self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
-
-        self.rebuildFileAssociations()
 
     def rebuildFileAssociations(self):
 
@@ -156,3 +160,5 @@ class ResourceManager(object):
             which returns the dimensions of the largest icon width & height
         """
         return self.resources[ResourceManager.FILE].width()
+
+
