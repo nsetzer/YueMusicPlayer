@@ -240,6 +240,32 @@ class ExplorerFileTable(LargeTable):
         value = self.parent().getSlowData(item,"mtime")
         return format_date(value)
 
+    def keyPressOther(self,event):
+        char = chr(event.key())
+        if '0' <= char <= '9' or 'A' <= char <= 'Z':
+            # i cant deciede if i want search by repeatedly
+            # tapping a letter key for if i want a more nuanced
+            # approach where typing "b-u-i" finds a
+            # file that starts with "bui"
+            self.jump_to_letter(char)
+
+    def jump_to_letter(self,charseq):
+
+        # TODO accessing self.selection is breaking a rule
+        offset= 1 + list(self.selection)[0] if len(self.selection) else 0
+        idx = 0
+        while idx < len(self.data):
+            item = self.data[(offset+idx)%len(self.data)]
+            # only scroll to artists.
+            if item['name'].upper().startswith(charseq):
+                idx=(offset+idx)%len(self.data)
+                self.setSelection([idx,])
+                self.scrollTo(idx)
+                self.update();
+                break
+            idx += 1
+
+
     def onEditorStart(self):
 
         for xcut in [self.xcut_copy,self.xcut_cut,
@@ -267,6 +293,7 @@ class ExplorerFileTable(LargeTable):
         #    self.parent().view._stat_data.clear()
 
         super().update()
+
 
 
 class MimeData(QMimeData):
