@@ -42,7 +42,7 @@ from sip import SIP_VERSION_STR, delete as sip_delete
 from yue.core.sqlstore import SQLStore
 from yue.core.settings import Settings
 
-from yue.client import resource
+from yue.qtcommon import resource
 
 from yue.explor.mainwindow import MainWindow, FileAssoc
 

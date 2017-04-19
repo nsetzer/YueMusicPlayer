@@ -15,7 +15,8 @@ from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, \
     DropRequestJob, Dashboard
 from yue.qtcommon.explorer.source import LazySourceListView
-from yue.qtcommon.explorer.filetable import ResourceManager, ExplorerFileTable
+from yue.qtcommon.explorer.filetable import ExplorerFileTable
+from yue.qtcommon.ResourceManager import ResourceManager
 from yue.qtcommon.explorer.display import ExplorerModel
 
 from yue.core.song import Song

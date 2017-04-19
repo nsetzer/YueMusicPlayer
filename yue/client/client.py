@@ -35,7 +35,7 @@ from ..core.util import string_quote, backupDatabase, format_delta
 from ..core.repl import YueRepl, ReplArgumentParser
 from ..core.bass import pybass
 
-from . import resource
+from ..qtcommon import resource
 from .controller import newDevice, PlaybackController
 
 HookThread = None

@@ -2,4 +2,4 @@
 
 @echo off
 
-pyrcc5 -o yue/client/resource.py resource.qrc
+pyrcc5 -o yue/qtcommon/resource.py resource.qrc
