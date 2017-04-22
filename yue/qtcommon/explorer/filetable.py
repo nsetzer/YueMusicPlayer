@@ -25,6 +25,7 @@ class ExplorerFileTable(LargeTable):
     renamePaths = pyqtSignal(object) # given a list of jobs
     createFile = pyqtSignal(str)
     createDirectory = pyqtSignal(str)
+    focusQuery = pyqtSignal()
 
 
     def __init__(self, view, parent=None):
@@ -46,6 +47,14 @@ class ExplorerFileTable(LargeTable):
         self.xcut_refresh = QShortcut(QKeySequence(QKeySequence.Refresh), self)
         self.xcut_refresh.setContext(Qt.WidgetShortcut)
         self.xcut_refresh.activated.connect(self.onShortcutRefresh)
+
+        self.xcut_filter = QShortcut(QKeySequence(QKeySequence.Find), self)
+        self.xcut_filter.setContext(Qt.WidgetShortcut)
+        self.xcut_filter.activated.connect(self.focusQuery.emit)
+
+        # shortcuts must be disabled during editing
+        self.xcuts_all = [self.xcut_copy,self.xcut_cut,self.xcut_paste,
+                          self.xcut_refresh,self.xcut_filter]
 
         self.dragCompleted.connect(self.onShortcutRefresh)
 
@@ -268,13 +277,12 @@ class ExplorerFileTable(LargeTable):
 
     def onEditorStart(self):
 
-        for xcut in [self.xcut_copy,self.xcut_cut,
-                     self.xcut_refresh,self.xcut_paste]:
+        for xcut in self.xcuts_all:
             xcut.setEnabled(False)
 
     def onEditorFinished(self):
-        for xcut in [self.xcut_copy,self.xcut_cut,
-                     self.xcut_refresh,self.xcut_paste]:
+
+        for xcut in self.xcuts_all:
             xcut.setEnabled(True)
 
     def _onCommitText(self,jobs):

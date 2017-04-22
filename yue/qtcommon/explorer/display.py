@@ -73,6 +73,9 @@ class ExplorerModel(QWidget):
         self.txt_filter.setText("")
         self.txt_filter.textEdited.connect(self.onFilterTextChanged)
 
+        self.tbl_file.focusQuery.connect(lambda:self.txt_filter.setFocus(Qt.ShortcutFocusReason))
+
+
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
         self.btn_split.setHidden(True)
