@@ -1,0 +1,11 @@
+
+
+<ol>
+{% for song in playlist %}
+    {% if song.current %}
+        <li><b>{{ song.artist }} -- {{ song.title }}</b></li>
+    {% else %}
+        <li>{{ song.artist }} -- {{ song.title }}</li>
+    {% endif %}
+{% endfor %}
+</ol>

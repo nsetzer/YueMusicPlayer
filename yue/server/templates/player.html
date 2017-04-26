@@ -1,0 +1,320 @@
+<!doctype html>
+<head>
+  <title>{% block title %}title{% endblock %}</title>
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  <script type="text/javascript">
+
+  /*
+  $(function() {
+    $('a#calculate').bind('click', function() {
+      $.getJSON('/_add_numbers', {
+        a: $('input[name="a"]').val(),
+        b: $('input[name="b"]').val()
+      }, function(data) {
+        $("#result").text(data.result);
+      });
+      return false;
+    });
+  });
+  */
+
+  $(function() {
+    $('#btn_media_prev').click(function() {
+      $.getJSON('/_media_prev', {},
+        function(data) {
+          //alert(data.src)
+          console.log(data);
+          console.log(data.path);
+          //$("#audio_player").src=data.src
+          var aud = $('#audio_player').get(0);
+          aud.src=data.path
+          aud.play()
+
+          $("#info_artist").text(data.artist)
+          $("#info_album").text(data.album)
+          $("#info_title").text(data.title)
+          //$("#info_index").text(data.playlist_index + "/" + data.playlist_length)
+
+          updatePlaylist();
+        });
+      return false;
+    });
+  });
+
+  function mediaNext() {
+    $.getJSON('/_media_next', {},
+      function(data) {
+        //alert(data.src)
+        console.log(data);
+        //$("#audio_player").src=data.src
+        var aud = $('#audio_player').get(0);
+        aud.src=data.path
+        aud.play()
+        $("#info_artist").text(data.artist)
+        $("#info_album").text(data.album)
+        $("#info_title").text(data.title)
+        //$("#info_index").text(data.playlist_index + "/" + data.playlist_length)
+
+        updatePlaylist();
+      });
+    return false;
+  }
+
+  $(function() {
+    $('#btn_media_next').click(mediaNext);
+  });
+
+  function mediaEnded() {
+    mediaNext();
+  }
+
+  function openTab(evt, tabName) {
+    // Declare all variables
+    var i, tabcontent, tablinks;
+
+    // Get all elements with class="tabcontent" and hide them
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+  }
+
+  function updatePlaylist() {
+    //return pre-formatted html for displaying the playlist
+    $.ajax({
+      url:'/_media_current_playlist',
+      type:"get",
+      dataType: "html",
+      success: function(data) {
+        console.log(data)
+        $('#playlist_data').html(data);
+      }
+    });
+    return false;
+  }
+
+  //------------
+  // http://stackoverflow.com/questions/20753756/how-to-change-the-html5-audio-volume-or-track-position-with-a-slider
+  $(function() {
+
+  var $aud = $("#audio_player"),
+      $pp  = $('#playpause'),
+      $vol = $('#volume'),
+      $bar = $("#progressbar"),
+      AUDIO= $aud[0];
+
+  AUDIO.volume = 0.75;
+  AUDIO.addEventListener("timeupdate", progress, false);
+
+  function getTime(t) {
+    var m=~~(t/60), s=~~(t % 60);
+    return (m<10?"0"+m:m)+':'+(s<10?"0"+s:s);
+  }
+
+  function progress() {
+    $bar.slider('value', ~~(100/AUDIO.duration*AUDIO.currentTime));
+    $pp.text(getTime(AUDIO.currentTime));
+  }
+
+  $vol.slider( {
+    value : AUDIO.volume*100,
+    slide : function(ev, ui) {
+      $vol.css({background:"hsla(180,"+ui.value+"%,50%,1)"});
+      AUDIO.volume = ui.value/100;
+    }
+  });
+
+  $bar.slider( {
+    value : AUDIO.currentTime,
+    slide : function(ev, ui) {
+      AUDIO.currentTime = AUDIO.duration/100*ui.value;
+    }
+  });
+
+  $pp.click(function() {
+    return AUDIO[AUDIO.paused?'play':'pause']();
+  });
+
+});
+  //------------
+
+$(document).ready(function(){
+
+
+    //$(":button").css("background-color", "red");
+
+    /*$("#btn1").click(function(){
+        alert("on click")
+        $("#audio_player").src="/media/002"
+    });*/
+
+    document.getElementById("defaultOpen").click();
+
+    updatePlaylist();
+
+});
+
+  </script>
+
+
+  <style>
+
+  #div_page {
+    background-color: #cccccc;
+    min-width:320px;
+    max-width:960px;
+    margin:0 auto;
+  }
+
+  #audio_player {
+    width:100%;
+    margin: 0 16 0 16;
+  }
+
+  /* Style the tab */
+div.tab {
+    overflow: hidden;
+    width: 80%;
+    margin: 0 auto;
+    text-align: center;
+    /*border: 1px solid #ccc;*/
+    /*background-color: #f1f1f1;*/
+    margin-top: 10px;
+}
+
+/* Style the buttons inside the tab */
+div.tab button {
+    background-color: inherit;
+    /*float: left;*/
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+div.tab button:hover {
+    background-color: #ccd;
+}
+
+/* Create an active/current tablink class */
+div.tab button.active {
+    background-color: #bbc;
+}
+
+#player{
+  position:relative;
+  margin:50px auto;
+  width:300px;
+  text-align:center;
+  font-family:Helvetica, Arial;
+}
+#playpause{
+  border:1px solid #eee;
+  cursor:pointer;
+  padding:12px 0;
+  color:#888;
+  font-size:12px;
+  border-radius:3px;
+}
+#playpause:hover{
+  border-color: #ccc;
+}
+#volume, #progressbar{
+  border:none;
+  height:2px;
+}
+#volume{
+  background:hsla(180,75%,50%,1);
+}
+#progressbar{
+  background:#ccc;
+}
+.ui-slider-handle{
+  border-radius:50%;
+  top: -5px !important;
+  width: 11px !important;
+  height: 11px !important;
+  margin-left:-5px !important;
+}
+
+  </style>
+
+
+</head>
+
+<body>
+
+<div id="div_page">
+  <div>
+  <div id="info_artist">{{ audio.artist }} </div>
+  <div id="info_title">{{ audio.title }} </div>
+  <div id="info_album">{{ audio.album }} </div>
+  <!--<div id="info_index">{{ audio.index }} / {{ audio.length }} </div>-->
+  </div>
+
+  <br>
+
+  <audio id="audio_player"
+    controls="controls"
+    src="{{ audio.source }}"
+    type="{{ audio.type }}"
+    onended="mediaEnded()">
+  </audio>
+  <br>
+
+  <div id="player">
+
+  <div id="volume"></div><br>
+  <div id="progressbar"></div><br>
+  <div id="playpause"></div>
+
+  </div>
+
+  <div style="width: 80%; margin: 0 auto; text-align: center;">
+    <button type="button" id="btn_media_prev">Prev</button>
+    <button type="button" id="btn_media_next">Next</button>
+  </div>
+
+  <div class="tab">
+    <button class="tablinks" onclick="openTab(event, 'Playlist')" id="defaultOpen">Playlist</button>
+    <button class="tablinks" onclick="openTab(event, 'Library')">Library</button>
+  </div>
+
+  <div id="Playlist" class="tabcontent">
+    <h3>Playlist</h3>
+    <div id="playlist_data">
+    <p>Playlist data</p>
+    </div>
+  </div>
+
+  <div id="Library" class="tabcontent">
+    <h3>Library</h3>
+    <p>Library data</p>
+  </div>
+</div>
+
+
+
+
+
+<!--
+<p><input type=text size=5 name=a> +
+   <input type=text size=5 name=b> =
+   <span id=result>?</span>
+<p><a href=# id=calculate>calculate server side</a>
+-->
+</body>
