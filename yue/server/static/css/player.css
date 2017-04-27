@@ -1,0 +1,122 @@
+
+
+/*
+EAE2CF paper
+A3D1B5 light green
+40BEA8 green
+4BA09A dark teal
+*/
+  #div_page {
+    background-color: #EAE2CF;
+    min-width:320px;
+    max-width:960px;
+    margin:0 auto;
+  }
+
+  #audio_player {
+    width:100%;
+    margin: 0 16 0 16;
+  }
+
+  /* Style the tab */
+div.tab {
+    overflow: hidden;
+    width: 80%;
+    margin: 0 auto;
+    text-align: center;
+    /*border: 1px solid #ccc;*/
+    /*background-color: #f1f1f1;*/
+    margin-top: 10px;
+}
+
+/* Style the buttons inside the tab */
+div.tab button {
+    background-color: inherit;
+    /*float: left;*/
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+div.tab button:hover {
+    background-color: #ccd;
+}
+
+/* Create an active/current tablink class */
+div.tab button.active {
+    background-color: #bbc;
+}
+
+#player{
+  position:relative;
+  margin:50px auto;
+  width:300px;
+  text-align:center;
+  font-family:Helvetica, Arial;
+}
+#playpause{
+  border:1px solid #eee;
+  cursor:pointer;
+  padding:12px 0;
+  color:#888;
+  font-size:12px;
+  border-radius:3px;
+}
+#playpause:hover{
+  border-color: #ccc;
+}
+#volume, #progressbar{
+  border:none;
+  height:4px;
+}
+#volume{
+  background:#ccc;
+  width: 25%;
+}
+#progressbar{
+  background:#40BEA8;
+  width: 50%;
+
+}
+.ui-slider-handle{
+  border-radius:50%;
+  top: -5px !important;
+  width: 11px !important;
+  height: 11px !important;
+  margin-left:-5px !important;
+}
+
+/* --- play button --- */
+
+.container {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.pbar1, .pbar2 {
+    width: 12px;
+    height: 35px;
+    background-color: #333;
+    margin: 6px 6px;
+    transition: 0.4s;
+}
+
+.pbar1 {
+  float: left;
+}
+.pbar2 {
+  float: right;
+}
+.change .pbar1 {
+    -webkit-transform: rotate(-45deg) translate(15px, 0px) ;
+    transform: rotate(-45deg) translate(15px, 0px) ;
+}
+
+.change .pbar2 {
+    -webkit-transform: rotate(45deg) translate(-6px, 14px) ;
+    transform: rotate(45deg) translate(-6px, 14px) ;
+}
+/* --- end play button --- */

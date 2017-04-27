@@ -1,4 +1,4 @@
-
+#! python main.py
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -51,11 +51,13 @@ def setup_database(app,db):
 def player(app):
     template = app.env.get_template('player.html')
 
+    lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist("current")
+    pl = plmgr.openPlaylist(current_user.email)
+    rollPlaylist(app,lib,pl)
     idx,uid = pl.current()
 
-    lib = app.library.reopen()
+
     song = lib.songFromId(uid)
 
     audio = lambda:None
@@ -81,7 +83,6 @@ def media(app,uid):
     song = lib.songFromId(uid)
     #media = "D:/Music/Discography/Desert Metal/Slo Burn/Slo Burn - Amusing The Amazing (1997)/Slo Burn - 03 - Pilot the Dune.mp3"
     media= song[Song.path]
-    app.app.logger.info("load %s"%uid)
     return send_file(media)
 
 def rollPlaylist(app,lib,pl):
@@ -89,11 +90,24 @@ def rollPlaylist(app,lib,pl):
     Manage the users current playlist
 
     """
-    idx,uid = pl.current()
-    pl_len = len(pl)
+
     buf_a = 20 # buffer after current index
     buf_b = 10 # buffer before current index
     buf_h = 5  # hysteresis
+
+    pl_len = len(pl)
+
+    if pl_len < 1:
+        query = ""
+        limit = buf_a + buf_b
+        songs = lib.search(query, orderby=Song.random, limit=limit)
+        keys = [ song[Song.uid] for song in songs ]
+        pl.insert(len(pl),keys)
+        pl.set_index(0)
+        return
+
+    idx,uid = pl.current()
+
 
     app.app.logger.info("roll %d %d %d %d"%(idx,pl_len,buf_a,buf_b))
     if idx + buf_a > pl_len+buf_h:
@@ -104,7 +118,7 @@ def rollPlaylist(app,lib,pl):
 
         songs = lib.search(query, orderby=Song.random, limit=limit)
         keys = [ song[Song.uid] for song in songs ]
-        pl.insert(len(pl)-1,keys)
+        pl.insert(len(pl),keys)
 
     if idx > buf_b+buf_h:
         lst = list(range(0,idx-buf_b))
@@ -117,9 +131,9 @@ def media_next(app):
     if not current_user.is_authenticated:
         abort(401)
 
-    plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist("current")
     lib = app.library.reopen()
+    plmgr = app.plmanager.reopen()
+    pl = plmgr.openPlaylist(current_user.email)
 
     app.app.logger.info("roll begin")
     rollPlaylist(app,lib,pl)
@@ -144,9 +158,9 @@ def media_prev(app):
     if not current_user.is_authenticated:
         abort(401)
 
-    plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist("current")
     lib = app.library.reopen()
+    plmgr = app.plmanager.reopen()
+    pl = plmgr.openPlaylist(current_user.email)
     try:
         idx,uid = pl.prev()
 
@@ -160,16 +174,25 @@ def media_prev(app):
         pass
     return ""
 
+def get_resource(app,pdir,path):
+    if pdir == "js" and path.endswith(".js"):
+        return flask.send_from_directory('static/js', path)
+    if pdir == "css" and path.endswith(".css"):
+        return flask.send_from_directory('static/css', path)
+    else:
+        abort(404)
+
 PlayListRow = namedtuple('PlayListRow', ['artist', 'title','album','length','current'])
 
 def media_current_playlist(app):
 
+    print(current_user.email)
     if not current_user.is_authenticated:
         abort(401)
 
     lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist("current")
+    pl = plmgr.openPlaylist(current_user.email)
     idx,_ = pl.current()
 
     uids = list(pl.iter())
@@ -200,13 +223,14 @@ class Application(object):
             raise Exception("Application already initialized")
         self.app_name = app_name
         self.template_dir = template_dir
-        self.app = flask.Flask(self.app_name)
+        self.app = flask.Flask(self.app_name,root_path=".")
 
         self.env = jinja2.Environment(
                     loader=jinja2.PackageLoader(self.app_name, self.template_dir),
                     autoescape = True
                 )
 
+        self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
         self.register("/player",'player',player)
         self.register("/media/<uid>",'media',media)
         self.register("/_media_next",'media_next',media_next)
@@ -219,16 +243,10 @@ class Application(object):
         self.plmanager = PlaylistManager(self.sqlstore)
         self.library = Library(self.sqlstore)
 
-        pl = self.plmanager.openPlaylist("current")
-
-        #songs = self.library.search("", orderby=Song.random, limit=10)
-        #keys = [ song[Song.uid] for song in songs ]
-        #pl.set(keys)
-        self.app.logger.info("playlist length %d"%len(pl))
-
         self.app.config['DEBUG'] = True
         self.app.config['SECRET_KEY'] = 'super-secret'
         self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+        self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
         self.db = SQLAlchemy(self.app)
 
