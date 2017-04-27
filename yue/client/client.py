@@ -93,6 +93,7 @@ from yue.qtcommon.LineEdit import LineEditRepl
 from yue.qtcommon.playbutton import PlayButton, AdvanceButton
 from yue.qtcommon.slider import PositionSlider
 from yue.qtcommon.closebutton import  CloseTabButton
+from yue.qtcommon.ResourceManager import  ResourceManager
 try:
     from yue.qtcommon.scieditor import CodeEditor
 except ImportError:
