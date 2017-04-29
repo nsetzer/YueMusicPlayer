@@ -40,7 +40,12 @@ def main():
     #app.app.logger.addHandler(self.handler)
     logging.getLogger().addHandler(handler)
 
-    app.run()
+    host = "0.0.0.0"
+    #host = "127.0.0.1"
+    port = 5000
+    debug = False
+
+    app.run(host=host,port=port,debug=debug)
 
 if __name__ == '__main__':
     main()

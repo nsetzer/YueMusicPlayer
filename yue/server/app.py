@@ -249,7 +249,7 @@ class Application(object):
         self.plmanager = PlaylistManager(self.sqlstore)
         self.library = Library(self.sqlstore)
 
-        self.app.config['DEBUG'] = True
+        self.app.config['DEBUG'] = False
         self.app.config['SECRET_KEY'] = 'super-secret'
         self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
