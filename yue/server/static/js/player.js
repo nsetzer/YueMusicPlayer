@@ -65,6 +65,14 @@
     mediaNext();
   }
 
+  function mediaPlay() {
+    $("#btn_playpause")[0].classList.remove("change");
+  }
+
+  function mediaPause() {
+    $("#btn_playpause")[0].classList.add("change");
+  }
+
   function openTab(evt, tabName) {
     // Declare all variables
     var i, tabcontent, tablinks;
@@ -105,9 +113,10 @@
   $(function() {
 
   var $aud = $("#audio_player"),
-      $pp  = $('#playpause'),
+      $ti  = $('#timeinfo'),
       $vol = $('#volume'),
       $bar = $("#progressbar"),
+      $pp2 = $("#btn_playpause"),
       AUDIO= $aud[0];
 
   AUDIO.volume = 0.75;
@@ -123,7 +132,7 @@
     var s = AUDIO.duration - AUDIO.currentTime
     var m = getTime(AUDIO.currentTime) + "/" + getTime(AUDIO.duration)
     m = m + " - " + getTime(s)
-    $pp.text(m);
+    $ti.text(m);
   }
 
   $vol.slider( {
@@ -141,7 +150,7 @@
     }
   });
 
-  $pp.click(function() {
+  $pp2.click(function() {
     return AUDIO[AUDIO.paused?'play':'pause']();
   });
 
@@ -160,8 +169,11 @@ $(document).ready(function(){
 
     document.getElementById("defaultOpen").click();
 
+    $("#btn_playpause")[0].classList.add("change");
+
     updatePlaylist();
 
+    progress()
 });
 
   function togglePlayButton(x) {

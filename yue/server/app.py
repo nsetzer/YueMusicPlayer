@@ -182,6 +182,10 @@ def get_resource(app,pdir,path):
     else:
         abort(404)
 
+def webroot(app,path):
+    return flask.send_from_directory('.well-known', path)
+
+
 PlayListRow = namedtuple('PlayListRow', ['artist', 'title','album','length','current'])
 
 def media_current_playlist(app):
@@ -231,13 +235,15 @@ class Application(object):
                 )
 
         self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
+        self.register("/.well-known/<path:path>",'webroot',webroot)
         self.register("/player",'player',player)
         self.register("/media/<uid>",'media',media)
         self.register("/_media_next",'media_next',media_next)
         self.register("/_media_prev",'media_prev',media_prev)
         self.register("/_media_current_playlist",'media_current_playlist',media_current_playlist)
 
-        db_path = r"D:/git/YueMusicPlayer/yue.db"
+        #db_path = r"D:/git/YueMusicPlayer/yue.db"
+        db_path = os.path.join(os.getcwd(),"yue.db")
         db_uri  = "sqlite:///" + db_path
         self.sqlstore = SQLStore(db_path)
         self.plmanager = PlaylistManager(self.sqlstore)
@@ -260,6 +266,7 @@ class Application(object):
         self.db.create_all()
         user = self.user_datastore.find_user(email='nicksetzer@gmail.com')
         if user is None:
+            password=input()
             self.user_datastore.create_user(email='nicksetzer@gmail.com', password='password')
         self.db.session.commit()
 

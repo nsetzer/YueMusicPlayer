@@ -14,7 +14,7 @@
 <body>
 
 <div id="div_page">
-  <div>
+  <div style="width: 40%; margin: 0 auto;">
   <div id="info_artist">{{ audio.artist }} </div>
   <div id="info_title">{{ audio.title }} </div>
   <div id="info_album">{{ audio.album }} </div>
@@ -23,33 +23,29 @@
 
   <br>
 
+  <!--  controls="controls" -->
+
   <audio id="audio_player"
-    controls="controls"
-    src="{{ audio.source }}"
-    type="{{ audio.type }}"
-    onended="mediaEnded()">
+         src="{{ audio.source }}"
+         type="{{ audio.type }}"
+         onended="mediaEnded()"
+         onplay="mediaPlay()"
+         onpause="mediaPause()">
   </audio>
   <br>
 
-  <div id="player" style="width: 80%;">
-
-  <div>
-  <div id="progressbar" style="float:left"></div>
-  <div id="volume" style="float:right"></div><br>
-  </div>
-
-  <div id="playpause"></div>
-
-  <div class="container" onclick="togglePlayButton(this)">
-    <div class="pbar1"></div>
-    <div class="pbar2"></div>
-  </div>
-
-  </div>
-
-  <div style="width: 80%; margin: 0 auto; text-align: center;">
+  <div id="player" style="width: 80%; margin: 0 auto; text-align: center;">
     <button type="button" id="btn_media_prev">Prev</button>
+    <div class="container" id="btn_playpause" onclick="togglePlayButton(this)">
+      <div class="pbar1"></div>
+      <div class="pbar2"></div>
+    </div>
     <button type="button" id="btn_media_next">Next</button>
+    <br>
+    <br>
+    <div id="progressbar" style="margin: 0 auto;"></div><br>
+    <div id="timeinfo"></div><br>
+    <div id="volume" style="margin: 0 auto;"></div><br>
   </div>
 
   <div class="tab">
