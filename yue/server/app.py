@@ -291,11 +291,12 @@ class Application(object):
         private_key = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/privkey.pem"
         certificate = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/fullchain.pem"
 
+        print(private_key)
         if os.path.exists(private_key):
             self.context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-            self.context.use_privatekey_file(private_key)
-            self.context.use_certificate_file(certificate)
+            self.context.load_cert_chain(certificate,private_key)
         else:
+            print("no ssl support")
             self.context = None
 
         self.app.config['DEBUG'] = False
@@ -335,7 +336,7 @@ class Application(object):
 
         host = "0.0.0.0"
         #host = "127.0.0.1"
-        port = 5000
+        port = 5001
         debug = False
 
         self.app.run(host=host,port=port,debug=debug,ssl_context=self.context)
