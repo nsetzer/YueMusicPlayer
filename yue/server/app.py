@@ -15,7 +15,9 @@ from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.song import Song
 from yue.core.util import format_time
+import codecs
 
+from jinja2 import TemplateNotFound, BaseLoader
 
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -216,6 +218,33 @@ def media_current_playlist(app):
     template = app.env.get_template('playlist.html')
     return template.render(playlist=playlist)
 
+class DirectoryLoader(BaseLoader):
+    """Loads a template from a python dict.  It's passed a dict of unicode
+    strings bound to template names.  This loader is useful for unittesting:
+
+    >>> loader = DictLoader({'index.html': 'source here'})
+
+    Because auto reloading is rarely useful this is disabled per default.
+    """
+
+    def __init__(self, template_dir):
+        self.template_dir = template_dir
+
+    def get_source(self, environment, template):
+
+        path = os.path.join(self.template_dir,template)
+        if not os.path.exists(path):
+            raise TemplateNotFound(template)
+        _,filename = os.path.split(path)
+
+        with codecs.open(path,"r","utf-8") as rf:
+            source = rf.read()
+
+        return source, filename, lambda: True
+
+    def list_templates(self):
+        return sorted(self.mapping)
+
 class Application(object):
     """docstring for Application"""
     __instance = None
@@ -230,7 +259,8 @@ class Application(object):
         self.app = flask.Flask(self.app_name,root_path=".")
 
         self.env = jinja2.Environment(
-                    loader=jinja2.PackageLoader(self.app_name, self.template_dir),
+                    loader=DirectoryLoader(self.template_dir),
+                    #loader=jinja2.PackageLoader(self.app_name, self.template_dir),
                     autoescape = True
                 )
 
@@ -267,7 +297,7 @@ class Application(object):
         user = self.user_datastore.find_user(email='nicksetzer@gmail.com')
         if user is None:
             password=input()
-            self.user_datastore.create_user(email='nicksetzer@gmail.com', password='password')
+            self.user_datastore.create_user(email='nicksetzer@gmail.com', password=password)
         self.db.session.commit()
 
 
