@@ -282,5 +282,12 @@ class Application(object):
         self.app.add_url_rule(rule, endpoint, f, **options)
 
     def run(self):
-        self.app.run(debug=True)
+
+
+        host = "0.0.0.0"
+        #host = "127.0.0.1"
+        port = 5000
+        debug = False
+
+        self.app.run(host=host,port=port,debug=debug)
 
