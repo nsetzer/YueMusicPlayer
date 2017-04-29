@@ -1,4 +1,12 @@
 #! python main.py
+"""
+certbot certonly --webroot -w $PWD -d windy.duckdns.org
+certbot renew
+
+
+echo url="https://www.duckdns.org/update?domains=windy&token=798527be-4ff0-4262-bb89-3f9e03e98e23&ip=" | curl -k -o ~/duckdns/duck.log -K -
+
+"""
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -6,6 +14,7 @@ import jinja2
 import flask
 from flask import send_file
 import os
+import ssl
 from flask import request
 
 from flask import jsonify, request, abort
@@ -279,6 +288,16 @@ class Application(object):
         self.plmanager = PlaylistManager(self.sqlstore)
         self.library = Library(self.sqlstore)
 
+        private_key = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/privkey.pem"
+        certificate = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/fullchain.pem"
+
+        if os.path.exists(private_key):
+            self.context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+            self.context.use_privatekey_file(private_key)
+            self.context.use_certificate_file(certificate)
+        else:
+            self.context = None
+
         self.app.config['DEBUG'] = False
         self.app.config['SECRET_KEY'] = 'super-secret'
         self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
@@ -319,5 +338,5 @@ class Application(object):
         port = 5000
         debug = False
 
-        self.app.run(host=host,port=port,debug=debug)
+        self.app.run(host=host,port=port,debug=debug,ssl_context=self.context)
 
