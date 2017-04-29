@@ -314,10 +314,15 @@ class Application(object):
         self.security = Security(self.app, self.user_datastore)
 
         self.db.create_all()
-        user = self.user_datastore.find_user(email='nicksetzer@gmail.com')
-        if user is None:
-            password=input()
-            self.user_datastore.create_user(email='nicksetzer@gmail.com', password=password)
+
+        def mkuser(username):
+            user = self.user_datastore.find_user(email=username)
+            if user is None:
+                password=input(username + ":")
+            self.user_datastore.create_user(email=username, password=password)
+
+        mkuser("nicksetzer@gmail.com")
+        mkuser("bsetzer")
         self.db.session.commit()
 
 
