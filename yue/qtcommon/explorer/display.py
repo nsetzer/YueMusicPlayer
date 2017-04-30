@@ -199,6 +199,7 @@ class ExplorerModel(QWidget):
         try:
 
             if not self.view.exists(path):
+                print(type(self.view),path)
                 QMessageBox.critical(self,"Access Error","Error Opening:\n`%s`\nDirectory Does Not Exist"%path)
                 return;
 

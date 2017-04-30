@@ -14,12 +14,22 @@ from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 import subprocess, shlex
 import os,sys
 
-def proc_exec(cmdstr):
+def proc_exec(cmdstr,pwd=None):
+    """
+    pwd must be provided if it is a network path on windows.
+    a network path begins with '\\' or '//'
+    otherwise popen will automatically preface the path
+    with the drive letter of the current working directory.
+    """
     if sys.platform!="win32":
-        print(cmdstr)
+        print(("cmd:%s\npwd:%s"%(cmdstr,pwd)))
+    else:
+        print(("cmd:%s"%(cmdstr)).encode("utf-8"))
+        print(("pwd:%s"%(pwd)).encode("utf-8"))
+
     try:
         args=shlex.split(cmdstr)
-        subprocess.Popen(args)
+        subprocess.Popen(args,cwd=pwd)
     except:
         raise Exception(cmdstr)
 
@@ -128,14 +138,19 @@ class ExplorModel(ExplorerModel):
 
         path = self.view.realpath(item['name'])
 
+        if self.view.isdir(path):
+            pwd = path
+        else:
+            pwd,_ = self.view.split(path)
+
         if FileAssoc.isImage(path):
             cmdstr = Settings.instance()['cmd_edit_image']
-            proc_exec(cmdstr%(path))
+            proc_exec(cmdstr%(path),pwd)
 
         else: #if FileAssoc.isText(path):
 
             cmdstr = Settings.instance()['cmd_edit_text']
-            proc_exec(cmdstr%(path))
+            proc_exec(cmdstr%(path),pwd)
 
 
     def action_edit_link(self,item):
@@ -176,20 +191,25 @@ class ExplorModel(ExplorerModel):
     def _action_open_file_local(self,view,path):
         cmdstr_img = Settings.instance()['cmd_edit_image']
 
+        if view.isdir(path):
+            pwd = path
+        else:
+            pwd,_ = view.split(path)
+
         if isArchiveFile(path):
             self.openAsTab.emit(view,path)
 
         elif FileAssoc.isImage(path) and cmdstr_img:
-            proc_exec(cmdstr_img%(path))
+            proc_exec(cmdstr_img%(path),pwd)
         elif FileAssoc.isText(path):
             cmdstr = Settings.instance()['cmd_edit_text']
-            proc_exec(cmdstr%(path))
+            proc_exec(cmdstr%(path),pwd)
         elif not fileIsBinary(view,path):
             cmdstr = Settings.instance()['cmd_edit_text']
-            proc_exec(cmdstr%(path))
+            proc_exec(cmdstr%(path),pwd)
         else:
             cmdstr = Settings.instance()['cmd_open_native']
-            proc_exec(cmdstr%(path))
+            proc_exec(cmdstr%(path),pwd)
 
     def action_open_directory(self):
         # open the cwd in explorer

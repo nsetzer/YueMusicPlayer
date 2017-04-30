@@ -47,8 +47,6 @@ class DataSource(object):
     def equals(self,other):
         """ return true if the given source/view matches this one
         """
-        print(type(self))
-        print(type(other))
         return isinstance(other,type(self))
 
     def islocal(self):
@@ -240,15 +238,20 @@ class DirectorySource(DataSource):
         return os.path.relpath(path,base)
 
     def normpath(self,path,root=None):
-
         if path == DirectorySource.dummy_path:
-            return DirectorySource.dummy_path
-        if sys.platform=="win32" and path.startswith(DirectorySource.dummy_path):
-            path = path[len(DirectorySource.dummy_path):]
-        path = os.path.expanduser(path)
-        if root and not path.startswith("/"):
-            path = os.path.join(root,path)
-        return os.path.normpath( path )
+            path = DirectorySource.dummy_path
+        elif sys.platform=="win32":
+            if path.startswith(DirectorySource.dummy_path) and path[:2]!="\\\\":
+                path = path[len(DirectorySource.dummy_path):]
+            path = os.path.expanduser(path)
+            if root and not (path[1:].startswith(":") or path[:2]=="\\\\"):
+                path = os.path.join(root,path)
+        else:
+            path = os.path.expanduser(path)
+            if root and not path.startswith("/"):
+                path = os.path.join(root,path)
+        path = os.path.normpath( path )
+        return path
 
     def readlink(self,path):
         """ return the target path of a symlink """
@@ -321,7 +324,7 @@ class DirectorySource(DataSource):
         # which are listed bu not accessable.
         try:
             if sys.platform=="win32" and not os.access(path,os.F_OK):
-                raise PermissionError()
+                raise PermissionError("Win32: cannot access %s"%path)
             st = os.lstat(path)
         except PermissionError as e:
             result = {
@@ -329,7 +332,7 @@ class DirectorySource(DataSource):
                 "isLink" : False,
                 "mtime" : 0,
                 "ctime" : 0,
-                "size"  : 0,
+                "size"  : -1,
                 "mode"  : 0
             }
             # mark unmounted drives as hidden
