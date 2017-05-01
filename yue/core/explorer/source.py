@@ -628,7 +628,7 @@ class SourceListView(SourceView):
     def setData(self,data):
         self.data = data
         if self.text_filter is not None:
-            f = lambda x: self.statcache[x]['isDir'] or fnmatch(x,self.text_filter)
+            f = lambda x: self.statcache[x]['isDir'] or fnmatch(x.lower(),self.text_filter)
             self.data_filtered = [ x for x in data if f(x) ]
         else:
             self.data_filtered = data
@@ -783,5 +783,5 @@ class SourceListView(SourceView):
                 filter = '*' + filter
             if not filter.endswith("*"):
                 filter = filter + '*'
-            self.text_filter = filter
+            self.text_filter = filter.lower()
         self.setData(self.data)
