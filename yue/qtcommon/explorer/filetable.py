@@ -26,7 +26,7 @@ class ExplorerFileTable(LargeTable):
     createFile = pyqtSignal(str)
     createDirectory = pyqtSignal(str)
     focusQuery = pyqtSignal()
-
+    deletePaths = pyqtSignal(list) # list of items
 
     def __init__(self, view, parent=None):
         super(ExplorerFileTable,self).__init__(parent)
@@ -257,6 +257,12 @@ class ExplorerFileTable(LargeTable):
             # approach where typing "b-u-i" finds a
             # file that starts with "bui"
             self.jump_to_letter(char)
+
+    def keyPressDelete(self,event):
+        if event.key() == Qt.Key_Backspace:
+            self.parent().chdir_parent()
+        else:
+            self.deletePaths.emit(self.getSelection())
 
     def jump_to_letter(self,charseq):
 

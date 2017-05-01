@@ -24,7 +24,7 @@ from yue.explor.ui.quicklist import ShortcutEditDialog, QuickAccessTable
 from yue.explor.ui.tabview import ExplorerView
 from yue.explor.controller import ExplorController
 from yue.explor.assoc import FileAssoc
-from yue.explor.watchfile import WatchFileController
+from yue.explor.watchfile import WatchFileController, WatchFileTable
 from yue.explor.dialog.sshcred import SshCredentialsDialog
 from yue.explor.dialog.settings import SettingsDialog
 from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
@@ -120,6 +120,14 @@ class MainWindow(QMainWindow):
 
         self.pain_main = Pane(self)
 
+        self.dashboard = Dashboard(self)
+
+        # controller maintains state between tabs
+        self.source = DirectorySource()
+        self.controller = ExplorController( )
+        self.controller.forceReload.connect(self.refresh)
+        self.controller.submitJob.connect(self.dashboard.startJob)
+
         self.btn_newTab = QToolButton(self)
         self.btn_newTab.clicked.connect(self.newTab)
         self.btn_newTab.setIcon(QIcon(":/img/app_plus.png"))
@@ -128,36 +136,36 @@ class MainWindow(QMainWindow):
         self.quickview.changeDirectory.connect(self.onChangeDirectory)
         self.quickview.changeDirectoryRight.connect(self.onChangeDirectoryRight)
 
+        self.wfctrl = WatchFileController(self.source)
+        self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
+
+        self.wfview = WatchFileTable(self.wfctrl,self)
+
         self.tabview = TabWidget( self )
         self.tabview.setCornerWidget(self.btn_newTab)
         self.tabview.tabCloseRequested.connect(self.onTabCloseRequest)
         self.tabview.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
-        self.dashboard = Dashboard(self)
-
         self.pain_main.addWidget(self.tabview)
         self.pain_main.addWidget(self.dashboard)
 
-        self.splitter.addWidget(self.quickview.container)
+        self.wview = QWidget()
+        self.vbox_view = QVBoxLayout(self.wview)
+        self.vbox_view.setContentsMargins(0,0,0,0)
+        self.vbox_view.addWidget(self.quickview.container)
+        self.vbox_view.addWidget(self.wfview.container)
+        self.splitter.addWidget(self.wview)
         self.splitter.addWidget(self.pain_main)
 
         self.setCentralWidget(self.splitter)
 
-        # controller maintains state between tabs
-        self.source = DirectorySource()
-        self.controller = ExplorController( )
-        self.controller.forceReload.connect(self.refresh)
 
-        self.controller.submitJob.connect(self.dashboard.startJob)
 
         # create the first tab
         self.newTab(defaultpath,defaultpath_r)
 
         self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape),self)
         self.xcut_refresh.activated.connect(self.refresh)
-
-        self.wfctrl = WatchFileController(self.source)
-        self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
 
         self.initMenuBar()
         self.initStatusBar()

@@ -64,6 +64,7 @@ class ExplorerModel(QWidget):
         self.tbl_file = self._getNewFileTable(view)
 
         self.tbl_file.selection_changed.connect(self.onTableSelectionChanged)
+        self.tbl_file.deletePaths.connect(lambda lst:self.controller.action_delete(self,lst))
 
         self.txt_path = LineEdit_Path(self,self.tbl_file)
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)

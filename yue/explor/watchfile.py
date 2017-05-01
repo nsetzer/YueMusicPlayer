@@ -49,6 +49,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from yue.qtcommon.explorer.jobs import Job
+from yue.qtcommon.LargeTable import LargeTable, TableColumn
+
 import os,sys
 
 class WatchFile(object):
@@ -125,6 +127,14 @@ class WatchFileController(QObject):
 
         self.watchersChanged.emit(len(self.watch_list))
 
+    def closeFile(self,localPath):
+
+        wf = self.watch_list[localPath];
+        wf.close()
+        del self.watch_list[localPath]
+
+        self.watchersChanged.emit(len(self.watch_list))
+
     def onPostAll(self):
         """
         iterate through all watch files, if the mtime has changed
@@ -147,5 +157,79 @@ class WatchFileController(QObject):
         if localPath in self.watch_list:
             wf = self.watch_list[localPath]
             wf.sync()
+
+    def count(self):
+        return len(self.watch_list)
+
+    def iter(self):
+
+        for path,wf in self.watch_list.items():
+            yield wf;
+
+
+class WatchFileTable(LargeTable):
+    """
+    displays the contents of the WatchFileController
+    """
+
+    def __init__(self, wfctrl, parent=None):
+        super(WatchFileTable,self).__init__(parent)
+        self.wfctrl = wfctrl
+
+        self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
+
+        self.onWatchersChanged(self.wfctrl.count())
+
+    def initColumns(self):
+        self.columns.append( TableColumn(self,1,"Name") )
+        self.columns[-1].setWidthByCharCount(12)
+
+    def onWatchersChanged(self,count):
+        if count == 0:
+            self.container.setHidden(True)
+        else:
+            self.container.setHidden(False)
+
+        data = []
+        for wf in self.wfctrl.iter():
+            _,name = wf.remoteSource.split(wf.remotePath)
+            d = [wf,name,wf.localPath]
+            data.append(d)
+        self.setData(data)
+
+    def mouseReleaseRight(self,event):
+
+        ctxtmenu = QMenu(self.container)
+
+        sel = self.getSelection()
+        if len(sel)==1:
+            item = sel[0]
+            wf = item[0]
+
+            ctxtmenu.addAction("Sync",lambda : self.action_sync([wf,]))
+
+            ctxtmenu.addAction("Close",lambda : self.action_close([wf,]))
+
+        else:
+            wfs = [ item[0] for item in sel ]
+            ctxtmenu.addAction("Sync Selection",lambda : self.action_sync(wfs))
+            ctxtmenu.addAction("Close Selection",lambda : self.action_sync(wfs))
+
+        action = ctxtmenu.exec_( event.globalPos() )
+
+    def action_close(self,wfs):
+        for wf in wfs:
+            self.wfctrl.closeFile(wf.localPath)
+
+    def action_sync(self,wfs):
+        for wf in wfs:
+            wf.sync()
+
+
+
+
+
+
+
 
 
