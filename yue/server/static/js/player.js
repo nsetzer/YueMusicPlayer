@@ -173,7 +173,6 @@ $(document).ready(function(){
 
     updatePlaylist();
 
-    progress()
 });
 
   function togglePlayButton(x) {

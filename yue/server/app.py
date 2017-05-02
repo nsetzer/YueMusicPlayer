@@ -6,7 +6,21 @@ certbot renew
 
 echo url="https://www.duckdns.org/update?domains=windy&token=798527be-4ff0-4262-bb89-3f9e03e98e23&ip=" | curl -k -o ~/duckdns/duck.log -K -
 
+
+/usr/local/etc/lighttpd/lighttpd.conf
+/usr/local/etc/nginx
+/usr/local/www/owncloud
+/usr/local/www/yueserver -> /mnt/commont/YueMusicPlayer/yue/server
+
+/usr/local/etc/letsencrypt/live/windy.duckdns.org/privkey.pem
+/usr/local/etc/letsencrypt/live/windy.duckdns.org/fullchain.pem
+
+
+in /etc/rc.conf
+php_fpm_enable="YES"
+
 """
+
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -58,6 +72,9 @@ def setup_database(app,db):
     app.db_role = Role
     app.db_user = User
 
+def hello(app):
+    return "hello world"
+
 @login_required
 def player(app):
     template = app.env.get_template('player.html')
@@ -83,12 +100,19 @@ def player(app):
 
     return template.render(audio=audio)
 
+def player2(app):
+    template = app.env.get_template('player2.html')
+    return template.render()
+
 #def login(app):
 #    template = app.env.get_template('login.html')
 #    return template.render()
 
-@login_required
 def media(app,uid):
+
+    if not current_user.is_authenticated:
+        abort(401)
+
     uid=int(uid)
     lib = app.library.reopen()
     song = lib.songFromId(uid)
@@ -273,9 +297,11 @@ class Application(object):
                     autoescape = True
                 )
 
-        self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
+        self.register("/",'hello',hello)
         self.register("/.well-known/<path:path>",'webroot',webroot)
+        self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
         self.register("/player",'player',player)
+        self.register("/player2",'player2',player2)
         self.register("/media/<uid>",'media',media)
         self.register("/_media_next",'media_next',media_next)
         self.register("/_media_prev",'media_prev',media_prev)
@@ -299,7 +325,7 @@ class Application(object):
             print("no ssl support")
             self.context = None
 
-        self.app.config['DEBUG'] = False
+        self.app.config['DEBUG'] = self.context is None
         self.app.config['SECRET_KEY'] = 'super-secret'
         self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -319,7 +345,7 @@ class Application(object):
             user = self.user_datastore.find_user(email=username)
             if user is None:
                 password=input(username + ":")
-            self.user_datastore.create_user(email=username, password=password)
+                self.user_datastore.create_user(email=username, password=password)
 
         mkuser("nicksetzer@gmail.com")
         mkuser("bsetzer")
@@ -338,11 +364,14 @@ class Application(object):
 
     def run(self):
 
-
-        host = "0.0.0.0"
-        #host = "127.0.0.1"
-        port = 5001
-        debug = False
+        if self.context is not None:
+            port = 5001
+            debug = False
+            host = "0.0.0.0"
+        else:
+            port = 5000
+            debug = True
+            host = "127.0.0.1"
 
         self.app.run(host=host,port=port,debug=debug,ssl_context=self.context)
 

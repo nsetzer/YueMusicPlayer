@@ -1,11 +1,25 @@
 
 
-<ol>
 {% for song in playlist %}
-    {% if song.current %}
-        <li><b>{{ song.artist }} -- {{ song.title }}</b></li>
-    {% else %}
-        <li>{{ song.artist }} -- {{ song.title }}</li>
-    {% endif %}
+
+        <div id="plelem_{{loop.index}}"
+             draggable="true"
+             ondragstart="pl_drag(event)"
+             ondrop="pl_drop(event)"
+             ondragover="pl_allowDrop(event)">
+            <!--{{loop.index}}.-->
+            <!--{% if song.current %}
+            <b>
+            {% endif %}-->
+            {{ song.artist }} -- {{ song.title }}
+
+            <!--{% if song.current %}
+            </b>
+            {% endif %}-->
+
+            <button style="float:right">X</button>
+            <button style="float:right">&gt;&gt;</button>
+
+        </div>
+
 {% endfor %}
-</ol>
