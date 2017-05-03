@@ -751,7 +751,8 @@ class MainWindow(QMainWindow):
         menu.addAction("Exit",QApplication.quit)
 
         menu = self.bar_menu.addMenu("&Music")
-        menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
+        #menu.addAction(QIcon(":/img/app_newlist.png"),"New Playlist",self.createNewPlaylist)
+
         #menu.addSeparator()
         #menu.addAction("New Editable Playlist", self.newEditablePlaylist)
         #menu.addAction("Open Editable Playlist", self.openEditablePlaylist)
@@ -1148,12 +1149,12 @@ class MainWindow(QMainWindow):
         self.controller.play_index( 0 )
         self.plview.updateData()
 
-    def createNewPlaylist(self,query=""):
+    def createNewPlaylist(self,query="",create=True):
 
         s = Settings.instance();
         limit = s['playlist_size']
         presets = s['playlist_presets']
-        dialog = NewPlaylistDialog(query,limit=limit,parent=self)
+        dialog = NewPlaylistDialog(query,limit=limit,parent=self,create=create)
 
         if dialog.exec():
 

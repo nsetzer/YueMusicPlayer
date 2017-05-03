@@ -210,7 +210,7 @@ class LibraryView(Tab):
     """docstring for MainWindow"""
 
     # emit this signal to create a new playlist from a given query string
-    create_playlist = pyqtSignal(str)
+    create_playlist = pyqtSignal(str,bool)
 
     insert_playlist = pyqtSignal(list,bool)
     set_playlist = pyqtSignal(list)
@@ -255,8 +255,15 @@ class LibraryView(Tab):
         self.lbl_error  = QLabel("")
 
         self.btn_newlist = QToolButton(self)
+        self.menu_newlist = QMenu()
+        act = self.menu_newlist.addAction("Insert Songs")
+        act.triggered.connect(lambda:self.create_playlist.emit(self.txt_search.text(),False))
+        act = self.menu_newlist.addAction("Create New Playist")
+        act.triggered.connect(lambda:self.create_playlist.emit(self.txt_search.text(),True))
+        self.btn_newlist.setMenu(self.menu_newlist)
         self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
-        self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
+        self.btn_newlist.setPopupMode(QToolButton.InstantPopup)
+        #self.btn_newlist.clicked.connect(lambda:self.create_playlist.emit(self.txt_search.text()))
         #self.btn_newlist.setFlat(True)
 
         self.hbox.addWidget( self.btn_quick )

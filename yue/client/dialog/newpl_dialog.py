@@ -10,7 +10,7 @@ from yue.core.song import Song
 import os,sys
 
 class NewPlaylistDialog(QDialog):
-    def __init__(self,query="",limit=50,parent=None):
+    def __init__(self,query="",limit=50,parent=None,create=True):
         super(NewPlaylistDialog,self).__init__(parent);
         self.setWindowTitle("Create New Playlist")
 
@@ -57,7 +57,10 @@ class NewPlaylistDialog(QDialog):
         #self.spin_hash.setValue(0);
         self.spin_size.setValue(limit);
 
-        self.rbCreate.setChecked(True)
+        if create:
+            self.rbCreate.setChecked(True)
+        else:
+            self.rbInsert.setChecked(True)
         self.rbOrderRandom.setChecked(True)
 
         # --------------------------
