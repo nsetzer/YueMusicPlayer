@@ -50,6 +50,8 @@ from PyQt5.QtGui import *
 
 from yue.qtcommon.explorer.jobs import Job
 from yue.qtcommon.LargeTable import LargeTable, TableColumn
+from yue.explor.util import proc_exec
+from yue.core.settings import Settings
 
 import os,sys
 
@@ -67,7 +69,6 @@ class WatchFile(object):
         """ return True if the file has changed on disk """
         st = self.localSource.stat(self.localPath)
         return st['mtime'] != self.st['mtime'] or st['size'] != self.st['size']
-
 
     def sync(self):
 
@@ -197,6 +198,15 @@ class WatchFileTable(LargeTable):
             data.append(d)
         self.setData(data)
 
+    def mouseDoubleClick(self,row,col,event=None):
+
+        if event is None or event.button() == Qt.LeftButton:
+            if 0<= row < len(self.data):
+                item = self.data[row]
+                wf = item[0]
+                self.action_open(wf)
+
+
     def mouseReleaseRight(self,event):
 
         ctxtmenu = QMenu(self.container)
@@ -207,6 +217,7 @@ class WatchFileTable(LargeTable):
             wf = item[0]
 
             ctxtmenu.addAction("Sync",lambda : self.action_sync([wf,]))
+            ctxtmenu.addAction("Edit",lambda : self.action_open(wf))
 
             ctxtmenu.addAction("Close",lambda : self.action_close([wf,]))
 
@@ -224,6 +235,15 @@ class WatchFileTable(LargeTable):
     def action_sync(self,wfs):
         for wf in wfs:
             wf.sync()
+
+    def action_open(self,wf):
+
+        path = wf.localPath
+        # todo: get pwd, pass to proc_exec
+        cmdstr = Settings.instance()['cmd_edit_text']
+
+        proc_exec(cmdstr%(path))
+
 
 
 
