@@ -4,7 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from enum import IntEnum
+#from enum import IntEnum
 
 import os, sys
 dirpath = os.path.dirname(os.path.abspath(__file__))
@@ -21,6 +21,7 @@ from yue.qtcommon.LineEdit import LineEdit
 from yue.qtcommon.Tab import Tab
 
 from yue.core.util import format_delta, string_quote
+from yue.core.quicklist import QuickListRecord, buildQuickList
 from yue.core.song import Song
 from yue.core.search import ParseError
 from yue.core.sqlstore import SQLStore
@@ -28,71 +29,6 @@ from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 
 from collections import namedtuple
-
-class Record(IntEnum):
-    key=0 # data key
-    cnt=1 # song count
-    ply=2 # total play count
-    skp=3 # total skip count
-    len=4 # total play time
-    tme=5 # total listen time
-    frq=6 # average frequency
-    SIZE=7
-
-# convert enum to pretty string
-RecordMap = {
-    Record.key:"Key",
-    Record.cnt:"Song Count",
-    Record.ply:"Play Count",
-    Record.skp:"Skip Count",
-    Record.len:"Play Time",
-    Record.tme:"Listen Time",
-    Record.frq:"Average Frequency",
-}
-
-def buildQuickList(songs,minimum,key_index,text_transform):
-
-    """
-    build a quick list given a set of songs
-    An array of lists is return, with each index corresponding
-    to the Record enum. This produces statistics based on either
-    a artist or genre.
-
-    minimum : records are dropped if they do not mean the minimum song
-        count requirment.
-
-    key_index : either Song.artist or Song.album
-
-    text_transform:
-        for key_index=Song.artist use text_transform=lambda x:[x,]
-        for Song.album, split on ',' or ';'
-    """
-    data = {}
-
-    for song in songs:
-        skey = song[key_index]
-        key_list = text_transform(skey)
-        for key in key_list :
-            if key not in data:
-                data[key] = [0]*(int(Record.SIZE))
-                data[key][Record.key] = key
-            data[key][Record.cnt] += 1
-            data[key][Record.ply] += song[Song.play_count]
-            data[key][Record.skp] += song[Song.skip_count]
-            data[key][Record.len] += song[Song.length]
-            data[key][Record.tme] += song[Song.play_count] * song[Song.length]
-            data[key][Record.frq] += song[Song.frequency]
-            #data[key][c_rte] += song[Song.rating]
-            #if song[MpMusic.RATING] > 0:
-            #    data[key][c_rct] += 1
-
-    records = []
-    for key, record in data.items():
-        if record[Record.cnt] >= minimum:
-            record[Record.frq] = int(record[Record.frq]/record[Record.cnt])
-            records.append( record )
-
-    return records
 
 class QuickSelectView(Tab):
     """docstring for MainWindow"""
@@ -123,8 +59,8 @@ class QuickSelectView(Tab):
         self.selected = set()
 
         self.sort_reverse=True
-        self.sort_index = Record.cnt
-        self.display_index = Record.cnt
+        self.sort_index = QuickListRecord.cnt
+        self.display_index = QuickListRecord.cnt
         self.display_class = Song.artist
 
     def setData(self, data):
@@ -141,7 +77,7 @@ class QuickSelectView(Tab):
         text_transform = lambda x : [x,]
         if self.display_class == Song.genre:
             text_transform = lambda x : [ x.strip().title() for x in (x.replace(",",";").split(";")) if x.strip() ]
-        data = buildQuickList(songs,2,self.display_class,text_transform)
+        data = buildQuickList(songs,self.display_class,text_transform,minimum=2)
         self.setData(data)
 
     def setFavorites(self,kind,favorites):
@@ -160,15 +96,15 @@ class QuickSelectView(Tab):
         for i,record in enumerate(self.data):
             c = i // l # which column to place the item into
             r = i - l*c # which row to place the item into
-            if self.display_index in (Record.len,Record.tme):
+            if self.display_index in (QuickListRecord.len,QuickListRecord.tme):
                 d[r][ (c*2)     ] = format_delta(record[self.display_index])
             else:
                 d[r][ (c*2)     ] = record[self.display_index]
             d[r][ (c*2) + 1 ] = record[0]
         self.table.setData( d )
 
-        di = RecordMap[self.display_index]
-        si = RecordMap[self.sort_index]
+        di = QuickListRecord.idx2str(self.display_index)
+        si = QuickListRecord.idx2str(self.sort_index)
         txt="Showing %s for %s, sorted by %s."%(di,self.display_class.title(),si)
         self.lbl_info.setText(txt)
 
@@ -196,7 +132,7 @@ class QuickSelectView(Tab):
 
     def isSelected(self,index):
         if 0 <= index < len(self.data):
-            return self.data[index][Record.key] in self.selected
+            return self.data[index][QuickListRecord.key] in self.selected
         return False
 
     def toggleSelect(self,key):
@@ -208,14 +144,14 @@ class QuickSelectView(Tab):
 
     def isFavorite(self,index):
         if 0 <= index < len(self.data):
-            return self.data[index][Record.key] in self.favorites[self.display_class]
+            return self.data[index][QuickListRecord.key] in self.favorites[self.display_class]
         return False
 
     def toggleFavorite(self,index):
         if 0 <= index < len(self.data):
             record = self.data[index]
             favs = self.favorites[self.display_class]
-            key = record[Record.key]
+            key = record[QuickListRecord.key]
             if key in favs:
                 favs.remove( key )
             else:
@@ -371,8 +307,8 @@ class QuickTable(LargeTable):
         index = self.parent().rowColToIndex(row,col//2)
         if index < len(self.parent().data):
             record = self.parent().data[ index ]
-            self.parent().toggleSelect( record[Record.key] )
-            #record[Record.sel] = not record[Record.sel]
+            self.parent().toggleSelect( record[QuickListRecord.key] )
+            #record[QuickListRecord.sel] = not record[QuickListRecord.sel]
         return True
 
     def mouseReleaseRight(self,event):
@@ -403,35 +339,35 @@ class QuickTable(LargeTable):
         act.setDisabled( self.parent().display_class is Song.genre)
 
         submenu = contextMenu.addMenu("Display Content")
-        act=submenu.addAction("Song Count",lambda:self.parent().setDisplayIndex(Record.cnt))
-        act.setDisabled( self.parent().display_index is Record.cnt)
-        act=submenu.addAction("Play Count",lambda:self.parent().setDisplayIndex(Record.ply))
-        act.setDisabled( self.parent().display_index is Record.ply)
-        act=submenu.addAction("Skip Count",lambda:self.parent().setDisplayIndex(Record.skp))
-        act.setDisabled( self.parent().display_index is Record.skp)
-        act=submenu.addAction("Play Time",lambda:self.parent().setDisplayIndex(Record.len))
-        act.setDisabled( self.parent().display_index is Record.len)
-        act=submenu.addAction("Listen Time",lambda:self.parent().setDisplayIndex(Record.tme))
-        act.setDisabled( self.parent().display_index is Record.tme)
-        act=submenu.addAction("Average Frequency",lambda:self.parent().setDisplayIndex(Record.frq))
-        act.setDisabled( self.parent().display_index is Record.frq)
+        act=submenu.addAction("Song Count",lambda:self.parent().setDisplayIndex(QuickListRecord.cnt))
+        act.setDisabled( self.parent().display_index is QuickListRecord.cnt)
+        act=submenu.addAction("Play Count",lambda:self.parent().setDisplayIndex(QuickListRecord.ply))
+        act.setDisabled( self.parent().display_index is QuickListRecord.ply)
+        act=submenu.addAction("Skip Count",lambda:self.parent().setDisplayIndex(QuickListRecord.skp))
+        act.setDisabled( self.parent().display_index is QuickListRecord.skp)
+        act=submenu.addAction("Play Time",lambda:self.parent().setDisplayIndex(QuickListRecord.len))
+        act.setDisabled( self.parent().display_index is QuickListRecord.len)
+        act=submenu.addAction("Listen Time",lambda:self.parent().setDisplayIndex(QuickListRecord.tme))
+        act.setDisabled( self.parent().display_index is QuickListRecord.tme)
+        act=submenu.addAction("Average Frequency",lambda:self.parent().setDisplayIndex(QuickListRecord.frq))
+        act.setDisabled( self.parent().display_index is QuickListRecord.frq)
 
         submenu = contextMenu.addMenu("Sort Content")
 
-        act=submenu.addAction(self.parent().display_class.title(),lambda:self.parent().setSortIndex(Record.key))
-        act.setDisabled( self.parent().sort_index is Record.key)
-        act=submenu.addAction("Song Count",lambda:self.parent().setSortIndex(Record.cnt))
-        act.setDisabled( self.parent().sort_index is Record.cnt)
-        act=submenu.addAction("Play Count",lambda:self.parent().setSortIndex(Record.ply))
-        act.setDisabled( self.parent().sort_index is Record.ply)
-        act=submenu.addAction("Skip Count",lambda:self.parent().setSortIndex(Record.skp))
-        act.setDisabled( self.parent().sort_index is Record.skp)
-        act=submenu.addAction("Play Time",lambda:self.parent().setSortIndex(Record.len))
-        act.setDisabled( self.parent().sort_index is Record.len)
-        act=submenu.addAction("Listen Time",lambda:self.parent().setSortIndex(Record.tme))
-        act.setDisabled( self.parent().sort_index is Record.tme)
-        act=submenu.addAction("Average Frequency",lambda:self.parent().setSortIndex(Record.frq))
-        act.setDisabled( self.parent().sort_index is Record.frq)
+        act=submenu.addAction(self.parent().display_class.title(),lambda:self.parent().setSortIndex(QuickListRecord.key))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.key)
+        act=submenu.addAction("Song Count",lambda:self.parent().setSortIndex(QuickListRecord.cnt))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.cnt)
+        act=submenu.addAction("Play Count",lambda:self.parent().setSortIndex(QuickListRecord.ply))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.ply)
+        act=submenu.addAction("Skip Count",lambda:self.parent().setSortIndex(QuickListRecord.skp))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.skp)
+        act=submenu.addAction("Play Time",lambda:self.parent().setSortIndex(QuickListRecord.len))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.len)
+        act=submenu.addAction("Listen Time",lambda:self.parent().setSortIndex(QuickListRecord.tme))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.tme)
+        act=submenu.addAction("Average Frequency",lambda:self.parent().setSortIndex(QuickListRecord.frq))
+        act.setDisabled( self.parent().sort_index is QuickListRecord.frq)
 
         act=contextMenu.addAction("Reverse Sort", self.parent().reverseSort)
         if self.parent().sort_reverse:
