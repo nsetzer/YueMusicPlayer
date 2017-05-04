@@ -108,6 +108,57 @@
     return false;
   }
 
+  function pl_dragAndDrop(drag,drop) {
+    //return pre-formatted html for displaying the playlist
+    $.ajax({
+      url:'/_media_current_playlist',
+      type:"get",
+      data: { "drag":drag, "drop":drop},
+      dataType: "html",
+      success: function(data) {
+        console.log(data)
+        $('#playlist_data').html(data);
+      }
+    });
+    return false;
+  }
+
+  function pl_delete(index) {
+    //return pre-formatted html for displaying the playlist
+    $.ajax({
+      url:'/_media_current_playlist',
+      type:"get",
+      data: { "delete":index},
+      dataType: "html",
+      success: function(data) {
+        console.log(data)
+        $('#playlist_data').html(data);
+      }
+    });
+    return false;
+  }
+
+  function pl_play_index(index) {
+    //return pre-formatted html for displaying the playlist
+    $.getJSON('/_media_index', {"index":index},
+      function(data) {
+        //alert(data.src)
+        console.log(data);
+        //$("#audio_player").src=data.src
+        var aud = $('#audio_player').get(0);
+        aud.src=data.path
+        aud.play()
+        $("#info_artist").text(data.artist)
+        $("#info_album").text(data.album)
+        $("#info_title").text(data.title)
+        //$("#info_index").text(data.playlist_index + "/" + data.playlist_length)
+
+        updatePlaylist();
+      });
+    return false;
+  }
+
+
   //------------
   // http://stackoverflow.com/questions/20753756/how-to-change-the-html5-audio-volume-or-track-position-with-a-slider
   $(function() {

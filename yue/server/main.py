@@ -1,8 +1,11 @@
 
-import os
+import os,sys
+
+
+
 import logging
 from logging.handlers import RotatingFileHandler
-from app import Application
+
 from flask import send_file
 """
 flask + flasksecurity
@@ -29,6 +32,15 @@ w$bT74pNr2a
 
 
 def main():
+    print("fuck")
+    print(__file__)
+    path=os.path.split(os.path.abspath(__file__))[0]
+    path=os.path.split(path)[0]
+    path=os.path.split(path)[0]
+    print(path)
+    sys.path.insert(0,path)
+
+    from app import Application
 
     logging.basicConfig(level=logging.DEBUG)
     handler = RotatingFileHandler('yue-server.log', maxBytes=2*1024*1024, backupCount=10)

@@ -18,6 +18,16 @@ echo url="https://www.duckdns.org/update?domains=windy&token=798527be-4ff0-4262-
 
 in /etc/rc.conf
 php_fpm_enable="YES"
+nginx_enable="YES"
+
+uwsgi --socket 0.0.0.0:8000 --protocol=http -w wsgi:app
+/usr/local/etc/rc.d/yueserver
+
+/usr/local/www/yueserver:mkdir conf
+/usr/local/www/yueserver:cp yueserver.ini conf
+/usr/local/www/yueserver:cp /usr/local/etc/nginx/nginx.conf conf
+/usr/local/www/yueserver:cp /usr/local/etc/rc.d/yueserver conf
+
 
 """
 
@@ -31,13 +41,14 @@ import os
 import ssl
 from flask import request
 
-from flask import jsonify, request, abort
+from flask import jsonify, request, abort, render_template
 
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.song import Song
 from yue.core.util import format_time
+import yue.core.yml as yml
 import codecs
 
 from jinja2 import TemplateNotFound, BaseLoader
@@ -46,8 +57,12 @@ from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
+from flask_security.utils import encrypt_password
+from flask_mail import Mail, Message
 
 from collections import namedtuple
+
+import binascii
 
 def setup_database(app,db):
 
@@ -66,6 +81,7 @@ def setup_database(app,db):
         password = db.Column(db.String(255))
         active = db.Column(db.Boolean())
         confirmed_at = db.Column(db.DateTime())
+        api_key = db.Column(db.String(32))
         roles = db.relationship('Role', secondary=roles_users,
                                 backref=db.backref('users', lazy='dynamic'))
 
@@ -81,10 +97,9 @@ def player(app):
 
     lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist(current_user.email)
+    pl = plmgr.openPlaylist(str(current_user.id))
     rollPlaylist(app,lib,pl)
     idx,uid = pl.current()
-
 
     song = lib.songFromId(uid)
 
@@ -137,12 +152,13 @@ def rollPlaylist(app,lib,pl):
         limit = buf_a + buf_b
         songs = lib.search(query, orderby=Song.random, limit=limit)
         keys = [ song[Song.uid] for song in songs ]
+        if len(keys)==0:
+            return # error, no data
         pl.insert(len(pl),keys)
         pl.set_index(0)
         return
 
     idx,uid = pl.current()
-
 
     app.app.logger.info("roll %d %d %d %d"%(idx,pl_len,buf_a,buf_b))
     if idx + buf_a > pl_len+buf_h:
@@ -168,7 +184,7 @@ def media_next(app):
 
     lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist(current_user.email)
+    pl = plmgr.openPlaylist(str(current_user.id))
 
     app.app.logger.info("roll begin")
     rollPlaylist(app,lib,pl)
@@ -195,9 +211,43 @@ def media_prev(app):
 
     lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist(current_user.email)
+    pl = plmgr.openPlaylist(str(current_user.id))
     try:
         idx,uid = pl.prev()
+
+        song = lib.songFromId(uid)
+
+        song[Song.path] = "/media/%07d"%uid
+        song['playlist_index'] = idx
+        song['playlist_length'] = len(pl)
+        return jsonify(**song)
+    except IndexError:
+        pass
+    return ""
+
+def media_index(app):
+    """
+    return the first item if already at index 0
+    """
+    if not current_user.is_authenticated:
+        abort(401)
+
+    lib = app.library.reopen()
+    plmgr = app.plmanager.reopen()
+    pl = plmgr.openPlaylist(str(current_user.id))
+    try:
+        before = 5 # number of songs to display before current
+        idx,uid = pl.current()
+
+        try:
+            index=int(request.args.get("index",-1))
+            index = idx - min(idx,before) + (index - 1)
+            pl.set_index(index)
+        except:
+            pass
+
+        idx,uid = pl.current()
+        print(index,idx)
 
         song = lib.songFromId(uid)
 
@@ -220,25 +270,95 @@ def get_resource(app,pdir,path):
 def webroot(app,path):
     return flask.send_from_directory('.well-known', path)
 
+@login_required
+def user_api_key(app):
+    if request.args.get('regen',"").lower()=="true" or current_user.api_key=="":
+        current_user.api_key = binascii.hexlify(os.urandom(16))
+        app.db.session.commit()
+    return current_user.api_key
+
+def api_history(app):
+    if request.method == 'GET':
+        pass
+    elif request.method == 'POST':
+        pass
+    elif request.method == 'DELETE':
+        pass
+
+def api_download_song(app,uid):
+    pass
+
+
+def register_user(app):
+
+    if not current_user.is_authenticated:
+        abort(401)
+
+    if not current_user.has_role("admin"):
+        abort(401)
+
+    _security = app.security
+    form_class = _security.register_form
+    form_data = request.form
+
+    form = form_class(form_data)
+
+    template_path =  "security/register_user.html"
+
+    results = {} # _security._run_ctx_processor('register')
+    print(results)
+    return render_template(template_path,
+                              register_user_form=form,
+                              **results)
 
 PlayListRow = namedtuple('PlayListRow', ['artist', 'title','album','length','current'])
 
 def media_current_playlist(app):
 
-    print(current_user.email)
     if not current_user.is_authenticated:
         abort(401)
 
+    before = 5 # number of songs to display before current
+    after = 15 # number of songs to display after current
+
     lib = app.library.reopen()
     plmgr = app.plmanager.reopen()
-    pl = plmgr.openPlaylist(current_user.email)
-    idx,_ = pl.current()
+    pl = plmgr.openPlaylist(str(current_user.id))
+
+    try:
+        drag=int(request.args.get("drag",-1))
+        drop=int(request.args.get("drop",-1))
+    except:
+        drag = -1
+        drop = -1
+
+    try:
+        delete=int(request.args.get("delete",-1))
+    except:
+        delete = -1
+
+    if drag>=0 and drop >=0:
+        idx,_ = pl.current()
+        b = min(idx,before)
+        print("dnd-a",drag,drop,b,idx)
+        drag = idx - b + (drag - 1)
+        drop = idx - b + (drop - 1)
+        print("dnd-b",drag,drop)
+        pl.reinsertList([drag,],drop)
+    elif delete >= 0:
+        idx,_ = pl.current()
+        b = min(idx,before)
+        delete = idx - b + (delete - 1)
+        pl.delete(delete)
+    else:
+        rollPlaylist(app,lib,pl)
+        idx,_ = pl.current()
 
     uids = list(pl.iter())
     songs = lib.songFromIds( uids )
 
-    a = max(0,idx-5)
-    b = min(idx+15,len(uids))
+    a = max(0,idx-before)
+    b = min(idx+after,len(uids))
 
     playlist = []
     for i in range(a,b):
@@ -297,6 +417,16 @@ class Application(object):
                     autoescape = True
                 )
 
+        self.config = yml.load("yueserver.cfg")
+        print(self.config)
+
+        addurl = self.app.add_url_rule
+        def dummy(*args,**kwargs):
+            print(args,kwargs)
+            return addurl(*args,**kwargs)
+        self.app.add_url_rule=dummy
+
+
         self.register("/",'hello',hello)
         self.register("/.well-known/<path:path>",'webroot',webroot)
         self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
@@ -305,10 +435,17 @@ class Application(object):
         self.register("/media/<uid>",'media',media)
         self.register("/_media_next",'media_next',media_next)
         self.register("/_media_prev",'media_prev',media_prev)
+        self.register("/_media_index",'media_index',media_index)
         self.register("/_media_current_playlist",'media_current_playlist',media_current_playlist)
+        self.register("/api/history",'api_history',api_history,methods=['GET','POST','DELETE'])
+        self.register("/api/song/<uid>",'api_download_song',api_download_song)
+        self.register("/user/api_key",'user_api_key',user_api_key)
+        self.register("/user/register",'register_user',register_user)
+
 
         #db_path = r"D:/git/YueMusicPlayer/yue.db"
-        db_path = os.path.join(os.getcwd(),"yue.db")
+        db_path = os.path.abspath(self.config['yue']['db_path']).replace("\\","/")
+        print(db_path)
         db_uri  = "sqlite:///" + db_path
         self.sqlstore = SQLStore(db_path)
         self.plmanager = PlaylistManager(self.sqlstore)
@@ -326,9 +463,36 @@ class Application(object):
             self.context = None
 
         self.app.config['DEBUG'] = self.context is None
-        self.app.config['SECRET_KEY'] = 'super-secret'
+        self.app.config['SECRET_KEY'] = self.config['security']['secret_key']
         self.app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        self.app.config['SECURITY_LOGIN_URL'] = "/user/login"
+        self.app.config['SECURITY_LOGOUT_URL'] = "/user/logout"
+        self.app.config['SECURITY_RESET_URL'] = "/user/reset"
+        self.app.config['SECURITY_CHANGE_URL'] = "/user/change"
+        self.app.config['SECURITY_REGISTER_URL'] = "/false"
+        self.app.config['SECURITY_CONFIRM_URL'] = ""
+        self.app.config['SECURITY_POST_LOGIN_VIEW'] = "/player"
+        self.app.config['SECURITY_POST_LOGOUT_VIEW'] = "/"
+        self.app.config['SECURITY_RECOVERABLE'] = True
+        self.app.config['SECURITY_CHANGEABLE'] = True
+        self.app.config['SECURITY_REGISTERABLE'] = True
+
+        self.app.config['MAIL_SERVER']   = self.config['mail']['server']
+        self.app.config['MAIL_PORT']     = self.config['mail']['port']
+        self.app.config['MAIL_USE_SSL']  = self.config['mail']['use_ssl']
+        self.app.config['MAIL_USE_TLS']  = self.config['mail']['use_tls']
+        self.app.config['MAIL_USERNAME'] = self.config['mail']['username']
+        self.app.config['MAIL_PASSWORD'] = self.config['mail']['password']
+
+        #msg = Message(
+        #      'Hello',
+        #       sender=self.config['mail']['username'],
+        #       recipients=
+        #           [self.config['mail']['username']])
+        #msg.body = "This is the email body"
+        #self.mail = Mail(self.app)
+        #self.mail.send(msg)
 
         self.db = SQLAlchemy(self.app)
 
@@ -341,14 +505,27 @@ class Application(object):
 
         self.db.create_all()
 
-        def mkuser(username):
+        def mkrole(name,desc):
+            # todo look into encrypt_password
+            role = self.user_datastore.find_role(name)
+            if role is None:
+                self.user_datastore.create_role(name=name,description=desc)
+
+        def mkuser(username,password):
+            # todo look into encrypt_password
             user = self.user_datastore.find_user(email=username)
             if user is None:
-                password=input(username + ":")
-                self.user_datastore.create_user(email=username, password=password)
+                self.user_datastore.create_user(email=username,
+                    password=password,api_key="")
+                user = self.user_datastore.find_user(email=username)
+                role = self.user_datastore.find_role("admin")
+                user.roles.append(role)
 
-        mkuser("nicksetzer@gmail.com")
-        mkuser("bsetzer")
+        mkrole("admin","admin")
+        mkrole("user","user")
+
+        mkuser("admin","admin")
+
         self.db.session.commit()
 
 

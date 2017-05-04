@@ -282,6 +282,9 @@ class PlayListView(object):
         Note: this returns the new list, but this is only a hack
         to optimize one specific area in the Qt Client.
 
+        # TODO
+        # reinsert and reinsertList have different behavior
+        # for single arguments ([x,],y)
         """
         selection = set(selection)
 
