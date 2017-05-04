@@ -113,7 +113,7 @@ def player(app):
     audio.album  = song[Song.album]
     audio.title  = song[Song.title]
 
-    return template.render(audio=audio)
+    return template.render(audio=audio,current_user=current_user)
 
 def player2(app):
     template = app.env.get_template('player2.html')
@@ -297,19 +297,12 @@ def register_user(app):
     if not current_user.has_role("admin"):
         abort(401)
 
-    _security = app.security
-    form_class = _security.register_form
-    form_data = request.form
+    email = request.args.get('email',"")
+    admin = request.args.get('admin',"")
 
-    form = form_class(form_data)
+    print(email,admin)
 
-    template_path =  "security/register_user.html"
-
-    results = {} # _security._run_ctx_processor('register')
-    print(results)
-    return render_template(template_path,
-                              register_user_form=form,
-                              **results)
+    return "true"
 
 PlayListRow = namedtuple('PlayListRow', ['artist', 'title','album','length','current'])
 

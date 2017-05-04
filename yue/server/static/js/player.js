@@ -224,8 +224,82 @@ $(document).ready(function(){
 
     updatePlaylist();
 
+    getApiKey(false);
+
 });
 
   function togglePlayButton(x) {
     x.classList.toggle("change");
   }
+
+
+  var idx_drag_start=-1;
+  var idx_drag_hover=-1;
+  function pl_allowDrop(ev) {
+    var id = "" + ev.target.id;
+    if (id.startsWith("plelem")) {
+      idx_drag_hover=ev.target.id;
+      ev.preventDefault();
+    }
+  }
+
+  function pl_drag(ev) {
+    idx_drag_start=ev.target.id;
+    ev.dataTransfer.setData("text", ev.target.id);
+  }
+
+  function pl_drop(ev) {
+    ev.preventDefault();
+    var idx_drag_end = ev.target.id
+
+    var id1 = idx_drag_start.split("_")[1]
+    var id2 = (""+idx_drag_hover).split("_")[1]
+    var id3 = (""+idx_drag_end).split("_")[1]
+
+    console.log( "1:" + id1 + "> 2:" + id2+"> 3:" + id3+">");
+    if (id2=="") {
+      console.log("drop has no target");
+      return false;
+    }
+
+    if (id1==id2) {
+      console.log("drop target is source");
+      return false;
+    }
+
+    console.log("drop success");
+    pl_dragAndDrop(id1,id2);
+  }
+
+
+
+function getApiKey(regen) {
+    //return pre-formatted html for displaying the playlist
+    console.log("regen"+regen)
+    $.ajax({
+      url:'/user/api_key',
+      type:"get",
+      data: { "regen":regen },
+      dataType: "html",
+      success: function(data) {
+        console.log(data)
+        $('#api_key').html(data);
+      }
+    });
+    return false;
+  }
+
+function createUser() {
+
+    var email = $("#create_user_email").val();
+    var admin = $("#create_user_admin").is(':checked');
+    $.ajax({
+      url:'/user/register',
+      type:"get",
+      data: { "email":email,"admin":admin},
+      dataType: "html",
+      success: function(data) {
+        console.log(data)
+      }
+    });
+}

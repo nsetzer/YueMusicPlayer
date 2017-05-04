@@ -10,46 +10,6 @@
   <link rel="stylesheet" type="text/css" href="/res/css/player.css">
   <script src="/res/js/player.js"></script>
 
-  <script>
-
-  var idx_drag_start=-1;
-  var idx_drag_hover=-1;
-  function pl_allowDrop(ev) {
-    var id = "" + ev.target.id;
-    if (id.startsWith("plelem")) {
-      idx_drag_hover=ev.target.id;
-      ev.preventDefault();
-    }
-  }
-
-  function pl_drag(ev) {
-    idx_drag_start=ev.target.id;
-    ev.dataTransfer.setData("text", ev.target.id);
-  }
-
-  function pl_drop(ev) {
-    ev.preventDefault();
-    var idx_drag_end = ev.target.id
-
-    var id1 = idx_drag_start.split("_")[1]
-    var id2 = (""+idx_drag_hover).split("_")[1]
-    var id3 = (""+idx_drag_end).split("_")[1]
-
-    console.log( "1:" + id1 + "> 2:" + id2+"> 3:" + id3+">");
-    if (id2=="") {
-      console.log("drop has no target");
-      return false;
-    }
-
-    if (id1==id2) {
-      console.log("drop target is source");
-      return false;
-    }
-
-    console.log("drop success");
-    pl_dragAndDrop(id1,id2);
-  }
-  </script>
   <style>
     [id^=plelem] {
       border: 1px solid #aaaaaa;
@@ -99,6 +59,7 @@
   <div class="tab">
     <button class="tablinks" onclick="openTab(event, 'Playlist')" id="defaultOpen">Playlist</button>
     <button class="tablinks" onclick="openTab(event, 'Library')">Library</button>
+    <button class="tablinks" onclick="openTab(event, 'Settings')">Settings</button>
   </div>
 
   <div id="Playlist" class="tabcontent">
@@ -112,6 +73,12 @@
     <h3>Library</h3>
     <p>Library data</p>
   </div>
+
+  <div id="Settings" class="tabcontent">
+    <h3>Settings</h3>
+    {% include 'settings.html' %}
+  </div>
+
 </div>
 
 </body>
