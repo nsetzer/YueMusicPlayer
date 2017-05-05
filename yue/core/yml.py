@@ -2,6 +2,7 @@
 import codecs
 import io
 from collections import defaultdict
+import re
 """
 () denotes an empty list
 {} denotes an empty dict
@@ -36,6 +37,9 @@ class StrPos(str):
         inst.end = end
         inst.quoted = quoted # weather the text came from a quoted string
         return inst
+
+# match anything that remotely looks like a number
+_re_string_number = re.compile("^[\d+-._honb]+$")
 
 class YmlGrammar(object):
 
@@ -278,6 +282,8 @@ class YML(object):
                 continue # skip blank lines
 
 
+            if line.startswith('#'):
+                continue # a comment has been found
             if line.startswith('['):
                 # found the start of a section
                 current_section = self._load_section_header(line)
@@ -311,15 +317,11 @@ class YML(object):
         idx = line.find('=')
         if idx < 0 :
             raise YmlException("parameter not well formed <%s>"%line)
-
         param,text = line.split("=",1)
-
         o,lines = self.yg.parse(rf,line_num,text)
-
         # convert the output based on string values
         param_value = self._convert(o)
-
-        return param,param_value,lines
+        return param.strip(),param_value,lines
 
     def _convert(self,o):
         """
@@ -352,7 +354,7 @@ class YML(object):
             except:
                 pass
             return str(o)
-        elif isinstance(o,list):
+        elif isinstance(o,(list,tuple,set)):
             return [ self._convert(v) for v in o ]
         elif isinstance(o,dict):
             return { self._convert(k):self._convert(v) for k,v in o.items() }
@@ -403,7 +405,7 @@ class YML(object):
 
     def _stringify(self,item,depth,width):
 
-        if isinstance(item,list):
+        if isinstance(item,(list,tuple,set)):
             return self._stringify_list(item,depth+1,width)
 
         if isinstance(item,dict):
@@ -479,7 +481,7 @@ class YML(object):
 
         items_s = []
         for k,v in item.items():
-            ks = str(k)
+            ks = self._stringify_string(str(k))[0]
             vs = self._stringify(v,depth+1,width-len(ts))
 
             items_s.append("%s=%s"%(ks,vs[0]))
@@ -502,6 +504,9 @@ class YML(object):
         return items_s
 
     def _stringify_string(self,item):
+        # 0.0 .0 0.
+        # 0o10 0x10 0n10 0b10
+        # 10 123 1_23
         l_item = item.lower()
         item = item.replace("\"","\\\"")
         item = item.replace("\n","\\n")
@@ -516,6 +521,10 @@ class YML(object):
             int(item)
         except:
             return ["\"" + item + "\"",]
+
+        if _re_string_number.match(item) is not None:
+            return ["\"" + item + "\"",]
+
         return [item,]
 
 def dump(o,wf):

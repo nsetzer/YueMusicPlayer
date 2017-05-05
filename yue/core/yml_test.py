@@ -5,7 +5,7 @@ import unittest, time
 import os,io
 from yue.core.yml import YmlGrammar, YML, StrPos, YmlException
 
-def compare(x,y):
+def compare(x,y,ignore_order=False):
     """ deep comparison of elements """
     if isinstance(x,dict) and isinstance(y,dict):
         if len(x) != len(y):
@@ -13,14 +13,17 @@ def compare(x,y):
         for (k1,v1),(k2,v2) in zip(sorted(x.items()),sorted(y.items())):
             if k1!=k2:
                 return False
-            if not compare(v1,v2):
+            if not compare(v1,v2,ignore_order):
                 return False
         return True
-    elif isinstance(x,list) and isinstance(y,list):
+    elif isinstance(x,(list,tuple,set)) and isinstance(y,(list,tuple,set)):
         if len(x) != len(y):
             return False
+        if ignore_order:
+            x=sorted(x)
+            y=sorted(y)
         for v1,v2 in zip(x,y):
-            if not compare(v1,v2):
+            if not compare(v1,v2,ignore_order):
                 return False
         return True
     else:
@@ -88,6 +91,7 @@ class TestYml(unittest.TestCase):
         yml = YML()
         def test_serialization(o):
             s = yml.dumps(o)
+            print(s)
             try:
                 o2 = yml.loads(s)
                 self.assertTrue(compare(o,o2),
@@ -96,8 +100,43 @@ class TestYml(unittest.TestCase):
                 print(s)
                 raise;
 
-        test_serialization({"section":{"param":123}})
+        def test_serialization_equal(o1,o2):
+            s1 = yml.dumps(o1)
+            s2 = yml.dumps(o2)
+
+            try:
+                r1 = yml.loads(s1)
+                r2 = yml.loads(s2)
+                self.assertTrue(compare(r1,r2,True),
+                    msg="\nfound:    %s\nexpected: %s"%(s1,s2))
+            except:
+                print(s)
+                raise;
+
+        test_serialization({"section":{"p1":123,"p2":True,"p3":None}})
+        test_serialization({"section":{"p1":"123","p2":"true","p3":"null"}})
         test_serialization({"section":{"param":"a\"あ\"\n"}})
+
+        # 2d data
+        data1 = [ [1,2,3], [4,5,6] ]
+        o1 = {"section":{"param":data1}}
+        test_serialization(o1)
+
+        # tuple of sets (type information will be lost)
+        # order may not be preserved
+        data2 = ( {1,2,3}, {4,5,6} )
+        o2 = {"section":{"param":data2}}
+        test_serialization_equal(o1,o2)
+
+        # dictionary with non string keys
+        #data1 = { 1:2, 3:4 }
+        #o1 = {"section":{"param":data1}}
+        #test_serialization(o1)
+
+        #data1 = { "1":2, "2":4 }
+        #o1 = {"section":{"param":data1}}
+        #test_serialization(o1)
+        pass
 
     def test_deserialization(self):
         """
@@ -113,6 +152,19 @@ class TestYml(unittest.TestCase):
         [section]
         param=123""", {"section":{"param":123}})
 
+        #spaces in parameters should be ignored
+        test_deserialization("""
+        [section]
+        param = 123""", {"section":{"param":123}})
+
+        # strip out comments
+        test_deserialization("""
+        # this
+        [section] # is
+        param=123 # a
+        # comment""", {"section":{"param":123}})
+
+        # parse special characters in quoted text
         test_deserialization("""
         [section]
         param="\\n\\x0A\\u3042" """, {"section":{"param":"\n\n\u3042"}})

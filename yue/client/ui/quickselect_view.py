@@ -46,7 +46,24 @@ class QuickSelectView(Tab):
         self.table = QuickTable( self )
 
         #self.vbox.addLayout( self.hbox )
+        self.hbox = QHBoxLayout()
+        self.cbox_class   = QComboBox(self)
+        self.cbox_display = QComboBox(self)
+        self.cbox_sort    = QComboBox(self)
+        self.chbox_reverse = QCheckBox("Reverse Sort",self)
+        self.hbox.addWidget(self.cbox_class)
+        lbl = QLabel("Display:")
+        lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.hbox.addWidget(lbl)
+        self.hbox.addWidget(self.cbox_display)
+        lbl = QLabel("Sort By:")
+        lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.hbox.addWidget(lbl)
+        self.hbox.addWidget(self.cbox_sort)
+        self.hbox.addWidget(self.chbox_reverse)
+
         self.vbox.addWidget( self.lbl_info )
+        self.vbox.addLayout( self.hbox )
         self.vbox.addWidget( self.table.container )
 
         self.col_count = 1
@@ -62,6 +79,37 @@ class QuickSelectView(Tab):
         self.sort_index = QuickListRecord.cnt
         self.display_index = QuickListRecord.cnt
         self.display_class = Song.artist
+
+        self.post_init()
+
+    def post_init(self):
+
+        self.cbox_class.addItem("Artist",Song.artist)
+        self.cbox_class.addItem("Genre",Song.genre)
+
+        self.cbox_sort.addItem(self.display_class.title(),QuickListRecord.key)
+        self.cbox_sort.addItem("Song Count",QuickListRecord.cnt)
+        self.cbox_sort.addItem("Play Count",QuickListRecord.ply)
+        self.cbox_sort.addItem("Skip Count",QuickListRecord.skp)
+        self.cbox_sort.addItem("Play Time",QuickListRecord.len)
+        self.cbox_sort.addItem("Listen Time",QuickListRecord.tme)
+        self.cbox_sort.addItem("Average Frequency",QuickListRecord.frq)
+
+        self.cbox_display.addItem("Song Count",QuickListRecord.cnt)
+        self.cbox_display.addItem("Play Count",QuickListRecord.ply)
+        self.cbox_display.addItem("Skip Count",QuickListRecord.skp)
+        self.cbox_display.addItem("Play Time",QuickListRecord.len)
+        self.cbox_display.addItem("Listen Time",QuickListRecord.tme)
+        self.cbox_display.addItem("Average Frequency",QuickListRecord.frq)
+
+        self.chbox_reverse.setChecked(self.sort_reverse)
+
+        self.cbox_class.currentIndexChanged.connect(self.onClassIndexChanged)
+        self.cbox_display.currentIndexChanged.connect(self.onDisplayIndexChanged)
+        self.cbox_sort.currentIndexChanged.connect(self.onSortIndexChanged)
+        self.chbox_reverse.clicked.connect(self.onSortReverseClicked)
+
+
 
     def setData(self, data):
         self.data = data
@@ -157,10 +205,25 @@ class QuickSelectView(Tab):
             else:
                 favs.add(key)
 
+    def onClassIndexChanged(self,idx):
+        self.setDisplayClass(self.cbox_class.itemData(idx))
+
+    def onDisplayIndexChanged(self,idx):
+        self.setDisplayIndex(self.cbox_display.itemData(idx))
+
+    def onSortIndexChanged(self,idx):
+        self.setSortIndex(self.cbox_sort.itemData(idx))
+
+    def onSortReverseClicked(self,checked):
+        self.sort_reverse = checked
+        self.formatData()
+
     def setDisplayClass(self,idx):
         self.display_class = idx
         self.selected = set() # clear current selection
         self.generateData()
+
+        self.cbox_sort.setItemText(0,self.display_class.title())
 
     def setDisplayIndex(self,idx):
         self.display_index = idx

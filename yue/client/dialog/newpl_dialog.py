@@ -50,7 +50,7 @@ class NewPlaylistDialog(QDialog):
         self.chk_ban.setChecked(True)
 
         #self.spin_hash.setRange(0,100);
-        self.spin_size.setRange(10,200);
+        self.spin_size.setRange(1,200);
 
         #self.cbox_preset.setDisabled(True);
 
