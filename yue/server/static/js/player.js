@@ -299,7 +299,10 @@ function createUser() {
       data: { "email":email,"admin":admin},
       dataType: "html",
       success: function(data) {
-        console.log(data)
+        $('#create_user_result').html(data);
+      },
+      error: function(request, status, error) {
+        $('#create_user_result').html(request.responseText);
       }
     });
 }

@@ -59,10 +59,14 @@ from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
 from flask_security.utils import encrypt_password
 from flask_mail import Mail, Message
+from flask_bcrypt import Bcrypt
 
 from collections import namedtuple
 
 import binascii
+
+def random_hash(nbytes=16):
+    return binascii.hexlify(os.urandom(nbytes))
 
 def setup_database(app,db):
 
@@ -85,6 +89,9 @@ def setup_database(app,db):
         roles = db.relationship('Role', secondary=roles_users,
                                 backref=db.backref('users', lazy='dynamic'))
 
+    # bcrypt = Bcrypt(app)
+    # bcrypt.generate_password_hash(password)
+    # bcrypt.check_password_hash(hash,password)
     app.db_role = Role
     app.db_user = User
 
@@ -292,17 +299,22 @@ def api_download_song(app,uid):
 def register_user(app):
 
     if not current_user.is_authenticated:
-        abort(401)
+        return "Error",401
 
     if not current_user.has_role("admin"):
-        abort(401)
+        return "Error",401
 
     email = request.args.get('email',"")
-    admin = request.args.get('admin',"")
+    admin = bool(request.args.get('admin',""))
 
-    print(email,admin)
+    print(email,admin,app.user_exists(email))
 
-    return "true"
+    if app.user_exists(email):
+        return "Error",409
+
+    role = "admin" if admin else "user"
+    app.mkuser(email,"password",role)
+    return "OK",201
 
 PlayListRow = namedtuple('PlayListRow', ['artist', 'title','album','length','current'])
 
@@ -420,20 +432,21 @@ class Application(object):
         self.app.add_url_rule=dummy
 
 
-        self.register("/",'hello',hello)
-        self.register("/.well-known/<path:path>",'webroot',webroot)
-        self.register("/res/<string:pdir>/<path:path>",'get_resource',get_resource)
-        self.register("/player",'player',player)
-        self.register("/player2",'player2',player2)
-        self.register("/media/<uid>",'media',media)
-        self.register("/_media_next",'media_next',media_next)
-        self.register("/_media_prev",'media_prev',media_prev)
-        self.register("/_media_index",'media_index',media_index)
-        self.register("/_media_current_playlist",'media_current_playlist',media_current_playlist)
-        self.register("/api/history",'api_history',api_history,methods=['GET','POST','DELETE'])
-        self.register("/api/song/<uid>",'api_download_song',api_download_song)
-        self.register("/user/api_key",'user_api_key',user_api_key)
-        self.register("/user/register",'register_user',register_user)
+        self.register("/",hello)
+        self.register("/.well-known/<path:path>",webroot)
+        self.register("/res/<string:pdir>/<path:path>",get_resource)
+        self.register("/player",player)
+        self.register("/player2",player2)
+        self.register("/media/<uid>",media)
+        self.register("/_media_next",media_next)
+        self.register("/_media_prev",media_prev)
+        self.register("/_media_index",media_index)
+        self.register("/_media_current_playlist",media_current_playlist)
+        self.register("/api/history",api_history,methods=['GET','POST','DELETE'])
+        self.register("/api/song/<uid>",api_download_song)
+        self.register("/user/api_key",user_api_key)
+        self.register("/user/register",register_user)
+
 
 
         #db_path = r"D:/git/YueMusicPlayer/yue.db"
@@ -461,15 +474,17 @@ class Application(object):
         self.app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         self.app.config['SECURITY_LOGIN_URL'] = "/user/login"
         self.app.config['SECURITY_LOGOUT_URL'] = "/user/logout"
-        self.app.config['SECURITY_RESET_URL'] = "/user/reset"
+        #self.app.config['SECURITY_RESET_URL'] = "/user/reset"
         self.app.config['SECURITY_CHANGE_URL'] = "/user/change"
-        self.app.config['SECURITY_REGISTER_URL'] = "/false"
-        self.app.config['SECURITY_CONFIRM_URL'] = ""
+        #self.app.config['SECURITY_REGISTER_URL'] = "/user/register"
+        #self.app.config['SECURITY_CONFIRM_URL'] = "/user/confirm"
         self.app.config['SECURITY_POST_LOGIN_VIEW'] = "/player"
         self.app.config['SECURITY_POST_LOGOUT_VIEW'] = "/"
-        self.app.config['SECURITY_RECOVERABLE'] = True
+        self.app.config['SECURITY_RECOVERABLE'] = False
         self.app.config['SECURITY_CHANGEABLE'] = True
-        self.app.config['SECURITY_REGISTERABLE'] = True
+        self.app.config['SECURITY_REGISTERABLE'] = False
+        self.app.config['SECURITY_PASSWORD_HASH'] = 'bcrypt'
+        self.app.config['SECURITY_PASSWORD_SALT'] = self.config['security']['password_salt'] #HMAC
 
         self.app.config['MAIL_SERVER']   = self.config['mail']['server']
         self.app.config['MAIL_PORT']     = self.config['mail']['port']
@@ -477,6 +492,9 @@ class Application(object):
         self.app.config['MAIL_USE_TLS']  = self.config['mail']['use_tls']
         self.app.config['MAIL_USERNAME'] = self.config['mail']['username']
         self.app.config['MAIL_PASSWORD'] = self.config['mail']['password']
+
+        self.app.config['BCRYPT_LOG_ROUNDS'] = 12
+        self.app.config['BCRYPT_HANDLE_LONG_PASSWORDS'] = True # sha256 hash prior to bcrypt
 
         #msg = Message(
         #      'Hello',
@@ -497,38 +515,48 @@ class Application(object):
         self.security = Security(self.app, self.user_datastore)
 
         self.db.create_all()
-
-        def mkrole(name,desc):
-            # todo look into encrypt_password
-            role = self.user_datastore.find_role(name)
-            if role is None:
-                self.user_datastore.create_role(name=name,description=desc)
-
-        def mkuser(username,password):
-            # todo look into encrypt_password
-            user = self.user_datastore.find_user(email=username)
-            if user is None:
-                self.user_datastore.create_user(email=username,
-                    password=password,api_key="")
-                user = self.user_datastore.find_user(email=username)
-                role = self.user_datastore.find_role("admin")
-                user.roles.append(role)
-
-        mkrole("admin","admin")
-        mkrole("user","user")
-
-        mkuser("admin","admin")
-
         self.db.session.commit()
 
+        self.mkrole("admin","admin")
+        self.mkrole("user","user")
+        with self.app.app_context():
+            self.mkuser("admin","admin","admin")
 
         Application.__instance = self
+
+    def mkrole(self,name,desc):
+        # todo look into encrypt_password
+        role = self.user_datastore.find_role(name)
+        if role is None:
+            self.user_datastore.create_role(name=name,description=desc)
+            self.db.session.commit()
+
+    def user_exists(self,username):
+        user = self.user_datastore.find_user(email=username)
+        return user is not None
+
+    def mkuser(self,username,password,role):
+        # todo look into encrypt_password
+        user = self.user_datastore.find_user(email=username)
+        print(user,username)
+        if user is None:
+            api_key = random_hash(16)
+            #pw_hash = self.bcrypt.generate_password_hash(password)
+            pw_hash = encrypt_password(password)
+            print("creating user: %s"%username)
+            self.user_datastore.create_user(email=username,
+                password=pw_hash,api_key=api_key)
+            user = self.user_datastore.find_user(email=username)
+            r = self.user_datastore.find_role(role)
+            user.roles.append(r)
+            self.db.session.commit()
 
     def instance():
         return Application.__instance
 
-    def register(self,rule,endpoint,callback,**options):
+    def register(self,rule,callback,**options):
 
+        endpoint = callback.__name__
         f=lambda *x,**y : callback(self,*x,**y)
         self.app.add_url_rule(rule, endpoint, f, **options)
 
