@@ -3,7 +3,7 @@
 # contains boolean : save history true false
 # mimic update pattern
 
-from .search import SearchGrammar, BlankSearchRule, sql_search, ParseError
+from .search import SearchGrammar, BlankSearchRule, sql_search, sqlFromRule, ParseError
 from yue.core.song import Song
 from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
@@ -48,6 +48,13 @@ class History(object):
 
 
         self.grammar = HistorySearchGrammar( )
+        self.raw_grammar = HistorySearchGrammar( )
+        self.raw_grammar.text_fields = ["column", "value"]
+
+    def reopen(self):
+        # return a copy of the library,
+        # use to access from another thread
+        return History( self.sqlstore.reopen() )
 
     @staticmethod
     def init( sqlstore ):
@@ -108,16 +115,37 @@ class History(object):
         }
         self.db._insert(c,**kwargs)
 
-    def export(self):
+    def export(self,rule=None , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
+        """
+        this returns raw database results from this History Database
+        see search(), which returns values from the History View, which
+        would be better for displaying to a user
+        """
+        if rule is None:
+            rule = BlankSearchRule();
+        elif isinstance(rule,(str,unicode)):
+            rule = self.raw_grammar.ruleFromString( rule )
+            limit = self.raw_grammar.getMetaValue("limit",limit)
+            offset = self.raw_grammar.getMetaValue("offset",offset)
+        else:
+            raise ParseError("invalid rule type: %s"%type(rule))
+        if isinstance(rule,(str,unicode)):
+            raise ParseError("invalid rule type: %s"%type(rule))
+        if orderby is not None:
+            if not isinstance( orderby, (list,tuple)):
+                orderby = [ orderby, ]
+
+        return sql_search( self.db, rule, case_insensitive, orderby, reverse, limit, offset )
+
+    def _import(self,records):
+        """
+        see Library() for a history import function that will update the library.
+        """
 
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
-            c.execute("SELECT date,uid,column,value FROM history ORDER BY date ASC")
-
-            item = c.fetchone()
-            while item is not None:
-                yield dict(zip(self.db.column_names,item))
-                item = c.fetchone()
+            for rec in records:
+                self.db._insert(c,**rec)
 
     def delete(self,records_lst):
         """ delete a record, or a list of records
@@ -154,6 +182,8 @@ class History(object):
 
         return sql_search( self.view, rule, case_insensitive, orderby, reverse, limit, offset )
 
+    def clear(self):
+        self.db.store.conn.execute("DELETE FROM history")
 
 class HistorySearchGrammar(SearchGrammar):
     """docstring for HistorySearchGrammar"""

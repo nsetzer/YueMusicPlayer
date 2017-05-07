@@ -454,6 +454,22 @@ def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit, offset
 
     return query, vals
 
+def raw_sql_search(db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
+
+    query,vals = sqlFromRule(rule,db.name,case_insensitive, orderby, reverse, limit, offset)
+
+    try:
+        s = time.clock()
+        result = list(db.raw_query(query, *vals))
+        e = time.clock()
+        if echo:
+            sys.stdout.write("runtime:%f %s\n"%(e-s,rule.sqlstr()))
+        return result
+    except:
+        sys.stdout.write("error: %s\n"%(rule.sqlstr()))
+        raise
+
+
 def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
     """ convert a rule to a sql query and yield matching elems
 

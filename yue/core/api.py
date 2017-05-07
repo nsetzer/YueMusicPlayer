@@ -26,6 +26,34 @@ class ApiClient(object):
     def setApiUser(self,username):
         self.username = username
 
+    def history_get(self,page=0):
+
+        with self._get("api/history",{page:0}) as r:
+            data = json.loads(r.read().decode("utf-8"))
+
+            records = data['records']
+            print(len(records))
+            print(data['page'])
+            print(data['num_pages'])
+
+    def history_put(self,data,callback=None):
+        # push the data in chunks
+        headers = {
+            "Content-Type" : "text/x-yue-history"
+        }
+        step_size = 50
+        for i in range(0,len(data),step_size):
+            temp = json.dumps(data[i:i+step_size]).encode("utf-8")
+            r = self._put("api/history",data=temp,headers=headers);
+            if callback is not None:
+                callback(i,len(data))
+            if r.getcode() != 200:
+                raise Exception("%s %s"%(r.getcode(),r.msg))
+
+    def history_delete(self):
+
+        self._delete("api/history")
+
     def download_song(self,basedir,song):
         path = Song.toShortPath(song)
         print(str(path).encode("utf-8"))
@@ -50,7 +78,6 @@ class ApiClient(object):
         #    songs.append(v)
         #result['songs'] = songs
         return result
-
 
     def _put(self,urlpath,params=None,data=None,headers={}):
         params = params or dict()

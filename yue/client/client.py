@@ -421,7 +421,7 @@ class ClientRepl(object):
                 History.instance().setUpdateEnabled( bUpdate )
 
         elif cmd == "clear":
-            History.instance().db.store.conn.execute("DELETE FROM history")
+            History.instance().clear()
 
         elif cmd == "pl":
             args.assertMinArgs( 3 )

@@ -34,6 +34,7 @@ uwsgi --socket 0.0.0.0:8000 --protocol=http -w wsgi:app
 import logging
 from logging.handlers import RotatingFileHandler
 
+import json
 import jinja2
 import flask
 from flask import send_file
@@ -46,6 +47,7 @@ from flask import jsonify, request, abort, render_template
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
+from yue.core.history import History
 from yue.core.song import Song
 from yue.core.util import format_time
 from yue.core.sync import FFmpegEncoder
@@ -301,12 +303,45 @@ def user_api_key(app):
     return current_user.api_key
 
 def api_history(app):
+
+    try:
+        username=request.args.get('username',None)
+        apikey = request.args.get('key',None)
+    except Exception as e:
+        print("a",e)
+        abort(401)
+
+    history = app.history.reopen()
+
     if request.method == 'GET':
-        pass
-    elif request.method == 'POST':
-        pass
+        try:
+            page = int(request.args.get("page",0))
+            page_size = int(request.args.get("page_size",50))
+        except:
+            abort(401)
+
+        offset = page*page_size
+        records = history.export(orderby="date",
+                                 offset=offset,
+                                 limit=page_size)
+        result = {
+            "page" : page,
+            "num_pages" : (len(history)+page_size - 1) // page_size,
+            "records" : records
+        }
+        return jsonify(result)
+    elif request.method == 'PUT':
+        print("history put")
+        if request.headers.get("Content-Type","") != "text/x-yue-history":
+            abort(406)
+        records = json.loads(request.data.decode("utf-8"))
+        history._import(records)
+        print("imported %d records"%len(records))
     elif request.method == 'DELETE':
-        pass
+        history.clear()
+        print("clear history",len(history))
+
+    return "OK", 200
 
 def api_download_song(app,uid):
     # urllib.request.urlretrieve(url_string,file_name)
@@ -332,14 +367,12 @@ def api_library(app):
         username=request.args.get('username',None)
         apikey = request.args.get('key',None)
     except Exception as e:
-        print("a",e)
         abort(401)
 
     try:
         page = int(request.args.get("page",0))
         page_size = int(request.args.get("page_size",50))
     except:
-        print("b")
         abort(401)
 
     lib = app.library.reopen()
@@ -347,7 +380,7 @@ def api_library(app):
     query = "ban = 0"
     offset = page*page_size
     orderby=[Song.artist,Song.album,Song.title]
-    songs = lib.search(query,orderby=orderby,offset=page*offset,limit=page_size)
+    songs = lib.search(query,orderby=orderby,offset=offset,limit=page_size)
 
     for song in songs:
         _,song[Song.path] = os.path.split(song[Song.path])
@@ -505,7 +538,7 @@ class Application(object):
         self.register("/_media_prev",media_prev)
         self.register("/_media_index",media_index)
         self.register("/_media_current_playlist",media_current_playlist)
-        self.register("/api/history",api_history,methods=['GET','POST','DELETE'])
+        self.register("/api/history",api_history,methods=['GET','PUT','DELETE'])
         self.register("/api/library/<uid>",api_download_song,methods=['GET'])
         self.register("/api/library",api_library,methods=['GET'])
         self.register("/user/api_key",user_api_key)
@@ -520,6 +553,7 @@ class Application(object):
         self.sqlstore = SQLStore(db_path)
         self.plmanager = PlaylistManager(self.sqlstore)
         self.library = Library(self.sqlstore)
+        self.history = History(self.sqlstore)
 
         private_key = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/privkey.pem"
         certificate = "/usr/local/etc/letsencrypt/live/windy.duckdns.org/fullchain.pem"
