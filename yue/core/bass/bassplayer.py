@@ -175,7 +175,7 @@ class BassPlayer(object):
             #lFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath).encode("utf-8")
         else:
-            # don't fucking change this.
+            # don't change this.
             lFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath)
 

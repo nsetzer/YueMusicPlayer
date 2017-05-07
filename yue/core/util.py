@@ -111,6 +111,9 @@ def string_quote(string):
     """quote a string for use in search"""
     return "\""+string.replace("\\","\\\\").replace("\"","\\\"")+"\""
 
+def stripIllegalChars(x):
+    return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
+
 def backupDatabase(sqlstore,backupdir=".", maxsave=6, force=False):
     """
         note this has been hacked to suport xml formats

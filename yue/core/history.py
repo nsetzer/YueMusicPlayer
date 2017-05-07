@@ -147,7 +147,7 @@ class History(object):
         else:
             raise ParseError("invalid rule type: %s"%type(rule))
         if isinstance(rule,(str,unicode)):
-            raise ParseError("fuck. invalid rule type: %s"%type(rule))
+            raise ParseError("invalid rule type: %s"%type(rule))
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
                 orderby = [ orderby, ]

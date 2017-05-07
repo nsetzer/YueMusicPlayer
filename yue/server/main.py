@@ -32,7 +32,6 @@ w$bT74pNr2a
 
 
 def main():
-    print("fuck")
     print(__file__)
     path=os.path.split(os.path.abspath(__file__))[0]
     path=os.path.split(path)[0]

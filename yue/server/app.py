@@ -48,6 +48,7 @@ from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.song import Song
 from yue.core.util import format_time
+from yue.core.sync import FFmpegEncoder
 import yue.core.yml as yml
 import codecs
 
@@ -86,6 +87,7 @@ def setup_database(app,db):
         active = db.Column(db.Boolean())
         confirmed_at = db.Column(db.DateTime())
         api_key = db.Column(db.String(32))
+        default_query = db.Column(db.String(255))
         roles = db.relationship('Role', secondary=roles_users,
                                 backref=db.backref('users', lazy='dynamic'))
 
@@ -126,10 +128,6 @@ def player2(app):
     template = app.env.get_template('player2.html')
     return template.render()
 
-#def login(app):
-#    template = app.env.get_template('login.html')
-#    return template.render()
-
 def media(app,uid):
 
     if not current_user.is_authenticated:
@@ -139,8 +137,13 @@ def media(app,uid):
     lib = app.library.reopen()
     song = lib.songFromId(uid)
     #media = "D:/Music/Discography/Desert Metal/Slo Burn/Slo Burn - Amusing The Amazing (1997)/Slo Burn - 03 - Pilot the Dune.mp3"
-    media= song[Song.path]
-    return send_file(media)
+    path= song[Song.path]
+
+    _,ext = os.path.splitext(path)
+    if ext.lower() != ".mp3":
+        path = app.getTranscodedPath(song)
+
+    return send_file(path)
 
 def rollPlaylist(app,lib,pl):
     """
@@ -155,23 +158,26 @@ def rollPlaylist(app,lib,pl):
     pl_len = len(pl)
 
     if pl_len < 1:
-        query = ""
+        query = current_user.default_query
         limit = buf_a + buf_b
         songs = lib.search(query, orderby=Song.random, limit=limit)
         keys = [ song[Song.uid] for song in songs ]
         if len(keys)==0:
-            return # error, no data
+            raise Exception("empty query result: %s"%query)
         pl.insert(len(pl),keys)
         pl.set_index(0)
+
+        if len(pl)==0:
+            raise Exception("empty list - a")
+
         return
 
     idx,uid = pl.current()
 
     app.app.logger.info("roll %d %d %d %d"%(idx,pl_len,buf_a,buf_b))
     if idx + buf_a > pl_len+buf_h:
-        query = ""
+        query = current_user.default_query
         limit = (idx + buf_a) - pl_len
-        print(query,limit)
         app.app.logger.info("limit %s %d"%(query,limit))
 
         songs = lib.search(query, orderby=Song.random, limit=limit)
@@ -181,6 +187,9 @@ def rollPlaylist(app,lib,pl):
     if idx > buf_b+buf_h:
         lst = list(range(0,idx-buf_b))
         pl.delete(lst)
+
+    if len(pl)==0:
+        raise Exception("empty list - a")
 
 def media_next(app):
     """
@@ -266,6 +275,13 @@ def media_index(app):
         pass
     return ""
 
+def media_library(app):
+    if not current_user.is_authenticated:
+        abort(401)
+
+    art=request.get("artist",-1)
+    alb=request.get("album",-1)
+
 def get_resource(app,pdir,path):
     if pdir == "js" and path.endswith(".js"):
         return flask.send_from_directory('static/js', path)
@@ -293,8 +309,55 @@ def api_history(app):
         pass
 
 def api_download_song(app,uid):
-    pass
+    # urllib.request.urlretrieve(url_string,file_name)
 
+    try:
+        username=request.args.get('username',None)
+        apikey = request.args.get('key',None)
+    except Exception as e:
+        print("a",e)
+        abort(401)
+
+    uid=int(uid)
+    lib = app.library.reopen()
+    song = lib.songFromId(uid)
+    path= song[Song.path]
+    return send_file(path)
+
+def api_library(app):
+
+    page_size = 50
+
+    try:
+        username=request.args.get('username',None)
+        apikey = request.args.get('key',None)
+    except Exception as e:
+        print("a",e)
+        abort(401)
+
+    try:
+        page = int(request.args.get("page",0))
+        page_size = int(request.args.get("page_size",50))
+    except:
+        print("b")
+        abort(401)
+
+    lib = app.library.reopen()
+
+    query = "ban = 0"
+    offset = page*page_size
+    orderby=[Song.artist,Song.album,Song.title]
+    songs = lib.search(query,orderby=orderby,offset=page*offset,limit=page_size)
+
+    for song in songs:
+        _,song[Song.path] = os.path.split(song[Song.path])
+        del song[Song.blocked]
+    result = {
+        "page" : page,
+        "num_pages" : (len(lib)+page_size - 1) // page_size,
+        "songs" : songs
+    }
+    return jsonify(result)
 
 def register_user(app):
 
@@ -443,7 +506,8 @@ class Application(object):
         self.register("/_media_index",media_index)
         self.register("/_media_current_playlist",media_current_playlist)
         self.register("/api/history",api_history,methods=['GET','POST','DELETE'])
-        self.register("/api/song/<uid>",api_download_song)
+        self.register("/api/library/<uid>",api_download_song,methods=['GET'])
+        self.register("/api/library",api_library,methods=['GET'])
         self.register("/user/api_key",user_api_key)
         self.register("/user/register",register_user)
 
@@ -522,6 +586,10 @@ class Application(object):
         with self.app.app_context():
             self.mkuser("admin","admin","admin")
 
+
+        for user in self.db.session.query(self.db_user):
+            print(user.email,user.roles,user.api_key)
+
         Application.__instance = self
 
     def mkrole(self,name,desc):
@@ -543,13 +611,49 @@ class Application(object):
             api_key = random_hash(16)
             #pw_hash = self.bcrypt.generate_password_hash(password)
             pw_hash = encrypt_password(password)
+            query = "ban = 0"
             print("creating user: %s"%username)
             self.user_datastore.create_user(email=username,
-                password=pw_hash,api_key=api_key)
+                password=pw_hash,api_key=api_key,default_query=query)
             user = self.user_datastore.find_user(email=username)
             r = self.user_datastore.find_role(role)
             user.roles.append(r)
             self.db.session.commit()
+
+    def getTranscodedPath(self,song):
+
+        base = self.config['yue']['encoder_output_base']
+        dir = os.path.join(base,song[Song.artist]);
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        tgtpath = os.path.join(dir,"%s.mp3"%song[Song.uid])
+
+        if not os.path.exists(tgtpath):
+            self.transcode_song(song,tgtpath)
+
+        return tgtpath
+
+    def transcode_song(self,song,tgtpath):
+
+        srcpath = song[Song.path]
+
+        metadata=dict(
+            artist=song[Song.artist],
+            album=song[Song.album],
+            title=song[Song.title]
+        )
+
+        if Song.eqfactor > 0:
+            vol = song[Song.equalizer] / Song.eqfactor
+        else:
+            vol = 1.0
+
+        bitrate = 320
+        if srcpath.lower().endswith('mp3'):
+            bitrate=0
+
+        encoder = FFmpegEncoder(self.config['yue']['encoder'])
+        encoder.transcode(srcpath,tgtpath,bitrate,vol=vol,metadata=metadata)
 
     def instance():
         return Application.__instance

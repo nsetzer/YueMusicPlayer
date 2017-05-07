@@ -14,6 +14,8 @@ from mutagen.mp4 import MP4
 from mutagen.asf import ASF # *.wma
 from mutagen.oggvorbis import OggVorbis
 
+from .util import stripIllegalChars
+
 ext_raw  = (".wav",)
 ext_mp3  = (".mp3",)
 ext_mp4  = ('.m4a', '.m4b', '.m4p', '.mpeg4', '.aac')
@@ -30,30 +32,31 @@ class UnsupportedFormatError(ValueError):
 
 class Song(object):
     # column names
-    uid         = 'uid'
-    path        = 'path'
+    uid         = 'uid'         # unique identifier for song
+    path        = 'path'        # filepath on disk
     source_path = 'source_path'
-    artist      = 'artist'
-    composer    = 'composer'
-    album       = 'album'
-    title       = 'title'
-    genre       = 'genre'
-    year        = 'year'
-    country     = 'country'
-    lang        = 'lang'
-    comment     = 'comment'
+    artist      = 'artist'      # the full artist name
+    artist_key  = 'artist_key'  # naturally sortable artist name
+    composer    = 'composer'    # composer of the piece
+    album       = 'album'       # the full album title
+    title       = 'title'       # the title of the song
+    genre       = 'genre'       # comma separated list of genres
+    year        = 'year'        # 4 digit year
+    country     = 'country'     # contry of origin
+    lang        = 'lang'        # primary language of the song
+    comment     = 'comment'     # user information
     album_index = 'album_index' # order of song in album
-    length      = 'length'
+    length      = 'length'      # length of the song in seconds
     last_played = 'last_played' # as unix time stamp
-    play_count  = 'playcount'
-    skip_count  = 'skip_count'
-    rating      = 'rating'  # from 0 - 10
-    blocked     = 'blocked' # was 'banished', type boolean
-    opm         = 'opm' # used in beat detection
-    equalizer   = 'equalizer' # used in automatic volume leveling
-    date_added  = 'date_added' # as unix time stamp
-    frequency   = 'frequency'  # how often the song is played
-    file_size   = 'file_size'  # in bytes (was kb)
+    play_count  = 'playcount'   # number of times song has been played
+    skip_count  = 'skip_count'  # number of times song was skipped
+    rating      = 'rating'      # from 0 - 10
+    blocked     = 'blocked'     # was 'banished', type boolean
+    opm         = 'opm'         # used in beat detection
+    equalizer   = 'equalizer'   # used in automatic volume leveling
+    date_added  = 'date_added'  # as unix time stamp
+    frequency   = 'frequency'   # how often the song is played (days)
+    file_size   = 'file_size'   # in bytes
 
     # this is not a column, but stands in for all text fields.
     all_text    = "all_text"
@@ -265,9 +268,6 @@ class SongSearchGrammar(SearchGrammar):
             return Song.column( colid );
         except KeyError:
             raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
-
-def stripIllegalChars(x):
-    return ''.join( [ c for c in x if c not in "<>:\"/\\|?*" ] )
 
 def read_tags( path ):
 

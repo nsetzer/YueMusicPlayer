@@ -78,6 +78,7 @@ from .ui.explorer_view import ExplorerView, explorerOpen
 from .ui.playlist_view import PlayListViewWidget
 from .ui.playlistedit_view import PlaylistEditView
 from .ui.visualizer import BassVisualizer
+from .ui.remote_view import RemoteView
 from .dialog.rename_dialog import RenameDialog
 from .dialog.openpl_dialog import OpenPlaylistDialog
 from .dialog.newpl_dialog import NewPlaylistDialog
