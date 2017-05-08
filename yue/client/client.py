@@ -607,6 +607,8 @@ class MainWindow(QMainWindow):
         self.plview.playlist_changed.connect( self.update_song_view )
         self.plview.playlist_generate.connect( self.rollCurrentPlaylist )
 
+        self.remoteview = RemoteView(self)
+
         self.historyview = HistoryView(self);
 
         self.songview = CurrentSongView( self );
@@ -654,6 +656,7 @@ class MainWindow(QMainWindow):
             self.tabview.addTab( self.peqview, QIcon(':/img/app_eq.png'), "Equalizer")
             self.plview.vbox.insertWidget(0, self.audioview)
         self.tabview.addTab(self.historyview,"History")
+        self.tabview.addTab(self.remoteview,"Remote")
         self.tabview.setCornerWidget( self.volcontroller )
 
         self.historyview_index = self.tabview.indexOf( self.historyview )

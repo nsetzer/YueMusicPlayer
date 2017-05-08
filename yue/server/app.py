@@ -371,24 +371,34 @@ def api_library(app):
 
     try:
         page = int(request.args.get("page",0))
+    except:
+        abort(401)
+
+    try:
         page_size = int(request.args.get("page_size",50))
     except:
         abort(401)
 
+    query = request.args.get("query","")
+
     lib = app.library.reopen()
 
-    query = "ban = 0"
+    if query:
+        query = "ban = 0 && (%s)"%query
+    else:
+        query = "ban = 0"
+
     offset = page*page_size
     orderby=[Song.artist,Song.album,Song.title]
-    songs = lib.search(query,orderby=orderby,offset=offset,limit=page_size)
+    songs = lib.search(query,orderby=orderby)
 
-    for song in songs:
+    song_results = songs[offset:offset+page_size]
+    for song in song_results:
         _,song[Song.path] = os.path.split(song[Song.path])
-        del song[Song.blocked]
     result = {
         "page" : page,
-        "num_pages" : (len(lib)+page_size - 1) // page_size,
-        "songs" : songs
+        "num_pages" : (len(songs)+page_size - 1) // page_size,
+        "songs" : song_results
     }
     return jsonify(result)
 

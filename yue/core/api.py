@@ -26,17 +26,30 @@ class ApiClient(object):
     def setApiUser(self,username):
         self.username = username
 
-    def history_get(self,page=0):
-
-        with self._get("api/history",{page:0}) as r:
+    def history_get(self,callback=None):
+        """
+        get all history records stored remotely
+        """
+        records = []
+        num_pages = 0
+        with self._get("api/history",{"page":0}) as r:
             data = json.loads(r.read().decode("utf-8"))
+            records += data['records']
+            num_pages = data['num_pages']
 
-            records = data['records']
-            print(len(records))
-            print(data['page'])
-            print(data['num_pages'])
+        for i in range(1,num_pages):
+            if callback is not None:
+                callback(i,num_pages)
+            with self._get("api/history",{"page":i}) as r:
+                data = json.loads(r.read().decode("utf-8"))
+                records += data['records']
+
+        return records
 
     def history_put(self,data,callback=None):
+        """
+        push a list of records to the remote server
+        """
         # push the data in chunks
         headers = {
             "Content-Type" : "text/x-yue-history"
@@ -51,7 +64,9 @@ class ApiClient(object):
                 raise Exception("%s %s"%(r.getcode(),r.msg))
 
     def history_delete(self):
-
+        """
+        delete all records stored remotely
+        """
         self._delete("api/history")
 
     def download_song(self,basedir,song):
@@ -66,18 +81,29 @@ class ApiClient(object):
 
         self._retrieve(fname,urlpath)
 
-    def get_library(self,page=0):
-        r=self._get("api/library",params={page:"%d"%page})
+    def get_songs(self,query="",page=0,page_size=25):
+        r=self._get("api/library",params={
+                    "query":query,
+                    "page":page,
+                    "page_size":page_size})
         if r.getcode()!=200:
             raise Exception("%s %s"%(r.getcode(),r.msg))
-
         result = json.loads(r.read().decode("utf-8"))
-        #songs_ = result['songs']
-        #songs = []
-        #for _,v in sorted(songs_.items(),key=lambda x:int(x[0])):
-        #    songs.append(v)
-        #result['songs'] = songs
         return result
+
+    def get_all_songs(self,callback = None):
+
+        songs = []
+        result = self._get_songs(0)
+        num_pages = result['num_pages']
+        songs += result['songs']
+        for i in range(1,num_pages):
+            if callback is not None:
+                callback(i,num_pages)
+            result = self._get_songs(i)
+            songs += result['songs']
+
+    # --------------------------
 
     def _put(self,urlpath,params=None,data=None,headers={}):
         params = params or dict()
