@@ -27,6 +27,22 @@ class Concurrent(QThread):
         self.run = fptr
         self.start()
 
+class RemoteTable(SongTable):
+    """docstring for RemoteTable"""
+    def __init__(self, parent):
+        super(RemoteTable, self).__init__(parent)
+
+    def mouseReleaseRight(self,event):
+
+        items = self.getSelection()
+
+        menu = QMenu(self)
+
+        act = menu.addAction("Download")
+        act.triggered.connect(lambda:self.parent().action_downloadSelection(items))
+
+        action = menu.exec_( event.globalPos() )
+
 class RemoteView(Tab):
     """docstring for RemoteView"""
 
@@ -44,7 +60,7 @@ class RemoteView(Tab):
         self.edit_dir      = QLineEdit(self)
 
 
-        self.tbl_remote = SongTable(self)
+        self.tbl_remote = RemoteTable(self)
         self.tbl_remote.showColumnHeader( True )
         self.tbl_remote.showRowHeader( False )
 
@@ -84,7 +100,7 @@ class RemoteView(Tab):
 
         self.edit_hostname.setText("http://localhost:5000")
         self.edit_username.setText("admin")
-        self.edit_apikey.setText("admin")
+        self.edit_apikey.setText("a10ddf873662f4aabd67f62c799ecfbb")
         self.edit_dir.setText(os.path.expanduser("~/Music/downloads"))
 
         self.edit_search.textChanged.connect(self.onSearchTextChanged)
@@ -118,6 +134,9 @@ class RemoteView(Tab):
         self.query_text = self.edit_search.text()
 
         self._ctx = Concurrent(lambda:self._query(client,self.query_text,index-1,self.page_size))
+
+    def action_downloadSelection(self,items):
+        print(len(items))
 
     def _query(self,client,text,index,page_size):
         result = client.get_songs(text,index,page_size)

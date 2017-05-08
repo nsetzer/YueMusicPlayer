@@ -302,14 +302,26 @@ def user_api_key(app):
         app.db.session.commit()
     return current_user.api_key
 
-def api_history(app):
-
+def check_api_request(app):
     try:
         username=request.args.get('username',None)
         apikey = request.args.get('key',None)
     except Exception as e:
-        print("a",e)
+        abort(400)
+
+    q = app.db.session.query(app.db_user)
+    x = list(q.filter(app.db_user.email == username))
+    if len(x)==0:
+        abort(404)
+    user_key = x[0].api_key.decode("utf-8")
+    if user_key != apikey:
+        print(user_key)
+        print(apikey)
         abort(401)
+
+def api_history(app):
+
+    check_api_request(app)
 
     history = app.history.reopen()
 
@@ -346,12 +358,7 @@ def api_history(app):
 def api_download_song(app,uid):
     # urllib.request.urlretrieve(url_string,file_name)
 
-    try:
-        username=request.args.get('username',None)
-        apikey = request.args.get('key',None)
-    except Exception as e:
-        print("a",e)
-        abort(401)
+    check_api_request(app)
 
     uid=int(uid)
     lib = app.library.reopen()
@@ -361,13 +368,10 @@ def api_download_song(app,uid):
 
 def api_library(app):
 
-    page_size = 50
 
-    try:
-        username=request.args.get('username',None)
-        apikey = request.args.get('key',None)
-    except Exception as e:
-        abort(401)
+    check_api_request(app)
+
+    page_size = 50
 
     try:
         page = int(request.args.get("page",0))
@@ -553,8 +557,6 @@ class Application(object):
         self.register("/api/library",api_library,methods=['GET'])
         self.register("/user/api_key",user_api_key)
         self.register("/user/register",register_user)
-
-
 
         #db_path = r"D:/git/YueMusicPlayer/yue.db"
         db_path = os.path.abspath(self.config['yue']['db_path']).replace("\\","/")

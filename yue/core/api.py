@@ -69,7 +69,7 @@ class ApiClient(object):
         """
         self._delete("api/history")
 
-    def download_song(self,basedir,song):
+    def download_song(self,basedir,song,callback=None):
         path = Song.toShortPath(song)
         print(str(path).encode("utf-8"))
         fname = os.path.join(basedir,*path)
@@ -79,7 +79,7 @@ class ApiClient(object):
         urlpath = "api/library/%s"%song[Song.uid]
         print(fname.encode("utf-8"))
 
-        self._retrieve(fname,urlpath)
+        self._retrieve(fname,urlpath,callback)
 
     def get_songs(self,query="",page=0,page_size=25):
         r=self._get("api/library",params={
@@ -106,6 +106,8 @@ class ApiClient(object):
     # --------------------------
 
     def _put(self,urlpath,params=None,data=None,headers={}):
+        # TODO: timeouts
+
         params = params or dict()
         params['username'] = self.username
         params['key'] = self.key
@@ -132,11 +134,24 @@ class ApiClient(object):
         request = urllib.request.Request(url,method='DELETE')
         return urllib.request.urlopen(request,context=self.ctx)
 
-    def _retrieve(self,path,urlpath,params=None):
+    def _retrieve(self,path,urlpath,params=None,callback=None):
         with self._get(urlpath) as r:
             if r.getcode() != 200:
                 raise Exception("%s %s"%(r.getcode(),r.msg))
+
+            total_size = response.info().getheader('Content-Length').strip()
+            total_size = int(total_size)
+            bytes_read = 0
+            bufsize    = 32*1024
+
             with open(path,"wb") as wf:
-                wf.write(r.read())
+                buf = r.read(bufsize)
+                while buf:
+                    bytes_read += len(buf)
+                    if callback:
+                        callback(bytes_read,total_size)
+                    wf.write(buf)
+                    buf = r.read(bufsize)
+
 
 
