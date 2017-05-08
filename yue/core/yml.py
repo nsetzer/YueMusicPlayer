@@ -68,11 +68,8 @@ class YmlGrammar(object):
             """
 
             if self.tok or force:
-
                 if self.isDict():
                     if self.dict_key is None:
-                        if self.quoted:
-                            raise YmlSyntaxError(self.line_num,idx,"Syntax Error")
                         self.dict_key = StrPos(self.tok,self.start,idx,self.quoted)
                     else:
                         v = StrPos(self.tok,self.start,idx,self.quoted)
@@ -81,7 +78,6 @@ class YmlGrammar(object):
                 else:
                     v = StrPos(self.tok,self.start,idx,self.quoted)
                     self.stack[-1].append(v)
-
             self.join_special = False
             self.quoted = False
 
@@ -136,7 +132,6 @@ class YmlGrammar(object):
         state = YmlGrammar.TokenState(line_num)
 
         state.lines = 1
-
 
         while idx < len( input ) and len(state.stack)>0:
             c = input[idx]
@@ -203,7 +198,9 @@ class YmlGrammar(object):
         state.check()
         state.append(idx,idx) # collect anything left over
 
-        if len(state.tokens) == 1:
+        if len(state.tokens) == 0: # empty string input
+            return StrPos("",0,0,True), state.lines
+        elif len(state.tokens) == 1:
             return state.tokens[0], state.lines
 
         return state.tokens, state.lines
@@ -481,14 +478,16 @@ class YML(object):
 
         items_s = []
         for k,v in item.items():
-            ks = self._stringify_string(str(k))[0]
+            ks = self._stringify(k,depth+1,width-len(ts))
+            if len(ks)>1:
+                raise YmlException("error")
+            ks = ks[0]
             vs = self._stringify(v,depth+1,width-len(ts))
 
             items_s.append("%s=%s"%(ks,vs[0]))
             items_s += vs[1:]
 
         l = sum([ len(item) for item in items_s ])
-
 
         if l < width:
             items_s = [ ts + tm.join(items_s) + te]
@@ -510,19 +509,14 @@ class YML(object):
         l_item = item.lower()
         item = item.replace("\"","\\\"")
         item = item.replace("\n","\\n")
-        if l_item in ("null","false","true") or \
-            "\"" in item:
-            return ["\"" + item + "\"",]
-        try:
-            float(item)
-        except:
-            return ["\"" + item + "\"",]
-        try:
-            int(item)
-        except:
+
+        if l_item in ("null","false","true"):
             return ["\"" + item + "\"",]
 
         if _re_string_number.match(item) is not None:
+            return ["\"" + item + "\"",]
+
+        if not item.isalnum():
             return ["\"" + item + "\"",]
 
         return [item,]

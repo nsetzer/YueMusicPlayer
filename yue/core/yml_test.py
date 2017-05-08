@@ -91,7 +91,7 @@ class TestYml(unittest.TestCase):
         yml = YML()
         def test_serialization(o):
             s = yml.dumps(o)
-            print(s)
+            #print(s)
             try:
                 o2 = yml.loads(s)
                 self.assertTrue(compare(o,o2),
@@ -113,7 +113,7 @@ class TestYml(unittest.TestCase):
                 print(s)
                 raise;
 
-        test_serialization({"section":{"p1":123,"p2":True,"p3":None}})
+        test_serialization({"section":{"p0":"abc","p1":123,"p2":True,"p3":None}})
         test_serialization({"section":{"p1":"123","p2":"true","p3":"null"}})
         test_serialization({"section":{"param":"a\"あ\"\n"}})
 
@@ -133,9 +133,9 @@ class TestYml(unittest.TestCase):
         #o1 = {"section":{"param":data1}}
         #test_serialization(o1)
 
-        #data1 = { "1":2, "2":4 }
-        #o1 = {"section":{"param":data1}}
-        #test_serialization(o1)
+        data1 = { "1":2, "abc":4 }
+        o1 = {"section":{"param":data1}}
+        test_serialization(o1)
         pass
 
     def test_deserialization(self):
@@ -156,6 +156,14 @@ class TestYml(unittest.TestCase):
         test_deserialization("""
         [section]
         param = 123""", {"section":{"param":123}})
+
+        #empty string
+        test_deserialization("""
+        [section]
+        p1=
+        p2=  # spaces!!
+        p3 = ""
+        p4= """, {"section":{"p1":"","p2":"","p3":"","p4":""}})
 
         # strip out comments
         test_deserialization("""
