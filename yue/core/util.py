@@ -160,6 +160,35 @@ def backupDatabase(sqlstore,backupdir=".", maxsave=6, force=False):
     # save a new backup
     sqlstore.backup( fullpath )
 
+def pathCorrectCase(path):
+    """
+        return a normalized file path to the given path.
+        Fixes any potential case errors.
+    """
+    parts = path.split('/');
+
+    if parts[0] == '~':
+        newpath = os.path.expanduser('~')
+    else:
+        newpath = '/'+parts[0]
+
+    for i in range(1,len(parts)):
+
+        testpath = os.path.join(newpath,parts[i])
+
+        if os.path.exists(testpath):
+            newpath = testpath;
+        else:
+            # scan the directory for files that are the same ignoring case.
+            temp = parts[i].lower();
+            for item in os.listdir(newpath):
+                if item.lower() == temp:
+                    newpath = os.path.join(newpath,item)
+                    break;
+            else:
+                raise Exception('pathCorrectCase %s/%s not found'%(newpath,temp))
+    return newpath
+
 def check_path_alternatives( alternatives, path, last=None ):
     """
     enable alternative locations
@@ -191,3 +220,5 @@ def update_path_alternatives(a,b,path):
     if os.path.exists( new_path ):
         return new_path
     return None
+
+
