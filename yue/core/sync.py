@@ -41,10 +41,6 @@ from yue.core.playlist import PlaylistManager
 from yue.core.sqlstore import SQLStore
 from yue.core.settings import Settings
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-
 from yue.core.explorer.source import DirectorySource
 from yue.core.explorer.fsutil import source_copy_file
 from yue.core.explorer.ftpsource import FTPSource, parseFTPurl
