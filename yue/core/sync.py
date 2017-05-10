@@ -163,7 +163,7 @@ class FFmpegEncoder(object):
         if not self.no_exec:
             with open(os.devnull, 'r') as nulr:
                 with open(os.devnull, 'w') as nulw:
-                    subprocess.check_call(args,stdin=nulr,stdout=nulw,stderr=nulw, shell=True)
+                    subprocess.check_call(args,stdin=nulr,shell=False)
 
 class IterativeProcess(object):
     """docstring for IterativeProcess"""
