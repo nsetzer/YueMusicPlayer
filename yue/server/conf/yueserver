@@ -17,6 +17,9 @@ yueserver_start()
       #setuid www
       #setgid www
       env PATH="/usr/local/www/yueserver:$PATH"
+      env LANG="en_US.UTF-8"
+      LANG="en_US.UTF-8"
+      export LANG;
       /usr/local/bin/uwsgi --ini /usr/local/www/yueserver/yueserver.ini --daemonize /tmp/uswgi.log
     fi
 }
