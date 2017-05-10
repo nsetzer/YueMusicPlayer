@@ -14,18 +14,12 @@ from yue.core.song import Song
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.api import ApiClient
+from yue.qtcommon.explorer.jobs import Job, Dashboard
 
 from yue.qtcommon.Tab import Tab
 from yue.qtcommon.SongTable import SongTable
 
 from yue.client.ui.library_view import LineEdit_Search
-
-class Concurrent(QThread):
-    """docstring for Concurrent"""
-    def __init__(self, fptr):
-        super(Concurrent, self).__init__()
-        self.run = fptr
-        self.start()
 
 class RemoteTable(SongTable):
     """docstring for RemoteTable"""
@@ -43,6 +37,41 @@ class RemoteTable(SongTable):
 
         action = menu.exec_( event.globalPos() )
 
+class QueryJob(Job):
+    """docstring for QueryJob"""
+    def __init__(self, client, query, page, page_size, callback):
+        super(QueryJob, self).__init__()
+        self.client = client
+        self.query = query
+        self.page = page
+        self.page_size = page_size
+        self.callback = callback
+
+    def doTask(self):
+        result = self.client.get_songs(self.query,self.page,self.page_size)
+        self.callback(result)
+
+class DownloadJob(Job):
+    """docstring for DownloadJob"""
+    def __init__(self, client, songs, dir_base):
+        super(DownloadJob, self).__init__()
+        self.client = client
+        self.songs = songs
+        self.dir_base = dir_base
+
+    def doTask(self):
+
+        lib = Library.instance().reopen()
+        for song in self.songs:
+            path = self.client.download_song(self.dir_base,song,self._dlprogress)
+            song = song.copy()
+            song[Song.path] = path
+            del song[Song.artist_key]
+            lib.insert(**song)
+    def _dlprogress(self,x,y):
+        p = int(100.0*x/y)
+        self.setProgress(p)
+
 class RemoteView(Tab):
     """docstring for RemoteView"""
 
@@ -54,11 +83,12 @@ class RemoteView(Tab):
         self.hbox_search = QHBoxLayout()
         self.vbox = QVBoxLayout(self)
 
+        self.dashboard = Dashboard(self)
+
         self.edit_hostname = QLineEdit(self)
         self.edit_username = QLineEdit(self)
         self.edit_apikey   = QLineEdit(self)
         self.edit_dir      = QLineEdit(self)
-
 
         self.tbl_remote = RemoteTable(self)
         self.tbl_remote.showColumnHeader( True )
@@ -96,6 +126,7 @@ class RemoteView(Tab):
 
         self.vbox.addLayout(self.grid_info)
         self.vbox.addLayout(self.hbox_search)
+        self.vbox.addWidget(self.dashboard)
         self.vbox.addWidget(self.tbl_remote.container)
 
         self.edit_hostname.setText("http://localhost:5000")
@@ -123,7 +154,8 @@ class RemoteView(Tab):
 
         self.query_text = self.edit_search.text()
 
-        self._ctx = Concurrent(lambda:self._query(client,self.query_text,0,self.page_size))
+        job = QueryJob(client,self.query_text,0,self.page_size,self._handle_result)
+        self.dashboard.startJob(job)
 
     def onPageIndexChanged(self,index):
 
@@ -133,14 +165,19 @@ class RemoteView(Tab):
 
         self.query_text = self.edit_search.text()
 
-        self._ctx = Concurrent(lambda:self._query(client,self.query_text,index-1,self.page_size))
+        # TODO: _handle_result needs to be done in the main thread
+        # when the job completes successfully
+        job = QueryJob(client,self.query_text,index-1,self.page_size,self._handle_result)
+        self.dashboard.startJob(job)
 
     def action_downloadSelection(self,items):
-        print(len(items))
 
-    def _query(self,client,text,index,page_size):
-        result = client.get_songs(text,index,page_size)
-        self._handle_result(result)
+        client = ApiClient(self.edit_hostname.text())
+        client.setApiKey(self.edit_apikey.text())
+        client.setApiUser(self.edit_username.text())
+
+        job = DownloadJob(client,items,self.edit_dir.text())
+        self.dashboard.startJob(job)
 
     def _handle_result(self,result):
         self.query_page      = result['page']
