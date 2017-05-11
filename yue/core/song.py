@@ -66,6 +66,8 @@ class Song(object):
     asc = "ASC"
     desc = "DESC"
 
+    remote = "remote" # indicates song can be found in a remote library
+
     # used by history to mark playback time
     playtime = "playtime"
 

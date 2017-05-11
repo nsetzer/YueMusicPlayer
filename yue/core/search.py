@@ -78,7 +78,7 @@ class SearchRule(Rule):
         super(SearchRule, self).__init__()
 
     def check(self,elem):
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__.__name__)
 
     def sqlstr(self):
         """ like sql() but returns a single string representing the rule"""
@@ -111,6 +111,9 @@ def rexcmp(expr):
 def regexp(expr, item):
     reg = rexcmp(expr)
     return reg.search(item) is not None
+
+def typeof(value):
+    return type(value)
 
 class RegExpSearchRule(ColumnSearchRule):
     """matches a value using a regular expression"""
@@ -167,7 +170,8 @@ class ExactSearchRule(ColumnSearchRule):
     this works for text or integers
     """
     def check(self,elem):
-        return self.value == elem[self.column]
+        T = typeof(elem[self.column])
+        return T(self.value) == elem[self.column]
 
     def __repr__(self):
         return "<%s == %s>"%(self.column, self.fmtval(self.value))
@@ -178,7 +182,8 @@ class ExactSearchRule(ColumnSearchRule):
 class InvertedExactSearchRule(ColumnSearchRule):
     """matches as long as the value does not exactly equal the given"""
     def check(self,elem):
-        return self.value != elem[self.column]
+        T = typeof(elem[self.column])
+        return T(self.value) != elem[self.column]
 
     def __repr__(self):
         return "<%s != %s>"%(self.column, self.fmtval(self.value))
@@ -189,7 +194,8 @@ class InvertedExactSearchRule(ColumnSearchRule):
 class LessThanSearchRule(ColumnSearchRule):
     """matches as long as the value is less than the given number"""
     def check(self,elem):
-        return elem[self.column] < self.value
+        T = typeof(elem[self.column])
+        return elem[self.column] < T(self.value)
 
     def __repr__(self):
         return "<%s < %s>"%(self.column, self.fmtval(self.value))
@@ -200,7 +206,8 @@ class LessThanSearchRule(ColumnSearchRule):
 class LessThanEqualSearchRule(ColumnSearchRule):
     """matches as long as the value is less than or equal to the given number"""
     def check(self,elem):
-        return elem[self.column] <= self.value
+        T = typeof(elem[self.column])
+        return elem[self.column] <= T(self.value)
 
     def __repr__(self):
         return "<%s <= %s>"%(self.column, self.fmtval(self.value))
@@ -211,7 +218,8 @@ class LessThanEqualSearchRule(ColumnSearchRule):
 class GreaterThanSearchRule(ColumnSearchRule):
     """matches as long as the value is greater than the given number"""
     def check(self,elem):
-        return elem[self.column] > self.value
+        T = typeof(elem[self.column])
+        return elem[self.column] > T(self.value)
 
     def __repr__(self):
         return "<%s > %s>"%(self.column, self.fmtval(self.value))
@@ -222,7 +230,8 @@ class GreaterThanSearchRule(ColumnSearchRule):
 class GreaterThanEqualSearchRule(ColumnSearchRule):
     """matches as long as the value is greater than or equal to the given number"""
     def check(self,elem):
-        return elem[self.column] >= self.value
+        T = typeof(elem[self.column])
+        return elem[self.column] >= T(self.value)
 
     def __repr__(self):
         return "<%s >= %s>"%(self.column, self.fmtval(self.value))
@@ -241,7 +250,8 @@ class RangeSearchRule(SearchRule):
         self.value_high = value_high
 
     def check(self,elem):
-        return self.value_low <= elem[self.column] <= self.value_high
+        T = typeof(elem[self.column])
+        return T(self.value_low) <= elem[self.column] <= T(self.value_high)
 
     def __repr__(self):
         return "<%s >= %s && %s <= %s>"%(self.column,self.fmtval(self.value_low),self.column,self.fmtval(self.value_high))
@@ -255,7 +265,8 @@ class NotRangeSearchRule(RangeSearchRule):
     """
 
     def check(self,elem):
-        return elem[self.column] < self.value_low or self.value_high < elem[self.column]
+        T = typeof(elem[self.column])
+        return elem[self.column] < T(self.value_low) or T(self.value_high) < elem[self.column]
 
     def __repr__(self):
         return "<`%s` not in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
@@ -362,6 +373,9 @@ class MultiColumnSearchRule(SearchRule):
 
     def __repr__(self):
         return "< %s %s %s >"%(self.colid,self.operator,self.fmtval(self.value))
+
+    def check(self,elem):
+        return self.rule.check(elem)
 
     def sql(self):
         return self.rule.sql()
