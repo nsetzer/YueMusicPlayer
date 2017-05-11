@@ -69,9 +69,14 @@ class ApiClient(object):
         """
         self._delete("api/history")
 
-    def download_song(self,basedir,song,callback=None):
+    def local_path(self,basedir,song):
         path = Song.toShortPath(song)
         fname = os.path.join(basedir,*path)
+        return fname
+
+    def download_song(self,basedir,song,callback=None):
+
+        fname = self.local_path(basedir,song)
         dname, _ = os.path.split(fname)
         if not os.path.exists(dname):
             os.makedirs(dname)

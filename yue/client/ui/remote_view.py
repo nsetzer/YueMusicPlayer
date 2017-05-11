@@ -11,6 +11,7 @@ import traceback
 
 
 from yue.core.song import Song
+from yue.core.search import naive_search, ParseError, SearchGrammar
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.api import ApiClient
@@ -64,13 +65,77 @@ class DownloadJob(Job):
         lib = Library.instance().reopen()
         for song in self.songs:
             path = self.client.download_song(self.dir_base,song,self._dlprogress)
-            song = song.copy()
-            song[Song.path] = path
-            del song[Song.artist_key]
-            lib.insert(**song)
+            temp = song.copy()
+            temp[Song.path] = path
+            del temp[Song.artist_key]
+            del temp[Song.remote] # delete it before adding to db
+            lib.insert(**temp)
+            song[Song.remote] = 0 # no longer remote
+
     def _dlprogress(self,x,y):
         p = int(100.0*x/y)
         self.setProgress(p)
+
+
+class ConnectJob(Job):
+    """docstring for ConnectJob"""
+    newLibrary = pyqtSignal(list)
+
+    def __init__(self, client, basedir):
+        super(ConnectJob, self).__init__()
+        self.client = client
+        self.basedir = basedir
+
+    def doTask(self):
+
+        songs=[]
+        page_size = 500
+        result = self.client.get_songs("",0,page_size)
+
+        num_pages = result['num_pages']
+        songs += result['songs']
+        for page in range(1,num_pages):
+            p = 90.0*(page+1)/num_pages
+            self.setProgress(p)
+            result = self.client.get_songs("ban=0",page,page_size)
+            songs += result['songs']
+
+        for song in songs:
+            path = self.client.local_path(self.basedir,song)
+            if os.path.exists(path):
+                song[Song.path] = path
+                song[Song.remote] = 0
+            else:
+                song[Song.remote] = 1
+
+        self.setProgress(100)
+        self.newLibrary.emit(songs)
+
+class RemoteSongSearchGrammar(SearchGrammar):
+    """docstring for SongSearchGrammar"""
+
+    def __init__(self):
+        super(RemoteSongSearchGrammar, self).__init__()
+
+        # all_text is a meta-column name which is used to search all text fields
+        self.all_text = Song.all_text
+        self.text_fields = set(Song.textFields())
+        # i still treat the path as a special case even though it really isnt
+        self.text_fields.add(Song.path)
+        self.date_fields = set(Song.dateFields())
+        self.time_fields = set([Song.length,])
+        self.year_fields = set([Song.year,])
+
+    def translateColumn(self,colid):
+        # translate the given colid to an internal column name
+        # e.g. user may type 'pcnt' which expands to 'playcount'
+        try:
+            if colid == Song.remote:
+                return Song.remote
+            return Song.column( colid );
+        except KeyError:
+            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
+
 
 class RemoteView(Tab):
     """docstring for RemoteView"""
@@ -95,9 +160,11 @@ class RemoteView(Tab):
         self.tbl_remote.showRowHeader( False )
 
         self.edit_search = LineEdit_Search(self,self.tbl_remote,"Search Remote")
-        self.btn_search  = QPushButton("Search",self)
-        self.spin_page   = QSpinBox(self)
-        self.lbl_page    = QLabel(self)
+        #self.btn_search  = QPushButton("Search",self)
+        #self.spin_page   = QSpinBox(self)
+        #self.lbl_page    = QLabel(self)
+
+        self.btn_connect = QPushButton("Connect",self)
 
         lbl = QLabel("Hostname:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -119,15 +186,19 @@ class RemoteView(Tab):
         self.grid_info.addWidget(lbl,1,2)
         self.grid_info.addWidget(self.edit_apikey,1,3)
 
+        self.lbl_error  = QLabel("")
+        self.lbl_search  = QLabel("")
+
+        self.hbox_search.addWidget(self.btn_connect)
         self.hbox_search.addWidget(self.edit_search)
-        self.hbox_search.addWidget(self.btn_search)
-        self.hbox_search.addWidget(self.spin_page)
-        self.hbox_search.addWidget(self.lbl_page)
+        self.hbox_search.addWidget(self.lbl_search)
 
         self.vbox.addLayout(self.grid_info)
         self.vbox.addLayout(self.hbox_search)
-        self.vbox.addWidget(self.dashboard)
+        self.vbox.addWidget(self.lbl_error)
         self.vbox.addWidget(self.tbl_remote.container)
+        self.vbox.addWidget(self.dashboard)
+
 
         self.edit_hostname.setText("http://localhost:5000")
         self.edit_username.setText("admin")
@@ -135,40 +206,49 @@ class RemoteView(Tab):
         self.edit_dir.setText(os.path.expanduser("~/Music/downloads"))
 
         self.edit_search.textChanged.connect(self.onSearchTextChanged)
-        self.btn_search.clicked.connect(self.onSearchClicked)
-        self.spin_page.valueChanged.connect(self.onPageIndexChanged)
+        self.btn_connect.clicked.connect(self.onConnectClicked)
 
-        self.page_size = 50
+        self.grammar = RemoteSongSearchGrammar()
+        self.song_library = []
+
+        self.lbl_error.hide()
 
     def onSearchTextChanged(self):
 
-        self.spin_page.setEnabled(False)
-        self.btn_search.setEnabled(True)
-        self.tbl_remote.setData([])
+        text = self.edit_search.text()
+        self.run_search(text)
 
-    def onSearchClicked(self):
+    def run_search(self,text):
+
+        try:
+            rule = self.grammar.ruleFromString( text )
+
+            items = list(naive_search(self.song_library,rule))
+            self.tbl_remote.setData(items)
+            self.edit_search.setStyleSheet("")
+            self.lbl_error.hide()
+            self.lbl_search.setText("%d/%d"%(len(items),len(self.song_library)))
+
+        except ParseError as e:
+            self.edit_search.setStyleSheet("background: #CC0000;")
+            self.lbl_error.setText("%s"%e)
+            self.lbl_error.show()
+
+    def onConnectClicked(self):
 
         client = ApiClient(self.edit_hostname.text())
         client.setApiKey(self.edit_apikey.text())
         client.setApiUser(self.edit_username.text())
 
-        self.query_text = self.edit_search.text()
+        dir = self.edit_dir.text()
 
-        job = QueryJob(client,self.query_text,0,self.page_size,self._handle_result)
+        job = ConnectJob(client,dir)
+        job.newLibrary.connect(self.onNewLibrary)
         self.dashboard.startJob(job)
 
-    def onPageIndexChanged(self,index):
-
-        client = ApiClient(self.edit_hostname.text())
-        client.setApiKey(self.edit_apikey.text())
-        client.setApiUser(self.edit_username.text())
-
-        self.query_text = self.edit_search.text()
-
-        # TODO: _handle_result needs to be done in the main thread
-        # when the job completes successfully
-        job = QueryJob(client,self.query_text,index-1,self.page_size,self._handle_result)
-        self.dashboard.startJob(job)
+    def onNewLibrary(self,songs):
+        self.song_library = songs
+        self.tbl_remote.setData(songs)
 
     def action_downloadSelection(self,items):
 
@@ -178,28 +258,6 @@ class RemoteView(Tab):
 
         job = DownloadJob(client,items,self.edit_dir.text())
         self.dashboard.startJob(job)
-
-    def _handle_result(self,result):
-        self.query_page      = result['page']
-        self.query_num_pages = result['num_pages']
-        self.query_songs     = result['songs']
-
-        try:
-            self.spin_page.blockSignals(True)
-            self.btn_search.blockSignals(True)
-
-            self.lbl_page.setText("/%d"%self.query_num_pages)
-            self.spin_page.setRange(1,self.query_num_pages)
-            self.spin_page.setValue(self.query_page+1)
-
-            self.tbl_remote.setData(self.query_songs)
-
-            self.btn_search.setEnabled(False)
-            self.spin_page.setEnabled(True)
-        finally:
-            self.spin_page.blockSignals(False)
-            self.btn_search.blockSignals(False)
-
 
 
 

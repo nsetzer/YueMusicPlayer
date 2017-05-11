@@ -41,9 +41,7 @@ from .controller import newDevice, PlaybackController
 HookThread = None
 KeyHook = None
 
-sys.stdout.write(">>"+os.name+"\n");
 if sys.platform == 'darwin':
-    print("darwin")
     from .hookosx import HookThread
 else:
     try:
