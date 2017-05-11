@@ -52,6 +52,11 @@ class Settings(object):
     def instance():
         return Settings.__instance
 
+    def reopen(self):
+        # return a copy of the library,
+        # use to access from another thread
+        return Settings( self.sqlstore.reopen() )
+
     def __getitem__(self,key):
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()

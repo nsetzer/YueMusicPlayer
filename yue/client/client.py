@@ -1425,6 +1425,14 @@ def setSettingsDefaults():
         "Not Recent",
         ]
 
+    data["remote_hostname"] = "http://localhost:5000"
+    data["remote_username"] = "admin"
+    data["remote_apikey"]   = ""
+    basedir=os.path.join(os.path.expanduser("~"),"Music","downloads")
+    data["remote_basedir"]  = basedir
+    data["remote_history_push"]  = 0
+    data["remote_history_pull"]  = 0
+
     Settings.instance().setMulti(data,False)
 
 def handle_exception(exc_type, exc_value, exc_traceback):

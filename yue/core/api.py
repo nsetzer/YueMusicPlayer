@@ -12,19 +12,29 @@ class ApiClient(object):
         super(ApiClient, self).__init__()
 
         self.hostname = hostname
+        self.key = ""
+        self.username = ""
 
         self.ctx = ssl.create_default_context()
         self.ctx.check_hostname = False
         self.ctx.verify_mode = ssl.CERT_NONE
 
-        self.key = None
-        self.username = None
+
 
     def setApiKey(self,key):
         self.key = key
 
     def setApiUser(self,username):
         self.username = username
+
+    def getHostName(self):
+        return self.hostname
+
+    def getUserName(self):
+        return self.username
+
+    def getApiKey(self):
+        return self.key
 
     def history_get(self,callback=None):
         """

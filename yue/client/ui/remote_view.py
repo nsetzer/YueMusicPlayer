@@ -14,6 +14,7 @@ from yue.core.song import Song, SongSearchGrammar
 from yue.core.search import naive_search, ParseError, SearchGrammar
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.settings import Settings
 from yue.core.api import ApiClient
 from yue.qtcommon.explorer.jobs import Job, Dashboard
 
@@ -97,8 +98,19 @@ class ConnectJob(Job):
         self.setProgress(100)
         self.newLibrary.emit(songs)
 
+        # success, update settings
+        settings = Settings.instance().reopen()
+        settings['remote_hostname'] = self.client.getHostName()
+        settings['remote_username'] = self.client.getUserName()
+        settings['remote_apikey']   = self.client.getApiKey()
+        settings['remote_basedir']  = self.basedir
+
 class RemoteSongSearchGrammar(SongSearchGrammar):
-    """docstring for SongSearchGrammar"""
+    """docstring for SongSearchGrammar
+
+    A SongSearchGrammar that allows for searching a remote database.
+    A "remote" field is set true if the song has not been downloaded
+    """
 
     def __init__(self):
         super(RemoteSongSearchGrammar, self).__init__()
@@ -171,11 +183,11 @@ class RemoteView(Tab):
         self.vbox.addWidget(self.tbl_remote.container)
         self.vbox.addWidget(self.dashboard)
 
-
-        self.edit_hostname.setText("http://localhost:5000")
-        self.edit_username.setText("admin")
-        self.edit_apikey.setText("a10ddf873662f4aabd67f62c799ecfbb")
-        self.edit_dir.setText(os.path.expanduser("~/Music/downloads"))
+        self.edit_hostname.setText(Settings.instance()['remote_hostname'])
+        self.edit_username.setText(Settings.instance()['remote_username'])
+        # "a10ddf873662f4aabd67f62c799ecfbb"
+        self.edit_apikey.setText(Settings.instance()['remote_apikey'])
+        self.edit_dir.setText(Settings.instance()['remote_basedir'])
 
         self.edit_search.textChanged.connect(self.onSearchTextChanged)
         self.btn_connect.clicked.connect(self.onConnectClicked)
@@ -195,32 +207,41 @@ class RemoteView(Tab):
         try:
             rule = self.grammar.ruleFromString( text )
 
-            items = naive_search(self.song_library,rule)
-            self.tbl_remote.setData(items)
-            self.edit_search.setStyleSheet("")
-            self.lbl_error.hide()
-            self.lbl_search.setText("%d/%d"%(len(items),len(self.song_library)))
+            songs = naive_search(self.song_library,rule)
+
+            self.setSongs(songs)
 
         except ParseError as e:
             self.edit_search.setStyleSheet("background: #CC0000;")
             self.lbl_error.setText("%s"%e)
             self.lbl_error.show()
 
+    def setSongs(self,songs):
+
+        self.tbl_remote.setData(songs)
+        self.edit_search.setStyleSheet("")
+        self.lbl_error.hide()
+        self.lbl_search.setText("%d/%d"%(len(songs),len(self.song_library)))
+
+
     def onConnectClicked(self):
 
-        client = ApiClient(self.edit_hostname.text())
-        client.setApiKey(self.edit_apikey.text())
-        client.setApiUser(self.edit_username.text())
+        client = ApiClient(self.edit_hostname.text().strip())
+        client.setApiKey(self.edit_apikey.text().strip())
+        client.setApiUser(self.edit_username.text().strip())
 
-        dir = self.edit_dir.text()
+        basedir = self.edit_dir.text().strip()
 
-        job = ConnectJob(client,dir)
+        self.btn_connect.setEnabled(False)
+
+        job = ConnectJob(client,basedir)
         job.newLibrary.connect(self.onNewLibrary)
+        job.finished.connect(lambda:self.btn_connect.setEnabled(True))
         self.dashboard.startJob(job)
 
     def onNewLibrary(self,songs):
         self.song_library = songs
-        self.tbl_remote.setData(songs)
+        self.setSongs(songs)
 
     def action_downloadSelection(self,items):
 
