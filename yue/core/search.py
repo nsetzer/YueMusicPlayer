@@ -77,7 +77,7 @@ class SearchRule(Rule):
     def __init__(self):
         super(SearchRule, self).__init__()
 
-    def check(self,elem):
+    def check(self,elem, ignoreCase=True):
         raise NotImplementedError(self.__class__.__name__)
 
     def sqlstr(self):
@@ -88,7 +88,7 @@ class SearchRule(Rule):
 class BlankSearchRule(SearchRule):
     """a rule that matches all values"""
 
-    def check(self,elem):
+    def check(self,elem, ignoreCase=True):
         return True
 
     def sql(self):
@@ -99,10 +99,11 @@ class BlankSearchRule(SearchRule):
 
 class ColumnSearchRule(SearchRule):
     """Base class for applying a rule to a column in a table"""
-    def __init__(self, column, value):
+    def __init__(self, column, value, type_=str):
         super(SearchRule, self).__init__()
         self.column = column
         self.value = value
+        self.type_ = type_
 
 @lru_cache(maxsize=128)
 def rexcmp(expr):
@@ -112,13 +113,15 @@ def regexp(expr, item):
     reg = rexcmp(expr)
     return reg.search(item) is not None
 
-def typeof(value):
-    return type(value)
+def case_(string,lower):
+    if lower and hasattr(string,"lower"):
+        return string.lower()
+    return string
 
 class RegExpSearchRule(ColumnSearchRule):
     """matches a value using a regular expression"""
-    def __init__(self, column, value):
-        super(RegExpSearchRule,self).__init__(column,value)
+    def __init__(self, column, value, type_=str):
+        super(RegExpSearchRule,self).__init__(column, value, type_)
 
         # test that this regular expression can compile
         # note that column, value are StrPos and we can determine
@@ -127,13 +130,13 @@ class RegExpSearchRule(ColumnSearchRule):
             rexcmp(value)
         except re.error as e:
             if isPython3:
-                #msg = "Regular Expression Error: %s at position %d"%(e.msg,value.pos+e.colno)
                 msg = "Regular Expression Error: %s at position %d in `%s`"%(e.msg,e.colno,value)
             else:
                 msg = "Regular Expression Error: %s"%(e)
             raise ParseError(msg)
 
-    def check(self,elem):
+    def check(self,elem, ignoreCase=True):
+        # TODO: use ignoreCase...
         return regexp(self.value,elem[self.column])
 
     def __repr__(self):
@@ -144,8 +147,10 @@ class RegExpSearchRule(ColumnSearchRule):
 
 class PartialStringSearchRule(ColumnSearchRule):
     """matches if a value contains the given text"""
-    def check(self,elem):
-        return self.value in elem[self.column]
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v1 in v2
 
     def __repr__(self):
         return "<%s in `%s`>"%(self.fmtval(self.value), self.column)
@@ -155,8 +160,10 @@ class PartialStringSearchRule(ColumnSearchRule):
 
 class InvertedPartialStringSearchRule(ColumnSearchRule):
     """does not match if a value contains the given text"""
-    def check(self,elem):
-        return self.value not in elem[self.column]
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v1 not in v2
 
     def __repr__(self):
         return "<%s not in `%s`>"%(self.fmtval(self.value), self.column)
@@ -169,9 +176,10 @@ class ExactSearchRule(ColumnSearchRule):
 
     this works for text or integers
     """
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return T(self.value) == elem[self.column]
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v1 == v2
 
     def __repr__(self):
         return "<%s == %s>"%(self.column, self.fmtval(self.value))
@@ -182,8 +190,9 @@ class ExactSearchRule(ColumnSearchRule):
 class InvertedExactSearchRule(ColumnSearchRule):
     """matches as long as the value does not exactly equal the given"""
     def check(self,elem):
-        T = typeof(elem[self.column])
-        return T(self.value) != elem[self.column]
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v1 != v2
 
     def __repr__(self):
         return "<%s != %s>"%(self.column, self.fmtval(self.value))
@@ -193,9 +202,10 @@ class InvertedExactSearchRule(ColumnSearchRule):
 
 class LessThanSearchRule(ColumnSearchRule):
     """matches as long as the value is less than the given number"""
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return elem[self.column] < T(self.value)
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v2 < v1
 
     def __repr__(self):
         return "<%s < %s>"%(self.column, self.fmtval(self.value))
@@ -205,9 +215,10 @@ class LessThanSearchRule(ColumnSearchRule):
 
 class LessThanEqualSearchRule(ColumnSearchRule):
     """matches as long as the value is less than or equal to the given number"""
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return elem[self.column] <= T(self.value)
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v2 <= v1
 
     def __repr__(self):
         return "<%s <= %s>"%(self.column, self.fmtval(self.value))
@@ -217,9 +228,10 @@ class LessThanEqualSearchRule(ColumnSearchRule):
 
 class GreaterThanSearchRule(ColumnSearchRule):
     """matches as long as the value is greater than the given number"""
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return elem[self.column] > T(self.value)
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v2 > v1
 
     def __repr__(self):
         return "<%s > %s>"%(self.column, self.fmtval(self.value))
@@ -229,9 +241,10 @@ class GreaterThanSearchRule(ColumnSearchRule):
 
 class GreaterThanEqualSearchRule(ColumnSearchRule):
     """matches as long as the value is greater than or equal to the given number"""
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return elem[self.column] >= T(self.value)
+    def check(self,elem, ignoreCase=True):
+        v1 = self.type_(case_(self.value,ignoreCase))
+        v2 = self.type_(case_(elem[self.column],ignoreCase))
+        return v2 >= v1
 
     def __repr__(self):
         return "<%s >= %s>"%(self.column, self.fmtval(self.value))
@@ -243,15 +256,18 @@ class RangeSearchRule(SearchRule):
     """matches if a value is within a rage of values
     sqlite3: values are inclusive on the range specified
     """
-    def __init__(self, column, value_low, value_high):
+    def __init__(self, column, value_low, value_high, type_=str):
         super(RangeSearchRule, self).__init__()
         self.column = column
         self.value_low = value_low
         self.value_high = value_high
+        self.type_ = type_
 
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return T(self.value_low) <= elem[self.column] <= T(self.value_high)
+    def check(self,elem, ignoreCase=True):
+        a = self.type_(case_(self.value_low,ignoreCase))
+        b = self.type_(case_(self.value_high,ignoreCase))
+        c = case_(elem[self.column],ignoreCase)
+        return a <= c <= b
 
     def __repr__(self):
         return "<%s >= %s && %s <= %s>"%(self.column,self.fmtval(self.value_low),self.column,self.fmtval(self.value_high))
@@ -264,9 +280,11 @@ class NotRangeSearchRule(RangeSearchRule):
     sqlite3: values are inclusive on the range specified
     """
 
-    def check(self,elem):
-        T = typeof(elem[self.column])
-        return elem[self.column] < T(self.value_low) or T(self.value_high) < elem[self.column]
+    def check(self,elem, ignoreCase=True):
+        a = self.type_(case_(self.value_low,ignoreCase))
+        b = self.type_(case_(self.value_high,ignoreCase))
+        c = case_(elem[self.column],ignoreCase)
+        return c < a or c > b
 
     def __repr__(self):
         return "<`%s` not in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
@@ -282,9 +300,9 @@ class MetaSearchRule(SearchRule):
 
 class AndSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that all rules return true"""
-    def check(self, elem):
+    def check(self, elem, ignoreCase=True):
         for rule in self.rules:
-            if not rule.check(elem):
+            if not rule.check(elem, ignoreCase):
                 break
         else:
             return True
@@ -307,9 +325,9 @@ class AndSearchRule(MetaSearchRule):
 
 class OrSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that at least one rule returns true"""
-    def check(self, elem):
+    def check(self, elem, ignoreCase=True):
         for rule in self.rules:
-            if rule.check(elem):
+            if rule.check(elem, ignoreCase):
                 return True
         return False
 
@@ -331,10 +349,10 @@ class OrSearchRule(MetaSearchRule):
 
 class NotSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that inverts result from rule"""
-    def check(self, elem):
+    def check(self, elem, ignoreCase=True):
         assert len(self.rules)==1
         assert self.rules[0] is not BlankSearchRule
-        if self.rules[0].check(elem):
+        if self.rules[0].check(elem, ignoreCase):
             return False
         return True
 
@@ -374,25 +392,37 @@ class MultiColumnSearchRule(SearchRule):
     def __repr__(self):
         return "< %s %s %s >"%(self.colid,self.operator,self.fmtval(self.value))
 
-    def check(self,elem):
-        return self.rule.check(elem)
+    def check(self,elem, ignoreCase=True):
+        return self.rule.check(elem, ignoreCase)
 
     def sql(self):
         return self.rule.sql()
 
-def naive_search( seq, rule ):
+def naive_search( seq, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
     """ return elements from seq which match the given rule
 
     seq can be any iterable data structure containing table data
     for example a list-of-dict, or a sql database view.
 
+
+
     """
-    # this does not support, case sensitivity, order, reverse or limit
-    # it exists only to show that the basic rule concept
-    # maps in an expected way between sql and python.
-    for elem in seq:
-        if rule.check(elem):
-            yield elem
+    # filter the sequence using the rule
+    out = [ elem for elem in seq if rule.check(elem) ]
+
+    if orderby is not None:
+        if not isinstance(orderby,(tuple,list)):
+            orderby = [ orderby, ]
+        key = lambda s : (s[k] for k in orderby)
+        out = sorted(out,key=key,reverse=reverse)
+
+    if offset:
+        out = out[offset:]
+
+    if limit:
+        out = out[:limit]
+
+    return out
 
 def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit, offset):
     """
@@ -467,22 +497,6 @@ def sqlFromRule(rule, db_name, case_insensitive, orderby, reverse, limit, offset
         query += " OFFSET %d"%offset
 
     return query, vals
-
-def raw_sql_search(db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
-
-    query,vals = sqlFromRule(rule,db.name,case_insensitive, orderby, reverse, limit, offset)
-
-    try:
-        s = time.clock()
-        result = list(db.raw_query(query, *vals))
-        e = time.clock()
-        if echo:
-            sys.stdout.write("runtime:%f %s\n"%(e-s,rule.sqlstr()))
-        return result
-    except:
-        sys.stdout.write("error: %s\n"%(rule.sqlstr()))
-        raise
-
 
 def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, limit=None, offset=0, echo=False):
     """ convert a rule to a sql query and yield matching elems
@@ -803,6 +817,10 @@ class Grammar(object):
         super(Grammar, self).__init__()
 
         # set these to names of columns of specific data types
+        # type support is currently limited. it boils down to "string"
+        # and "not string". add text columns to text_fields. a column
+        # not found in a field listed below is assumed to be an integer
+        # there is no support for float at the momeny. (would be easy to add)
         self.text_fields = set();
         self.date_fields = set(); # column represents a date in seconds since jan 1st 1970
         self.time_fields = set(); # column represents a duration, in seconds
@@ -1211,11 +1229,14 @@ class SearchGrammar(Grammar):
         if col in self.year_fields:
             value = self.fc.parseYear( value )
 
+        type_ = str
+        if col not in self.text_fields:
+            type_ = int
         if rule is PartialStringSearchRule:
-            return ExactSearchRule(col, value)
+            return ExactSearchRule(col, value, type_=type_)
         if rule is InvertedPartialStringSearchRule:
-            return InvertedExactSearchRule(col, value)
-        return rule( col, value )
+            return InvertedExactSearchRule(col, value, type_=type_)
+        return rule( col, value, type_=type_)
 
     def buildDateRule( self, col, rule, value):
         """
@@ -1273,19 +1294,19 @@ class SearchGrammar(Grammar):
         # it will return any song played exactly n days ago
         # a value of '1' is yesterday
         if rule is PartialStringSearchRule:
-            return RangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
+            return RangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2), type_=int)
 
         # inverted range matching
         if rule is InvertedPartialStringSearchRule:
-            return NotRangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2))
+            return NotRangeSearchRule(col, IntDate(epochtime), IntDate(epochtime2), type_=int)
 
         # todo: this needs further testing due to recent change
         # if invert is true, use less than equal
         # if invert is false, use greater than equal (i believe this is needed)
         if invert and rule is LessThanEqualSearchRule:
-            return rule( col, IntDate(epochtime2))
+            return rule( col, IntDate(epochtime2), type_=int)
 
-        return rule( col, IntDate(epochtime) )
+        return rule( col, IntDate(epochtime), type_=int)
 
     def allTextRule(self, rule, string ):
         """
@@ -1296,7 +1317,7 @@ class SearchGrammar(Grammar):
         return MultiColumnSearchRule(rule, self.text_fields, string, colid=self.all_text)
 
 class UpdateRule(Rule):
-    """Baseclass for search rules
+    """Baseclass for update rules
 
     The check()/sql() methods are a form of self documentation and ard
     database implementation dependent. For example the check method
@@ -1332,7 +1353,7 @@ class AssignmentRule(ColumnUpdateRule):
         return "%s = ?"%(self.column,), (self.value,)
 
 class MetaUpdateRule(UpdateRule):
-    """group one or more search rules"""
+    """group one or more update rules"""
     def __init__(self, rules):
         super(MetaUpdateRule, self).__init__()
         self.rules = rules

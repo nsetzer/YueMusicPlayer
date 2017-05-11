@@ -10,7 +10,7 @@ from PyQt5.QtGui import *
 import traceback
 
 
-from yue.core.song import Song
+from yue.core.song import Song, SongSearchGrammar
 from yue.core.search import naive_search, ParseError, SearchGrammar
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
@@ -37,20 +37,6 @@ class RemoteTable(SongTable):
         act.triggered.connect(lambda:self.parent().action_downloadSelection(items))
 
         action = menu.exec_( event.globalPos() )
-
-class QueryJob(Job):
-    """docstring for QueryJob"""
-    def __init__(self, client, query, page, page_size, callback):
-        super(QueryJob, self).__init__()
-        self.client = client
-        self.query = query
-        self.page = page
-        self.page_size = page_size
-        self.callback = callback
-
-    def doTask(self):
-        result = self.client.get_songs(self.query,self.page,self.page_size)
-        self.callback(result)
 
 class DownloadJob(Job):
     """docstring for DownloadJob"""
@@ -111,30 +97,16 @@ class ConnectJob(Job):
         self.setProgress(100)
         self.newLibrary.emit(songs)
 
-class RemoteSongSearchGrammar(SearchGrammar):
+class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar"""
 
     def __init__(self):
         super(RemoteSongSearchGrammar, self).__init__()
 
-        # all_text is a meta-column name which is used to search all text fields
-        self.all_text = Song.all_text
-        self.text_fields = set(Song.textFields())
-        # i still treat the path as a special case even though it really isnt
-        self.text_fields.add(Song.path)
-        self.date_fields = set(Song.dateFields())
-        self.time_fields = set([Song.length,])
-        self.year_fields = set([Song.year,])
-
     def translateColumn(self,colid):
-        # translate the given colid to an internal column name
-        # e.g. user may type 'pcnt' which expands to 'playcount'
-        try:
-            if colid == Song.remote:
-                return Song.remote
-            return Song.column( colid );
-        except KeyError:
-            raise ParseError("Invalid column name `%s` at position %d"%(colid,colid.pos))
+        if colid == Song.remote:
+            return Song.remote
+        return super().translateColumn( colid );
 
 
 class RemoteView(Tab):
@@ -223,7 +195,7 @@ class RemoteView(Tab):
         try:
             rule = self.grammar.ruleFromString( text )
 
-            items = list(naive_search(self.song_library,rule))
+            items = naive_search(self.song_library,rule)
             self.tbl_remote.setData(items)
             self.edit_search.setStyleSheet("")
             self.lbl_error.hide()
