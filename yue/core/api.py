@@ -19,6 +19,25 @@ class ApiClient(object):
         self.ctx.check_hostname = False
         self.ctx.verify_mode = ssl.CERT_NONE
 
+    @staticmethod
+    def generate_hmac(key,params={},payload=None):
+        h = hmac.new(key.encode('utf-8'), digestmod=hashlib.sha256)
+        for key,value in sorted(params.items()):
+            h.update(str(value).encode("utf-8"))
+            h = hmac.new(h.digest(), digestmod=hashlib.sha256)
+        if isinstance(payload,bytes):
+            h.update(payload)
+        elif payload:
+            h.update(str(payload).encode("utf-8"))
+        d=h.digest()
+        return base64.b64encode(d).decode()
+
+    @staticmethod
+    def compare_hmac(digest,key,params={},payload=None):
+        temp = ApiClient.generate_hmac(key,params,payload)
+        return hmac.compare_digest(digest,temp)
+
+
     def setApiKey(self,key):
         self.key = key
 

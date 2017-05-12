@@ -1,5 +1,5 @@
 from .nlpdatesearch import NLPDateRange
-from .util import lru_cache, format_delta, format_date
+from .util import lru_cache, format_delta, format_date, string_quote
 import re
 import calendar
 from datetime import datetime, timedelta
@@ -54,11 +54,11 @@ class Rule(object):
 
     def fmtval(self,v):
         if isinstance(v,IntDate):
-            return "\"%s\""%format_date(v)
+            return string_quote(format_date(v))
         elif isinstance(v,IntTime):
-            return "\"%s\""%format_delta(v)
+            return string_quote(format_delta(v))
         elif isinstance(v,str):
-            return "\"%s\""%v
+            return string_quote(v)
         return v;
 
     def sqlstr(self):

@@ -87,13 +87,27 @@ class ConnectJob(Job):
             result = self.client.get_songs("ban=0",page,page_size)
             songs += result['songs']
 
+        lib = Library.instance().reopen()
         for song in songs:
+
+            # match by id
+            try:
+                local_song = lib.songFromId(song[Song.uid])
+                song[Song.path] = local_song[Song.path]
+                song[Song.remote] = 0
+                continue
+            except KeyError:
+                pass
+
+            # match by path
             path = self.client.local_path(self.basedir,song)
             if os.path.exists(path):
                 song[Song.path] = path
                 song[Song.remote] = 0
-            else:
-                song[Song.remote] = 1
+                continue
+
+            # not found locally
+            song[Song.remote] = 1
 
         self.setProgress(100)
         self.newLibrary.emit(songs)
