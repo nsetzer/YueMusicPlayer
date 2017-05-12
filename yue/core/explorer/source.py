@@ -10,10 +10,12 @@ import stat
 import traceback
 import time
 import calendar
-import ctypes
 from fnmatch import fnmatch
 from collections import defaultdict
 # for windows, the dummy path lists all available drive letters
+if sys.platform == "win32":
+    import ctypes
+
 
 class SourceException(Exception):
     pass

@@ -12,19 +12,29 @@ class ApiClient(object):
         super(ApiClient, self).__init__()
 
         self.hostname = hostname
+        self.key = ""
+        self.username = ""
 
         self.ctx = ssl.create_default_context()
         self.ctx.check_hostname = False
         self.ctx.verify_mode = ssl.CERT_NONE
 
-        self.key = None
-        self.username = None
+
 
     def setApiKey(self,key):
         self.key = key
 
     def setApiUser(self,username):
         self.username = username
+
+    def getHostName(self):
+        return self.hostname
+
+    def getUserName(self):
+        return self.username
+
+    def getApiKey(self):
+        return self.key
 
     def history_get(self,callback=None):
         """
@@ -69,17 +79,20 @@ class ApiClient(object):
         """
         self._delete("api/history")
 
-    def download_song(self,basedir,song,callback=None):
+    def local_path(self,basedir,song):
         path = Song.toShortPath(song)
-        print(str(path).encode("utf-8"))
         fname = os.path.join(basedir,*path)
+        return fname
+
+    def download_song(self,basedir,song,callback=None):
+
+        fname = self.local_path(basedir,song)
         dname, _ = os.path.split(fname)
         if not os.path.exists(dname):
             os.makedirs(dname)
         urlpath = "api/library/%s"%song[Song.uid]
-        print(fname.encode("utf-8"))
-
-        self._retrieve(fname,urlpath,callback)
+        self._retrieve(fname,urlpath,callback=callback)
+        return fname
 
     def get_songs(self,query="",page=0,page_size=25):
         r=self._get("api/library",params={
@@ -135,11 +148,11 @@ class ApiClient(object):
         return urllib.request.urlopen(request,context=self.ctx)
 
     def _retrieve(self,path,urlpath,params=None,callback=None):
-        with self._get(urlpath) as r:
+        with self._get(urlpath,params) as r:
             if r.getcode() != 200:
                 raise Exception("%s %s"%(r.getcode(),r.msg))
 
-            total_size = response.info().getheader('Content-Length').strip()
+            total_size = r.info()['Content-Length'].strip()
             total_size = int(total_size)
             bytes_read = 0
             bufsize    = 32*1024
@@ -152,6 +165,8 @@ class ApiClient(object):
                         callback(bytes_read,total_size)
                     wf.write(buf)
                     buf = r.read(bufsize)
+            if callback:
+                callback(bytes_read,total_size)
 
 
 

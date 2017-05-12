@@ -41,9 +41,7 @@ from .controller import newDevice, PlaybackController
 HookThread = None
 KeyHook = None
 
-sys.stdout.write(">>"+os.name+"\n");
 if sys.platform == 'darwin':
-    print("darwin")
     from .hookosx import HookThread
 else:
     try:
@@ -1426,6 +1424,14 @@ def setSettingsDefaults():
     data["playlist_preset_names"] = [
         "Not Recent",
         ]
+
+    data["remote_hostname"] = "http://localhost:5000"
+    data["remote_username"] = "admin"
+    data["remote_apikey"]   = ""
+    basedir=os.path.join(os.path.expanduser("~"),"Music","downloads")
+    data["remote_basedir"]  = basedir
+    data["remote_history_push"]  = 0
+    data["remote_history_pull"]  = 0
 
     Settings.instance().setMulti(data,False)
 

@@ -20,7 +20,7 @@ in /etc/rc.conf
 php_fpm_enable="YES"
 nginx_enable="YES"
 
-uwsgi --socket 0.0.0.0:8000 --protocol=http -w wsgi:app
+/usr/local/bin/uwsgi --ini /usr/local/www/yueserver/yueserver.ini --daemonize /tmp/uswgi.log
 /usr/local/etc/rc.d/yueserver
 
 /usr/local/www/yueserver:mkdir conf
@@ -596,12 +596,13 @@ class Application(object):
         self.app.config['SECURITY_PASSWORD_HASH'] = 'bcrypt'
         self.app.config['SECURITY_PASSWORD_SALT'] = self.config['security']['password_salt'] #HMAC
 
-        self.app.config['MAIL_SERVER']   = self.config['mail']['server']
-        self.app.config['MAIL_PORT']     = self.config['mail']['port']
-        self.app.config['MAIL_USE_SSL']  = self.config['mail']['use_ssl']
-        self.app.config['MAIL_USE_TLS']  = self.config['mail']['use_tls']
-        self.app.config['MAIL_USERNAME'] = self.config['mail']['username']
-        self.app.config['MAIL_PASSWORD'] = self.config['mail']['password']
+        self.app.config['SECURITY_SEND_PASSWORD_CHANGE_EMAIL'] = False
+        #self.app.config['MAIL_SERVER']   = self.config['mail']['server']
+        #self.app.config['MAIL_PORT']     = self.config['mail']['port']
+        #self.app.config['MAIL_USE_SSL']  = self.config['mail']['use_ssl']
+        #self.app.config['MAIL_USE_TLS']  = self.config['mail']['use_tls']
+        #self.app.config['MAIL_USERNAME'] = self.config['mail']['username']
+        #self.app.config['MAIL_PASSWORD'] = self.config['mail']['password']
 
         self.app.config['BCRYPT_LOG_ROUNDS'] = 12
         self.app.config['BCRYPT_HANDLE_LONG_PASSWORDS'] = True # sha256 hash prior to bcrypt
