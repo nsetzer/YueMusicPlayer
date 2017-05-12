@@ -384,6 +384,9 @@ class ExplorerModel(QWidget):
         path = self.view.realpath(item['name'])
         QApplication.instance().clipboard().setText(path)
 
+    def action_copy_path_name(self,item):
+        QApplication.instance().clipboard().setText(item['name'])
+
     def action_paste(self):
         self.controller.action_paste(self.view,self.view.pwd())
 

@@ -93,6 +93,9 @@ class ExplorerController(DummyController):
         if len(items) == 1:
             act = ctxtmenu.addAction("Copy Path To Clipboard",
                 lambda : model.action_copy_path(items[0]))
+
+            act = ctxtmenu.addAction("Copy File Name To Clipboard",
+                lambda : model.action_copy_path_name(items[0]))
             ctxtmenu.addSeparator()
 
 
