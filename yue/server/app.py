@@ -560,8 +560,10 @@ class Application(object):
 
         #db_path = r"D:/git/YueMusicPlayer/yue.db"
         db_path = os.path.abspath(self.config['yue']['db_path']).replace("\\","/")
+        db_user_path = os.path.join(os.path.split(db_path)[0],"user.db")
         print(db_path)
-        db_uri  = "sqlite:///" + db_path
+        print(db_user_path)
+        db_uri  = "sqlite:///" + db_user_path
         self.sqlstore = SQLStore(db_path)
         self.plmanager = PlaylistManager(self.sqlstore)
         self.library = Library(self.sqlstore)
