@@ -19,8 +19,6 @@ class ApiClient(object):
         self.ctx.check_hostname = False
         self.ctx.verify_mode = ssl.CERT_NONE
 
-
-
     def setApiKey(self,key):
         self.key = key
 
@@ -36,27 +34,15 @@ class ApiClient(object):
     def getApiKey(self):
         return self.key
 
-    def history_get(self,callback=None):
+    def history_get(self,page=0,page_size=25):
         """
         get all history records stored remotely
         """
-        records = []
-        num_pages = 0
-        with self._get("api/history",{"page":0}) as r:
-            data = json.loads(r.read().decode("utf-8"))
-            records += data['records']
-            num_pages = data['num_pages']
+        r = self._get("api/history",{"page":page,"page_size":page_size})
+        result = json.loads(r.read().decode("utf-8"))
+        return result
 
-        for i in range(1,num_pages):
-            if callback is not None:
-                callback(i,num_pages)
-            with self._get("api/history",{"page":i}) as r:
-                data = json.loads(r.read().decode("utf-8"))
-                records += data['records']
-
-        return records
-
-    def history_put(self,data,callback=None):
+    def history_put(self,data,page_size=250,callback=None):
         """
         push a list of records to the remote server
         """
@@ -64,9 +50,8 @@ class ApiClient(object):
         headers = {
             "Content-Type" : "text/x-yue-history"
         }
-        step_size = 50
-        for i in range(0,len(data),step_size):
-            temp = json.dumps(data[i:i+step_size]).encode("utf-8")
+        for i in range(0,len(data),page_size):
+            temp = json.dumps(data[i:i+page_size]).encode("utf-8")
             r = self._put("api/history",data=temp,headers=headers);
             if callback is not None:
                 callback(i,len(data))

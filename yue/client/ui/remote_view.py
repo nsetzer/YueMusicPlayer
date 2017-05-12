@@ -14,6 +14,7 @@ from yue.core.song import Song, SongSearchGrammar
 from yue.core.search import naive_search, ParseError, SearchGrammar
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
+from yue.core.history import History
 from yue.core.settings import Settings
 from yue.core.api import ApiClient
 from yue.qtcommon.explorer.jobs import Job, Dashboard
@@ -63,7 +64,6 @@ class DownloadJob(Job):
         p = int(100.0*x/y)
         self.setProgress(p)
 
-
 class ConnectJob(Job):
     """docstring for ConnectJob"""
     newLibrary = pyqtSignal(list)
@@ -105,6 +105,47 @@ class ConnectJob(Job):
         settings['remote_apikey']   = self.client.getApiKey()
         settings['remote_basedir']  = self.basedir
 
+class HistoryPullJob(Job):
+    def __init__(self, client):
+        super(HistoryPullJob, self).__init__()
+        self.client = client
+
+    def doTask(self):
+
+        records = []
+        page_size = 100
+        result = self.client.history_get(0,page_size)
+        num_pages = result['num_pages']
+        records += result['records']
+
+        for page in range(1,num_pages):
+            p = 90.0*(page+1)/num_pages
+            self.setProgress(p)
+            result = self.client.history_get(page,page_size)
+            records += result['records']
+            break
+
+        print("num history pages: %d"%num_pages)
+        print("num history records: %d"%len(records))
+
+class HistoryPushJob(Job):
+    def __init__(self, client):
+        super(HistoryPushJob, self).__init__()
+        self.client = client
+
+    def doTask(self):
+        page_size = 100
+        hist = History.instance().reopen()
+        self.client.history_put(hist.export())
+
+class HistoryDeleteJob(Job):
+    def __init__(self, client):
+        super(HistoryDeleteJob, self).__init__()
+        self.client = client
+
+    def doTask(self):
+        self.client.history_delete()
+
 class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar
 
@@ -120,7 +161,6 @@ class RemoteSongSearchGrammar(SongSearchGrammar):
             return Song.remote
         return super().translateColumn( colid );
 
-
 class RemoteView(Tab):
     """docstring for RemoteView"""
 
@@ -130,6 +170,7 @@ class RemoteView(Tab):
 
         self.grid_info = QGridLayout()
         self.hbox_search = QHBoxLayout()
+        self.hbox_admin = QHBoxLayout()
         self.vbox = QVBoxLayout(self)
 
         self.dashboard = Dashboard(self)
@@ -173,11 +214,25 @@ class RemoteView(Tab):
         self.lbl_error  = QLabel("")
         self.lbl_search  = QLabel("")
 
+        self.btn_hardsync = QPushButton("Hard Sync", self)
+        self.btn_hardpush = QPushButton("Hard Pull", self)
+        self.btn_push     = QPushButton("Push", self)
+        self.btn_pull     = QPushButton("Pull", self)
+        self.btn_delete   = QPushButton("Delete", self)
+
         self.hbox_search.addWidget(self.btn_connect)
         self.hbox_search.addWidget(self.edit_search)
         self.hbox_search.addWidget(self.lbl_search)
 
+        self.hbox_admin.addWidget(QLabel("History:"))
+        self.hbox_admin.addWidget(self.btn_hardsync)
+        self.hbox_admin.addWidget(self.btn_hardpush)
+        self.hbox_admin.addWidget(self.btn_push)
+        self.hbox_admin.addWidget(self.btn_pull)
+        self.hbox_admin.addWidget(self.btn_delete)
+
         self.vbox.addLayout(self.grid_info)
+        self.vbox.addLayout(self.hbox_admin)
         self.vbox.addLayout(self.hbox_search)
         self.vbox.addWidget(self.lbl_error)
         self.vbox.addWidget(self.tbl_remote.container)
@@ -191,6 +246,10 @@ class RemoteView(Tab):
 
         self.edit_search.textChanged.connect(self.onSearchTextChanged)
         self.btn_connect.clicked.connect(self.onConnectClicked)
+
+        self.btn_pull.clicked.connect(self.onHistoryPullClicked)
+        self.btn_push.clicked.connect(self.onHistoryPushClicked)
+        self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
 
         self.grammar = RemoteSongSearchGrammar()
         self.song_library = []
@@ -223,12 +282,17 @@ class RemoteView(Tab):
         self.lbl_error.hide()
         self.lbl_search.setText("%d/%d"%(len(songs),len(self.song_library)))
 
-
-    def onConnectClicked(self):
+    def getNewClient(self):
 
         client = ApiClient(self.edit_hostname.text().strip())
         client.setApiKey(self.edit_apikey.text().strip())
         client.setApiUser(self.edit_username.text().strip())
+
+        return client
+
+    def onConnectClicked(self):
+
+        client = self.getNewClient()
 
         basedir = self.edit_dir.text().strip()
 
@@ -252,6 +316,17 @@ class RemoteView(Tab):
         job = DownloadJob(client,items,self.edit_dir.text())
         self.dashboard.startJob(job)
 
+    def onHistoryPullClicked(self):
+        client = self.getNewClient()
+        job = HistoryPullJob(client)
+        self.dashboard.startJob(job)
 
+    def onHistoryPushClicked(self):
+        client = self.getNewClient()
+        job = HistoryPushJob(client)
+        self.dashboard.startJob(job)
 
-
+    def onHistoryDeleteClicked(self):
+        client = self.getNewClient()
+        job = HistoryDeleteJob(client)
+        self.dashboard.startJob(job)
