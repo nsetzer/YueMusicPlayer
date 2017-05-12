@@ -82,6 +82,10 @@ class BassSoundDevice(SoundDevice):
             if os.path.exists( plugin_path ):
                 return BassPlayer.loadPlugin( plugin_path )
 
+            plugin_path = os.path.join(libpath,"lib%s.dylib"%name)
+            if os.path.exists( plugin_path ):
+                return BassPlayer.loadPlugin( plugin_path )
+
             plugin_path = os.path.join(libpath,"%s.dll"%name)
             if os.path.exists( plugin_path ):
                 return BassPlayer.loadPlugin( plugin_path )

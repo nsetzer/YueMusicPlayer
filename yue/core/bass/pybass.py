@@ -61,15 +61,25 @@ def get_plugin_path():
 
   # first check site packages to see if we were installed
   # this will only find a disutils intallation
+  print("GET PLUGIN PATH")
   site_parts = __file__.replace("\\","/").split('/')[:-4]
   site_parts.append("lib")
   site_path = os.sep.join(site_parts)
-  if os.path.isdir(site_path):
-      return site_path;
+  git_path = os.path.join(site_path,sys.platform,"x86_64")
 
   plugin_path = "./lib/%s/x86_64"%sys.platform
-  if hasattr(sys,"_MEIPASS"):
-      plugin_path = sys._MEIPASS
+
+  if os.path.isdir(site_path):
+    # look for libraries in the git checkout
+    plugin_path = git_path;
+
+  elif os.path.isdir(site_path):
+    # look for libraries in the site installation directory
+    plugin_path = site_path;
+
+  elif hasattr(sys,"_MEIPASS"):
+    # look for libraries in the pyinstaller temporary directory
+    plugin_path = sys._MEIPASS
 
   return plugin_path
 
