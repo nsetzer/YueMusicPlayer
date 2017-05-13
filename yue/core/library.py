@@ -756,11 +756,17 @@ class Library(object):
                     print(record)
                     self._import_record( c, record )
 
-    def import_record(self, record):
+    def import_record(self, record_lst):
+        """
+        import a single record or a list of records
+        """
+        if not isinstance(record_lst,list):
+            record_lst = [record_lst,]
 
         with self.sqlstore.conn as conn:
             c = conn.cursor()
-            self._import_record(c,record)
+            for record in record_lst:
+                self._import_record(c,record)
 
     def _import_record(self, c, record):
 

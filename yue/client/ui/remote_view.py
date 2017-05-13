@@ -137,10 +137,20 @@ class HistoryPullJob(Job):
             self.setProgress(p)
             result = self.client.history_get(page,page_size)
             records += result['records']
-            break
 
         print("num history pages: %d"%num_pages)
         print("num history records: %d"%len(records))
+
+        title="Import History"
+        message="Import %d records?"%len(records)
+        options=["cancel","ok"]
+        i=self.getInput(title,message,options)
+
+        if i>0:
+            #hist = History.instance().reopen()
+            #hist._import(records)
+            lib = Library.instance().reopen()
+            lib.import_record(records)
 
 class HistoryPushJob(Job):
     def __init__(self, client):

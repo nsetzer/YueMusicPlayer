@@ -139,6 +139,11 @@ class Job(QThread):
         Dialogs must be started in the main thread. emit a signal
         back to the main thread to show a dialog. then wait for the
         main thread to notify us with the result.
+
+        options : a list of strings. buttons displayed in the message box
+        the message box returns the index in the list of options selected
+        the default option is "ok"
+
         """
 
         with QMutexLocker(self.mutex):
