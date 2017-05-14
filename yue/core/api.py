@@ -98,27 +98,65 @@ class ApiClient(object):
         self._retrieve(fname,urlpath,callback=callback)
         return fname
 
-    def get_songs(self,query="",page=0,page_size=25):
+    def get_songs(self,query="",page=0,page_size=100, callback=None):
+        """
+        returns page_size song records from the remote database
+
+        query:
+            a standard library query string
+        page:
+            the page index of the results from the query string
+        page_size:
+            the number of records to return with the request.
+        callback : function(bytes,total)
+            a callback function returning the progress of the request
+        """
         r=self._get("api/library",params={
                     "query":query,
                     "page":page,
                     "page_size":page_size})
         if r.getcode()!=200:
             raise Exception("%s %s"%(r.getcode(),r.msg))
-        result = json.loads(r.read().decode("utf-8"))
+
+        total_size = int(r.info()['Content-Length'].strip())
+        bytes_read = 0
+        bufsize    = 4*1024
+
+        data = b""
+        buf = r.read(bufsize)
+        while buf:
+            data += buf
+            bytes_read += len(buf)
+            if callback:
+                callback(bytes_read,total_size)
+            buf = r.read(bufsize)
+
+        result = json.loads(data.decode("utf-8"))
         return result
 
-    def get_all_songs(self,callback = None):
+    def get_all_songs(self,query="",page_size=100, callback = None):
+        """
+        returns all song records from the remote database for a given query
 
+        page_size:
+            the number of records to return with every api request
+        callback: function(percent,1.0)
+            first argument is a fraction (out of 1.0) of the progress
+            made in downloading all song records form the remote database
+
+        """
         songs = []
-        result = self._get_songs(0)
+        result = self.get_songs(query,page=0,page_size=page_size)
         num_pages = result['num_pages']
         songs += result['songs']
         for i in range(1,num_pages):
-            if callback is not None:
-                callback(i,num_pages)
-            result = self._get_songs(i)
+            if callback:
+                p = lambda x,y : callback(((float(i)/num_pages) + (float(x)/y)/num_pages),1.0)
+            else:
+                p = None
+            result = self.get_songs(query,page=i,page_size=page_size,callback=p)
             songs += result['songs']
+        return songs
 
     # --------------------------
 

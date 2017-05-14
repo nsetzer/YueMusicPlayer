@@ -88,19 +88,15 @@ class ConnectJob(Job):
             del temp['artist_key']
             lib.insert(**temp)
 
+    def _dlprogress(self,x,y):
+        # downloading accounts  for 90% of the progress bar
+        # the last 10% is for post processing.
+        self.setProgress(int(90*x/y))
+
     def doTask(self):
 
-        songs=[]
-        page_size = 500
-        result = self.client.get_songs("",0,page_size)
-
-        num_pages = result['num_pages']
-        songs += result['songs']
-        for page in range(1,num_pages):
-            p = 90.0*(page+1)/num_pages
-            self.setProgress(p)
-            result = self.client.get_songs("ban=0",page,page_size)
-            songs += result['songs']
+        page_size = 1000
+        songs=self.client.get_all_songs(page_size=page_size,callback=self._dlprogress)
 
         lib = Library.instance().reopen()
         for song in songs:
