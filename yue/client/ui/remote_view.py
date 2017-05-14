@@ -47,11 +47,13 @@ class DownloadJob(Job):
         self.client = client
         self.songs = songs
         self.dir_base = dir_base
+        self._iterprogress = 0
 
     def doTask(self):
 
         lib = Library.instance().reopen()
-        for song in self.songs:
+        for i,song in enumerate(self.songs):
+            self._iterprogress = float(i)/len(self.songs)
             path = self.client.download_song(self.dir_base,song,self._dlprogress)
             temp = song.copy()
             temp[Song.path] = path
@@ -61,8 +63,8 @@ class DownloadJob(Job):
             song[Song.remote] = 0 # no longer remote
 
     def _dlprogress(self,x,y):
-        p = int(100.0*x/y)
-        self.setProgress(p)
+        p = self._iterprogress + (x/y)/len(self.songs)
+        self.setProgress(int(100*p))
 
 class ConnectJob(Job):
     """docstring for ConnectJob"""
@@ -72,6 +74,19 @@ class ConnectJob(Job):
         super(ConnectJob, self).__init__()
         self.client = client
         self.basedir = basedir
+
+    def addToDbIfMissing(self,lib,song):
+        """
+        if we found the song locally, but not in the database
+        add the song record to the database
+        """
+        try:
+            local_song = lib.songFromId(song[Song.uid])
+        except KeyError:
+            temp = song.copy()
+            del temp['remote']
+            del temp['artist_key']
+            lib.insert(**temp)
 
     def doTask(self):
 
@@ -104,6 +119,9 @@ class ConnectJob(Job):
             if os.path.exists(path):
                 song[Song.path] = path
                 song[Song.remote] = 0
+
+                self.addToDbIfMissing(lib,song)
+
                 continue
 
             # not found locally
