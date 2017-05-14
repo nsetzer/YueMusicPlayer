@@ -184,6 +184,72 @@ class HistoryDeleteJob(Job):
     def doTask(self):
         self.client.history_delete()
 
+class HistoryHardSyncJob(Job):
+    """
+    take meta data  from a list of songs and apply
+    it to the internal library
+    """
+    def __init__(self, songs):
+        super(HistoryHardSyncJob, self).__init__()
+        self.songs = songs
+
+    def doTask(self):
+
+        lib = Library.instance().reopen()
+
+        updates = {}
+        for i,song in enumerate(self.songs):
+            # skip songs that are not local
+            if song[Song.remote]:
+                continue
+
+            self.setProgress(90.0*(i+1.0)/len(self.songs))
+
+            exif = {}
+
+            for field in Song.textFields():
+                exif[field] = song[field]
+
+            for field in Song.numberFields():
+                exif[field] = song[field]
+
+            for field in Song.dateFields():
+                exif[field] = song[field]
+
+            if Song.uid in exif:
+                del exif[Song.uid]
+
+            if Song.path in exif:
+                del exif[Song.path]
+
+            updates[song[Song.uid]] = exif
+
+        title="Update Metadata"
+        message="Overwrite metadata for %d songs?"%len(updates)
+        options=["cancel","ok"]
+        i=self.getInput(title,message,options)
+        if i>0:
+            lib.update_all(updates)
+
+        self.setProgress(100)
+
+
+class HistoryHardPushJob(Job):
+    """
+    push the local library to remote
+
+    this includes the file path.
+    the server must have the path alternatives set
+    to correctly locate songs after a hard sync
+
+    """
+    def __init__(self):
+        super(HistoryHardPushJob, self).__init__()
+        self.client = client
+
+    def doTask():
+        return
+
 class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar
 
@@ -253,7 +319,7 @@ class RemoteView(Tab):
         self.lbl_search  = QLabel("")
 
         self.btn_hardsync = QPushButton("Hard Sync", self)
-        self.btn_hardpush = QPushButton("Hard Pull", self)
+        self.btn_hardpush = QPushButton("Hard Push", self)
         self.btn_push     = QPushButton("Push", self)
         self.btn_pull     = QPushButton("Pull", self)
         self.btn_delete   = QPushButton("Delete", self)
@@ -288,6 +354,8 @@ class RemoteView(Tab):
         self.btn_pull.clicked.connect(self.onHistoryPullClicked)
         self.btn_push.clicked.connect(self.onHistoryPushClicked)
         self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
+        self.btn_hardsync.clicked.connect(self.onHistoryHardSyncClicked)
+        self.btn_hardpush.clicked.connect(self.onHistoryHardPushClicked)
 
         self.grammar = RemoteSongSearchGrammar()
         self.song_library = []
@@ -367,4 +435,14 @@ class RemoteView(Tab):
     def onHistoryDeleteClicked(self):
         client = self.getNewClient()
         job = HistoryDeleteJob(client)
+        self.dashboard.startJob(job)
+
+    def onHistoryHardSyncClicked(self):
+        client = self.getNewClient()
+        job = HistoryHardSyncJob(self.song_library)
+        self.dashboard.startJob(job)
+
+    def onHistoryHardPushClicked(self):
+        client = self.getNewClient()
+        job = HistoryHardPushJob()
         self.dashboard.startJob(job)

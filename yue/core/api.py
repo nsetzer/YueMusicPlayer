@@ -6,6 +6,15 @@ import urllib.request
 import json
 from yue.core.song import Song
 
+"""
+api todo list
+
+1. use hmac on all requests sent to the server
+2. implement hard push server side
+3. optional (parameter compressed=True) on requests.
+    both sent and received
+"""
+
 class ApiClient(object):
     """docstring for ApiClient"""
     def __init__(self, hostname):
@@ -20,23 +29,30 @@ class ApiClient(object):
         self.ctx.verify_mode = ssl.CERT_NONE
 
     @staticmethod
-    def generate_hmac(key,params={},payload=None):
-        h = hmac.new(key.encode('utf-8'), digestmod=hashlib.sha256)
-        for key,value in sorted(params.items()):
-            h.update(str(value).encode("utf-8"))
-            h = hmac.new(h.digest(), digestmod=hashlib.sha256)
+    def generate_hmac(key,path,params={},payload=None):
+        digest = key.encode('utf-8')
+        h = hmac.new(digest, digestmod=hashlib.sha256)
+
+        h.update(path.encode("utf-8"))
+        digest = h.digest()
+        h = hmac.new(digest, digestmod=hashlib.sha256)
+
         if isinstance(payload,bytes):
             h.update(payload)
-        elif payload:
-            h.update(str(payload).encode("utf-8"))
-        d=h.digest()
-        return base64.b64encode(d).decode()
+            digest = h.digest()
+            h = hmac.new(digest, digestmod=hashlib.sha256)
+
+        for key,value in sorted(params.items()):
+            h.update(str(value).encode("utf-8"))
+            digest = h.digest()
+            h = hmac.new(digest, digestmod=hashlib.sha256)
+
+        return base64.b64encode(digest).decode()
 
     @staticmethod
-    def compare_hmac(digest,key,params={},payload=None):
-        temp = ApiClient.generate_hmac(key,params,payload)
+    def compare_hmac(digest,key,path,params={},payload=None):
+        temp = ApiClient.generate_hmac(key,path,params,payload)
         return hmac.compare_digest(digest,temp)
-
 
     def setApiKey(self,key):
         self.key = key

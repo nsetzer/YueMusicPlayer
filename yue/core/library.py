@@ -218,12 +218,28 @@ class Library(object):
             c.execute("DELETE FROM artists WHERE count=0")
             c.execute("DELETE FROM albums WHERE count=0")
 
-    def update_many(self,uids,**kwards):
-        """ update song values in the database """
+    def update_many(self,uids,**kwargs):
+        """ update song values in the database
+        update a list of songs, given by the uid, with
+        the same metadata values
+        """
         with self.sqlstore.conn:
             c = self.sqlstore.conn.cursor()
             for uid in uids:
-                self._update_one(c, uid, **kwards)
+                self._update_one(c, uid, **kwargs)
+            c.execute("DELETE FROM artists WHERE count=0")
+            c.execute("DELETE FROM albums WHERE count=0")
+
+    def update_all(self,data):
+        """ update song values in the database
+
+        data should be a dictionary
+            Song.uid : dict-of-exif
+        """
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for uid,exif in data.items():
+                self._update_one(c, uid, **exif)
             c.execute("DELETE FROM artists WHERE count=0")
             c.execute("DELETE FROM albums WHERE count=0")
 
