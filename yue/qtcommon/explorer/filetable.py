@@ -1,6 +1,6 @@
 
 import os, sys, stat
-
+import time
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -57,6 +57,9 @@ class ExplorerFileTable(LargeTable):
                           self.xcut_refresh,self.xcut_filter]
 
         self.dragCompleted.connect(self.onShortcutRefresh)
+
+        self.time_last_keypress = time.time()
+        self.keysequence = ""
 
     def initColumns(self):
 
@@ -251,12 +254,9 @@ class ExplorerFileTable(LargeTable):
 
     def keyPressOther(self,event):
         char = chr(event.key())
-        if '0' <= char <= '9' or 'A' <= char <= 'Z':
-            # i cant deciede if i want search by repeatedly
-            # tapping a letter key for if i want a more nuanced
-            # approach where typing "b-u-i" finds a
-            # file that starts with "bui"
+        if '0' <= char <= '9' or 'A' <= char <= 'Z' or char == " ":
             self.jump_to_letter(char)
+
 
     def keyPressDelete(self,event):
         if event.key() == Qt.Key_Backspace:
@@ -264,21 +264,42 @@ class ExplorerFileTable(LargeTable):
         else:
             self.deletePaths.emit(self.getSelection())
 
-    def jump_to_letter(self,charseq):
+    def jump_to_letter(self, char):
+        """
+        select item in the list by typing a sequence of characters
 
-        # TODO accessing self.selection is breaking a rule
-        offset= 1 + list(self.selection)[0] if len(self.selection) else 0
-        idx = 0
-        while idx < len(self.data):
+        the first letter typed jumps to a file that begins with that letter
+        subsequent letters will jump (Starting at that index) to any file
+        that contains that sequence (including the file selected the first
+        time).
+        space will then jump between all files which match the current
+        sequence.
+
+        typing a letter after a timeout resets the sequence
+        """
+        time_current = time.time()
+
+        if char != " ":
+            if (time_current - self.time_last_keypress) > .5:
+                self.keysequence = ""
+            self.keysequence += char
+            offset= list(self.selection)[0] if len(self.selection) else 0
+        else:
+            # TODO accessing self.selection is breaking a rule
+            offset=1 + list(self.selection)[0] if len(self.selection) else 0
+
+        for idx in range(len(self.data)):
             item = self.data[(offset+idx)%len(self.data)]
-            # only scroll to artists.
-            if item['name'].upper().startswith(charseq):
-                idx=(offset+idx)%len(self.data)
-                self.setSelection([idx,])
-                self.scrollTo(idx)
+            name = item['name'].upper()
+            if len(self.keysequence) == 1 and name.startswith(self.keysequence) \
+                or (len(self.keysequence) > 1 and self.keysequence in name):
+                sidx=(offset+idx)%len(self.data)
+                self.setSelection([sidx,])
+                self.scrollTo(sidx)
                 self.update();
                 break
-            idx += 1
+
+        self.time_last_keypress = time_current
 
 
     def onEditorStart(self):

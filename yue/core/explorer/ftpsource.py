@@ -249,5 +249,8 @@ class FTPSource(DataSource):
         }
         return result
 
+    def chmod(self,path,mode):
+        print("chmod not implemented")
+
     def getExportPath(self,path):
         return self.hostname+path

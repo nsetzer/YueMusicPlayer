@@ -1340,12 +1340,14 @@ class MainWindow(QMainWindow):
         self.expview.ex_secondary.brush_library.setColor(qdct["color_special1"])
 
         # manually update all SongTable instances in the app
+        # todo: views should have a function which returns a list of tables
         songtables = [self.libview.tbl_song,]
         for i in range( self.tabview.count() ):
             tab = self.tabview.widget(i)
             if isinstance(tab,PlaylistEditView):
                 songtables.append( tab.tbl_lib)
                 songtables.append( tab.tbl_pl)
+        songtables.append(self.remoteview.tbl_remote)
         colors = ( qdct["text_important1"], \
                    qdct["text_important2"], \
                    qdct["theme_p_mid"]    , \

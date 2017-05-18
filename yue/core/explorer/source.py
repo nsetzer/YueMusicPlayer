@@ -143,7 +143,6 @@ class DataSource(object):
         """
         raise SourceNotImplemented(self,"cannot get file.")
 
-
     def putfo(self,path,fo,callback=None):
         """
         copy the contents of an open file-like object to path
@@ -184,6 +183,9 @@ class DataSource(object):
             "isLink" : self.islink(path),
         }
         return result
+
+    def chmod(self, path, mode):
+        raise SourceNotImplemented(self,"cannot chmod path")
 
     def __enter__(self):
         return self
@@ -374,6 +376,9 @@ class DirectorySource(DataSource):
         for this file system so just call stat
         """
         return self.stat(path)
+
+    def chmod(self, path, mode):
+        os.chmod(path, mode)
 
     def getExportPath(self,path):
         return path # nothing to do
@@ -569,6 +574,10 @@ class SourceView(object):
 
     def stat_fast(self,path):
         return self._stat(self.source.stat_fast,path)
+
+    def chmod(self,path,mode):
+        path = self.realpath(path)
+        return self.source.chmod(path,mode)
 
     def split(self,path):
         #path = self.realpath(path)

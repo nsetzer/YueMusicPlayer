@@ -11,7 +11,8 @@ import traceback
 
 
 from yue.core.song import Song, SongSearchGrammar
-from yue.core.search import naive_search, ParseError, SearchGrammar
+from yue.core.search import naive_search, ParseError, SearchGrammar, \
+    AndSearchRule, ExactSearchRule
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.history import History
@@ -28,6 +29,11 @@ class RemoteTable(SongTable):
     """docstring for RemoteTable"""
     def __init__(self, parent):
         super(RemoteTable, self).__init__(parent)
+
+        self.addRowTextColorComplexRule(self.remoteSongRule,self.color_text_played_recent)
+
+    def remoteSongRule(self,row):
+        return self.data[row][Song.remote] == 1
 
     def mouseReleaseRight(self,event):
 
@@ -223,9 +229,6 @@ class RemoteView(Tab):
         self.tbl_remote.showRowHeader( False )
 
         self.edit_search = LineEdit_Search(self,self.tbl_remote,"Search Remote")
-        #self.btn_search  = QPushButton("Search",self)
-        #self.spin_page   = QSpinBox(self)
-        #self.lbl_page    = QLabel(self)
 
         self.btn_connect = QPushButton("Connect",self)
 
@@ -252,6 +255,9 @@ class RemoteView(Tab):
         self.lbl_error  = QLabel("")
         self.lbl_search  = QLabel("")
 
+        self.cb_remote = QCheckBox("Remote Only",self)
+        self.cb_remote.setChecked(True)
+
         self.btn_hardsync = QPushButton("Hard Sync", self)
         self.btn_hardpush = QPushButton("Hard Pull", self)
         self.btn_push     = QPushButton("Push", self)
@@ -260,6 +266,7 @@ class RemoteView(Tab):
 
         self.hbox_search.addWidget(self.btn_connect)
         self.hbox_search.addWidget(self.edit_search)
+        self.hbox_search.addWidget(self.cb_remote)
         self.hbox_search.addWidget(self.lbl_search)
 
         self.hbox_admin.addWidget(QLabel("History:"))
@@ -289,20 +296,29 @@ class RemoteView(Tab):
         self.btn_push.clicked.connect(self.onHistoryPushClicked)
         self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
 
+        self.cb_remote.clicked.connect(self.refresh)
+
         self.grammar = RemoteSongSearchGrammar()
         self.song_library = []
-
-        self.lbl_error.hide()
+        self.setSongs(self.song_library)
 
     def onSearchTextChanged(self):
 
         text = self.edit_search.text()
         self.run_search(text)
 
+    def refresh(self):
+        self.run_search( self.edit_search.text() )
+
     def run_search(self,text):
 
         try:
             rule = self.grammar.ruleFromString( text )
+
+            if self.cb_remote.isChecked():
+                rule = AndSearchRule([rule,
+                    ExactSearchRule(Song.remote,1,type_=int)
+                ])
 
             songs = naive_search(self.song_library,rule)
 
@@ -343,7 +359,7 @@ class RemoteView(Tab):
 
     def onNewLibrary(self,songs):
         self.song_library = songs
-        self.setSongs(songs)
+        self.refresh() # run the current query, update table
 
     def action_downloadSelection(self,items):
 

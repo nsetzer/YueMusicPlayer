@@ -8,8 +8,7 @@ import traceback
 
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.fsutil import generateUniquePath, \
-    walk_files, iter_copy, source_copy, \
-    iter_remove
+    walk_files, iter_copy, source_copy, source_copy_file, iter_remove
 from yue.core.util import format_bytes
 
 from yue.core.song import Song
@@ -229,7 +228,7 @@ class CopyJob(Job):
         self.tot_size_copied = 0
         self.num_files = 0
 
-        self.chunksize = 1024*32
+        self.chunksize = 32*1024
 
     def doTask(self):
 
@@ -277,7 +276,7 @@ class CopyJob(Job):
         print("cp",src_path,dst_path)
         self.source_copy(src_path, dst_path)
 
-    # TODO: eventually. refactor source_copy and source_copy_file
+    # TODO: eventually. refactor source_copy
     # and merge with the functions in fsutil. this will require providing
     # a callback mechanism.
 
@@ -286,69 +285,8 @@ class CopyJob(Job):
         for src,dst in iter_copy(self.src_view, input, self.dst_view, target):
             dname,_ = self.dst_view.split(dst)
             self.dst_view.mkdir( dname )
-            self.source_copy_file(src, dst)
-
-    def source_copy_file(self, pathA, pathB):
-        """
-        Perform file copy from one source to another.
-        chunksize is the number of bytes to read/write at one time.
-        """
-        st = self.src_view.stat(pathA)
-        if st['isLink']:
-            target = self.src_view.readlink(pathA)
-            self.dst_view.mklink(target,pathB)
-            self.tot_size_copied += st['size']
-            self.setProgress(100*self.tot_size_copied/self.tot_size)
-            return
-
-        # 4 possible casses
-        #   assuming at least one ove open or get/put is supported
-        # | src     | dst     |
-        # | open    | open    | open -> open
-        # | open    | get/put | open -> put
-        # | get/put | open    | get  -> open
-        # | get/put | get/put | get / put : requires a temporary file.
-        # the 4th case can be implemented in the future
-
-        so = self.src_view.isOpenSupported()
-        do = self.dst_view.isOpenSupported()
-        sg = self.src_view.isGetPutSupported()
-        dg = self.dst_view.isGetPutSupported()
-        print(so,sg,do,dg)
-        if so and do:
-
-            with self.src_view.open(pathA,"rb") as rb:
-                with self.dst_view.open(pathB,"wb") as wb:
-                    buf = rb.read(self.chunksize)
-                    while buf:
-                        wb.write(buf)# TODO: write should return len buf
-                        self.tot_size_copied += len(buf)
-                        self.setProgress(100*self.tot_size_copied/self.tot_size)
-                        buf = rb.read(self.chunksize)
-
-        elif so and dg:
-            print("open/put")
-            with self.src_view.open(pathA,"rb") as rb:
-                self.dst_view.putfo(pathB,rb,self.fo_cbk)
-            self.tot_size_copied += self.src_view.stat_fast(pathA)['size']
-            self.setProgress(100*self.tot_size_copied/self.tot_size)
-
-        elif sg and do:
-            print("get/open")
-            with self.dst_view.open(pathB,"wb") as wb:
-                self.src_view.getfo(pathA,wb,self.fo_cbk)
-            self.tot_size_copied += self.src_view.stat_fast(pathB)['size']
-            self.setProgress(100*self.tot_size_copied/self.tot_size)
-
-        elif sg and dg:
-            sys.stderr.write("copy not implemented between %s and %s"%(
-                self.src_view.__class__.__name__,
-                self.dst_view.__class__.__name__))
-
-        else:
-            sys.stderr.write("copy not supported between %s and %s"%(
-                self.src_view.__class__.__name__,
-                self.dst_view.__class__.__name__))
+            opts = self.src_view, src, self.dst_view, dst, self.chunksize, self.fo_cbk
+            self.tot_size_copied += source_copy_file(*opts)
 
     def fo_cbk(self,tr,to):
         self.setProgress(100*(self.tot_size_copied+tr)/self.tot_size)

@@ -197,6 +197,9 @@ class TarFSImpl(DictFSImpl):
                 "isLink":False}
         return data
 
+    def chmod(self,path,mode):
+        print("chmod not implemented")
+
     def close(self):
         self.zip.close()
 
