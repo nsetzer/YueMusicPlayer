@@ -222,6 +222,9 @@ class SSHClientSource(DataSource):
         """
         return self.stat(path)
 
+    def chmod(self,path,mode):
+        print("chmod not implemented")
+
     def getExportPath(self,path):
         return path # nothing to do
 

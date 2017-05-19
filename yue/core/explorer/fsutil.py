@@ -157,26 +157,97 @@ def source_walk(source,dirpath):
         else:
             yield path
 
-def source_copy_file(sourceA, pathA, sourceB, pathB, chunksize):
+def source_copy_file(src_view,src_path,dst_view,dst_path,chunksize,callback=32*1024):
+
     """
     Perform file copy from one source to another.
-    chunksize is the number of bytes to read/write at one time.
+
+    src_view:
+    src_path:
+    dst_view:
+    dst_path:
+    callback :: function(bytes_copied,bytes_total)
+        a function which accepts two options.
+        used to indicate the progress for long file transfers.
+    chunksize :: int
+        the number of bytes to read/write at one time.
+
+
     """
-    with sourceA.open(pathA,"rb") as rb:
-        with sourceB.open(pathB,"wb") as wb:
-            buf = rb.read(chunksize)
-            while buf:
-                wb.write(buf)# TODO: write should return len buf
+
+    st = src_view.stat(src_path)
+    bytes_total = st['size']
+    bytes_copied = 0;
+
+    # 4 possible casses
+    #   assuming at least one ove open or get/put is supported
+    # | src     | dst     | methods
+    # | open    | open    | open -> open
+    # | open    | get/put | open -> put
+    # | get/put | open    | get  -> open
+    # | get/put | get/put | get  -> put (requires a temporary file)
+    # the 4th case can be implemented in the future
+
+    so = src_view.isOpenSupported()
+    do = dst_view.isOpenSupported()
+    sg = src_view.isGetPutSupported()
+    dg = dst_view.isGetPutSupported()
+
+    if st['isLink']:
+        # TODO: I may need a flag which controls behavior
+        # sometimes I want to copy the link, other times it
+        # should copy the file
+        target = src_view.readlink(src_path)
+        dst_view.mklink(target,dst_path)
+
+    elif so and do:
+
+        with src_view.open(src_path,"rb") as rb:
+            with dst_view.open(dst_path,"wb") as wb:
                 buf = rb.read(chunksize)
+                while buf:
+                    wb.write(buf)# TODO: write should return len buf
+                    bytes_copied += len(buf)
+                    if callback:
+                        callback(bytes_copied,bytes_total)
+                    buf = rb.read(chunksize)
+            dst_view.chmod(dst_path,st['mode'])
 
-def source_copy(sourceA, input, sourceB, target, chunksize=None):
+    elif so and dg:
 
-    chunksize = chunksize or 32*1024 # arbitrary 32kb size
+        with src_view.open(src_path,"rb") as rb:
+            dst_view.putfo(dst_path,rb,callback)
 
-    for src,dst in iter_copy(sourceA, input, sourceB, target):
+    elif sg and do:
+
+        with dst_view.open(dst_path,"wb") as wb:
+            src_view.getfo(src_path,wb,callback)
+
+    elif sg and dg:
+        sys.stderr.write("copy not implemented between %s and %s"%(
+            src_view.__class__.__name__,
+            dst_view.__class__.__name__))
+
+    else:
+        sys.stderr.write("copy not supported between %s and %s"%(
+            src_view.__class__.__name__,
+            dst_view.__class__.__name__))
+
+    # TODO: stat_fast, check dst file size matches.
+
+    # signal that the copy  has completed
+    if callback:
+        callback(bytes_total,bytes_total)
+
+    # TODO: return the number of bytes copied
+    return bytes_total
+
+def source_copy(src_view,src_path,dst_view,dst_path, chunksize=32*1024):
+
+    for src,dst in iter_copy(src_view, src_path, dst_view, dst_path):
         dname,_ = sourceB.split(dst)
         sourceB.mkdir( dname )
-        source_copy_file(sourceA, src, sourceB, dst, chunksize)
+        source_copy_file(src_view, src, dst_view, dst, chunksize, callback)
 
 def source_move(source,input,target):
     """
