@@ -142,14 +142,22 @@ class Song(object):
     @staticmethod
     def numberFields():
         """ integer fields """
+        # Song.last_played,  Song.date_added,
         return Song.uid, Song.year, Song.album_index, Song.length, \
-               Song.last_played, Song.play_count, Song.skip_count, \
+               Song.play_count, Song.skip_count, \
                Song.rating, Song.blocked, Song.opm, Song.equalizer, \
-               Song.date_added, Song.frequency, Song.file_size;
+               Song.frequency, Song.file_size;
 
     @staticmethod
     def dateFields():
         return Song.last_played, Song.date_added;
+
+    @staticmethod
+    def fields():
+        result = list(Song.textFields()) + \
+                 list(Song.numberFields()) + \
+                 list(Song.dateFields())
+        return result
 
     @staticmethod
     def new():

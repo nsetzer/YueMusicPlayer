@@ -17,7 +17,10 @@ def proc_exec(cmdstr,pwd=None):
         print(("pwd:%s"%(pwd)).encode("utf-8"))
 
     try:
-        args=shlex.split(cmdstr)
+        if isinstance(cmdstr,str):
+            args = shlex.split(cmdstr)
+        else:
+            args = cmdstr
         subprocess.Popen(args,cwd=pwd)
     except:
         raise Exception(cmdstr)

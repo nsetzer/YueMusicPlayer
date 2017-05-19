@@ -296,10 +296,19 @@ class RemoteView(Tab):
         self.btn_push.clicked.connect(self.onHistoryPushClicked)
         self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
 
+        self.tbl_remote.update_data.connect(self.refresh) # on sort...
+
         self.cb_remote.clicked.connect(self.refresh)
 
         self.grammar = RemoteSongSearchGrammar()
-        self.song_library = []
+        self.song_library=[]
+        """
+        # generate simple library for testing purposes.
+        songs = Library.instance().search("",limit=100)
+        for song in songs:
+            song['remote'] = 1
+        self.song_library = songs
+        """
         self.setSongs(self.song_library)
 
     def onSearchTextChanged(self):
@@ -314,13 +323,16 @@ class RemoteView(Tab):
 
         try:
             rule = self.grammar.ruleFromString( text )
+            limit = self.grammar.getMetaValue("limit",None)
+            offset = self.grammar.getMetaValue("offset",0)
 
             if self.cb_remote.isChecked():
-                rule = AndSearchRule([rule,
-                    ExactSearchRule(Song.remote,1,type_=int)
-                ])
+                rule = AndSearchRule.join(rule,ExactSearchRule(Song.remote,1,type_=int))
 
-            songs = naive_search(self.song_library,rule)
+            songs = naive_search(self.song_library,rule,
+                orderby = self.tbl_remote.sort_orderby,
+                reverse = self.tbl_remote.sort_reverse,
+                limit=limit,offset=offset)
 
             self.setSongs(songs)
 
@@ -384,3 +396,5 @@ class RemoteView(Tab):
         client = self.getNewClient()
         job = HistoryDeleteJob(client)
         self.dashboard.startJob(job)
+
+

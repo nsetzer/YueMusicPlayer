@@ -323,6 +323,18 @@ class AndSearchRule(MetaSearchRule):
             sqlstr = '(' + ' AND '.join(sql) + ')'
         return sqlstr, tuple(vals)
 
+    @staticmethod
+    def join(*rules):
+        """
+        return a composite of a set of rules
+        """
+        rules = [ rule for rule in rules if not isinstance(rule,BlankSearchRule) ]
+        if len(rules)==0:
+            return BlankSearchRule()
+        if len(rules)==1:
+            return rules[0]
+        return AndSearchRule(rules)
+
 class OrSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that at least one rule returns true"""
     def check(self, elem, ignoreCase=True):
@@ -346,6 +358,18 @@ class OrSearchRule(MetaSearchRule):
         if sql:
             sqlstr = '(' + ' OR '.join(sql) + ')'
         return sqlstr, tuple(vals)
+
+    @staticmethod
+    def join(*rules):
+        """
+        return a composite of a set of rules
+        """
+        rules = [ rule for rule in rules if not isinstance(rule,BlankSearchRule) ]
+        if len(rules)==0:
+            return BlankSearchRule()
+        if len(rules)==1:
+            return rules[0]
+        return OrSearchRule(rules)
 
 class NotSearchRule(MetaSearchRule):
     """MetaSearchRule which checks that inverts result from rule"""
@@ -404,17 +428,23 @@ def naive_search( seq, rule, case_insensitive=True, orderby=None, reverse = Fals
     seq can be any iterable data structure containing table data
     for example a list-of-dict, or a sql database view.
 
-
+    TODO: reverse is depracted. it is handled by order by
 
     """
     # filter the sequence using the rule
     out = [ elem for elem in seq if rule.check(elem) ]
 
+    print(reverse,orderby)
     if orderby is not None:
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
-        key = lambda s : (s[k] for k in orderby)
-        out = sorted(out,key=key,reverse=reverse)
+
+        for item in reversed(orderby):
+            if isinstance(item,str):
+                out = sorted(out,key=lambda s:s[item],reverse=False)
+            else:
+                key,mode = item
+                out = sorted(out,key=lambda s:s[key],reverse=mode=="DESC")
 
     if offset:
         out = out[offset:]

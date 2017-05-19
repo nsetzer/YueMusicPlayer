@@ -23,7 +23,7 @@ from yue.qtcommon.FlatPushButton import FlatPushButton
 from yue.qtcommon.Tab import Tab
 
 from yue.core.song import Song
-from yue.core.search import ParseError
+from yue.core.search import ParseError, ExactSearchRule, AndSearchRule, BlankSearchRule
 from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.playlist import PlaylistManager
@@ -141,8 +141,25 @@ class HistoryView(Tab):
 
         self.lbl_error.hide()
 
+        self.enter_once = False
+
+        self.cbox_action.addItem("All",None)
+
+        options = Song.fields()
+        options.append(Song.playtime)
+
+        for field in sorted(options):
+            title = field.title().replace("_"," ")
+            self.cbox_action.addItem(title,field)
+        self.cbox_action.currentIndexChanged.connect(self.refresh)
+
     def onTextChanged(self,text,update=0):
         self.run_search(text)
+
+    def onEnter(self):
+        if not self.enter_once:
+            self.enter_once = True
+            self.refresh()
 
     def refresh(self):
         self.run_search( self.txt_search.text() , refresh=True)
@@ -153,9 +170,18 @@ class HistoryView(Tab):
         """
         try:
             hist = History.instance()
-            data = hist.search(text, \
+            rule = hist.grammar.ruleFromString(text)
+            limit = hist.grammar.getMetaValue("limit",None)
+            offset = hist.grammar.getMetaValue("offset",0)
+
+            action = self.cbox_action.currentData()
+            if action is not None:
+                rule = AndSearchRule.join(rule,ExactSearchRule("column",action))
+
+            data = hist.search(rule, \
                 orderby = self.tbl_history.sort_orderby,
-                reverse = self.tbl_history.sort_reverse )
+                reverse = self.tbl_history.sort_reverse,
+                limit=limit, offset=offset )
             self.tbl_history.setData(data)
 
             self.txt_search.setStyleSheet("")

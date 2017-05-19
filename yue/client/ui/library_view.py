@@ -344,7 +344,7 @@ class LibraryView(Tab):
         """
         callback as a function which accepts a menu and a song
         and returns nothing. the function should add actions to
-        the given song
+        the given menu
         """
         self.menu_callback = cbk
 

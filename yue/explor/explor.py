@@ -46,6 +46,7 @@ from yue.qtcommon import resource
 from yue.qtcommon.ResourceManager import ResourceManager
 
 from yue.explor.mainwindow import MainWindow, FileAssoc
+from yue.explor.util import proc_exec
 
 def initSettings():
 
@@ -164,6 +165,55 @@ def initSettings():
 
     Settings.instance().setMulti(data,False)
 
+
+def do_compress(args):
+    """
+    archive_path: path to the archive
+    path :
+    pwd
+    """
+    args.archive_path = os.path.expanduser(args.archive_path)
+    if not args.archive_path.startswith("/"):
+        args.archive_path = os.path.join(args.pwd,args.archive_path)
+
+    _,ext = os.path.splitext(args.archive_path)
+
+    paths = []
+    for path in args.path:
+        if not os.path.exists(path):
+            sys.stderr.write("Not Found: %s\n"%path)
+        else:
+            paths.append(path)
+
+    cmd = ["7za", "a", args.archive_path] + paths
+
+    proc_exec(cmd, args.pwd)
+
+    return 0;
+
+def do_extract(args):
+    """
+    archive_path: path to the archive
+    directory:
+    pwd
+    """
+
+    args.archive_path = os.path.expanduser(args.archive_path)
+    if not args.archive_path.startswith("/"):
+        args.archive_path = os.path.join(args.pwd,args.archive_path)
+
+    args.directory = os.path.expanduser(args.directory)
+    if not args.directory.startswith("/"):
+        args.directory = os.path.join(args.pwd,args.directory)
+
+    cmd = ["7za", "x", args.archive_path]
+
+    os.chdir(args.directory)
+
+    proc_exec(cmd, args.pwd)
+
+    return 0;
+
 def get_modes():
     # modes change the command line syntax
     modes = {} # string -> (long-name, shortcut-flag)
@@ -186,17 +236,17 @@ def print_help(binpath):
 
     modes = [
         ("b","browse",   "open file browser"),
-        ("e","edit",     "open a file for editing"),
+        ("e","edit",     "open a text file for editing"),
         ("o","open",     "open a file using OS native application"),
         ("d","diff",     "compare two files"),
-        ("x","extract",  "extract a file"),
-        ("c","compress", "compress a set of files"),
+        ("x","extract",  "extract files from an archive"),
+        ("c","compress", "create an archive from a list of files"),
     ]
 
     sys.stdout.write("extended help:\n")
     sys.stdout.write("select a mode and pass -h or --help for more info.\n")
-    sys.stdout.write("e.g. %s -eh\n\n"%binpath)
-    sys.stdout.write("e.g. %s --edit --help\n\n"%binpath)
+    sys.stdout.write("e.g. %s -eh\n"%binpath)
+    sys.stdout.write("     %s --edit --help\n\n"%binpath)
 
     for x,l,h in modes:
         sys.stdout.write("  -%s  --%-8s  %s\n"%(x,l,h))
@@ -289,6 +339,12 @@ def parse_args(script_file):
     pos_opts = " ".join(pos_opts)
     parser.usage="%s [options] %s"%(procv[0],pos_opts)
     args = parser.parse_args(procv[1:])
+
+    if mode == "compress":
+        sys.exit(do_compress(args))
+    elif mode == "extract":
+
+        sys.exit(do_extract(args))
 
     if mode not in {"diff","browse"}:
         args.path_r = None

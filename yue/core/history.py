@@ -172,10 +172,7 @@ class History(object):
             rule = self.grammar.ruleFromString( rule )
             limit = self.grammar.getMetaValue("limit",limit)
             offset = self.grammar.getMetaValue("offset",offset)
-        else:
-            raise ParseError("invalid rule type: %s"%type(rule))
-        if isinstance(rule,(str,unicode)):
-            raise ParseError("invalid rule type: %s"%type(rule))
+
         if orderby is not None:
             if not isinstance( orderby, (list,tuple)):
                 orderby = [ orderby, ]
