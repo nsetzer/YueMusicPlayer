@@ -8,10 +8,12 @@ changelog
     use Visual Studio 2015 to build C libraries
 
 """
-__version__ = "1.1.8"
+__version__ = "1.1.9"
 __datetime__ = ""
 __builddate__ = ""
 import codecs,traceback,sys
+if (sys.version_info[0]==2):
+    raise RuntimeError("python2 not supported")
 try:
     from yue.client.client import main
     main(__version__,__datetime__,__builddate__)
