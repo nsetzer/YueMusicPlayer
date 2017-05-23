@@ -102,7 +102,7 @@ class ConnectJob(Job):
     def doTask(self):
 
         page_size = 1000
-        songs=self.client.get_all_songs(page_size=page_size,callback=self._dlprogress)
+        songs=self.client.library_get(page_size=page_size,callback=self._dlprogress)
 
         lib = Library.instance().reopen()
         for song in songs:

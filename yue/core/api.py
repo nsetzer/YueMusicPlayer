@@ -54,6 +54,12 @@ class ApiClient(object):
         temp = ApiClient.generate_hmac(key,path,params,payload)
         return hmac.compare_digest(digest,temp)
 
+    @staticmethod
+    def local_path(basedir,song):
+        path = Song.toShortPath(song)
+        fname = os.path.join(basedir,*path)
+        return fname
+
     def setApiKey(self,key):
         self.key = key
 
@@ -111,14 +117,33 @@ class ApiClient(object):
         if r.getcode() != 200:
             raise Exception("%s %s"%(r.getcode(),r.msg))
 
-    def local_path(self,basedir,song):
-        path = Song.toShortPath(song)
-        fname = os.path.join(basedir,*path)
-        return fname
+    def library_get(self,query="",page_size=100, callback = None):
+        """
+        returns all song records from the remote database for a given query
+
+        page_size:
+            the number of records to return with every api request
+        callback: function(percent,1.0)
+            first argument is a fraction (out of 1.0) of the progress
+            made in downloading all song records form the remote database
+
+        """
+        songs = []
+        result = self.get_songs(query,page=0,page_size=page_size)
+        num_pages = result['num_pages']
+        songs += result['songs']
+        for i in range(1,num_pages):
+            if callback:
+                p = lambda x,y : callback(((float(i)/num_pages) + (float(x)/y)/num_pages),1.0)
+            else:
+                p = None
+            result = self._get_songs(query,page=i,page_size=page_size,callback=p)
+            songs += result['songs']
+        return songs
 
     def download_song(self,basedir,song,callback=None):
 
-        fname = self.local_path(basedir,song)
+        fname = ApiClient.local_path(basedir,song)
         dname, _ = os.path.split(fname)
         if not os.path.exists(dname):
             os.makedirs(dname)
@@ -126,7 +151,9 @@ class ApiClient(object):
         self._retrieve(fname,urlpath,callback=callback)
         return fname
 
-    def get_songs(self,query="",page=0,page_size=100, callback=None):
+    # --------------------------
+
+    def _get_songs(self,query="",page=0,page_size=100, callback=None):
         """
         returns page_size song records from the remote database
 
@@ -161,30 +188,6 @@ class ApiClient(object):
 
         result = json.loads(data.decode("utf-8"))
         return result
-
-    def get_all_songs(self,query="",page_size=100, callback = None):
-        """
-        returns all song records from the remote database for a given query
-
-        page_size:
-            the number of records to return with every api request
-        callback: function(percent,1.0)
-            first argument is a fraction (out of 1.0) of the progress
-            made in downloading all song records form the remote database
-
-        """
-        songs = []
-        result = self.get_songs(query,page=0,page_size=page_size)
-        num_pages = result['num_pages']
-        songs += result['songs']
-        for i in range(1,num_pages):
-            if callback:
-                p = lambda x,y : callback(((float(i)/num_pages) + (float(x)/y)/num_pages),1.0)
-            else:
-                p = None
-            result = self.get_songs(query,page=i,page_size=page_size,callback=p)
-            songs += result['songs']
-        return songs
 
     # --------------------------
 
