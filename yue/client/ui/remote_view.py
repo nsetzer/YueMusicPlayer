@@ -239,7 +239,6 @@ class HistoryHardSyncJob(Job):
 
         self.setProgress(100)
 
-
 class HistoryHardPushJob(Job):
     """
     push the local library to remote
@@ -249,12 +248,15 @@ class HistoryHardPushJob(Job):
     to correctly locate songs after a hard sync
 
     """
-    def __init__(self):
+    def __init__(self, client):
         super(HistoryHardPushJob, self).__init__()
         self.client = client
 
-    def doTask():
-        return
+    def doTask(self):
+
+        lib = Library.instance().reopen()
+        songs = lib.search("",limit=10)
+        self.client.library_put( songs )
 
 class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar
@@ -472,5 +474,5 @@ class RemoteView(Tab):
 
     def onHistoryHardPushClicked(self):
         client = self.getNewClient()
-        job = HistoryHardPushJob()
+        job = HistoryHardPushJob(client)
         self.dashboard.startJob(job)

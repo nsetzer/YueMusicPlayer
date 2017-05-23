@@ -210,6 +210,16 @@ class Library(object):
         c.execute("UPDATE albums SET count=count+1 WHERE uid=?",(kwargs['album'],))
         return self.song_db._insert(c,**kwargs)
 
+    def insert_all(self,lst):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for song in lst:
+                if Song.uid in song:
+                    if not song[Song.uid]: # prevent uid=0
+                        del song[Song.uid]
+                return self._insert(c, **song)
+
     def update(self,uid,**kwargs):
         """ update song values in the database """
         with self.sqlstore.conn:

@@ -99,6 +99,18 @@ class ApiClient(object):
         """
         self._delete("api/history")
 
+    def library_put(self,songs):
+        """
+        hard push an update to song metadata to the server
+        """
+        headers = {
+            "Content-Type" : "text/x-yue-library"
+        }
+        temp = json.dumps(songs).encode("utf-8")
+        r = self._put("api/library",data=temp,headers=headers);
+        if r.getcode() != 200:
+            raise Exception("%s %s"%(r.getcode(),r.msg))
+
     def local_path(self,basedir,song):
         path = Song.toShortPath(song)
         fname = os.path.join(basedir,*path)

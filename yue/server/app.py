@@ -315,6 +315,7 @@ def check_api_request(app):
         abort(404)
     user_key = x[0].api_key.decode("utf-8")
     if user_key != apikey:
+        print("\n***Invalid user key")
         print(user_key)
         print(apikey)
         abort(401)
@@ -366,21 +367,19 @@ def api_download_song(app,uid):
     path= song[Song.path]
     return send_file(path)
 
-def api_library(app):
-
-
-    check_api_request(app)
-
+def _api_library_get(app):
     page_size = 50
 
     try:
         page = int(request.args.get("page",0))
     except:
+        print("missing argument page or not an int")
         abort(401)
 
     try:
         page_size = int(request.args.get("page_size",50))
     except:
+        print("missing argument page_size or not an int")
         abort(401)
 
     query = request.args.get("query","")
@@ -405,6 +404,61 @@ def api_library(app):
         "songs" : song_results
     }
     return jsonify(result)
+
+def _api_library_load(app):
+
+    if request.headers.get("Content-Type","") != "text/x-yue-library":
+        print(request.headers)
+        abort(406)
+    records = json.loads(request.data.decode("utf-8"))
+
+    lib = app.library.reopen()
+    songs = lib.search("");
+    lut = { song[Song.uid]:song for song in songs }
+
+    update = {}
+    insert = []
+    for r in records:
+        if r[Song.uid] in lut:
+            # found an existing song, update the value
+            if Song.artist_key in r:
+                del r[Song.artist_key]
+            if Song.remote in r:
+                del r[Song.remote]
+            if Song.path in r:
+                del r[Song.path]
+
+            uid = r[Song.uid]
+            del r[Song.uid]
+            update[uid] = r
+        else:
+            # found a song that is not in the current library, insert it
+            if Song.path in r:
+                # must have a path
+
+                # update alternatives
+
+                insert.append(r)
+
+    lib.update_all(update)
+    lib.insert_all(insert)
+
+    # TODO: and sone that was not updated should
+    # be removed from the library
+    print("update: %d"%len(update))
+    print("insert: %d"%len(insert))
+
+    return "ok",200
+
+def api_library(app):
+
+    check_api_request(app)
+
+    if request.method == 'GET':
+        return _api_library_get(app)
+
+    elif request.method == 'PUT':
+        return _api_library_load(app)
 
 def register_user(app):
 
@@ -554,7 +608,7 @@ class Application(object):
         self.register("/_media_current_playlist",media_current_playlist)
         self.register("/api/history",api_history,methods=['GET','PUT','DELETE'])
         self.register("/api/library/<uid>",api_download_song,methods=['GET'])
-        self.register("/api/library",api_library,methods=['GET'])
+        self.register("/api/library",api_library,methods=['GET','PUT'])
         self.register("/user/api_key",user_api_key)
         self.register("/user/register",register_user)
 
