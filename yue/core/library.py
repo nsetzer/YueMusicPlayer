@@ -782,7 +782,7 @@ class Library(object):
                     print(record)
                     self._import_record( c, record )
 
-    def import_record(self, record_lst):
+    def import_record(self, record_lst, addToHistory=True):
         """
         import a single record or a list of records
         """
@@ -792,16 +792,16 @@ class Library(object):
         with self.sqlstore.conn as conn:
             c = conn.cursor()
             for record in record_lst:
-                self._import_record(c,record)
+                self._import_record(c,record,addToHistory)
 
-    def _import_record(self, c, record):
+    def _import_record(self, c, record, addToHistory=True):
 
         if record['column'] == Song.playtime:
-            self.import_record_playtime(c,record)
+            self.import_record_playtime(c,record,addToHistory)
         else:
             self.import_record_update(c,record)
 
-    def import_record_playtime(self, c, record):
+    def import_record_playtime(self, c, record, addToHistory):
         """
         update playcount for a song given a record
 
@@ -810,11 +810,12 @@ class Library(object):
         """
 
         # experimental: insert record into THIS db
-        k,v = zip(*record.items())
-        s = ', '.join(str(x) for x in k)
-        r = ('?,'*len(v))[:-1]
-        fmt = "insert into %s (%s) VALUES (%s)"%("history",s,r)
-        c.execute(fmt,list(v))
+        if addToHistory:
+            k,v = zip(*record.items())
+            s = ', '.join(str(x) for x in k)
+            r = ('?,'*len(v))[:-1]
+            fmt = "insert into %s (%s) VALUES (%s)"%("history",s,r)
+            c.execute(fmt,list(v))
 
         #song = library.songFromId( record['uid'])
         date = record['date']

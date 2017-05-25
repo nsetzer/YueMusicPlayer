@@ -46,8 +46,8 @@ class ExplorController(ExplorerController):
                 if not items[0]['isDir'] and items[0]['isLink'] != DataSource.IS_LNK_BROKEN:
                     ctxtmenu.addAction("Edit", lambda : model.action_edit( items[0] ))
 
-                if items[0]['isLink']:
-                    ctxtmenu.addAction("Edit Link", lambda : model.action_edit_link( items[0] ))
+            if items[0]['isLink']:
+                ctxtmenu.addAction("Edit Link", lambda : model.action_edit_link( items[0] ))
 
         ctxtmenu.addSeparator()
 

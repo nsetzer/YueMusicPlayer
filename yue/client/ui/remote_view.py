@@ -46,6 +46,18 @@ class RemoteTable(SongTable):
 
         action = menu.exec_( event.globalPos() )
 
+    # disable song drag and drop on this table
+    # the file paths are likely invalid.
+
+    def dragEnterEvent(self, event):
+        event.ignore()
+
+    def dragMoveEvent(self, event):
+        event.ignore()
+
+    def dropEvent(self, event):
+        event.ignore()
+
 class DownloadJob(Job):
     """docstring for DownloadJob"""
     def __init__(self, client, songs, dir_base):

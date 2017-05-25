@@ -434,7 +434,6 @@ def naive_search( seq, rule, case_insensitive=True, orderby=None, reverse = Fals
     # filter the sequence using the rule
     out = [ elem for elem in seq if rule.check(elem) ]
 
-    print(reverse,orderby)
     if orderby is not None:
         if not isinstance(orderby,(tuple,list)):
             orderby = [ orderby, ]
