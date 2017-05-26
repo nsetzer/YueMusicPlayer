@@ -278,6 +278,8 @@ class ClientRepl(object):
             self.editor.setVariable("Repl",self)
             self.editor.setVariable("Client",self.client)
             self.editor.setVariable("Library",Library.instance())
+            newLibrary = lambda path : Library(SQLStore(path))
+            self.editor.setVariable("newLibrary",newLibrary)
             self.editor.setVariable("PlaylistManager",PlaylistManager.instance())
             self.editor.setVariable("Settings",Settings.instance())
             self.editor.setVariable("History",History.instance())
@@ -287,11 +289,24 @@ class ClientRepl(object):
         self.editor.show()
 
     def extheme(self,args):
+        """
+        $0 theme
+        $0 theme font_family
+        $0 theme font_family point_size
 
+        set the style used in the application
+        """
         args = ReplArgumentParser(args,{'p':'preset', 's':'search', 'l':'limit'})
         args.assertMinArgs( 1 )
         theme = args[0]
-        self.client.set_style( theme )
+        family=""
+        pointsize = "10"
+        if len(args)>=2:
+            family = args[1]
+        if len(args)>=3:
+            pointsize= args[2]
+        print("set_style",theme,family,pointsize)
+        self.client.set_style( theme, family, pointsize)
 
     def exset(self,args):
         # TODO: at app level specify some settings as constants
@@ -1281,15 +1296,15 @@ class MainWindow(QMainWindow):
         if not self.edit_cmd.isHidden():
             self.edit_cmd.setFocus()
 
-    def set_style(self, theme):
+    def set_style(self, theme, default_family="consolas", default_size="13"):
         app = QApplication.instance()
 
         if theme == "none":
             clearStyle()
             app.setStyleSheet("")
             app.setPalette(self.default_palette)
-            qdct = {"font_family":"",
-                    "font_size":"10",
+            qdct = {"font_family":default_family,
+                    "font_size":default_size,
                     #color_special1":QColor(220,220,120),
                     "color_special1":QColor(16,128,32),
                     "text_important1":QColor(125,50,100),
@@ -1297,6 +1312,8 @@ class MainWindow(QMainWindow):
                     "theme_s_mid":QColor(60,60,200),
                     "theme_p_mid":QColor(60,60,200),
                     "theme_s_vdark":QColor(160,175,220)}
+            self.default_font.setFamily(qdct['font_family'])
+            self.default_font.setPointSize(int(qdct['font_size']))
             app.setFont(self.default_font)
             css="""
             QSlider#TimeSlider::handle:horizontal {
@@ -1313,6 +1330,12 @@ class MainWindow(QMainWindow):
             app.setStyleSheet(css)
         else:
             try:
+                #TODO: style_set_custom_theme should accept an override dictionary
+                # for any cdct value... always provide default_family and
+                # default_size.
+                # default_family and default_size should be taken from the settings
+                # if not provided use the theme default. the settings value
+                # is a theme override.
                 css,cdct = style_set_custom_theme(os.getcwd()+"/theme",theme)
             except StyleError as e:
                 sys.stderr.write("style error: %s\n"%e)
@@ -1323,7 +1346,7 @@ class MainWindow(QMainWindow):
                 qdct = currentStyle()
                 font=QFont(qdct['font_family'],pointSize=int(qdct['font_size']))
 
-        print("qdct font: `%s` `%d`"%(qdct['font_family'],int(qdct['font_size'])))
+        print("fontFamily:%s pointSize:%d"%(qdct['font_family'],int(qdct['font_size'])))
                 #app.setFont(font)
         # TODO:
         # This needs to be refactored once I have a better idea

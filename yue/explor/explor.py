@@ -17,6 +17,17 @@ sudo mount -t afp afp://user:pass@ipaddress/user /Volumes/Shared
     afp://nsetzer:password@nas-ha.cogitohealth.net/Signals_Audio
     afp://nsetzer:password@nas-ha.cogitohealth.net/Software
 
+support for gdiff...
+    explor -g path/to/file
+        git show HEAD:path/to/file > /tmp/file
+        diff /tmp/file path/to/file
+
+    explor -g rev:path/to/file
+        git show rev:path/to/file > /tmp/file
+        diff /tmp/file path/to/file
+
+    rev can be HEAD~2 HEAD^ or a commit hash
+
 """
 import os,sys
 if (sys.version_info[0]==2):
@@ -46,7 +57,7 @@ from yue.qtcommon import resource
 from yue.qtcommon.ResourceManager import ResourceManager
 
 from yue.explor.mainwindow import MainWindow, FileAssoc
-from yue.explor.util import proc_exec
+from yue.explor.fileutil import do_extract,do_compress
 
 def initSettings():
 
@@ -164,55 +175,6 @@ def initSettings():
     data['view_show_hidden'] = True
 
     Settings.instance().setMulti(data,False)
-
-
-def do_compress(args):
-    """
-    archive_path: path to the archive
-    path :
-    pwd
-    """
-    args.archive_path = os.path.expanduser(args.archive_path)
-    if not args.archive_path.startswith("/"):
-        args.archive_path = os.path.join(args.pwd,args.archive_path)
-
-    _,ext = os.path.splitext(args.archive_path)
-
-    paths = []
-    for path in args.path:
-        if not os.path.exists(path):
-            sys.stderr.write("Not Found: %s\n"%path)
-        else:
-            paths.append(path)
-
-    cmd = ["7za", "a", args.archive_path] + paths
-
-    proc_exec(cmd, args.pwd)
-
-    return 0;
-
-def do_extract(args):
-    """
-    archive_path: path to the archive
-    directory:
-    pwd
-    """
-
-    args.archive_path = os.path.expanduser(args.archive_path)
-    if not args.archive_path.startswith("/"):
-        args.archive_path = os.path.join(args.pwd,args.archive_path)
-
-    args.directory = os.path.expanduser(args.directory)
-    if not args.directory.startswith("/"):
-        args.directory = os.path.join(args.pwd,args.directory)
-
-    cmd = ["7za", "x", args.archive_path]
-
-    os.chdir(args.directory)
-
-    proc_exec(cmd, args.pwd)
-
-    return 0;
 
 def get_modes():
     # modes change the command line syntax
@@ -426,7 +388,6 @@ def parse_args(script_file):
 
     return args
 
-
 iExceptionMessages=0
 def handle_exception(exc_type, exc_value, exc_traceback):
 
@@ -440,7 +401,6 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     if iExceptionMessages < 5:
         QMessageBox.critical(None,"Unhandled Error",lines)
         iExceptionMessages += 1
-
 
 def main(script_file=__file__):
     initSettings()

@@ -129,7 +129,7 @@ class ApiClient(object):
 
         """
         songs = []
-        result = self.get_songs(query,page=0,page_size=page_size)
+        result = self._get_songs(query,page=0,page_size=page_size)
         num_pages = result['num_pages']
         songs += result['songs']
         for i in range(1,num_pages):
