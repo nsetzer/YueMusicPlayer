@@ -117,7 +117,7 @@ class ConnectJob(Job):
                 pass
 
             # match by path
-            path = self.client.local_path(self.basedir,song)
+            path = ApiClient.local_path(self.basedir,song)
             if os.path.exists(path):
                 song[Song.path] = path
                 song[Song.remote] = 0
