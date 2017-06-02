@@ -645,8 +645,10 @@ class SyncManager(object):
         target_library.sqlstore.close()
         libpath=self.getTargetLibraryPath()
         if not self.no_exec:
-            source_copy_file(self.local_source,target_library.sqlstore.filepath,
-                         self.target_source, libpath, 1<<15)
+            liblocal = target_library.sqlstore.filepath
+            source_copy_file(
+                self.local_source, liblocal,
+                self.target_source, libpath, 1<<15)
         else:
             self.log("no_exec: not copying target library")
 
