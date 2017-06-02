@@ -167,11 +167,11 @@ class WatchFileController(QObject):
         for path,wf in self.watch_list.items():
             yield wf;
 
-
 class WatchFileTable(LargeTable):
     """
     displays the contents of the WatchFileController
     """
+    changeDirectory = pyqtSignal(str)
 
     def __init__(self, wfctrl, parent=None):
         super(WatchFileTable,self).__init__(parent)
@@ -226,6 +226,8 @@ class WatchFileTable(LargeTable):
             ctxtmenu.addAction("Sync Selection",lambda : self.action_sync(wfs))
             ctxtmenu.addAction("Close Selection",lambda : self.action_sync(wfs))
 
+        ctxtmenu.addAction("Open Local Cache",self.action_open_local_directory)
+
         action = ctxtmenu.exec_( event.globalPos() )
 
     def action_close(self,wfs):
@@ -244,6 +246,10 @@ class WatchFileTable(LargeTable):
 
         proc_exec(cmdstr%(path))
 
+    def action_open_local_directory(self):
+        # TODO !! local source
+        ftemp = os.path.join(Settings.instance()['database_directory'],"remote")
+        self.changeDirectory.emit(ftemp)
 
 
 

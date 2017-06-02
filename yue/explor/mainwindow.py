@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
 
         self.wfview = WatchFileTable(self.wfctrl,self)
+        self.wfview.changeDirectory.connect(self.onChangeDirectory)
 
         self.tabview = TabWidget( self )
         self.tabview.setCornerWidget(self.btn_newTab)
@@ -402,15 +403,20 @@ class MainWindow(QMainWindow):
     def onChangeDirectory(self,path):
         w = self.tabview.currentWidget()
         if not isinstance(w.source,DirectorySource):
-            raise Exception("Change to Directory Tab")
-
-        w.chdir(path)
+            # open a new tab to display the given path
+            # TODO consider passing a source allong with the path in the signal
+            self.newTab(path)
+        else:
+            w.chdir(path)
 
     def onChangeDirectoryRight(self,path):
         w = self.tabview.currentWidget()
         if not isinstance(w.source,DirectorySource):
-            raise Exception("Change to Directory Tab")
-        w.chdir_r(path)
+            # open a new tab to display the given path
+            # TODO consider passing a source allong with the path in the signal
+            self.newTab("~",path)
+        else:
+            w.chdir_r(path)
 
     def onTabCloseRequest(self,idx):
         self.tabview.removeTab(idx)

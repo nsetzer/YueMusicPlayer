@@ -7,9 +7,10 @@ from yue.core.settings import Settings
 
 from yue.qtcommon.explorer.controller import ExplorerController
 from yue.core.explorer.source import DataSource
-
+from yue.explor.fileutil import extract_supported, do_extract, do_compress
 import shlex
 import subprocess
+
 
 class ExplorController(ExplorerController):
 
@@ -29,25 +30,26 @@ class ExplorController(ExplorerController):
         menu.addAction("Empty File",lambda : model.action_touch_begin())
         menu.addAction("Folder", lambda : model.action_mkdir_begin())
 
-        menu = ctxtmenu.addMenu("Archive")
-        if len(items) > 1:
+        if len(items) > 0:
+            menu = ctxtmenu.addMenu("Archive")
             menu.addAction("Add to 7z")
             menu.addAction("Add to zip")
-        elif not is_dirs:
-            menu.addAction("Extract to *")
+            if len(items) == 1 and extract_supported(items[0]['name']):
+                menu.addAction("Extract to *")
+                menu.addAction("Extract to <named>")
 
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
 
         ctxtmenu.addSeparator()
 
         if model.view.islocal():
-            if len(items) == 1 and not items[0]['isDir']:
+            if len(items) == 1:
 
                 if not items[0]['isDir'] and items[0]['isLink'] != DataSource.IS_LNK_BROKEN:
                     ctxtmenu.addAction("Edit", lambda : model.action_edit( items[0] ))
 
-            if items[0]['isLink']:
-                ctxtmenu.addAction("Edit Link", lambda : model.action_edit_link( items[0] ))
+                elif items[0]['isLink']:
+                    ctxtmenu.addAction("Edit Link", lambda : model.action_edit_link( items[0] ))
 
         ctxtmenu.addSeparator()
 

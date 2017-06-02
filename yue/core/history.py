@@ -66,11 +66,15 @@ class History(object):
 
     def setLogEnabled(self, b):
         """ enable recording of playback events"""
+        temp = self.enabled_log
         self.enabled_log = bool(b)
+        return temp
 
     def setUpdateEnabled(self, b):
         """ enable recording of record changes """
+        temp = self.enabled_update
         self.enabled_update = bool(b)
+        return temp
 
     def isLogEnabled(self):
         return self.enabled_log

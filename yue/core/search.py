@@ -962,7 +962,7 @@ class Grammar(object):
         return state.tokens
 
     def parseTokens( self, tokens, top=True ):
-        """transforms the input tokens into an AST or SearchRules.
+        """transforms the input tokens into an AST of SearchRules.
         """
         i=0
         while i < len(tokens):

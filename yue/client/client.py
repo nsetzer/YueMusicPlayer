@@ -426,8 +426,7 @@ class ClientRepl(object):
                 return
 
             #disable logging updates while importing
-            bUpdate=History.instance().isUpdateEnabled()
-            History.instance().setUpdateEnabled( False )
+            bUpdate=History.instance().setUpdateEnabled( False )
             try:
                 Library.instance().import_record_file(path)
             finally:

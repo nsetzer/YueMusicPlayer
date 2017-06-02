@@ -712,7 +712,9 @@ class SourceListView(SourceView):
                 name = self.data[idx]
                 if name == name1:
                     self.data[idx]=name2
-                    self.statcache_index={} # TODO: a better way?
+
+                    self.setData(self.data)
+                    #self.statcache_index={} # TODO: a better way?
                     break;
         return self.source.move(oldpath,newpath)
 
@@ -726,11 +728,14 @@ class SourceListView(SourceView):
         path = self.realpath(path)
         dir1,name1 = self.split(path)
         if dir1 == self.path:
+            # todo: does not pop from or reset data_filtered
             for idx in range(len(self.data)):
                 name = self.data[idx]
                 if name == name1:
                     self.data.pop(idx)
-                    self.statcache_index={} # TODO: a better way?
+                    # this is sort of a hack to solve the previously
+                    # mentioned issue
+                    self.setData(self.data)
                     break;
         return self.source.delete(path)
 
@@ -750,14 +755,29 @@ class SourceListView(SourceView):
                 name = dat[idx]
                 if not name:
                     raise Exception("empty file name in directory")
-                self.statcache_index[idx] = self.stat_fast( name )
+                try:
+                    self.statcache_index[idx] = self.stat_fast( name )
+                except FileNotFoundError:
+                    # TODO: this is a hack
+                    # the LargeTable is trying tp paint after
+                    # a change to the view and grabbing stale values
+                    # from self.data_filtered. "Empty File" instead
+                    # of the renamed value. only applies when
+                    # there is a filter in use.
+                    print("unhandled",idx,self.text_filter, name)
+                    self.statcache_index[idx]  = {
+                        "name"  : "",
+                        "size"  : 0,
+                        "isDir" : False,
+                        "isLink" : False,
+                    }
             return self.statcache_index[idx]
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
     # new and index are hacks enabling editing names for
-    # items which do not exist, is there a betterway?
+    # items which do not exist, is there a better way?
     def new(self,basename,isDir=False):
         """
         generate a new file name for the directory
@@ -780,8 +800,12 @@ class SourceListView(SourceView):
             "name"  : name,
             "mode"  : 0,
         }
-        index = len(self.data)
+        if self.text_filter is not None:
+            index = len(self.data_filtered)
+        else:
+            index = len(self.data)
         self.data.append(name)
+        self.data_filtered.append(name)
         return index,name
 
     def index(self,name):

@@ -19,6 +19,15 @@ from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 
 from yue.core.song import Song
 
+def exception_guard(fptr,table,index):
+    # guard
+    try:
+        fptr(table[index])
+    except FileNotFoundError as e:
+        print("guard:" + str(e))
+    except Exception as e:
+        print("unhandled:" + str(e))
+
 class ExplorerFileTable(LargeTable):
     """
     """
@@ -86,15 +95,15 @@ class ExplorerFileTable(LargeTable):
         self.columns[-1].editorFinished.connect(self.onEditorFinished)
 
         _rule1 = lambda item : "isHidden" in item or self.data.hidden(item['name'])
-        rule1 = lambda row: _rule1(self.data[row])
+        rule1 = lambda row: exception_guard(_rule1,self.data,row)
         self.addRowTextColorComplexRule(rule1,QColor(0,0,200))
 
         _rule2 = lambda item : item['isLink'] == DataSource.IS_LNK_BROKEN
-        rule2 = lambda row: _rule2(self.data[row])
+        rule2 = lambda row: exception_guard(_rule2,self.data,row)
         self.addRowTextColorComplexRule(rule2,QColor(200,0,0))
 
         _rule3 = lambda item : stat.S_IXUSR&item['mode'] and not item['isDir']
-        rule3 = lambda row: _rule3(self.data[row])
+        rule3 = lambda row: exception_guard(_rule3,self.data,row)
         self.addRowTextColorComplexRule(rule3,QColor(30,125,45))
 
         self.columns.append( TableColumn(self,'size',"Size") )
