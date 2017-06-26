@@ -95,18 +95,26 @@ class LibraryTable(SongTable):
 
         else:
 
+
+
             act = menu.addAction("Play",lambda:self.action_play_next(items,True))
             act.setDisabled( len(items) != 1 )
 
             menu.addAction("Play next",lambda:self.action_play_next(items))
             act.setDisabled( len(items) == 0 )
 
-            act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
-            act.setDisabled( len(items) != 1 )
-
             if isinstance(self.columns[cur_c],EditColumn): # if it is an editable column give the option
                 menu.addAction("Edit Song \"%s\""%self.columns[cur_c].name, \
                     lambda:self.action_edit_column(row,cur_c))
+
+            menu.addSeparator()
+
+            menu_sort = menu.addMenu("Sort")
+            for idx,col in enumerate(self.columns):
+                menu_sort.addAction(col.name,lambda index=idx:self.sortColumn(index))
+
+            act = menu.addAction("Show in Tree View",lambda:self.action_show_in_tree_view(items[0]))
+            act.setDisabled( len(items) != 1 )
 
             menu.addSeparator()
             menu.addAction(QIcon(":/img/app_trash.png"),"Delete from Library",lambda:self.action_delete(items))
