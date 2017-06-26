@@ -44,6 +44,7 @@ from .song import Song, SongSearchGrammar
 from .history import History
 from .sqlstore import SQLTable, SQLView
 from .util import check_path_alternatives
+from .shuffle import binshuffle
 
 try:
     # 3.x name
@@ -64,6 +65,7 @@ def getSortKey( string ):
 
 class Library(object):
     """docstring for Library"""
+
     __instance = None
     def __init__(self, sqlstore):
         super(Library, self).__init__()
@@ -426,6 +428,20 @@ class Library(object):
     # deprecated
     def iter(self):
         return self.song_view.iter()
+
+    def createPlaylist(self,query,size=-1,sortOrder=Song.random):
+        # none is random, otherwise specify a ordering
+        # "limited execut" || "warning"
+
+        songs = self.search(query, orderby=sortOrder)
+        # fake the random sorting
+        if (sortOrder == Song.random):
+            songs = binshuffle(songs,lambda s: s[Song.artist])
+
+        if size > 0 :
+            songs = songs[:size]
+        lst = [ song[Song.uid] for song in songs ]
+        return lst
 
     def search(self, rule , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
 

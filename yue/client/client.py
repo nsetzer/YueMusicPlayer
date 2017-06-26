@@ -1175,11 +1175,16 @@ class MainWindow(QMainWindow):
         if dialog.exec():
 
             params = dialog.getQueryParams()
-            songs = Library.instance().search( \
-                        params['query'],
-                        orderby=dialog.getSortOrder(),
-                        limit=params['limit'])
-            lst = [ song[Song.uid] for song in songs ]
+
+            lst = Library.instance().createPlaylist(
+                params['query'],
+                params['limit'],
+                dialog.getSortOrder())
+            #songs = Library.instance().search( \
+            #            params['query'],
+            #            orderby=dialog.getSortOrder(),
+            #            limit=params['limit'])
+            #lst = [ song[Song.uid] for song in songs ]
 
             if dialog.getCreatePlaylist():
                 self.setNewPlaylist( lst )

@@ -248,8 +248,9 @@ class PlaybackController(object):
         # songs per artist in the resulting list when possible
 
         try:
-            songs = Library.instance().search(query, orderby=Song.random, limit=size)
-            lst = [ song[Song.uid] for song in songs ]
+            lst = Library.instance().createPlaylist(query,size)
+            #search(query, orderby=Song.random, limit=size)
+            #lst = [ song[Song.uid] for song in songs ]
         except ParseError as e:
             sys.stderr.write("%s"%e)
             lst =[]
