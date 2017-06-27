@@ -429,17 +429,20 @@ class Library(object):
     def iter(self):
         return self.song_view.iter()
 
-    def createPlaylist(self,query,size=-1,sortOrder=Song.random):
+    def createPlaylist(self,query,limit=None,sortOrder=Song.random):
         # none is random, otherwise specify a ordering
         # "limited execut" || "warning"
 
-        songs = self.search(query, orderby=sortOrder)
+        # need to apply limit prior to running bin shuffle.
+        # otherwise, bin shuffle is too perfect.
+
+        songs = self.search(query, orderby=sortOrder,limit=limit)
         # fake the random sorting
         if (sortOrder == Song.random):
             songs = binshuffle(songs,lambda s: s[Song.artist])
 
-        if size > 0 :
-            songs = songs[:size]
+        #if limit is not None :
+        #    songs = songs[:limit]
         lst = [ song[Song.uid] for song in songs ]
         return lst
 
