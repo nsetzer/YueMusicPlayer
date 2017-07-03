@@ -233,4 +233,4 @@ class SSHClientSource(DataSource):
         self.ftp.close()
         self.ftp = None
         self.client.close()
-        self.client = None()
+        self.client = None

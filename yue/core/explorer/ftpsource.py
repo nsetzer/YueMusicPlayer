@@ -7,19 +7,27 @@ from .source import DataSource
 import sys
 import re
 
-reftp = re.compile('ftp\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(.*)')
+reftp = re.compile('(ssh|ftp)\:\/\/(([^@:]+)?:?([^@]+)?@)?([^:]+)(:[0-9]+)?\/(.*)')
 
 def parseFTPurl( url ):
     m = reftp.match( url )
     if m:
         g = m.groups()
-        return {
-            "username" : g[1] or "",
-            "password" : g[2] or "",
-            "hostname" : g[3] or "",
-            "port"     : int(g[4][1:]) if g[4] else 21, # default ftp port
-            "path"     : g[5] or "/",
+        result = {
+            "mode"     : g[0],
+            "username" : g[2] or "",
+            "password" : g[3] or "",
+            "hostname" : g[4] or "",
+            "port"     : int(g[5][1:]) if g[5] else 0,
+            "path"     : g[6] or "/",
         }
+        if result['port'] == 0:
+            if result['mode'] == ssh:
+                result['port'] = 22
+            else:
+                result['port'] = 21 # ftp port default
+        return result
+
     raise ValueError("invalid: %s"%url)
 
 def utf8_fix(s):

@@ -18,25 +18,26 @@ class ClientSoundDevice(SoundDevice):
         self.info = info
 
     def unload(self):
-        osc.sendMsg('/audio_action', dataArray=["unload"], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"unload"], port=self.info.serviceport)
 
     def load(self, song):
-        osc.sendMsg('/audio_action', dataArray=["load",song[Song.uid],], port=self.info.serviceport)
-        Logger.info("Load Song: %s"%Song.toString(song))
+        osc.sendMsg(b'/audio_action', dataArray=[b"load",song[Song.uid],], port=self.info.serviceport)
+        msg="Load Song: %s"%Song.toString(song)
+        Logger.info(msg.encode("utf-8"))
 
     def play(self):
-        osc.sendMsg('/audio_action', dataArray=["play"], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"play"], port=self.info.serviceport)
 
     def pause(self):
-        osc.sendMsg('/audio_action', dataArray=["pause"], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"pause"], port=self.info.serviceport)
 
     def playpause(self):
         """ toggle state of audio
         """
-        osc.sendMsg('/audio_action', dataArray=["playpause"], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"playpause"], port=self.info.serviceport)
 
     def seek(self,seconds):
-        osc.sendMsg('/audio_action', dataArray=["seek",seconds], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"seek",seconds], port=self.info.serviceport)
 
     def position(self):
         raise NotImplementedError()
@@ -46,7 +47,7 @@ class ClientSoundDevice(SoundDevice):
 
     def setVolume(self,volume):
         self.volume = volume
-        osc.sendMsg('/audio_action', dataArray=["volume",volume], port=self.info.serviceport)
+        osc.sendMsg(b'/audio_action', dataArray=[b"volume",volume], port=self.info.serviceport)
 
     def getVolume(self):
         return self.volume

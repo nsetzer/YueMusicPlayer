@@ -2,7 +2,10 @@
 import os,sys
 import time
 from threading import Thread, Condition
-import Queue
+if sys.version_info <= (3,0):
+    import Queue as queue
+else:
+    import queue
 
 from kivy.lib import osc
 from kivy.logger import Logger
@@ -54,7 +57,7 @@ class YueServer(object):
         SoundManager.instance().on_playlist_end.connect(self.on_playlist_end)
         SoundManager.instance().on_load.connect(self.on_load)
 
-        self.event_queue = Queue.Queue()
+        self.event_queue = queue.Queue()
         self.cv_wait = Condition()
         self.cv_tick = Condition()
 
@@ -77,7 +80,7 @@ class YueServer(object):
             try:
                 item = self.event_queue.get(block=False)
                 item()
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             # wait for new events
             with self.cv_wait:

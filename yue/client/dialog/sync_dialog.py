@@ -341,7 +341,8 @@ class SyncProfileDialog(QDialog):
 
         print(s)
 
-        if not s['target_path'].startswith("ftp") and \
+        if (not s['target_path'].startswith("ftp") and \
+            not s['target_path'].startswith("ssh")) and \
            not os.path.exists(s['target_path']):
             msg ="Target Path Does Not Exist\n`%s`"%s['target_path']
             QMessageBox.critical(self,"Error",msg)

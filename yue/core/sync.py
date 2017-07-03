@@ -29,12 +29,13 @@ except ImportError:
     sys.stderr.write("PIL unsupported\n")
     PIL = None
 
-
+import io
 import codecs
 import subprocess
 import tempfile, shutil
+from collections import defaultdict
 
-from yue.core.song import Song
+from yue.core.song import Song, get_album_art_data, ArtNotFound
 from yue.core.library import Library
 from yue.core.history import History
 from yue.core.playlist import PlaylistManager
@@ -44,6 +45,10 @@ from yue.core.settings import Settings
 from yue.core.explorer.source import DirectorySource
 from yue.core.explorer.fsutil import source_copy_file
 from yue.core.explorer.ftpsource import FTPSource, parseFTPurl
+from yue.core.explorer.sshsource import SSHClientSource
+
+from PyQt5.QtGui import QImage
+from PyQt5.QtCore import QByteArray, QBuffer , Qt
 
 # TODO: move to source
 def ChangeExt(path,ext):
@@ -255,6 +260,91 @@ class TranscodeProcess(IterativeProcess):
     def end(self):
         return
 
+class CopyAlbumArtProcess(IterativeProcess):
+    """docstring for CopyAlbumArtProcess"""
+
+    def __init__(self, parent=None, datalist=None, no_exec=False):
+        super(CopyAlbumArtProcess,self).__init__( parent )
+        self.datalist = datalist
+        self.no_exec = no_exec
+
+    def begin(self):
+        self.parent.log("copy album art: %d"%len(self.datalist))
+        lib = self.parent.library
+
+        aart = defaultdict(lambda:defaultdict(list))
+
+        setids = set(self.datalist)
+        for song in lib.search(None):
+            if song[Song.uid] in setids:
+                art = song[Song.artist]
+                alb = song[Song.album]
+                path = song[Song.path]
+                aart[art][alb].append(song)
+
+        self.datalist = []
+        for artist, albums in aart.items():
+            for album, songs in albums.items():
+                self.datalist.append( (artist, album, songs) )
+
+
+
+        return len(self.datalist)
+
+    def step(self,idx):
+        src = self.parent.target_source
+        artist, album, songs = self.datalist[idx]
+        print(artist,album,len(songs))
+
+        images = []
+        for song in songs:
+
+            try:
+                image = QImage.fromData(get_album_art_data(song))
+
+                size = max(image.width(),image.height())
+                if size > 512:
+                    image  = image.scaled(512,512,Qt.KeepAspectRatio,
+                                          Qt.SmoothTransformation)
+
+                path = src.join(self.parent.target_path,*Song.toShortPath(song))
+                path = src.fix( path ) # utf-8 fix for FTP clients
+                path = ChangeExt(path,".jpg")
+
+                images.append( (path,image) )
+            except ArtNotFound:
+                pass
+
+        if len(images) == len(songs):
+            for path,image in images:
+                self.copy_image(image,path)
+        elif len(images) > 0:
+            path,image = images[0]
+            path=os.path.join(os.path.split(path)[0],"cover.jpg")
+            self.copy_image(image,path)
+
+
+    def end(self):
+        return
+
+    def copy_image(self,image,path):
+
+        src = self.parent.target_source
+
+        if src.isGetPutSupported():
+
+            ba = QByteArray()
+            buf = QBuffer(ba)
+            image.save(buf,"JPG")
+            #buf.seek(0)
+            fo = io.BytesIO(ba.data())
+            print(path)
+            src.putfo(path,fo)
+
+        else:
+            print("copy not supported for album art")
+
+
 class ImportHistoryProcess(IterativeProcess):
     """import history from a library"""
 
@@ -273,9 +363,11 @@ class ImportHistoryProcess(IterativeProcess):
             tgtdb = self.parent.getTargetLibraryPath()
             self.parent.log("remote db path: %s"%tgtdb)
             if self.parent.target_source.exists(tgtdb):
-                with self.parent.target_source.open(tgtdb,"rb") as rb:
-                    with self.parent.local_source.open(dbpath,"wb") as wb:
-                        wb.write(rb.read())
+                #with self.parent.target_source.open(tgtdb,"rb") as rb:
+                #    with self.parent.local_source.open(dbpath,"wb") as wb:
+                #        wb.write(rb.read())
+                source_copy_file(self.parent.target_source, tgtdb,
+                                 self.parent.local_source, dbpath);
         else:
             dbpath = self.parent.getTargetLibraryPath()
 
@@ -319,6 +411,25 @@ def async_transcode(obj,src,dst):
         obj.local_source.delete(dst)
     obj.transcode_local(src,dst)
 
+def ssh_makedirs(source, dirpath):
+
+    to_create = []
+
+    while not source.exists(dirpath):
+        parent, dirname = os.path.split(dirpath)
+        print(parent,dirname)
+
+        to_create.append(dirname)
+        dirpath = parent;
+        if dirpath =="/":
+            break;
+
+    for name in reversed(to_create):
+        path = source.join(dirpath, name)
+        print(path)
+        source.mkdir(path)
+        dirpath = path
+
 class ParallelTranscodeProcess(IterativeProcess):
     """
 
@@ -351,6 +462,7 @@ class ParallelTranscodeProcess(IterativeProcess):
         if not self.no_exec:
             self.tempdir = tempfile.mkdtemp(prefix="yuesync_")
         sys.stdout.write("create temp directory: %s\n"%self.tempdir)
+        sys.stdout.write("temp directory exists: %s\n"%os.path.exists(self.tempdir))
         return self
 
     def __exit__(self, type, value, traceback):
@@ -398,8 +510,11 @@ class ParallelTranscodeProcess(IterativeProcess):
                         continue
 
                     p = self.parent.target_source.parent(tgtpath)
-                    self.parent.target_source.mkdir( p )
 
+                    print("join: mkdir")
+                    #self.parent.target_source.mkdir( p )
+                    ssh_makedirs(self.parent.target_source, p)
+                    print("join: copy file")
                     source_copy_file(self.parent.local_source, trpath,
                                      self.parent.target_source, tgtpath, 1<<15)
             except Exception as e:
@@ -451,9 +566,12 @@ class WritePlaylistProcess(IterativeProcess):
             try:
                 path = self.parent.target_source.join(self.parent.target_path,name)
                 print("%s"%path)
-                with self.parent.target_source.open(path,"wb") as wb:
-                    w = codecs.getwriter("utf-8")(wb)
-                    saveM3uPlaylist(w,songs)
+                if self.parent.target_source.isOpenSupported():
+                    with self.parent.target_source.open(path,"wb") as wb:
+                        w = codecs.getwriter("utf-8")(wb)
+                        saveM3uPlaylist(w,songs)
+                else:
+                    print("TODO: saving not supported")
             except Exception as e:
                 print(type(e))
                 print("%s"%e)
@@ -469,9 +587,12 @@ class WritePlaylistProcess(IterativeProcess):
             try:
                 path = self.parent.target_source.join(self.parent.target_path,name)
                 print("%s"%path)
-                with self.parent.target_source.open(path,"wb") as wb:
-                    w = codecs.getwriter("utf-8")(wb)
-                    saveCowonPlaylist(w,songs)
+                if self.parent.target_source.isOpenSupported():
+                    with self.parent.target_source.open(path,"wb") as wb:
+                        w = codecs.getwriter("utf-8")(wb)
+                        saveCowonPlaylist(w,songs)
+                else:
+                    print("TODO: saving not supported")
             except Exception as e:
                 print(type(e))
                 print("%s"%e)
@@ -537,9 +658,25 @@ class SyncManager(object):
 
         self.local_source = DirectorySource()
 
-        if target.startswith("ftp"):
+        print("open target source:" + target)
+        data = {"mode":"local"}
+        try:
             data = parseFTPurl(target)
-            print(data)
+        except ValueError as e:
+            print(e)
+            pass # try to open using local
+
+        print(data)
+
+        if data["mode"] == "ssh":
+
+            self.target_source = SSHClientSource.fromPrivateKey(data["hostname"],
+                                                                data["port"],
+                                                                data["username"],
+                                                                data["password"]);
+            self.target_path = data["path"]
+
+        elif data["mode"] == "ftp":
             self.target_path = data["path"]
             self.target_source = FTPSource(data["hostname"],
                                            data["port"],
@@ -547,6 +684,8 @@ class SyncManager(object):
                                            data["password"])
 
         else:
+            if not os.path.exists(target):
+                raise Exception("target not found")
             self.target_source = self.local_source
             self.target_path = target
 
@@ -586,6 +725,11 @@ class SyncManager(object):
         self.data.equalize = self.equalize
         self.data.bitrate = self.bitrate
 
+        self.message("Copy Album Art")
+        proc = CopyAlbumArtProcess(parent=self,datalist=self.song_ids)
+        self.run_proc( proc )
+        return
+
         self.message("Scanning Directory")
         self.target_source.mkdir(self.target_path)
 
@@ -599,6 +743,8 @@ class SyncManager(object):
         delete_list = self.walk_target()
         copylist = list(self.data.items_copy())
         transcodelist =  list(self.data.items_transcode())
+
+
 
         NPARALLEL=5
 
@@ -627,6 +773,8 @@ class SyncManager(object):
             proc = ParallelTranscodeProcess(parent=self,datalist=transcodelist,
                         NPARALLEL=NPARALLEL,no_exec=self.no_exec)
             self.run_proc( proc )
+
+
 
         target_library = self.createTargetLibrary()
 
@@ -771,7 +919,6 @@ class SyncManager(object):
                 sys.stderr.write("unable to delete %s\n"%dirpath)
             return
 
-
     def remove_path(self,filepath):
         self.log("delete: %s"%filepath)
         if not self.no_exec:
@@ -846,7 +993,8 @@ class SyncManager(object):
         #drive = os.path.splitdrive(self.target)[0] + os.sep
         #player_path = self.player_directory or \
         #              os.path.join(drive,"Player","user","");
-        name = "library.db"
+        # was library.db
+        name = "yue-library.v1.sqlitedb"
         if isinstance(self.target_source,DirectorySource):
             name = "yue.db"
 

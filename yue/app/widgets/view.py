@@ -89,8 +89,8 @@ from kivy.logger import Logger
 
 import kivy.metrics
 
-from expander import Expander
-from tristate import TriState, TriStateCheckBox, TriStateExpander
+from .expander import Expander
+from .tristate import TriState, TriStateCheckBox, TriStateExpander
 
 import time
 
