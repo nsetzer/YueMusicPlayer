@@ -1,4 +1,4 @@
-#! cd ../.. && python2.7 main.py --size=480x640
+#! cd ../.. && python main.py --size=480x640
 
 """
 

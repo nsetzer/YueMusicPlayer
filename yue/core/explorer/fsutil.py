@@ -157,7 +157,7 @@ def source_walk(source,dirpath):
         else:
             yield path
 
-def source_copy_file(src_view,src_path,dst_view,dst_path,chunksize,callback=32*1024):
+def source_copy_file(src_view,src_path,dst_view,dst_path,chunksize=32*1024,callback=None):
 
     """
     Perform file copy from one source to another.
