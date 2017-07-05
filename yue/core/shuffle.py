@@ -6,7 +6,8 @@ import random
 
 class ShuffleElement(object):
 
-    def __init__( self, ref , index ):
+    def __init__( self, key, ref , index ):
+        self.key = key
         self.ref = ref
         self.index = index
         self.score = 0
@@ -18,51 +19,49 @@ def fisher_yates(data):
         data[i],data[j] = data[j],data[i]
 
 def binshuffle(data,group_mapping=lambda x:x):
-    # count the number of each artist
-    # assign each element an index
-    # n : number of elements
-    # i : index of an element in a group
-    # ngrp : number of elements in a group
-    # ngrps: number of groups
-    # n*i/ngrp +/- log(ngrps)+1
-    # sort elements by there index
-
-    # determine the number of groups, and the number of elements in that group
-
     grpcounts = {}
     grpoffset = {}
     temp = []
 
+    N = len(data)
+
+    if N < 2:
+        return data;
+
+    # pre shuffle the data to randomize the output
+    # Otherwise items within a group would always be output
+    # in the same order found in the input array
     fisher_yates(data)
 
+    # count the number of elements in each group
+    # assign a value from 0 to G to each element in a group
     for elem in data:
         k = group_mapping(elem)
         if k not in grpcounts:
             grpcounts[k] = 1
         else:
             grpcounts[k] += 1
-        temp.append(ShuffleElement(elem,grpcounts[k] - 1))
+        temp.append(ShuffleElement(k, elem, grpcounts[k] - 1))
 
     # generate an initial offset for each group
-    for grp in grpcounts.keys():
-        t = (math.log(len(grpcounts),2)+1)
-        # if there are more of a group, should i weight then lower?
-        offset = random.random() * t - t
-        grpoffset[grp] = offset
+    # the offset is random, and the range is chosen to
+    # solve the degenerate problem where some groups contain a few
+    # elements, and others contain many elements.
+    for grp,count in grpcounts.items():
+        grpoffset[grp] = random.random() * (N/count)
 
     # calculate a score for each element
+    # the score ranges from 0-h/2 to N+h/2.
+    # elements within a group are spaced
+    # evenly within this range.
     for i,elem in enumerate(temp):
-        k = group_mapping(elem.ref)
-        ngrp = grpcounts[k]
-        ngrps = len(grpcounts)
-        # TODO: the random offset added here should
-        # be equal to half the width to the next element of this grp
-        # int(N/ngrp/2)
-        h = int(len(temp) / ngrp / 2)
-        #offset = (random.random() - .5) + grpoffset[k]
-        offset = random.random()*h - h/2 + grpoffset[k]
-        elem.score = len(temp)*elem.index/float(ngrp) + offset
+        count = grpcounts[elem.key]
+        h = (N/count)/2
+        offset = random.random()*h - h/2 + grpoffset[elem.key]
+        elem.score = N*elem.index/count + offset
 
+    # finally sort by the score, randomizing the elements
+    # while separating items that belong to the same group
     temp = sorted(temp,key=lambda x:x.score)
 
     return [x.ref for x in temp]
@@ -72,11 +71,12 @@ def main():
 
     colors = "rgby"
     counts = [3,3,3,3]
-
     data = sum([ [c,]*n for c,n in zip(colors,counts) ],[])
+    data.append("A")
+    data.append("B")
+    data.append("C")
     print(data)
-    data = shuffle(data)
-    print([x for x in data])
+    print(binshuffle(data))
 
 if __name__ == '__main__':
     main()

@@ -3,17 +3,7 @@
 from yue.core.sqlstore import SQLTable
 
 import random
-
-def random_shuffle(lst):
-    """
-    todo: combine this with an algorithm to prevent repeated artists
-
-    https://labs.spotify.com/2014/02/28/how-to-shuffle-songs/
-    """
-    for j in reversed(range(len(lst))):
-        i = random.randint(0,j)
-        lst[i],lst[j] = lst[j],lst[i]
-    return lst
+from .shuffle import binshuffle
 
 class PlaylistManager(object):
     """docstring for PlaylistManager"""
@@ -327,16 +317,23 @@ class PlayListView(object):
             if start is None:
                 start = current + 1;
             # extract the set of songs in the given range
-            c.execute("SELECT song_id from playlist_songs where uid=? and idx BETWEEN ? and ?", (self.uid,start,end))
+            c.execute("SELECT p.song_id, s.artist" +
+                      " FROM playlist_songs p" +
+                      " JOIN songs s" +
+                      " WHERE ((p.uid=? AND p.song_id==s.uid)" +
+                      " AND (p.idx BETWEEN ? and ?))", (self.uid,start,end));
             keys = []
+            groups = {}
             items = c.fetchmany()
             while items:
                 for item in items:
                     keys.append( item[0] )# song_id
+                    groups[item[0]] = item[1] # map song_id to artist
                 items = c.fetchmany()
             # this part could probably be done better
             # shuffle the song set
-            random.shuffle(keys)
+            #random.shuffle(keys)
+            binshuffle(keys,lambda k:groups[k])
             # write the new order back to the list
             for i,k in enumerate(keys):
                 c.execute("UPDATE playlist_songs SET song_id=? WHERE uid=? and idx=?",(k,self.uid,start+i))
@@ -355,6 +352,10 @@ class PlayListView(object):
             c = conn.cursor()
             _, _, _, current = self.db_names._get( c, self.uid );
 
+            # TODO: to get groups here, use the same query from shuffle_range
+            # with start and end set to the min and max of the selection index
+            # then pull the results out of that slice.
+
             for item in lst:
                 key = self._get(c, item)
                 keys.append( key )
@@ -363,6 +364,7 @@ class PlayListView(object):
                     current_key = key
 
             random.shuffle( keys )
+            #binshuffle(keys,lambda k:groups[k])
 
             for i,k in zip(lst, keys):
                 c.execute("UPDATE playlist_songs SET song_id=? WHERE uid=? and idx=?",(k,self.uid,i))
