@@ -7,10 +7,12 @@ from PyQt5.QtGui import *
 
 import os
 import traceback
+import math
 
 from yue.core.settings import Settings
 
 from yue.qtcommon.Tab import TabWidget
+from yue.qtcommon.LineEdit import LineEditHistory
 
 from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.sshsource import SSHClientSource
@@ -108,6 +110,64 @@ class NewVagrantTabJob(Job):
         except ConnectionRefusedError as e:
             sys.stderr.write("error: %s\n"%e)
 
+class Calculator(QWidget):
+    """docstring for Calculator"""
+    def __init__(self, parent=None):
+        super(Calculator, self).__init__(parent)
+
+        self.layout = QVBoxLayout(self);
+        self.layout.setContentsMargins(16,0,16,0)
+        self.input = LineEditHistory(self)
+        self.output = QLabel(self);
+        self.output.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.input.accepted.connect(self.evaluate)
+        self.layout.addWidget(self.input);
+        self.layout.addWidget(self.output);
+
+        self.globals = {"__builtins__":None}
+        self.locals = {}
+        for key in dir(math):
+            if not key.startswith("_"):
+                self.locals[key] = getattr(math,key);
+        self.locals['ans'] = 0
+        self.locals['abs'] = abs
+        self.locals['ascii'] = ascii
+        self.locals['bin'] = bin
+        self.locals['bool'] = bool
+        self.locals['chr'] = chr
+        self.locals['complex'] = complex
+        self.locals['divmod'] = divmod
+        self.locals['float'] = divmod
+        self.locals['hex'] = hex
+        self.locals['int'] = int
+        self.locals['max'] = max
+        self.locals['min'] = min
+        self.locals['oct'] = oct
+        self.locals['ord'] = ord
+        self.locals['pow'] = pow
+        self.locals['round'] = round
+        self.locals['str'] = str
+        self.locals['sum'] = sum
+        self.locals['fold'] = lambda initial,seq: sum(seq,initial)
+        self.locals['sign'] = lambda x: 1 if x>=0 else -1
+        self.locals['j'] = complex(0,1)
+        print(' '.join(list(self.locals.keys())))
+
+# /Users/nsetzer/git/Cogito/System/DialogWeb/dialogserver/src/main/java/com/cogito/dialog/web/endpoint
+    def evaluate(self,text):
+
+        text=text.strip()
+        if not text:
+            return;
+
+        try:
+            result = eval(text,self.globals,self.locals);
+            self.output.setText(str(result));
+            self.locals["ans"] = result;
+        except Exception as e:
+            self.output.setText(str(e))
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
     def __init__(self,defaultpath,defaultpath_r=""):
@@ -150,17 +210,18 @@ class MainWindow(QMainWindow):
         self.pain_main.addWidget(self.tabview)
         self.pain_main.addWidget(self.dashboard)
 
+        self.calculator = Calculator(self)
+
         self.wview = QWidget()
         self.vbox_view = QVBoxLayout(self.wview)
         self.vbox_view.setContentsMargins(0,0,0,0)
         self.vbox_view.addWidget(self.quickview.container)
         self.vbox_view.addWidget(self.wfview.container)
+        self.vbox_view.addWidget(self.calculator)
         self.splitter.addWidget(self.wview)
         self.splitter.addWidget(self.pain_main)
 
         self.setCentralWidget(self.splitter)
-
-
 
         # create the first tab
         self.newTab(defaultpath,defaultpath_r)

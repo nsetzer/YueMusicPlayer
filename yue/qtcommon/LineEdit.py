@@ -12,6 +12,8 @@ from yue.core.SymTr import SymTr
 
 class LineEdit(QLineEdit):
 
+    accepted = pyqtSignal(str)
+
     def __init__(self,parent=None):
         self.color = QColor(127,127,127)
         super(LineEdit,self).__init__(parent)
@@ -25,6 +27,7 @@ class LineEdit(QLineEdit):
         key = event.key()
         if key == Qt.Key_Enter or key == Qt.Key_Return :
             self.keyReleaseEnter(self.displayText())
+            self.accepted.emit(self.displayText())
 
     def keyReleaseEnter(self,text):
         pass # print text
@@ -65,6 +68,7 @@ class LineEditHistory(LineEdit):
         elif key == Qt.Key_Enter or key == Qt.Key_Return :
             self.updateHistory(txt);
             self.keyReleaseEnter(txt)
+            self.accepted.emit(txt)
             self.setText("")
 
     def updateHistory(self,text):
