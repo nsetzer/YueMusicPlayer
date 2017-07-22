@@ -285,31 +285,43 @@ class CopyAlbumArtProcess(IterativeProcess):
         self.datalist = []
         for artist, albums in aart.items():
             for album, songs in albums.items():
-                self.datalist.append( (artist, album, songs) )
-
-
+                if len(songs) > 0:
+                    self.datalist.append( (artist, album, songs) )
 
         return len(self.datalist)
 
     def step(self,idx):
         src = self.parent.target_source
         artist, album, songs = self.datalist[idx]
-        print(artist,album,len(songs))
 
         images = []
+        # iterate over all songs for a given artist and album pair
+        default_image_path = src.join(self.parent.target_path,*Song.toShortPath(songs[0]))
+        default_image_path=os.path.join(os.path.split(default_image_path)[0],"cover.jpg")
+
+        if src.exists(default_image_path):
+            return;
+
+        print(artist,album,len(songs))
+
         for song in songs:
 
             try:
+
+                path = src.join(self.parent.target_path,*Song.toShortPath(song))
+                path = src.fix( path ) # utf-8 fix for FTP clients
+                path = ChangeExt(path,".jpg")
+
+                if src.exists(path):
+                    continue;
+
+                # load the image
                 image = QImage.fromData(get_album_art_data(song))
 
                 size = max(image.width(),image.height())
                 if size > 512:
                     image  = image.scaled(512,512,Qt.KeepAspectRatio,
                                           Qt.SmoothTransformation)
-
-                path = src.join(self.parent.target_path,*Song.toShortPath(song))
-                path = src.fix( path ) # utf-8 fix for FTP clients
-                path = ChangeExt(path,".jpg")
 
                 images.append( (path,image) )
             except ArtNotFound:
@@ -319,9 +331,7 @@ class CopyAlbumArtProcess(IterativeProcess):
             for path,image in images:
                 self.copy_image(image,path)
         elif len(images) > 0:
-            path,image = images[0]
-            path=os.path.join(os.path.split(path)[0],"cover.jpg")
-            self.copy_image(image,path)
+            self.copy_image(image,default_image_path)
 
 
     def end(self):
@@ -343,7 +353,6 @@ class CopyAlbumArtProcess(IterativeProcess):
 
         else:
             print("copy not supported for album art")
-
 
 class ImportHistoryProcess(IterativeProcess):
     """import history from a library"""
@@ -725,10 +734,6 @@ class SyncManager(object):
         self.data.equalize = self.equalize
         self.data.bitrate = self.bitrate
 
-        self.message("Copy Album Art")
-        proc = CopyAlbumArtProcess(parent=self,datalist=self.song_ids)
-        self.run_proc( proc )
-        return
 
         self.message("Scanning Directory")
         self.target_source.mkdir(self.target_path)
@@ -774,6 +779,9 @@ class SyncManager(object):
                         NPARALLEL=NPARALLEL,no_exec=self.no_exec)
             self.run_proc( proc )
 
+        self.message("Copy Album Art")
+        proc = CopyAlbumArtProcess(parent=self,datalist=self.song_ids)
+        self.run_proc( proc )
 
 
         target_library = self.createTargetLibrary()

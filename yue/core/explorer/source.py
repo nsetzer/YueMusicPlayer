@@ -800,12 +800,14 @@ class SourceListView(SourceView):
             "name"  : name,
             "mode"  : 0,
         }
+
         if self.text_filter is not None:
             index = len(self.data_filtered)
+            self.data_filtered.append(name)
         else:
             index = len(self.data)
-        self.data.append(name)
-        self.data_filtered.append(name)
+            self.data.append(name)
+
         return index,name
 
     def index(self,name):
