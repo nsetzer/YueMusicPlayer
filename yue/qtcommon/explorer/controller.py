@@ -98,8 +98,6 @@ class ExplorerController(DummyController):
                 lambda : model.action_copy_path_name(items[0]))
             ctxtmenu.addSeparator()
 
-
-
     def contextMenu(self, event, model, items):
 
         ctxtmenu = QMenu(model)

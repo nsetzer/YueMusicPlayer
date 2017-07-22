@@ -266,7 +266,6 @@ class ExplorerFileTable(LargeTable):
         if '0' <= char <= '9' or 'A' <= char <= 'Z' or char == " ":
             self.jump_to_letter(char)
 
-
     def keyPressDelete(self,event):
         if event.key() == Qt.Key_Backspace:
             self.parent().chdir_parent()
@@ -309,7 +308,6 @@ class ExplorerFileTable(LargeTable):
                 break
 
         self.time_last_keypress = time_current
-
 
     def onEditorStart(self):
 
