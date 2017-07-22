@@ -175,9 +175,8 @@ def move_one_lib(src,lib,src_path,dst_path):
         songs = lib.searchDirectory( src_path ,True)
         src.move(src_path,dst_path)
         for song in songs:
-            tmp = tgt + song[Song.path][len(src_path):]
+            tmp = dst_path + song[Song.path][len(src_path):]
             lib.update(song[Song.uid],path=tmp)
-            self.updated_count += 1
     else:
         songs = lib.searchPath( src_path )
         src.move(src_path,dst_path)

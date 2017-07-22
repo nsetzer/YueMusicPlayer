@@ -1,4 +1,4 @@
-#! python35 ../../../test/test_client.py $this
+#! cd ../../.. && python client-main.py
 
 import os, sys
 
