@@ -166,9 +166,7 @@ class FFmpegEncoder(object):
         # otherwise: '[WinError 6] The handle is invalid'
         # shell must be true to prevent a cmd window from opening
         if not self.no_exec:
-            with open(os.devnull, 'r') as nulr:
-                with open(os.devnull, 'w') as nulw:
-                    subprocess.check_call(args,stdin=nulr,shell=False)
+            subprocess.check_call(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True)
 
 class IterativeProcess(object):
     """docstring for IterativeProcess"""
@@ -338,6 +336,8 @@ class CopyAlbumArtProcess(IterativeProcess):
         return
 
     def copy_image(self,image,path):
+        # TODO : fails if the directory does not exist
+        # (which  indicates the transcode failed)
 
         src = self.parent.target_source
 
