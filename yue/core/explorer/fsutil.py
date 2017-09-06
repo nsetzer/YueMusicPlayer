@@ -211,7 +211,12 @@ def source_copy_file(src_view,src_path,dst_view,dst_path,chunksize=32*1024,callb
                     if callback:
                         callback(bytes_copied,bytes_total)
                     buf = rb.read(chunksize)
-            dst_view.chmod(dst_path,st['mode'])
+            #TODO: for now ignore chmod errors.
+            # an exception here fails the entire transfer process.
+            try:
+                dst_view.chmod(dst_path,st['mode'])
+            except Exception as e:
+                sys.stderr.write("Error Changing Permissions: %s"%(e))
 
     elif so and dg:
 

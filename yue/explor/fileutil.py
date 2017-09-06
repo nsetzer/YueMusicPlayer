@@ -120,6 +120,12 @@ def do_extract(args):
     args.archive_path = _normpath(args.archive_path,args.pwd)
     args.directory = _normpath(args.directory,args.pwd)
 
+    if not os.path.exists(args.directory):
+        os.makedirs(args.directory)
+
+    if not os.path.isdir(args.directory):
+        raise Exception("output not a directory")
+
     _extract(args.archive_path,args.directory)
 
     return 0;

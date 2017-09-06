@@ -349,8 +349,9 @@ def parse_args(script_file):
         if not args.path_r.startswith("/"):
             args.path_r = os.path.join(args.pwd,args.path_r)
 
-        if os.path.isfile(args.path_r):
-            args.path_r,_ = os.path.split(args.path_r)
+        if mode in {"browse",}:
+            if os.path.isfile(args.path_r):
+                args.path_r,_ = os.path.split(args.path_r)
 
     if mode == "diff":
         cmdstr = Settings.instance()['cmd_diff_files']

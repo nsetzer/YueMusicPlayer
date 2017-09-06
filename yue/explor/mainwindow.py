@@ -203,6 +203,7 @@ class MainWindow(QMainWindow):
         self.wfview.changeDirectory.connect(self.onChangeDirectory)
 
         self.tabview = TabWidget( self )
+        self.tabview.tabBar().setMovable(True)
         self.tabview.setCornerWidget(self.btn_newTab)
         self.tabview.tabCloseRequested.connect(self.onTabCloseRequest)
         self.tabview.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
