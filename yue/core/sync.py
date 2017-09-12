@@ -166,7 +166,11 @@ class FFmpegEncoder(object):
         # otherwise: '[WinError 6] The handle is invalid'
         # shell must be true to prevent a cmd window from opening
         if not self.no_exec:
-            subprocess.check_call(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True)
+            subprocess.check_call(args,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                shell=True)
 
 class IterativeProcess(object):
     """docstring for IterativeProcess"""
