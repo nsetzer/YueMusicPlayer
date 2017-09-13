@@ -83,7 +83,6 @@ copy paste a directory within  a directory fails...
 
 """
 
-
 class NewVagrantTabJob(Job):
     """docstring for NewVagrantTabJob"""
 
@@ -154,7 +153,6 @@ class Calculator(QWidget):
         self.locals['j'] = complex(0,1)
         print(' '.join(list(self.locals.keys())))
 
-# /Users/nsetzer/git/Cogito/System/DialogWeb/dialogserver/src/main/java/com/cogito/dialog/web/endpoint
     def evaluate(self,text):
 
         text=text.strip()
@@ -184,7 +182,7 @@ class MainWindow(QMainWindow):
 
         # controller maintains state between tabs
         self.source = DirectorySource()
-        self.controller = ExplorController( )
+        self.controller = ExplorController( self )
         self.controller.forceReload.connect(self.refresh)
         self.controller.submitJob.connect(self.dashboard.startJob)
 

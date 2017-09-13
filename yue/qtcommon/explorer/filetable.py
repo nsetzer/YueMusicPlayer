@@ -36,6 +36,7 @@ class ExplorerFileTable(LargeTable):
     createDirectory = pyqtSignal(str)
     focusQuery = pyqtSignal()
     deletePaths = pyqtSignal(list) # list of items
+    focusUp = pyqtSignal()
 
     def __init__(self, view, parent=None):
         super(ExplorerFileTable,self).__init__(parent)
@@ -260,6 +261,15 @@ class ExplorerFileTable(LargeTable):
     def getFormatedDate(self,item):
         value = self.parent().getSlowData(item,"mtime")
         return format_date(value)
+
+    def keyPressEvent(self,event=None):
+        if len(self.selection) == 1 and \
+           list(self.selection)[0] == 0 and \
+           event.key() == Qt.Key_Up:
+           self.focusUp.emit()
+        else:
+            super(ExplorerFileTable,self).keyPressEvent(event)
+
 
     def keyPressOther(self,event):
         char = chr(event.key())

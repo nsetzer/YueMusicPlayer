@@ -10,6 +10,8 @@ from yue.qtcommon.LineEdit import LineEdit
 
 from yue.core.util import format_date, format_bytes, format_mode
 
+from yue.qtcommon.explorer.ContextBar import ContextBar
+
 from yue.qtcommon.explorer.filetable import ResourceManager
 from yue.qtcommon.explorer.jobs import Job, \
     RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
@@ -25,12 +27,55 @@ class LineEdit_Path(LineEdit):
         if event.key() == Qt.Key_Down:
             self.table.clearSelection( )
             self.table.setSelection( [0,] )
-            self.table.update(0)
+            self.table.scrollTo(0)
+            self.table.update()
             self.table.setFocus()
 
     def keyReleaseEnter(self,text):
         self.table.scrollTo(0)
         self.parent().chdir( self.text() )
+
+class ContextBarPath(ContextBar):
+
+    #  http://doc.qt.io/qt-5/qcombobox.html#lineEdit
+
+    def __init__(self,parent,controller,table):
+        super(ContextBarPath,self).__init__(parent)
+        self.table = table
+        self.controller = controller
+
+        self.installEventFilter(self)
+
+    def keyReleaseEvent(self,event=None):
+        super(ContextBarPath,self).keyReleaseEvent(event)
+        if event.key() == Qt.Key_Down:
+            self.table.clearSelection( )
+            self.table.setSelection( [0,] )
+            self.table.scrollTo(0)
+            self.table.update()
+            self.table.setFocus()
+
+    def keyReleaseEnter(self,text):
+        self.table.scrollTo(0)
+        self.parent().chdir( self.text() )
+
+    def eventFilter(self,target,event):
+        if target == self and event.type() == QEvent.MouseButtonPress:
+            print("Button press")
+            self.fillComboBox()
+        return False
+
+    def fillComboBox(self):
+        self.clear();
+        views = self.controller.getContextPaths();
+
+        # todo, build a unique set of directory source views
+        # and build the list of non-directory source views
+        # and their paths.
+        self.addItem(self.text(),None)
+        for i,view in enumerate(views):
+            print("ContextBox: ",i,view.source)
+            self.addItem(view.pwd(),view)
 
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
@@ -63,25 +108,30 @@ class ExplorerModel(QWidget):
 
         self.tbl_file = self._getNewFileTable(view)
 
+        self.tbl_file.focusUp.connect(self.onTableFocusUp)
+
         self.tbl_file.selection_changed.connect(self.onTableSelectionChanged)
         self.tbl_file.deletePaths.connect(lambda lst:self.controller.action_delete(self,lst))
 
-        self.txt_path = LineEdit_Path(self,self.tbl_file)
+        self.txt_path = ContextBarPath(self, controller, self.tbl_file)
+
+        self.txt_path.currentIndexChanged.connect(self.onContextIndexChanged)
+
+
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
         #self.txt_path.textEdited.connect(self.onTextChanged)
 
         self.txt_filter = LineEdit(self)
+        self.txt_filter.setPlaceholderText("filter")
         self.txt_filter.setText("")
         self.txt_filter.textEdited.connect(self.onFilterTextChanged)
 
         self.tbl_file.focusQuery.connect(lambda:self.txt_filter.setFocus(Qt.ShortcutFocusReason))
 
-
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
         self.btn_split.setHidden(True)
         self.btn_split.clicked.connect( self.on_splitButton_clicked )
-
 
         self.btn_prev = QToolButton(self)
         self.btn_prev.clicked.connect( self.chdir_prev )
@@ -400,12 +450,6 @@ class ExplorerModel(QWidget):
         self.controller.action_update_replace( self.view.realpath(item['name']) )
 
     def on_splitButton_clicked(self):
-
-        #self.btn_split.setHidden( !self.secondaryHidden() )
-        #if self.controller.secondaryHidden():
-        #    self.controller.action_open_view()
-        #else:
-        #    self.controller.action_close_view()
         self.toggleSecondaryView.emit()
 
     def canPaste( self ):
@@ -491,3 +535,17 @@ class ExplorerModel(QWidget):
 
     def onRenameFinished(self):
         pass
+
+    def onTableFocusUp(self):
+        self.txt_path.setFocus()
+
+    def onContextIndexChanged(self,index):
+        # todo expand support for different view types
+        # I need to build out a way for views to be closed
+        # when there are no more references.
+        view = self.txt_path.itemData(index)
+        path = self.txt_path.itemText(index)
+
+        if view is not None:
+            self.view.chdir( path )
+            self.tbl_file.update()

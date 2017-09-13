@@ -391,6 +391,8 @@ class YML(object):
         here, a section is a dictionary of key:basic_type
         """
         wf.write("["+section_name+"]\n")
+        if not hasattr(section,"items"):
+            raise Exception("section `%s` not an dictionary."%section_name)
         for parameter_name,parameter_value in section.items():
             self._dump_parameter(wf,parameter_name,parameter_value)
 

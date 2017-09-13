@@ -11,12 +11,14 @@ from yue.explor.fileutil import extract_supported, do_extract, do_compress
 import shlex
 import subprocess
 
+from yue.explor.ui.tabview import ExplorerView
 
 class ExplorController(ExplorerController):
 
-    def __init__(self):
+    def __init__(self, window):
         super(ExplorController,self).__init__()
         self.act_diff_left_path = None
+        self.window = window
 
     def contextMenu(self, event, model, items):
 
@@ -105,3 +107,16 @@ class ExplorController(ExplorerController):
         subprocess.Popen(args)
 
         self.act_diff_left_path = None
+
+    def getContextPaths(self):
+        # TODO super hack ::
+        views = []
+        for i in range(self.window.tabview.count()):
+            widget = self.window.tabview.widget(i)
+            if isinstance(widget,ExplorerView):
+                mdl1 = widget.ex_main
+                mdl2 = widget.ex_secondary
+                views.append(mdl1.view)
+                #if mdl2.isVisible():
+                views.append(mdl2.view)
+        return views

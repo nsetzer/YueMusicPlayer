@@ -34,9 +34,11 @@ class DummyController(QObject):
         pass
     def action_close_view(self):
         pass
-
     def secondaryHidden(self):
         return True
+
+    def getContextPaths(self):
+        return []
 
 class ExplorerController(DummyController):
 
