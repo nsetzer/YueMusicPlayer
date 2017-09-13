@@ -47,17 +47,13 @@ class TestSearchMeta(type):
     """
     def __new__(cls, name, bases, attr):
 
-        def gen_compare_test(test_name,rule):
+        def gen_compare_test(rule):
             """ check that a given rule returns the same results,
                 using the sql expression, or directly applying the rule """
             def test(self):
-                print(test_name)
-                print([ elem['playcount'] for elem in self.sqlview ])
-
                 s1 = extract( 'uid', naive_search( self.sqlview, rule) )
                 s2 = extract( 'uid', sql_search( self.sqlview, rule ) )
-
-                m = "\ntest: %s\nrule: %s\ns1(naive): %s\ns2( sql ):%s\n"%(test_name,rule,s1,s2)
+                m = "\nrule: %s\ns1(naive): %s\ns2( sql ):%s\n"%(rule,s1,s2)
                 self.assertEqual(s1,s2,m)
             return test
 
@@ -99,7 +95,7 @@ class TestSearchMeta(type):
 
         for i, rule in enumerate(rules):
             test_name = "test_rule_%d" % i
-            attr[test_name] = gen_compare_test(test_name,rule)
+            attr[test_name] = gen_compare_test(rule)
 
         attr["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
         attr["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)
