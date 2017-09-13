@@ -4,6 +4,7 @@ import unittest
 import os
 from yue.core.playlist import PlaylistManager, reinsertList
 from yue.core.sqlstore import SQLStore
+from yue.core.library import Library
 
 DB_PATH = "./unittest.db"
 PL_NAME = 'demo'
@@ -252,6 +253,7 @@ class TestPlaylist(unittest.TestCase):
     def test_playlist_shuffle(self):
         sqlstore = SQLStore( DB_PATH )
         pm = PlaylistManager( sqlstore )
+        lib = Library(sqlstore)
         pl = pm.openPlaylist(PL_NAME)
         pl.set( [1,2,3,4,5] )
 

@@ -47,13 +47,18 @@ class TestSearchMeta(type):
     """
     def __new__(cls, name, bases, attr):
 
-        def gen_compare_test(rule):
+        def gen_compare_test(test_name,rule):
             """ check that a given rule returns the same results,
                 using the sql expression, or directly applying the rule """
             def test(self):
-                s1 = extract( 'uid', naive_search( self.sqlview, rule ) )
+                print(test_name)
+                print([ elem['playcount'] for elem in self.sqlview ])
+
+                s1 = extract( 'uid', naive_search( self.sqlview, rule) )
                 s2 = extract( 'uid', sql_search( self.sqlview, rule ) )
-                self.assertEqual(s1, s2)
+
+                m = "\ntest: %s\nrule: %s\ns1(naive): %s\ns2( sql ):%s\n"%(test_name,rule,s1,s2)
+                self.assertEqual(s1,s2,m)
             return test
 
         def gen_compare_count_test(rule,count):
@@ -71,30 +76,30 @@ class TestSearchMeta(type):
                 self.assertEqual(s1, s2)
             return test
 
-        rng1 = RangeSearchRule('playcount',1995,2005)
-        rng2 = NotRangeSearchRule('playcount',1995,2005)
+        rng1 = RangeSearchRule('playcount',1995,2005,type_=int)
+        rng2 = NotRangeSearchRule('playcount',1995,2005,type_=int)
 
         # show that two rules combined using 'and' produce the expected result
-        gt1=GreaterThanEqualSearchRule('playcount',1995)
-        lt1=LessThanEqualSearchRule('playcount',2005)
+        gt1=GreaterThanEqualSearchRule('playcount',1995,type_=int)
+        lt1=LessThanEqualSearchRule('playcount',2005,type_=int)
 
         # show that two rules combined using 'or' produce the correct result
-        lt2=LessThanSearchRule('playcount',1995)
-        gt2=GreaterThanSearchRule('playcount',2005)
+        lt2=LessThanSearchRule('playcount',1995,type_=int)
+        gt2=GreaterThanSearchRule('playcount',2005,type_=int)
 
         pl1 = PartialStringSearchRule('artist','art1')
         pl2 = InvertedPartialStringSearchRule('artist','art1')
         rules = [ pl1,
                   pl2,
                   ExactSearchRule('artist','art1'),
-                  ExactSearchRule('playcount',2000),
+                  ExactSearchRule('playcount',2000,type_=int),
                   InvertedExactSearchRule('artist','art1'),
-                  InvertedExactSearchRule('playcount',2000),
+                  InvertedExactSearchRule('playcount',2000,type_=int),
                   rng1, rng2, gt1, gt2, lt1, lt2]
 
         for i, rule in enumerate(rules):
             test_name = "test_rule_%d" % i
-            attr[test_name] = gen_compare_test(rule)
+            attr[test_name] = gen_compare_test(test_name,rule)
 
         attr["test_and"] = gen_compare_rule_test(AndSearchRule([gt1,lt1]), rng1)
         attr["test_or"] = gen_compare_rule_test(OrSearchRule([lt2,gt2]), rng2)

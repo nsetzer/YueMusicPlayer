@@ -66,13 +66,14 @@ class ContextBarPath(ContextBar):
         return False
 
     def fillComboBox(self):
-        self.clear();
+        text = self.text()
         views = self.controller.getContextPaths();
 
         # todo, build a unique set of directory source views
         # and build the list of non-directory source views
         # and their paths.
-        self.addItem(self.text(),None)
+        self.clear();
+        self.addItem(text,None)
         for i,view in enumerate(views):
             print("ContextBox: ",i,view.source)
             self.addItem(view.pwd(),view)

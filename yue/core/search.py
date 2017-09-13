@@ -189,7 +189,7 @@ class ExactSearchRule(ColumnSearchRule):
 
 class InvertedExactSearchRule(ColumnSearchRule):
     """matches as long as the value does not exactly equal the given"""
-    def check(self,elem):
+    def check(self,elem, ignoreCase=True):
         v1 = self.type_(case_(self.value,ignoreCase))
         v2 = self.type_(case_(elem[self.column],ignoreCase))
         return v1 != v2
@@ -287,7 +287,7 @@ class NotRangeSearchRule(RangeSearchRule):
         return c < a or c > b
 
     def __repr__(self):
-        return "<`%s` not in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_hight))
+        return "<`%s` not in range (%s,%s)>"%(self.column,self.fmtval(self.value_low),self.fmtval(self.value_high))
 
     def sql(self):
         return "%s NOT BETWEEN ? AND ?"%(self.column,), (self.value_low,self.value_high)
@@ -535,7 +535,6 @@ def sql_search( db, rule, case_insensitive=True, orderby=None, reverse = False, 
     """
 
     query,vals = sqlFromRule(rule,db.name,case_insensitive, orderby, reverse, limit, offset)
-
     try:
         s = time.clock()
         result = list(db.query(query, *vals))
