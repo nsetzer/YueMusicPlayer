@@ -815,8 +815,13 @@ class SourceListView(SourceView):
 
     def setTextFilter(self,filter):
         filter = filter.strip()
-        if filter == "*.*" or filter == "":
+        if filter == "*.*" or \
+           filter == "*" or \
+           filter == "":
             self.text_filter = None
+        elif "*" in filter or "?" in filter:
+            filter = filter.strip()
+            self.text_filter = filter.lower()
         else:
             filter = filter.strip()
             if not filter.startswith("*"):

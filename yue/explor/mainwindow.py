@@ -119,6 +119,7 @@ class Calculator(QWidget):
         self.input = LineEditHistory(self)
         self.output = QLabel(self);
         self.output.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.output.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed);
 
         self.input.accepted.connect(self.evaluate)
         self.layout.addWidget(self.input);
@@ -137,7 +138,7 @@ class Calculator(QWidget):
         self.locals['chr'] = chr
         self.locals['complex'] = complex
         self.locals['divmod'] = divmod
-        self.locals['float'] = divmod
+        self.locals['float'] = float
         self.locals['hex'] = hex
         self.locals['int'] = int
         self.locals['max'] = max
@@ -151,7 +152,7 @@ class Calculator(QWidget):
         self.locals['fold'] = lambda initial,seq: sum(seq,initial)
         self.locals['sign'] = lambda x: 1 if x>=0 else -1
         self.locals['j'] = complex(0,1)
-        print(' '.join(list(self.locals.keys())))
+        #print(' '.join(list(self.locals.keys())))
 
     def evaluate(self,text):
 
