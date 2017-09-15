@@ -263,6 +263,8 @@ class ExplorerFileTable(LargeTable):
         return format_date(value)
 
     def keyPressEvent(self,event=None):
+        # focus up events allow for changing focus from
+        # this table to whatever widget is above the table.
         if len(self.selection) == 1 and \
            list(self.selection)[0] == 0 and \
            event.key() == Qt.Key_Up:

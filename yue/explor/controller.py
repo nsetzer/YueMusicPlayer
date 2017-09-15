@@ -40,6 +40,16 @@ class ExplorController(ExplorerController):
                 menu.addAction("Extract to *")
                 menu.addAction("Extract to <named>")
 
+        if len(items) == 1:
+            # TODO: someday I should have a way to enable "default programs"
+            # by file extension, and open alternatives
+            # for now, there are only three classes I care about
+            menu = ctxtmenu.addMenu("Open As ...")
+            menu.addAction("Text", lambda : model.action_edit( items[0] ))
+            menu.addAction("Audio", lambda : model.action_openas_audio( items[0] ))
+            menu.addAction("Video", lambda : model.action_openas_video( items[0] ))
+
+
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)
 
         ctxtmenu.addSeparator()

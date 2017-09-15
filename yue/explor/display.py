@@ -129,7 +129,6 @@ class ExplorModel(ExplorerModel):
         if FileAssoc.isImage(path):
             cmdstr = Settings.instance()['cmd_edit_image']
             proc_exec(cmdstr%(path),pwd)
-
         else: #if FileAssoc.isText(path):
 
             cmdstr = Settings.instance()['cmd_edit_text']
@@ -146,6 +145,19 @@ class ExplorModel(ExplorerModel):
         if dlg.exec_():
             mklink(self.view,path,dlg.text())
 
+    def action_openas(self, cmdstr_base, item):
+        path = self.view.realpath(item['name'])
+        if self.view.isdir(path):
+            return
+        pwd,_ = self.view.split(path)
+        proc_exec(cmdstr_base%(path),pwd)
+
+    def action_openas_audio(self,item):
+        return self.action_openas(Settings.instance()['cmd_play_audio'], item)
+
+    def action_openas_video(self,item):
+        return self.action_openas(Settings.instance()['cmd_play_video'], item)
+
     def action_open_term(self):
 
         cmdstr = Settings.instance()['cmd_launch_terminal']
@@ -155,7 +167,6 @@ class ExplorModel(ExplorerModel):
 
     def action_open_file(self, item):
         path = self.view.realpath(item['name'])
-
 
         if not self.view.isOpenSupported():
             # not local, but supports get/put api
@@ -169,7 +180,6 @@ class ExplorModel(ExplorerModel):
     def _action_open_file_remote(self,path):
 
         self.openRemote.emit(self,path)
-
 
     def _action_open_file_local(self,view,path):
         cmdstr_img = Settings.instance()['cmd_edit_image']
@@ -186,6 +196,12 @@ class ExplorModel(ExplorerModel):
             proc_exec(cmdstr_img%(path),pwd)
         elif FileAssoc.isText(path):
             cmdstr = Settings.instance()['cmd_edit_text']
+            proc_exec(cmdstr%(path),pwd)
+        elif FileAssoc.isAudio(path):
+            cmdstr = Settings.instance()['cmd_play_audio']
+            proc_exec(cmdstr%(path),pwd)
+        elif FileAssoc.isMovie(path):
+            cmdstr = Settings.instance()['cmd_play_video']
             proc_exec(cmdstr%(path),pwd)
         elif not fileIsBinary(view,path):
             cmdstr = Settings.instance()['cmd_edit_text']

@@ -90,6 +90,7 @@ def initSettings():
 
     data['ext_archive'] = fAssoc(ResourceManager.ARCHIVE)
     data['ext_image'] = fAssoc(ResourceManager.IMAGE)
+    data['ext_audio'] = fAssoc(ResourceManager.SONG);
     data['ext_movie'] = fAssoc(ResourceManager.MOVIE)
     data['ext_document'] = fAssoc(ResourceManager.DOCUMENT)
 
@@ -99,6 +100,8 @@ def initSettings():
         cmd_open_native = "open \"%s\""
         cmd_launch_terminal = "open -b com.apple.terminal \"%s\""
         cmd_diff_files = "\"/Applications/Beyond Compare.app/Contents/MacOS/bcomp\" \"%s\" \"%s\""
+        cmd_play_audio = "/Applications/VLC.app/Contents/MacOS/VLC \"%s\""
+        cmd_play_video = "/Applications/VLC.app/Contents/MacOS/VLC \"%s\""
         cmd_vagrant = "vagrant"
     elif sys.platform=="win32":
 
@@ -108,6 +111,8 @@ def initSettings():
         cmd_open_native = "explorer \"%s\""
         cmd_launch_terminal = "start /D \"%s\""
         cmd_diff_files = ""
+        cmd_play_audio = ""
+        cmd_play_video = ""
         cmd_vagrant = ""
     else:
         cmd_edit_text = "subl3 \"%s\""
@@ -116,6 +121,8 @@ def initSettings():
         cmd_open_native = "nemo \"%s\""
         cmd_launch_terminal = "xterm -e \"cd %s; bash\""
         cmd_diff_files = ""
+        cmd_play_audio = ""
+        cmd_play_video = ""
         cmd_vagrant = ""
 
     data["cmd_edit_text"] = cmd_edit_text
@@ -123,6 +130,8 @@ def initSettings():
     data["cmd_open_native"] = cmd_open_native
     data["cmd_launch_terminal"] = cmd_launch_terminal
     data["cmd_diff_files"] = cmd_diff_files
+    data["cmd_play_audio"] = cmd_play_audio
+    data["cmd_play_video"] = cmd_play_video
     data["cmd_vagrant"] = cmd_vagrant
 
     #~/projects/android/YueMusicPlayer/explor.py
