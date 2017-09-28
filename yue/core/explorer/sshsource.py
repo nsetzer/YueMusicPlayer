@@ -4,14 +4,17 @@ import stat
 import traceback
 import time
 import calendar
+import os, sys
 
 from .source import DataSource,DirectorySource,SourceNotImplemented
 try:
     from paramiko.client import SSHClient
     import paramiko
+    from  paramiko.ssh_exception import BadHostKeyException
 except ImportError:
     paramiko = None
     SSHClient = None
+    BadHostKeyException = None
 
 
 # client
@@ -42,6 +45,29 @@ except ImportError:
 #      "/Users/nsetzer/git/vagrant/cogito/.vagrant/machines/default/virtualbox/private_key"]
 
 
+def getSSHConfig(config_path, host):
+    """
+        config_path : path to the ssh config
+        host: host name to lookup
+
+        returns the user config suitable for
+        connecting to the given host
+    """
+    ssh_config = paramiko.SSHConfig()
+
+    if config_path is None:
+        user_config_file = os.path.expanduser("~/.ssh/config")
+    else:
+       user_config_file = os.path.expanduser(config_path)
+
+    if os.path.exists(user_config_file):
+        with open(user_config_file) as f:
+            ssh_config.parse(f)
+
+    user_config = ssh_config.lookup(host)
+
+    return user_config
+
 
 class SSHClientSource(DataSource):
 
@@ -52,6 +78,10 @@ class SSHClientSource(DataSource):
 
     @staticmethod
     def fromPrivateKey(host,port=22,username=None,password=None,private_key=None):
+        """deprecated see connect_v2 """
+
+        #ssh -i /path/to//private_key user@localhost -p 2222
+        #ssh -i /path/to//private_key username@host -p port
 
         if SSHClient is None:
             raise Exception("Paramiko not installed")
@@ -66,15 +96,28 @@ class SSHClientSource(DataSource):
         client = SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        print(host,port,username,password,pkey)
-        if pkey:
-            client.connect(host,port=port,
-                           username=username,password=password,
-                           pkey=pkey,timeout=1.0,compress=True)
-        else:
-            client.connect(host,port=port,
-                           username=username,password=password,
-                           timeout=1.0,compress=True)
+        print("\n---\nConnect With: host=%s:%s user=%s privatekey=`%s`\n"%(\
+              host,port,username,private_key))
+
+        try:
+            if pkey:
+                client.connect(host,port=port,
+                               username=username,
+                               pkey=pkey,timeout=1.0,compress=True)
+            else:
+                client.connect(host,port=port,
+                               username=username,password=password,
+                               timeout=1.0,compress=True)
+        except BadHostKeyException as e:
+            sys.stderr.write("got:      %s\n"%e.key.asbytes());
+            sys.stderr.write("expected: %s\n"%e.expected_key.asbytes());
+
+            msg = "Connection error on %s:%s using privatekey=%s\n"%(\
+                host,port,private_key)
+            msg += "you may need to clear ~/.ssh/known_hosts "+\
+                "for entries related to %s:%s\n"%(host,port);
+            sys.stderr.write(msg);
+            raise Exception(msg);
         src.client = client
         src.ftp = client.open_sftp()
 
@@ -82,6 +125,62 @@ class SSHClientSource(DataSource):
         src.port=port
 
         return src
+
+    @staticmethod
+    def connect_v2(host,port,username,password=None,private_key=None,config_path=None):
+        # build a configuration from the options
+        cfg = {"hostname":host,
+               "port":port,
+               "username":username,
+               "timeout":30.0,"compress":True,
+               "allow_agent":False,
+               "look_for_keys":False}
+        if password is not None:
+            cfg["password"] = password
+
+        user_config = getSSHConfig(config_path,host)
+
+        # copy the settings from the userconfig, overwriting the cfg.
+        for k in ('hostname', 'username', 'port'):
+            if k in user_config:
+                cfg[k] = user_config[k]
+
+        # proxy command allows for two factor authentication
+        if 'proxycommand' in user_config:
+            cfg['sock'] = paramiko.ProxyCommand(user_config['proxycommand'])
+
+        print(cfg)
+
+        cfg['pkey'] = paramiko.RSAKey.from_private_key_file(private_key,"")
+
+        client = SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        #client.set_missing_host_key_policy(paramiko.WarningPolicy())
+
+        try:
+            client.connect(**cfg)
+        except BadHostKeyException as e:
+            sys.stderr.write("got:      %s\n"%e.key.asbytes());
+            sys.stderr.write("expected: %s\n"%e.expected_key.asbytes());
+
+            msg = "Connection error on %s:%s using privatekey=%s\n"%(\
+                host,port,private_key)
+            msg += "you may need to clear ~/.ssh/known_hosts "+\
+                "for entries related to %s:%s\n"%(host,port);
+            sys.stderr.write(msg);
+            raise Exception(msg);
+
+        src = SSHClientSource()
+        src.client = client
+        src.ftp = client.open_sftp()
+
+        src.host=host
+        src.port=port
+        src.config=cfg
+
+        return src
+
 
     def __init__(self):
         super(SSHClientSource, self).__init__()

@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-import os
+import os, sys
 import traceback
 import math
 
@@ -102,7 +102,7 @@ class NewVagrantTabJob(Job):
         cfg = getVagrantSSH(self.vagrant_dir)
         try:
             print("++create")
-            src = SSHClientSource.fromPrivateKey(cfg['host'],cfg['port'],
+            src = SSHClientSource.connect_v2(cfg['host'],cfg['port'],
                     cfg['user'],cfg['password'],cfg['key'])
             print("--create")
             self.newSource.emit(src)
@@ -361,12 +361,11 @@ class MainWindow(QMainWindow):
         try:
             print("++create")
             print(cfg)
-            src = SSHClientSource.fromPrivateKey(cfg['host'],cfg['port'],
+            src = SSHClientSource.connect_v2(cfg['host'],cfg['port'],
                     cfg['user'],cfg['password'],cfg['key'])
             print("--create")
         except Exception as e:
-            for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
-                print(line)
+            traceback.print_exc(file=sys.stderr)
 
             #sys.stderr.write("error: %s\n"%e)
             QMessageBox.critical(None,"Connection Error",str(e))
