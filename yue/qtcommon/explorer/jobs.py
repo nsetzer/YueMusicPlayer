@@ -72,6 +72,8 @@ class Job(QThread):
 
     progressChanged = pyqtSignal(int)
 
+    exception = pyqtSignal(object,object,object)
+
     def __init__(self):
         super(Job, self).__init__()
 
@@ -85,17 +87,15 @@ class Job(QThread):
         self._alive = True
 
     def run(self):
-        print("start",self.__class__.__name__)
-
         try:
             self.doTask()
         except AbortJob as e:
-            print("job aborted")
+            sys.stderr.write("job aborted\n")
         except Exception as e:
             traceback.print_exc()
-            print(e)
-
-        print("complete",self.__class__.__name__)
+            # emit the exception so that the main thread can
+            # handle it
+            self.exception.emit(*sys.exc_info())
 
     def doTask(self):
         """ reimplement this function to perform your task
@@ -483,6 +483,8 @@ class Dashboard(QWidget):
 
     def startJob(self,job):
 
+        job.exception.connect(self.onHandleException)
+
         jw = JobWidget(job,self)
         jw.deleteJob.connect(self.onDeleteJob)
         self.widgets.append(jw)
@@ -494,6 +496,11 @@ class Dashboard(QWidget):
         self.vbox.removeWidget(jw)
         jw.setParent(None)
         jw.deleteLater()
+
+    def onHandleException(self,ex_type, ex_value, ex_traceback):
+        #any uncaught exception thrown by a job is caught and
+        # processed by the registered exception handler
+        sys.excepthook(ex_type, ex_value, ex_traceback)
 
 class JobWidget(QWidget):
     """docstring for JobWidget"""

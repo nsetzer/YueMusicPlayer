@@ -80,17 +80,16 @@ implement a find in files type feature...
 copy paste a directory within  a directory fails...
     duplicates internal items instead of creating a new directory.
 
-
 """
 
 
 class NewRemoteTabJob(Job):
     newSource = pyqtSignal(object)
-    exception = pyqtSignal(object,object,object)
 
     def __init__(self, mainwindow):
         super(NewRemoteTabJob, self).__init__()
         self.mainwindow = mainwindow
+        self.cfg = {}
 
     def setConfig(self,cfg):
         self.cfg = cfg
@@ -99,14 +98,10 @@ class NewRemoteTabJob(Job):
         self.doConnect(self.cfg)
 
     def doConnect(self,cfg):
-        try:
-            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
-                    cfg['username'],cfg['password'],cfg['private_key'])
-            self.newSource.emit(src)
-        except ConnectionRefusedError:
-            self.exception.emit(*sys.exc_info())
-        except Exception:
-            self.exception.emit(*sys.exc_info())
+        #except ConnectionRefusedErr
+        src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
+                cfg['username'],cfg['password'],cfg['private_key'])
+        self.newSource.emit(src)
 
 class NewVagrantTabJob(NewRemoteTabJob):
     """docstring for NewVagrantTabJob"""
@@ -121,7 +116,6 @@ class NewVagrantTabJob(NewRemoteTabJob):
     def doTask(self):
         cfg = getVagrantSSH(self.vagrant_dir)
         self.doConnect(cfg)
-
 
 class Calculator(QWidget):
     """docstring for Calculator"""
@@ -348,7 +342,6 @@ class MainWindow(QMainWindow):
 
         job = NewVagrantTabJob(self,vagrant_dir)
         job.newSource.connect(self.newTabFromSource)
-        job.exception.connect(self.onHandleException)
         self.dashboard.startJob(job)
 
     def newTabFromSource(self,src):
@@ -374,7 +367,6 @@ class MainWindow(QMainWindow):
 
         job = NewRemoteTabJob(self)
         job.newSource.connect(self.newTabFromSource)
-        job.exception.connect(self.onHandleException)
         job.setConfig(cfg)
         self.dashboard.startJob(job)
 
@@ -535,12 +527,6 @@ class MainWindow(QMainWindow):
     def onSyncRemoteFiles(self):
 
         self.wfctrl.onPostAll()
-
-    def onHandleException(self,ex_type, ex_value, ex_traceback):
-        # sys.excepthook = handle_exception(exc_type, exc_value, exc_traceback)
-        sys.excepthook(ex_type, ex_value, ex_traceback)
-
-        pass
 
 class Pane(QWidget):
     """docstring for Pane"""

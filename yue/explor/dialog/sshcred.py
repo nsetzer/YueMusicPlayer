@@ -36,7 +36,7 @@ class SshCredentialsDialog(QDialog):
 
         self.grid = QGridLayout()
 
-        i=1
+        i=0
 
         self.cbox_proto = QComboBox(self)
         self.lbl_proto = QLabel("Protocol:",self)
@@ -149,7 +149,7 @@ class SshCredentialsDialog(QDialog):
         if "private_key" in cfg:
             self.edit_ikey.setText(cfg['private_key'])
         if "config" in cfg:
-            self.edit_sshcfg.setText(cfg['private_key'])
+            self.edit_sshcfg.setText(cfg['config'])
 
     def getConfig(self):
 
