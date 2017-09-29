@@ -128,11 +128,18 @@ class SSHClientSource(DataSource):
 
     @staticmethod
     def connect_v2(host,port,username,password=None,private_key=None,config_path=None):
+
+        """
+        Note:
+            it may be possible to escalate root priveleges
+            stdin,stdout,stderr = ssh.exec_command("sudo su; whoami", get_pty=True)
+            various strategies exist for entering the password.
+        """
         # build a configuration from the options
         cfg = {"hostname":host,
                "port":port,
                "username":username,
-               "timeout":30.0,"compress":True,
+               "timeout":10.0,"compress":True,
                "allow_agent":False,
                "look_for_keys":False}
         if password is not None:
@@ -148,6 +155,7 @@ class SSHClientSource(DataSource):
         # proxy command allows for two factor authentication
         if 'proxycommand' in user_config:
             cfg['sock'] = paramiko.ProxyCommand(user_config['proxycommand'])
+            cfg['timeout'] = 45.0; # give extra time for two factor
 
         print(cfg)
 

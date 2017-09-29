@@ -6,9 +6,12 @@ from PyQt5.QtGui import *
 from yue.qtcommon.LargeTable import LargeTable
 from yue.qtcommon.TableEditColumn import EditColumn
 
+from yue.explor.ymlsettings import YmlSettings
+
 class SshSessionsTable(LargeTable):
     """
     """
+    updateConfig = pyqtSignal(dict);
 
     def __init__(self, parent=None):
         super(SshSessionsTable,self).__init__(parent)
@@ -17,6 +20,11 @@ class SshSessionsTable(LargeTable):
 
         self.columns.append( EditColumn(self,'name',"Session Name") )
         self.columns[-1].setWidthByCharCount(35)
+
+    def mouseDoubleClick(self,row,col,event=None):
+
+        if 0 <= row < len(self.data):
+            self.updateConfig.emit( self.data[row] )
 
 class SshCredentialsDialog(QDialog):
     """docstring for SettingsDialog"""
@@ -79,11 +87,26 @@ class SshCredentialsDialog(QDialog):
         self.grid.addWidget(self.edit_ikey,i,1,1,4)
         i+=1
 
+        self.edit_sshcfg = QLineEdit(self)
+        self.edit_sshcfg.setText("~/.ssh/config")
+        self.lbl_sshcfg = QLabel("SSH Config:",self)
+        self.lbl_sshcfg.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.grid.addWidget(self.lbl_sshcfg,i,0)
+        self.grid.addWidget(self.edit_sshcfg,i,1,1,4)
+        i+=1
+
+        self.edit_name = QLineEdit(self)
+        self.edit_name.setPlaceholderText("Name")
         self.btn_save = QPushButton("Save",self)
+        self.btn_save.clicked.connect(self.saveCurrentConfig)
+        self.grid.addWidget(self.edit_name,i,1,1,3)
         self.grid.addWidget(self.btn_save,i,4)
         i+=1
 
         self.tbl_save = SshSessionsTable(self)
+        self.tbl_save.updateConfig.connect(self.setConfig)
+        profiles = YmlSettings.instance().data["remote"]["profiles"]
+        self.tbl_save.setData(profiles)
 
         self.cbox_proto.addItem("SSH")
         self.cbox_proto.addItem("FTP")
@@ -104,33 +127,72 @@ class SshCredentialsDialog(QDialog):
         self.vbox.addWidget(self.tbl_save.container)
         self.vbox.addLayout(self.hbox_btns)
 
+        self.resize(512,480)
+
     def setConfig(self,cfg):
 
-        if "proto" in cfg:
-            index = self.cbox_proto.findText(cfg['proto'])
+        if "protocol" in cfg:
+            index = self.cbox_proto.findText(cfg['protocol'])
             self.cbox_proto.setCurrentIndex(index)
 
-        if "host" in cfg:
-            self.edit_host.setText(cfg['host'])
+        if "name" in cfg:
+            self.edit_name.setText(cfg['name'])
+
+        if "hostname" in cfg:
+            self.edit_host.setText(cfg['hostname'])
         if "port" in cfg:
             self.spbx_port.setValue(cfg['port'])
-        if "user" in cfg:
-            self.edit_user.setText(cfg['user'])
+        if "username" in cfg:
+            self.edit_user.setText(cfg['username'])
         if "password" in cfg:
             self.edit_pass.setText(cfg['password'])
-        if "key" in cfg:
-            self.edit_ikey.setText(cfg['key'])
-        print("cfg",cfg)
+        if "private_key" in cfg:
+            self.edit_ikey.setText(cfg['private_key'])
+        if "config" in cfg:
+            self.edit_sshcfg.setText(cfg['private_key'])
 
     def getConfig(self):
 
         cfg = {}
-        cfg['proto'] = self.cbox_proto.currentText()
+        cfg['protocol'] = self.cbox_proto.currentText()
+        cfg['name'] = self.edit_name.text();
 
-        cfg['host'] = self.edit_host.text().strip()
+        cfg['hostname'] = self.edit_host.text().strip()
         cfg['port'] = self.spbx_port.value()
         # user/pass I will take literally incase whitespace is significant
-        cfg['user'] = self.edit_user.text()
+        cfg['username'] = self.edit_user.text()
         cfg['password'] = self.edit_pass.text() or None
-        cfg['key'] = self.edit_ikey.text().strip() or None
+        cfg['private_key'] = self.edit_ikey.text().strip() or None
+        cfg['config'] = self.edit_sshcfg.text().strip() or None
+
         return cfg
+
+    def saveCurrentConfig(self):
+
+        """
+            save the current config so that it can be reloaded later
+            update the yml settings to persist the data
+            refresh the table to reflect changes
+
+            update a config if the name matches, otherwise append to the
+            end of the list.
+        """
+        cfg = self.getConfig();
+
+        if cfg["name"] == "":
+            # todo, must have a name, show a message box error
+            return
+
+        profiles = YmlSettings.instance().data["remote"]["profiles"]
+        for i,profile in enumerate(profiles):
+            if profile["name"] == cfg["name"]:
+                profiles[i] = cfg
+                break;
+        else:
+            profiles.append(cfg)
+
+        self.tbl_save.setData(profiles)
+
+        YmlSettings.instance().save()
+
+

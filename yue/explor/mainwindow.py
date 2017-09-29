@@ -101,10 +101,8 @@ class NewVagrantTabJob(Job):
 
         cfg = getVagrantSSH(self.vagrant_dir)
         try:
-            print("++create")
-            src = SSHClientSource.connect_v2(cfg['host'],cfg['port'],
-                    cfg['user'],cfg['password'],cfg['key'])
-            print("--create")
+            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
+                    cfg['username'],cfg['password'],cfg['private_key'])
             self.newSource.emit(src)
         except ConnectionRefusedError as e:
             sys.stderr.write("error: %s\n"%e)
@@ -345,11 +343,10 @@ class MainWindow(QMainWindow):
 
         dlg = SshCredentialsDialog()
 
-        print("set")
         dlg.setConfig({
-            "host":"192.168.1.9",
+            "hostname":"192.168.1.9",
             "port":2222,
-            "user":"admin",
+            "username":"admin",
             "password":"admin",
             })
 
@@ -359,11 +356,8 @@ class MainWindow(QMainWindow):
         cfg = dlg.getConfig()
 
         try:
-            print("++create")
-            print(cfg)
-            src = SSHClientSource.connect_v2(cfg['host'],cfg['port'],
-                    cfg['user'],cfg['password'],cfg['key'])
-            print("--create")
+            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
+                    cfg['username'],cfg['password'],cfg['private_key'])
         except Exception as e:
             traceback.print_exc(file=sys.stderr)
 

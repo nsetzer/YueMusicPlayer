@@ -524,12 +524,23 @@ class YML(object):
         return [item,]
 
 def dump(o,wf):
+    """
+    o : an yml - object to dump
+        a dictionary-of-dictionaries
+    wf:string path to file or file-like object
+    """
     return YML().dump(o,wf)
 
 def dumps(o):
     return YML().dumps(o)
 
 def load(rf):
+    """
+    rf:string path to file or file-like object
+
+    returns an yml - object
+            a dictionary-of-dictionaries
+    """
     return YML().load(rf)
 
 def loads(s):

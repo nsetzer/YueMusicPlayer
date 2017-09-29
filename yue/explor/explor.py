@@ -59,12 +59,19 @@ from yue.qtcommon.ResourceManager import ResourceManager
 from yue.explor.mainwindow import MainWindow, FileAssoc
 from yue.explor.fileutil import do_extract,do_compress
 
+from yue.explor.ymlsettings import YmlSettings
+
 def initSettings():
+
 
     if os.name == 'nt':
         settings_db_path = os.path.join(os.getenv('APPDATA'),"explor","settings.db")
+        settings_yml_path = os.path.join(os.getenv('APPDATA'),"explor","settings.yml")
     else:
         settings_db_path = os.path.expanduser("~/.config/explor/settings.db")
+        settings_yml_path = os.path.expanduser("~/.config/explor/settings.yml")
+
+    YmlSettings.init(settings_yml_path);
 
     path,_ = os.path.split(settings_db_path)
 
