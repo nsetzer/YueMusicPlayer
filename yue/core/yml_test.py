@@ -189,5 +189,27 @@ class TestYml(unittest.TestCase):
             param={ {} : {} }
             """)
 
+    def test_list_serialization_1(self):
+        o1 = {"profiles":[
+                {"host":"localhost",
+                  "port":22,
+                  "username":"nsetzer",
+                  "password":"thisismypassword",
+                  "config":"/Users/nsetzer/.ssh/config",
+                  "private_key":"/Users/nsetzer/.ssh/id_rsa.production",
+                },
+                {"host":"localhost",
+                  "port":22,
+                  "username":"nsetzer",
+                  "password":"thisismypassword",
+                  "config":"/Users/nsetzer/.ssh/config",
+                  "private_key":"/Users/nsetzer/.ssh/id_rsa.production",
+                },
+            ]
+        }
+        o2 = {"remote":o1}
+        yml = YML()
+        s = yml.dumps(o2)
+        self.assertTrue( s.find(", ,")<0 )
 
 

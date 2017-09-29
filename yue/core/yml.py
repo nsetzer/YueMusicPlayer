@@ -249,11 +249,11 @@ class YML(object):
 
 
     """
-    def __init__(self):
+    def __init__(self,tab_width=2,max_width=80):
         super(YML, self).__init__()
 
-        self.tab_width = 2
-        self.max_width = 80
+        self.tab_width = tab_width
+        self.max_width = max_width
 
         self.yg = YmlGrammar()
 
@@ -426,8 +426,8 @@ class YML(object):
 
         ts = "( "
         te = " )"
-        tm = ", "
-        sm = ","
+        tm = ", " #
+        sm = ", " # eol?
         ss = " "*len(ts)
         se = " "*len(te)
 
@@ -442,7 +442,9 @@ class YML(object):
         while i < len(items_s):
             while len(items_s[i]) < width and len(items_s)>i+1:
                 if len(items_s[i]+items_s[i+1]) < width:
-                    items_s[i] += tm + items_s.pop(i+1)
+                    if not items_s[i].endswith(tm):
+                        items_s[i] += tm
+                    items_s[i] += items_s.pop(i+1)
                 else:
                     break
             i+=1
@@ -474,12 +476,13 @@ class YML(object):
 
         ts = "{ "
         te = " }"
+        te2 = "}"
         tm = ", "
         ss = " "*len(ts)
         se = " "*len(te)
 
         items_s = []
-        for k,v in item.items():
+        for k,v in sorted(item.items()):
             ks = self._stringify(k,depth+1,width-len(ts))
             if len(ks)>1:
                 raise YmlException("error")
@@ -501,7 +504,11 @@ class YML(object):
                 if not items_s[i].endswith(tm):
                     items_s[i] += tm
                 items_s[i] = ss + items_s[i]
-            items_s[-1] = ss + items_s[-1] + te
+            items_s[-1] = ss + items_s[-1]
+            if self.max_width == 0:
+                items_s.append(te2);
+            else:
+                items_s[-1] += te
         return items_s
 
     def _stringify_string(self,item):
@@ -518,21 +525,24 @@ class YML(object):
         if _re_string_number.match(item) is not None:
             return ["\"" + item + "\"",]
 
-        if not item.isalnum():
+
+        if not item.replace("_","").isalnum():
             return ["\"" + item + "\"",]
 
         return [item,]
 
-def dump(o,wf):
+def dump(o,wf,pretty=True):
     """
     o : an yml - object to dump
         a dictionary-of-dictionaries
     wf:string path to file or file-like object
     """
-    return YML().dump(o,wf)
+    w = 0 if pretty else 120
+    return YML(2,w).dump(o,wf)
 
-def dumps(o):
-    return YML().dumps(o)
+def dumps(o,pretty=True):
+    w = 0 if pretty else 120
+    return YML(2,w).dumps(o)
 
 def load(rf):
     """
