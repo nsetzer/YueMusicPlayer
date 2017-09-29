@@ -3,6 +3,9 @@ import codecs
 import io
 from collections import defaultdict
 import re
+import os
+import sys
+
 """
 () denotes an empty list
 {} denotes an empty dict
@@ -520,6 +523,7 @@ class YML(object):
         # 0o10 0x10 0n10 0b10
         # 10 123 1_23
         l_item = item.lower()
+        item = item.replace("\\","\\\\")
         item = item.replace("\"","\\\"")
         item = item.replace("\n","\\n")
 
@@ -528,7 +532,6 @@ class YML(object):
 
         if _re_string_number.match(item) is not None:
             return ["\"" + item + "\"",]
-
 
         if not item.replace("_","").isalnum():
             return ["\"" + item + "\"",]
@@ -559,6 +562,52 @@ def load(rf):
 
 def loads(s):
     return YML().loads(s)
+
+class YmlSettings(object):
+    """singleton for persisting data to a file
+
+    Todo: consider a Qt implementation of this object
+    setKey emits a settings modified signal
+    a subscriber can automatically save on any changes
+    other subscribers can update when keys change
+
+    """
+    _instance = None
+
+    def __init__(self, yml_path):
+        super(YmlSettings, self).__init__()
+        self.yml_path = yml_path
+        self._impl = YML(2,0)
+        self.load()
+
+    def save(self):
+        self._impl.dump(self.data,self.yml_path)
+
+    def load(self):
+        if os.path.exists(self.yml_path):
+            self.data = self._impl.load(self.yml_path)
+        else:
+            self.data = {}
+
+    def setKey(self, section, key, obj):
+        if section not in self.data:
+            self.data[section] = {}
+        self.data[section][key] = obj
+
+    def getKey(self, section, key, default=None):
+        if section not in self.data:
+            return default
+        if key not in self.data[section]:
+            return default
+        return self.data[section][key]
+
+    @staticmethod
+    def init( path ):
+        YmlSettings._instance = YmlSettings(path);
+
+    @staticmethod
+    def instance():
+        return YmlSettings._instance
 
 def main():
 

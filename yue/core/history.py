@@ -14,6 +14,24 @@ isPython3 = sys.version_info[0]==3
 if isPython3:
     unicode = str
 
+"""
+visited = set()
+duplicates = []
+
+for item in History.search('date < 3w'):
+    if item['date'] in visited:
+        duplicates.append(item);
+    else:
+        visited.add(item['date'])
+
+print(len(duplicates))
+
+#for item in duplicates:
+#    song = Library.songFromId(item['uid'])
+#    Library.update(item['uid'],playcount=song['playcount']-1);
+#    History.delete(item)
+
+"""
 class History(object):
     """docstring for Library"""
     __instance = None

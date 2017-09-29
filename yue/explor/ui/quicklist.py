@@ -7,7 +7,7 @@ from yue.qtcommon.LargeTree import LargeTree
 from yue.qtcommon.Leaf import Leaf
 from yue.core.settings import Settings
 
-from  yue.explor.ymlsettings import YmlSettings
+from yue.core.yml import YmlSettings
 
 class ShortcutEditDialog(QDialog):
     """docstring for ShortcutEditDialog"""

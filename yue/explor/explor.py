@@ -60,29 +60,61 @@ from yue.qtcommon.exceptions import installExceptionHook
 from yue.explor.mainwindow import MainWindow, FileAssoc
 from yue.explor.fileutil import do_extract,do_compress
 
-from yue.explor.ymlsettings import YmlSettings
+from yue.core.yml import YmlSettings
 
-def initSettings():
+def initYmlSettings(path_base):
 
+    settings_path = os.path.join(path_base,"settings.yml")
 
-    if os.name == 'nt':
-        settings_db_path = os.path.join(os.getenv('APPDATA'),"explor","settings.db")
-        settings_yml_path = os.path.join(os.getenv('APPDATA'),"explor","settings.yml")
-    else:
-        settings_db_path = os.path.expanduser("~/.config/explor/settings.db")
-        settings_yml_path = os.path.expanduser("~/.config/explor/settings.yml")
+    YmlSettings.init(settings_path);
 
-    YmlSettings.init(settings_yml_path);
+    items = YmlSettings.instance().getKey("explor","quicklist",[]);
+    if len(items) == 0:
+        #~/projects/android/YueMusicPlayer/explor.py
+        if sys.platform == 'darwin':
+            quick_access_paths = [
+                "/root=:/img/app_folder.png=/",
+                "/Favorites/home=:/img/app_folder.png=~",
+                "/Favorites/Desktop=:/img/app_folder.png=~/Desktop",
+                "/Favorites/Documents=:/img/app_folder.png=~/Documents",
+                "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
+                "/Favorites/Music=:/img/app_folder.png=~/Music",
+                "/Favorites=:/img/app_fav.png=",
+            ]
+        elif os.name == 'nt':
+            quick_access_paths = [
+                "/My Computer/C:\\=:/img/app_folder.png=C:\\",
+                "/My Computer=:/img/app_folder.png=\\",
+                "/Favorites=:/img/app_fav.png=",
+                "/Favorites/home=:/img/app_folder.png=~",
+                "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
+            ]
+        else:
+            quick_access_paths = [
+                "/root=:/img/app_folder.png=/",
+                "/Favorites/home=:/img/app_folder.png=~",
+                "/Favorites=:/img/app_fav.png=",
+            ]
 
-    path,_ = os.path.split(settings_db_path)
+        items = []
+        for item in quick_access_paths:
+            qpath,ipath,lpath = item.split("=",2)
+            items.append({"qpath":qpath,"ipath":ipath,"lpath":lpath})
 
-    if not os.path.exists(path):
-        os.makedirs(path)
+        YmlSettings.instance().setKey("explor","quicklist",items);
+        YmlSettings.instance().save()
+
+def initSettings(path_base):
+
+    if not os.path.exists(path_base):
+        os.makedirs(path_base)
+
+    settings_db_path = os.path.join(path_base,"settings.db")
 
     sqlstore = SQLStore(settings_db_path)
     Settings.init( sqlstore )
 
-    Settings.instance()['database_directory']=path
+    Settings.instance()['database_directory']=path_base
 
     data = {}
 
@@ -141,51 +173,6 @@ def initSettings():
     data["cmd_play_audio"] = cmd_play_audio
     data["cmd_play_video"] = cmd_play_video
     data["cmd_vagrant"] = cmd_vagrant
-
-    #~/projects/android/YueMusicPlayer/explor.py
-    if sys.platform == 'darwin':
-        data["quick_access_paths"] = [
-            "/root=:/img/app_folder.png=/",
-            "/Favorites/home=:/img/app_folder.png=~",
-            "/Favorites/Desktop=:/img/app_folder.png=~/Desktop",
-            "/Favorites/Documents=:/img/app_folder.png=~/Documents",
-            "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
-            "/Favorites/Music=:/img/app_folder.png=~/Music",
-            "/Favorites/git/kws=:/img/app_folder.png=~/git/kws",
-            "/Favorites/git/vagrant=:/img/app_folder.png=~/git/vagrant",
-            "/Favorites/git=:/img/app_folder.png=/Users/nsetzer/git",
-            "/Favorites=:/img/app_fav.png=",
-            "/NAS/Software=:/img/app_folder.png=/Volumes/Software",
-            "/NAS/KWS=:/img/app_folder.png=/Volumes/Software/KeywordSpotting",
-            "/NAS/Signals_Audio=:/img/app_folder.png=/Volumes/Signals_Audio",
-            "/NAS=:/img/app_fav.png=",
-            # /Users/nsetzer/git/vagrant/cogito/git/Cogito/Library/C/Compute/cogito/compute/nodes
-        ]
-    elif os.name == 'nt':
-        data["quick_access_paths"] = [
-            "/My Computer/C:\\=:/img/app_folder.png=C:\\",
-            "/My Computer/D:\\=:/img/app_folder.png=D:\\",
-            "/My Computer=:/img/app_folder.png=\\",
-            "/Favorites=:/img/app_fav.png=",
-            "/Favorites/home=:/img/app_folder.png=~",
-            "/Favorites/Downloads=:/img/app_folder.png=~/Downloads",
-            "/Favorites/Dropbox=:/img/app_folder.png=D:\\Dropbox",
-            "/Favorites/Music=:/img/app_folder.png=D:\\Music",
-            "/git/yue=:/img/app_folder.png=D:\\git\\YueMusicPlayer",
-            "/git/ComicReader=:/img/app_folder.png=D:\\Dropbox\\Code\\packages\\ComicReader",
-            "/git/EBFS=:/img/app_folder.png=D:\\Dropbox\\Code\\packages\\EBFS2",
-            "/git=:/img/app_folder.png=D:\\git",
-            "/school/CS6140=:/img/app_folder.png=D:\Dropbox\School\CS6140",
-            "/school=:/img/app_folder.png=D:\\Dropbox\\School",
-        ]
-    else:
-        data["quick_access_paths"] = [
-            "/root=:/img/app_folder.png=/",
-            "/Favorites/home=:/img/app_folder.png=~",
-            "/Favorites/Dropbox=:/img/app_folder.png=~/Dropbox",
-            "/Favorites=:/img/app_fav.png=",
-        ]
-
 
     # view_show_hidden is the default value for new tabs
     # each widget supports an individual setting, which can be toggled.
@@ -414,8 +401,16 @@ def parse_args(script_file):
     return args
 
 def main(script_file=__file__):
-    initSettings()
+
+    if os.name == 'nt':
+        path_base = os.path.join(os.getenv('APPDATA'),"explor")
+    else:
+        path_base = os.path.expanduser("~/.config/explor")
+
+    initSettings(path_base)
     args = parse_args(script_file)
+
+    initYmlSettings(path_base)
 
     app = QApplication(sys.argv)
     app.setApplicationName("explor")
