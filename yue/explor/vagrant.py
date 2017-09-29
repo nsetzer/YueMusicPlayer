@@ -63,6 +63,10 @@ def getVagrantSSH(cwd):
         elif key == "identityfile":
             ikey = val
 
-    d = {"host":host,"port":port,"user":user,"password":pswd,"key":ikey}
+    d = {"hostname":host,
+         "port":port,
+         "username":user,
+         "password":pswd,
+         "private_key":ikey}
 
     return d

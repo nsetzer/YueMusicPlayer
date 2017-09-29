@@ -83,29 +83,45 @@ copy paste a directory within  a directory fails...
 
 """
 
-class NewVagrantTabJob(Job):
+
+class NewRemoteTabJob(Job):
+    newSource = pyqtSignal(object)
+    exception = pyqtSignal(object,object,object)
+
+    def __init__(self, mainwindow):
+        super(NewRemoteTabJob, self).__init__()
+        self.mainwindow = mainwindow
+
+    def setConfig(self,cfg):
+        self.cfg = cfg
+
+    def doTask(self):
+        self.doConnect(self.cfg)
+
+    def doConnect(self,cfg):
+        try:
+            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
+                    cfg['username'],cfg['password'],cfg['private_key'])
+            self.newSource.emit(src)
+        except ConnectionRefusedError:
+            self.exception.emit(*sys.exc_info())
+        except Exception:
+            self.exception.emit(*sys.exc_info())
+
+class NewVagrantTabJob(NewRemoteTabJob):
     """docstring for NewVagrantTabJob"""
 
     newSource = pyqtSignal(object)
 
     def __init__(self, mainwindow, vagrant_dir):
 
-        super(NewVagrantTabJob, self).__init__()
-        self.mainwindow = mainwindow
+        super(NewVagrantTabJob, self).__init__(mainwindow)
         self.vagrant_dir = vagrant_dir
 
     def doTask(self):
-        #vagrant_dir = "/Users/nsetzer/git/vagrant/cogito"
-        #vagrant_dir = "/Users/nsetzer/git/Cogito/Product/EnterpriseCommonServices"
-
-
         cfg = getVagrantSSH(self.vagrant_dir)
-        try:
-            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
-                    cfg['username'],cfg['password'],cfg['private_key'])
-            self.newSource.emit(src)
-        except ConnectionRefusedError as e:
-            sys.stderr.write("error: %s\n"%e)
+        self.doConnect(cfg)
+
 
 class Calculator(QWidget):
     """docstring for Calculator"""
@@ -332,6 +348,7 @@ class MainWindow(QMainWindow):
 
         job = NewVagrantTabJob(self,vagrant_dir)
         job.newSource.connect(self.newTabFromSource)
+        job.exception.connect(self.onHandleException)
         self.dashboard.startJob(job)
 
     def newTabFromSource(self,src):
@@ -355,18 +372,11 @@ class MainWindow(QMainWindow):
 
         cfg = dlg.getConfig()
 
-        try:
-            src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
-                    cfg['username'],cfg['password'],cfg['private_key'])
-        except Exception as e:
-            traceback.print_exc(file=sys.stderr)
-
-            #sys.stderr.write("error: %s\n"%e)
-            QMessageBox.critical(None,"Connection Error",str(e))
-        else:
-            view = self._newTab(src)
-            view.chdir(src.root())
-            return
+        job = NewRemoteTabJob(self)
+        job.newSource.connect(self.newTabFromSource)
+        job.exception.connect(self.onHandleException)
+        job.setConfig(cfg)
+        self.dashboard.startJob(job)
 
     def newArchiveTab(self,view,path):
 
@@ -525,6 +535,12 @@ class MainWindow(QMainWindow):
     def onSyncRemoteFiles(self):
 
         self.wfctrl.onPostAll()
+
+    def onHandleException(self,ex_type, ex_value, ex_traceback):
+        # sys.excepthook = handle_exception(exc_type, exc_value, exc_traceback)
+        sys.excepthook(ex_type, ex_value, ex_traceback)
+
+        pass
 
 class Pane(QWidget):
     """docstring for Pane"""
