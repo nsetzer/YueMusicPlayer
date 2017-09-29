@@ -212,4 +212,34 @@ class TestYml(unittest.TestCase):
         s = yml.dumps(o2)
         self.assertTrue( s.find(", ,")<0 )
 
+    def _dump_load(self,o1):
+        yml = YML()
+        s = yml.dumps(o1)
+        o2 = yml.loads(s)
+        self.assertTrue(compare(o2,o1),
+            msg="\nfound:    %s\nexpected: %s\nrepr:\n%s"%(o2,o1,s))
+
+    def test_list_serialization_2(self):
+
+        o1 = {
+            "test" : {
+                "item" : [ ]
+            }
+        }
+        self._dump_load(o1);
+
+        o2 = {
+            "test" : {
+                "item" : [ {"abc":123,} ]
+            }
+        }
+        self._dump_load(o2);
+
+        o3 = {
+            "test" : {
+                "item" : [ {"abc":123,}, {"abc":123,} ]
+            }
+        }
+        self._dump_load(o3);
+
 

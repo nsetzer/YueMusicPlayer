@@ -431,6 +431,9 @@ class YML(object):
         ss = " "*len(ts)
         se = " "*len(te)
 
+        if len(item)==0:
+            return "()"
+
         items_s=[]
         for v in item:
             vs = self._stringify(v,depth+1,width-len(ts))
@@ -452,7 +455,7 @@ class YML(object):
         if len(items_s)>1 and not items_s[0].endswith(sm):
             items_s[0] += sm
 
-        # everything byt the last line needs a line continuatio character
+        # everything but the last line needs a line continuatio character
         # left pad the string with the offest introduced
         for i in range(1,len(items_s)-1):
             if not items_s[i].endswith(sm):
@@ -460,12 +463,13 @@ class YML(object):
             if depth > 1:
                 items_s[i] = ss + items_s[i]
 
-        if depth > 1:
+        if depth > 1 or len(item)==1:
             items_s[0] = ts + items_s[0]
             items_s[-1] += te
 
         if depth > 1 and len(items_s) > 1:
             items_s[-1] = ss + items_s[-1]
+
         return  items_s
 
     def _stringify_dict(self,item,depth,width):
