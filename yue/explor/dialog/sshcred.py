@@ -183,6 +183,7 @@ class SshCredentialsDialog(QDialog):
             # todo, must have a name, show a message box error
             return
 
+        # TODO: bug in yml prevents this list from having length 0 or 1.
         profiles = YmlSettings.instance().data["remote"]["profiles"]
         for i,profile in enumerate(profiles):
             if profile["name"] == cfg["name"]:

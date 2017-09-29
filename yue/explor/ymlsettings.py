@@ -22,6 +22,18 @@ class YmlSettings(object):
         else:
             self.data = {}
 
+    def setKey(self,section,key,obj):
+        if section not in self.data:
+            self.data[section] = {}
+        self.data[section][key] = obj
+
+    def getKey(self, section, key, default=None):
+        if section not in self.data:
+            return default
+        if key not in self.data[section]:
+            return default
+        return self.data[section][key]
+
     @staticmethod
     def init( path ):
         YmlSettings._instance = YmlSettings(path);

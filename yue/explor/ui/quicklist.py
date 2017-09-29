@@ -7,6 +7,8 @@ from yue.qtcommon.LargeTree import LargeTree
 from yue.qtcommon.Leaf import Leaf
 from yue.core.settings import Settings
 
+from  yue.explor.ymlsettings import YmlSettings
+
 class ShortcutEditDialog(QDialog):
     """docstring for ShortcutEditDialog"""
     def __init__(self, qpath, ipath, lpath, parent=None):
@@ -64,68 +66,63 @@ class ShortcutEditDialog(QDialog):
         self.vbox.addLayout(self.grid)
         self.vbox.addLayout(self.hbox_btns)
 
-    def getSpecifierString(self):
+    def getSpecifier(self):
 
         qpath = self.edit_qpath.text()
         ipath = self.cbox_ipath.currentData()
         lpath = self.edit_lpath.text()
 
-        return fmtSpec(qpath,ipath,lpath)
+        return {"qpath":qpath,"ipath":ipath,"lpath":lpath}
 
-def fmtSpec(qpath,ipath,lpath):
-    # qpath : path in the quick list
-    # ipath : internal resource or file path for the icon
-    # lpath : localpath for the shortcut
-    return '='.join([qpath,ipath,lpath])
-
-def splitSpec(spec):
-    """return 3-tuple: qpath,ipath,lpath"""
-    return spec.split("=",2)
+def specCompare(spec1,spec2):
+    for key in spec1.keys():
+        if spec1[key] != spec2[key]:
+            return False
+    return True
 
 def addShortcut(new_spec):
-    q,_,_ = splitSpec(new_spec)
-    items = Settings.instance()['quick_access_paths']
+    items = YmlSettings.instance().getKey("explor","quicklist",[]);
     lenb=len(items)
     for item in items:
-        p,_,_ = splitSpec(item)
-        if p==q:
+        if item["qpath"]==new_spec["qpath"]:
             raise Exception("Shortcut Already Exists")
     else:
         items.append(new_spec)
-        Settings.instance()['quick_access_paths'] = items
 
     print("quick_access_paths: %d->%d."%(lenb,len(items)))
+    YmlSettings.instance().setKey("explor","quicklist",items);
+    YmlSettings.instance().save()
     return True
 
 def editShortcut(old_spec,new_spec):
-    items = Settings.instance()['quick_access_paths']
+    items = YmlSettings.instance().getKey("explor","quicklist",[]);
     lenb = len(items)
     for i in range(len(items)):
-        if items[i] == old_spec:
+        if specCompare(items[i], old_spec):
             items[i] = new_spec
-            Settings.instance()['quick_access_paths'] = items
             break
     else:
         # this path does not exist for some reason, so add it
         items.append(new_spec)
-        Settings.instance()['quick_access_paths'] = items
+
     print("quick_access_paths: %d->%d."%(lenb,len(items)))
+    YmlSettings.instance().setKey("explor","quicklist",items);
+    YmlSettings.instance().save()
 
-def removeShortcut(spec):
-    qpath,_,_ = splitSpec(spec)
+def removeShortcut(qpath):
 
-    items = Settings.instance()['quick_access_paths']
+    items = YmlSettings.instance().getKey("explor","quicklist",[]);
     lenb=len(items)
     i=0
     while i < len(items):
-        item=items[i]
-        p,_,_ = splitSpec(item)
-        if p==qpath:
+        if items[i]["qpath"]==qpath:
             items.pop(i)
-            Settings.instance()['quick_access_paths'] = items
             break
         i+=1
+
     print("quick_access_paths: %d->%d."%(lenb,len(items)))
+    YmlSettings.instance().setKey("explor","quicklist",items);
+    YmlSettings.instance().save()
 
 
 class QuickAccessTable(LargeTree):
@@ -188,9 +185,11 @@ class QuickAccessTable(LargeTree):
         # convert the data to a tree
         root = Leaf(None,"Quick Access",None)
 
-        items = Settings.instance()['quick_access_paths']
+        items = YmlSettings.instance().getKey("explor","quicklist",[]);
         for item in items:
-            qpath,ipath,lpath = splitSpec(item)
+            qpath = item["qpath"]
+            ipath = item["ipath"]
+            lpath = item["lpath"]
             child = root
             for dname in qpath.split("/")[1:]:
                 child.collapsed = False
@@ -279,12 +278,10 @@ class QuickAccessTable(LargeTree):
             qpath=node.path(1)
             ipath=node.ipath
             lpath=node.data
-        data = '='.join([qpath,ipath,lpath])
-        print(data)
 
         dialog = ShortcutEditDialog(qpath,ipath,lpath,self)
         if dialog.exec_():
-            new_spec = dialog.getSpecifierString()
+            new_spec = dialog.getSpecifier()
             addShortcut(new_spec)
             self.refreshData()
         return
@@ -298,19 +295,16 @@ class QuickAccessTable(LargeTree):
         qpath=node.path(1)
         ipath=node.ipath
         lpath=node.data
-        old_spec = '='.join([qpath,ipath,lpath])
+        old_spec = {"qpath":qpath,"ipath":ipath,"lpath":lpath}
 
         dialog = ShortcutEditDialog(qpath,ipath,lpath,self)
         if dialog.exec_():
-            new_spec = dialog.getSpecifierString()
+            new_spec = dialog.getSpecifier()
             editShortcut(old_spec,new_spec)
             self.refreshData()
         return
 
     def action_remove_child(self, node):
         qpath=node.path(1)
-        ipath=node.ipath
-        lpath=node.data
-        spec = fmtSpec(qpath,ipath,lpath)
-        removeShortcut(spec)
+        removeShortcut(qpath)
         self.refreshData()
