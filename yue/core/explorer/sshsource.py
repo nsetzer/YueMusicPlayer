@@ -90,8 +90,10 @@ class SSHClientSource(DataSource):
         print(host,port,username,password,private_key)
 
         pkey = None
-        if private_key is not None:
-            pkey=paramiko.RSAKey.from_private_key_file(private_key,"")
+        if private_key: # non-null, non-empty
+            passphrase = "" # TODO: support passphrases
+            pkey=paramiko.RSAKey.from_private_key_file(\
+                private_key,passphrase)
 
         client = SSHClient()
         client.load_system_host_keys()
@@ -159,7 +161,11 @@ class SSHClientSource(DataSource):
 
         print(cfg)
 
-        cfg['pkey'] = paramiko.RSAKey.from_private_key_file(private_key,"")
+        cfg['pkey'] = None
+        if private_key: # non-null, non-empty
+            passphrase = "" # TODO: support passphrases
+            cfg['pkey']=paramiko.RSAKey.from_private_key_file(\
+                        private_key,passphrase)
 
         client = SSHClient()
         client.load_system_host_keys()

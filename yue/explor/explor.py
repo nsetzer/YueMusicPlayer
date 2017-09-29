@@ -55,6 +55,7 @@ from yue.core.settings import Settings
 
 from yue.qtcommon import resource
 from yue.qtcommon.ResourceManager import ResourceManager
+from yue.qtcommon.exceptions import installExceptionHook
 
 from yue.explor.mainwindow import MainWindow, FileAssoc
 from yue.explor.fileutil import do_extract,do_compress
@@ -209,7 +210,7 @@ def get_modes():
     return modes
 
 def print_help(binpath):
-    sys.stdout.write("Cross Platform File Explorer and FTP Browser\n\n")
+    sys.stdout.write("Cross Platform File Explorer and FTP,SSH Browser\n\n")
     sys.stdout.write("usage:\n  %s [-b|-c|-d|-e|-o|-x] options\n"%binpath)
 
     modes = [
@@ -367,7 +368,14 @@ def parse_args(script_file):
 
         if mode in {"browse",}:
             if os.path.isfile(args.path_r):
-                args.path_r,_ = os.path.split(args.path_r)
+                #args.path_r,_ = os.path.split(args.path_r)
+                print_help(binpath);
+                sys.exit(1)
+
+    if mode in {"browse",}:
+        if os.path.isfile(args.path):
+            print_help(binpath);
+            sys.exit(1)
 
     if mode == "diff":
         cmdstr = Settings.instance()['cmd_diff_files']
@@ -405,68 +413,6 @@ def parse_args(script_file):
 
     return args
 
-class ExceptionDialog(QDialog):
-    """docstring for ExceptionDialog"""
-    def __init__(self, title, message, trace, parent=None, icon_kind=None):
-        super(ExceptionDialog, self).__init__(parent)
-
-        self.setWindowTitle(title)
-
-        self.vbox=QVBoxLayout(self)
-        self.vbox.setContentsMargins(16,8,16,8)
-
-        self.style = QApplication.style();
-        self.grid = QGridLayout()
-
-        i=0
-        self.lbl_msg = QLabel(message,self)
-        self.grid.addWidget(self.lbl_msg,i,1,1,4)
-        i += 1
-
-        self.txt_trace = QPlainTextEdit(self)
-        self.txt_trace.setReadOnly(True);
-        self.txt_trace.setPlainText(trace)
-        self.grid.addWidget(self.txt_trace,i,1,2,4)
-        i += 2
-
-        self.btn_accept = QPushButton("Ok")
-        self.btn_accept.clicked.connect(self.accept)
-        self.grid.addWidget(self.btn_accept,i,4)
-        i+=1
-
-        # ----
-        if icon_kind is None:
-            icon_kind = QStyle.SP_MessageBoxCritical
-
-        icon = self.style.standardIcon(icon_kind, None, self);
-        self.pix_icon = icon.pixmap(64,64)
-        self.lbl_icon = QLabel(self)
-        self.lbl_icon.setPixmap(self.pix_icon)
-        self.grid.addWidget(self.lbl_icon,0,0,i,1)
-
-        self.vbox.addLayout(self.grid)
-
-
-# global dictionary which counts the number of times a specific
-# exception type has been thrown. stop showing a message dialog
-# for exceptions that have been thrown multiple times.
-gExceptionMessages= dict()
-def handle_exception(exc_type, exc_value, exc_traceback):
-
-    global gExceptionMessages
-
-    if exc_type not in gExceptionMessages:
-        gExceptionMessages[exc_type] = 0;
-
-    lines = ""
-    for line in traceback.format_exception(exc_type,exc_value,exc_traceback):
-        print(line)
-        lines += line + "\n"
-
-    if gExceptionMessages[exc_type] < 5:
-        ExceptionDialog("Unhandled Exception", str(exc_value), lines).exec_()
-        gExceptionMessages[exc_type] += 1
-
 def main(script_file=__file__):
     initSettings()
     args = parse_args(script_file)
@@ -477,7 +423,8 @@ def main(script_file=__file__):
     #app.setWindowIcon(app_icon)
     app.setQuitOnLastWindowClosed(True)
 
-    sys.excepthook = handle_exception
+    installExceptionHook()
+
     ResourceManager.instance().load()
 
     window = MainWindow(args.path,args.path_r)
