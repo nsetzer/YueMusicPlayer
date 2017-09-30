@@ -5,10 +5,13 @@ import os,sys
 
 def safeprint(s):
     s = ("%s\n"%s)
-    if sys.platform!="win32":
-        sys.stdout.write(s)
-    else:
-        sys.stdout.write(s.encode("utf-8"))
+    try:
+        if sys.platform!="win32":
+            sys.stdout.write(s)
+        else:
+            sys.stdout.write(s.encode("utf-8"))
+    except:
+        pass
 
 
 def proc_exec(cmdstr,pwd=None,blocking=False):

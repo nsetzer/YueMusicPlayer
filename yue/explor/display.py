@@ -158,6 +158,9 @@ class ExplorModel(ExplorerModel):
     def action_openas_video(self,item):
         return self.action_openas(Settings.instance()['cmd_play_video'], item)
 
+    def action_openas_native(self,item):
+        return self.action_openas(Settings.instance()['cmd_open_native'], item)
+
     def action_open_term(self):
 
         cmdstr = Settings.instance()['cmd_launch_terminal']

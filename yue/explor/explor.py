@@ -400,7 +400,7 @@ def parse_args(script_file):
 
     return args
 
-def main(script_file=__file__):
+def main(script_file=__file__,version="",commitdate="",builddate=""):
 
     if os.name == 'nt':
         path_base = os.path.join(os.getenv('APPDATA'),"explor")
@@ -414,15 +414,17 @@ def main(script_file=__file__):
 
     app = QApplication(sys.argv)
     app.setApplicationName("explor")
-    #app_icon = QIcon(':/img/icon.png')
-    #app.setWindowIcon(app_icon)
+
     app.setQuitOnLastWindowClosed(True)
+    app_icon = QIcon(':/img/icon_explor.png')
+    app.setWindowIcon(app_icon)
 
     installExceptionHook()
 
     ResourceManager.instance().load()
 
-    window = MainWindow(args.path,args.path_r)
+    version_info = (version,commitdate,builddate)
+    window = MainWindow(version_info,args.path,args.path_r)
     window.showWindow()
 
     sys.exit(app.exec_())

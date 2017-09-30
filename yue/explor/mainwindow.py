@@ -1,6 +1,6 @@
 #! python ../../explor.py C:\\Users\\Nick\\Documents\\playground C:\\Users\\Nick\\Documents\\playground
 
-
+from sip import SIP_VERSION_STR
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -18,6 +18,7 @@ from yue.core.explorer.source import DirectorySource,SourceListView
 from yue.core.explorer.sshsource import SSHClientSource
 from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
+from yue.core.yml import YmlSettings
 
 from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
@@ -30,7 +31,7 @@ from yue.explor.watchfile import WatchFileController, WatchFileTable
 from yue.explor.dialog.sshcred import SshCredentialsDialog
 from yue.explor.dialog.settings import SettingsDialog
 from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
-
+from yue.explor.util import proc_exec
 """"
 FTP protocol
     server:port
@@ -177,11 +178,13 @@ class Calculator(QWidget):
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
-    def __init__(self,defaultpath,defaultpath_r=""):
+    def __init__(self, version_info, defaultpath, defaultpath_r=""):
         """
         defaultpath: if empty default to the users home
         """
         super(MainWindow, self).__init__()
+
+        self.version,self.versiondate,self.builddate = version_info
 
         self.splitter = QSplitter(self)
 
@@ -255,6 +258,11 @@ class MainWindow(QMainWindow):
         act = self.file_menu.addAction("Preferences")
         act.triggered.connect(self.openSettings)
 
+        act = self.file_menu.addAction("Edit Preferences")
+        act.triggered.connect(self.editSettings)
+
+        self.file_menu.addSeparator()
+
         act = self.file_menu.addAction("Open FTP")
         act.triggered.connect(self.newFtpTabTest)
 
@@ -285,6 +293,22 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction("Open SMB")
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit")
+
+        self.help_menu = menubar.addMenu("&?")
+        # sip version, qt version, python version, application version
+        about_text = ""
+        v = sys.version_info
+        about_text += "Version: %s\n"%(self.version)
+        about_text += "Commit Date:%s\n"%(self.versiondate)
+        about_text += "Build Date:%s\n"%(self.builddate)
+        about_text += "Python Version: %d.%d.%d-%s\n"%(\
+            v.major,v.minor,v.micro,v.releaselevel)
+        about_text += "Qt Version: %s\n"%QT_VERSION_STR
+        about_text += "sip Version: %s\n"%SIP_VERSION_STR
+        about_text += "PyQt Version: %s\n"%PYQT_VERSION_STR
+        self.help_menu.addAction("About",\
+            lambda:QMessageBox.about(self,"Explor",about_text))
+
 
     def onAboutToShowFileMenu(self):
         self.invalidate_vagrant_menu = True
@@ -318,6 +342,12 @@ class MainWindow(QMainWindow):
 
         dlg = SettingsDialog(self)
         dlg.exec_()
+
+    def editSettings(self):
+
+        cmdstr = Settings.instance()['cmd_edit_text']
+        path = YmlSettings.instance().path()
+        proc_exec(cmdstr%(path),os.getcwd())
 
     def newFtpTabTest(self):
 

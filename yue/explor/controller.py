@@ -44,10 +44,31 @@ class ExplorController(ExplorerController):
             # TODO: someday I should have a way to enable "default programs"
             # by file extension, and open alternatives
             # for now, there are only three classes I care about
+
+            # todo:
+            #   Open as ...
+            #       Image (edit)  -- paint
+            #       Image (view)  -- irfanview
+            #       Internet      -- firefox
+            # create a tab in the settings for managing context menus
+            # the tab should be a table with the following values
+            #   Name       -- displayed in the open as context menu
+            #   executable -- path to program
+            # possible option, each row in the table contains an ENUM value
+            #   define Text, Audio, Vido, Image etc and the first defined
+            #   of each type in the table iss considered "primary"
+            #   and used by the model
+            # possible option : finally implementing per extension
+            #   handlers -- with some handlers that are "default" and always
+            #   show for any extention, and another "default"  -- which
+            #   is just open native for files with no known extension
+            # this information should be stored in the database so that
+            # the command line interface can access it
             menu = ctxtmenu.addMenu("Open As ...")
             menu.addAction("Text", lambda : model.action_edit( items[0] ))
             menu.addAction("Audio", lambda : model.action_openas_audio( items[0] ))
             menu.addAction("Video", lambda : model.action_openas_video( items[0] ))
+            menu.addAction("Native", lambda : model.action_openas_native( items[0] ))
 
 
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)

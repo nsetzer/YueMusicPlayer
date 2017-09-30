@@ -580,6 +580,9 @@ class YmlSettings(object):
         self._impl = YML(2,0)
         self.load()
 
+    def path(self):
+        return self.yml_path
+
     def save(self):
         self._impl.dump(self.data,self.yml_path)
 
