@@ -60,6 +60,8 @@ class YmlGrammar(object):
 
             self.quoted = False
             self.join_special = False # join 'special' characters
+            self.implicit_list = False # enables lists to be specified
+                                       # with only a comma
 
             # for a dictionary, apppend must be called twice
             # first for the key then for the value
@@ -70,22 +72,25 @@ class YmlGrammar(object):
                 clear all special states
             """
 
+            sp = None
             if self.tok or force:
                 if self.isDict():
                     if self.dict_key is None:
-                        self.dict_key = StrPos(self.tok,self.start,idx,self.quoted)
+                        sp = StrPos(self.tok,self.start,idx,self.quoted)
+                        self.dict_key = sp
                     else:
-                        v = StrPos(self.tok,self.start,idx,self.quoted)
-                        self.stack[-1][self.dict_key]=v
+                        sp = StrPos(self.tok,self.start,idx,self.quoted)
+                        self.stack[-1][self.dict_key]=sp
                         self.dict_key = None
                 else:
-                    v = StrPos(self.tok,self.start,idx,self.quoted)
-                    self.stack[-1].append(v)
+                    sp = StrPos(self.tok,self.start,idx,self.quoted)
+                    self.stack[-1].append(sp)
             self.join_special = False
             self.quoted = False
 
             self.tok = ""
             self.start=new_start
+            return sp
 
         def push(self,isList=True):
             new_level = [] if isList else {}
@@ -108,8 +113,10 @@ class YmlGrammar(object):
         def check(self):
             if len(self.stack) == 0:
                 raise YmlException("Empty stack (check parenthesis)")
-            if len(self.stack) > 1:
-                raise YmlException("Unterminated Block")
+            if self.implicit_list==False and len(self.stack) > 1:
+                raise YmlException("Unterminated Block (%s)"%self.implicit_list)
+            if self.implicit_list==True and len(self.stack) > 2:
+                raise YmlException("Unterminated Block (%s)"%self.implicit_list)
             if self.quoted:
                 raise YmlException("Unterminated Double Quote")
 
@@ -129,7 +136,7 @@ class YmlGrammar(object):
         self.tok_dict_separator = '='
         self.tok_comment = "#"
 
-    def parse(self,rf, line_num,input):
+    def parse(self,rf, line_num, input):
 
         idx = 0;
         state = YmlGrammar.TokenState(line_num)
@@ -150,9 +157,15 @@ class YmlGrammar(object):
                     state.append(idx,idx+1)
                     state.push(c == self.tok_list_begin)
                 elif c in self.tok_nest_end:
-                    state.append(idx,idx+1)
-                    state.pop()
+                    if not (len(state.stack)==2 and state.implicit_list):
+                        state.append(idx,idx+1)
+                        state.pop()
+                    else:
+                        raise YmlException("Unexpected character at position %d"%idx)
                 elif c == self.tok_separator:
+                    if len(state.stack)==1 and len(state.stack[-1])==0:
+                        state.push(True)
+                        state.implicit_list = True
                     state.append(idx,idx+1)
                     optional_read = True
                 elif c in self.tok_whitespace:
@@ -188,15 +201,13 @@ class YmlGrammar(object):
                     state.tok += c
             idx += 1
             if idx >= len(input):
-                text = ""
-                if len(state.stack) > 1 or \
-                   optional_read:
+                if (len(state.stack) > 1 and state.implicit_list==False) or \
+                   (len(state.stack) > 2 and state.implicit_list==True) or \
+                   optional_read or \
+                   state.quoted:
                     text = rf.readline().strip()
                     state.lines += 1
-                if state.quoted:
-                    text = rf.readline().rstrip()
-                    state.lines += 1
-                input += text
+                    input += text
 
         state.check()
         state.append(idx,idx) # collect anything left over
@@ -332,6 +343,9 @@ class YML(object):
         """
 
         if isinstance(o,str):
+            #if o.listelem:
+            #    o.listelem = False
+            #    return [ self._convert(o), ]
             if o.quoted: # a literal string
                 return str(o)
 

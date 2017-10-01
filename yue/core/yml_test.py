@@ -1,4 +1,4 @@
-
+#! python ../../setup.py test
 
 import unittest, time
 
@@ -41,6 +41,24 @@ class TestYml(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+    def _test_deserialization(self,s,o):
+        yml = YML()
+        o2 = yml.loads(s)
+        self.assertTrue(compare(o2,o),
+            msg="\nfound:    %s\nexpected: %s"%(o2,o))
+
+    def _test_syntax_error(self,s):
+        yml = YML()
+        with self.assertRaises(YmlException):
+            yml.loads(s)
+
+    def _dump_load(self,o1):
+        yml = YML()
+        s = yml.dumps(o1)
+        o2 = yml.loads(s)
+        self.assertTrue(compare(o2,o1),
+            msg="\nfound:    %s\nexpected: %s\nrepr:\n%s"%(o2,o1,s))
 
     def test_grammar(self):
         """
@@ -142,23 +160,17 @@ class TestYml(unittest.TestCase):
         """
         test deserializing str->object
         """
-        yml = YML()
-        def test_deserialization(s,o):
-            o2 = yml.loads(s)
-            self.assertTrue(compare(o2,o),
-                msg="\nfound:    %s\nexpected: %s"%(o2,o))
-
-        test_deserialization("""
+        self._test_deserialization("""
         [section]
         param=123""", {"section":{"param":123}})
 
         #spaces in parameters should be ignored
-        test_deserialization("""
+        self._test_deserialization("""
         [section]
         param = 123""", {"section":{"param":123}})
 
         #empty string
-        test_deserialization("""
+        self._test_deserialization("""
         [section]
         p1=
         p2=  # spaces!!
@@ -166,30 +178,30 @@ class TestYml(unittest.TestCase):
         p4= """, {"section":{"p1":"","p2":"","p3":"","p4":""}})
 
         # strip out comments
-        test_deserialization("""
+        self._test_deserialization("""
         # this
         [section] # is
         param=123 # a
         # comment""", {"section":{"param":123}})
 
         # parse special characters in quoted text
-        test_deserialization("""
+        self._test_deserialization("""
         [section]
         param="\\n\\x0A\\u3042" """, {"section":{"param":"\n\n\u3042"}})
 
+
+
     def test_syntax_error(self):
 
-        yml = YML()
-        def test_syntax_error(s):
-            with self.assertRaises(YmlException):
-                yml.loads(s)
-
-        test_syntax_error("""
+        self._test_syntax_error("""
             [section]
             param={ {} : {} }
             """)
 
     def test_list_serialization_1(self):
+        """
+        A bug was found that would place duplicate commad separators
+        """
         o1 = {"profiles":[
                 {"host":"localhost",
                   "port":22,
@@ -211,13 +223,6 @@ class TestYml(unittest.TestCase):
         yml = YML()
         s = yml.dumps(o2)
         self.assertTrue( s.find(", ,")<0 )
-
-    def _dump_load(self,o1):
-        yml = YML()
-        s = yml.dumps(o1)
-        o2 = yml.loads(s)
-        self.assertTrue(compare(o2,o1),
-            msg="\nfound:    %s\nexpected: %s\nrepr:\n%s"%(o2,o1,s))
 
     def test_list_serialization_2(self):
 
@@ -242,4 +247,72 @@ class TestYml(unittest.TestCase):
         }
         self._dump_load(o3);
 
+    def test_list_deserialization_1(self):
+
+        self._test_deserialization("""[section]
+        param=()""", {"section":{"param":[]}})
+
+        self._test_deserialization("""[section]
+        param=(1,)""", {"section":{"param":[1,]}})
+
+        self._test_deserialization("""[section]
+        param=1,""", {"section":{"param":[1,]}})
+
+        self._test_deserialization("""[section]
+        param=1,2,""", {"section":{"param":(1,2,)}})
+
+        self._test_syntax_error("""[section]
+            param=1,)""")
+
+        self._test_syntax_error("""[section]
+            param=(1,""")
+
+        self._test_deserialization("""[section]
+        param=(1,
+               2,)""", {"section":{"param":(1,2,)}})
+
+        self._test_deserialization("""[section]
+        param=(1,
+              )""", {"section":{"param":(1,)}})
+
+        self._test_deserialization("""[section]
+        param=({},
+               (),)""", {"section":{"param":(dict(),list(),)}})
+
+        self._test_deserialization("""[section]
+        param={},
+              (),""", {"section":{"param":(dict(),list(),)}})
+
+        self._test_deserialization("""[section]
+        testA=1
+        param=(1,
+              2)
+        testB=1""", {"section":{"param":(1,2,),
+                                "testA":1,
+                                "testB":1}})
+
+        self._test_deserialization("""[section]
+        testA=1
+        param=(1,
+              2)
+
+        testB=1""", {"section":{"param":(1,2,),
+                                "testA":1,
+                                "testB":1}})
+
+        self._test_deserialization("""[section]
+        testA=1
+        param=1,
+              2
+
+        testB=1""", {"section":{"param":(1,2,),
+                                "testA":1,
+                                "testB":1}})
+        self._test_deserialization("""[section]
+        testA=1
+        param=1,
+              2
+        testB=1""", {"section":{"param":(1,2,),
+                                "testA":1,
+                                "testB":1}})
 

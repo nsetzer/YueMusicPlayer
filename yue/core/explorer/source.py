@@ -355,12 +355,17 @@ class DirectorySource(DataSource):
             else:
                 isLink = DirectorySource.IS_LNK
 
+        try:
+            ltime = time.localtime(int(st.st_mtime))
+            mtime = calendar.timegm(ltime)
+        except:
+            mtime = 0
         result = {
             "isDir" : stat.S_ISDIR(st.st_mode),
             "isLink" : isLink,
             # TODO: always store time without timezone info....?
-            "mtime" : calendar.timegm(time.localtime(st.st_mtime)),
-            "ctime" : calendar.timegm(time.localtime(st.st_ctime)),
+            "mtime" : mtime,
+            "ctime" : mtime,
             "size"  : st.st_size,
             "mode"  : stat.S_IMODE(st.st_mode)
         }
