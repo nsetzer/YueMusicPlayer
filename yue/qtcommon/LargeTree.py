@@ -83,14 +83,20 @@ class TreeColumn(TableColumn):
         offset , xmid = self.painter_get_xmid( x, row_item.depth  )
         ymid = y+(h//2)
         wxh = 0
-        if row_item.icon != None or row_item.checkable:
-            wxh = self.parent.row_height-1
-        ################################################
-        # draw the icon
         icon_offset_x=5
         icon_offset_y=2
+        if row_item.icon != None or row_item.checkable:
+            wxh_a = self.parent.row_height-1
+            wxh_b = row_item.icon.height()
+            wxh = min(wxh_a,wxh_b)
+            icon_offset_x += (row_item.icon.width()-wxh+.5)//2
+            icon_offset_y += (row_item.icon.height()-wxh+.5)//2
+        ################################################
+        # draw the icon
+
         if row_item.icon != None and not self.parent.checkable:
             x_ = x+offset+self.paint_control_width
+            print("icon",wxh,wxh,h)
             painter.drawPixmap(x_+icon_offset_x,y+icon_offset_y,wxh,wxh,row_item.icon)
         ################################################
         # draw text

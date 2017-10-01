@@ -18,9 +18,9 @@ class ShortcutEditDialog(QDialog):
         self.vbox.setContentsMargins(16,0,16,0)
 
         self.grid = QGridLayout()
-        self.grid.addWidget(QLabel("qpath"),0,0)
-        self.grid.addWidget(QLabel("ipath"),1,0)
-        self.grid.addWidget(QLabel("lpath"),2,0)
+        self.grid.addWidget(QLabel("Quick path"),0,0)
+        self.grid.addWidget(QLabel("Icon"),1,0)
+        self.grid.addWidget(QLabel("Local Path"),2,0)
 
         self.edit_qpath = QLineEdit(self)
         self.edit_qpath.setText(qpath)
