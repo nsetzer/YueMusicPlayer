@@ -69,7 +69,7 @@ class TestYml(unittest.TestCase):
 
 
         def test_grammar(extra,text,expected):
-            o,l = yg.parse(io.StringIO(extra),1,text)
+            o,l = yg.parse(io.StringIO(extra),1,0,text)
             self.assertTrue(compare(o,expected),
                 msg="\nfound:    %s\nexpected: %s"%(o,expected))
 
@@ -281,12 +281,21 @@ class TestYml(unittest.TestCase):
 
         self._test_deserialization("""[section]
         param={},
-              (),""", {"section":{"param":(dict(),list(),)}})
+              ()""", {"section":{"param":(dict(),list(),)}})
 
         self._test_deserialization("""[section]
         testA=1
         param=(1,
               2)
+        testB=1""", {"section":{"param":(1,2,),
+                                "testA":1,
+                                "testB":1}})
+
+        # a final comma is allowed when wrapped in parens
+        self._test_deserialization("""[section]
+        testA=1
+        param=(1,
+               2,)
         testB=1""", {"section":{"param":(1,2,),
                                 "testA":1,
                                 "testB":1}})
@@ -308,11 +317,51 @@ class TestYml(unittest.TestCase):
         testB=1""", {"section":{"param":(1,2,),
                                 "testA":1,
                                 "testB":1}})
+
+        # Im not sure there is away to detect
+        # this kind of error
+        #self._test_syntax_error("""[section]
+        #testA=1
+        #param=1,
+        #      2,
+        #testB=1""")
+
+        return
+
+    def test_dict_deserialization_1(self):
+
         self._test_deserialization("""[section]
-        testA=1
-        param=1,
-              2
-        testB=1""", {"section":{"param":(1,2,),
-                                "testA":1,
-                                "testB":1}})
+        param={a=b}""",
+        {"section":{"param":{"a":"b"}}})
+
+        self._test_deserialization("""[section]
+        param={
+            a=b
+        }""",
+        {"section":{"param":{"a":"b"}}})
+
+        self._test_deserialization("""[section]
+        param={
+            a=b,
+            c=d
+        }""",
+        {"section":{"param":{"a":"b","c":"d"}}})
+
+        self._test_deserialization("""[section]
+        param={
+            a
+            =
+            b
+        }""",
+        {"section":{"param":{"a":"b"}}})
+
+        self._test_deserialization("""[section]
+        param={
+            a=
+            b
+            ,
+            c
+            =d
+        }""",
+        {"section":{"param":{"a":"b","c":"d"}}})
 

@@ -26,10 +26,15 @@ struct:
 class YmlException(Exception):
     pass
 
-class YmlSyntaxError(Exception):
+class YmlSyntaxError(YmlException):
 
-    def __init__(self, line_num, position, message):
-        msg="%d:%d %s"%(line_num,position,message)
+    def __init__(self, line_num, position, input, message):
+        msg="Error on line %d at position %d : %s"%(line_num, position, message)
+        if input is not None and position <= len(input):
+            msg += "\n" + input[-10:position] + "|" + input[position:10]
+        else:
+            msg += str(input)
+            msg += str(position)
         super(YmlSyntaxError,self).__init__(msg)
 
 class StrPos(str):
@@ -110,15 +115,15 @@ class YmlGrammar(object):
 
             self.stack.pop()
 
-        def check(self):
+        def check(self, line_num, idx):
             if len(self.stack) == 0:
-                raise YmlException("Empty stack (check parenthesis)")
+                raise YmlSyntaxError(line_num, idx, None, "Empty stack (check parenthesis)")
             if self.implicit_list==False and len(self.stack) > 1:
-                raise YmlException("Unterminated Block (%s)"%self.implicit_list)
+                raise YmlSyntaxError(line_num, idx, None, "Unterminated Block")
             if self.implicit_list==True and len(self.stack) > 2:
-                raise YmlException("Unterminated Block (%s)"%self.implicit_list)
+                raise YmlSyntaxError(line_num, idx, None, "Unterminated Block")
             if self.quoted:
-                raise YmlException("Unterminated Double Quote")
+                raise YmlSyntaxError(line_num, idx, None, "Unterminated Double Quote")
 
         def isDict(self):
             return isinstance(self.stack[-1],dict)
@@ -136,7 +141,7 @@ class YmlGrammar(object):
         self.tok_dict_separator = '='
         self.tok_comment = "#"
 
-    def parse(self,rf, line_num, input):
+    def parse(self,rf, line_num, offset, input):
 
         idx = 0;
         state = YmlGrammar.TokenState(line_num)
@@ -161,7 +166,7 @@ class YmlGrammar(object):
                         state.append(idx,idx+1)
                         state.pop()
                     else:
-                        raise YmlException("Unexpected character at position %d"%idx)
+                        raise YmlSyntaxError(line_num, idx, input, "Unexpected character")
                 elif c == self.tok_separator:
                     if len(state.stack)==1 and len(state.stack[-1])==0:
                         state.push(True)
@@ -178,19 +183,19 @@ class YmlGrammar(object):
                 if c == self.tok_escape:
                     idx+=1
                     if idx >= len(input):
-                        raise YmlException("Escape sequence expected character at position %d"%idx)
+                        raise YmlSyntaxError(line_num, idx, input, "Invalid Escape Sequence")
                     c = input[idx]
                     if c == 'n':
                         state.tok += "\n"
                         #idx += 1
                     elif c == 'x':
                         if idx+2 >= len(input):
-                            raise YmlException("Escape sequence expected character at position %d"%idx)
+                            raise YmlSyntaxError(line_num, idx, input, "Invalid Escape Sequence")
                         state.tok+=chr(int(input[idx+1:idx+3],16))
                         idx += 2
                     elif c == 'u':
                         if idx+4 >= len(input):
-                            raise YmlException("Escape sequence expected character at position %d"%idx)
+                            raise YmlSyntaxError(line_num, idx, input, "Invalid Escape Sequence")
                         state.tok+=chr(int(input[idx+1:idx+5],16))
                         idx += 4
                     else:
@@ -209,7 +214,7 @@ class YmlGrammar(object):
                     state.lines += 1
                     input += text
 
-        state.check()
+        state.check(line_num, offset+idx)
         state.append(idx,idx) # collect anything left over
 
         if len(state.tokens) == 0: # empty string input
@@ -288,6 +293,7 @@ class YML(object):
 
         line_num = 1
         for line in rf:
+            offset = line.find('=')
             line = line.strip();
             if not line:
                 continue # skip blank lines
@@ -301,7 +307,7 @@ class YML(object):
                 cfg[current_section] = dict()
             else:
                 # found a new parameter to add to the current section
-                param,value,lines = self._load_parameter_value(rf,line_num,line)
+                param,value,lines = self._load_parameter_value(rf,line_num,offset,line)
                 cfg[current_section][param] = value
                 line_num += lines
 
@@ -319,7 +325,7 @@ class YML(object):
 
         return current_section
 
-    def _load_parameter_value(self,rf,line_num,line):
+    def _load_parameter_value(self,rf,line_num,offset,line):
         """
         read the line character by character,
         if a \ or , is encountered at EOL, read the next line of the file
@@ -329,7 +335,7 @@ class YML(object):
         if idx < 0 :
             raise YmlException("parameter not well formed <%s>"%line)
         param,text = line.split("=",1)
-        o,lines = self.yg.parse(rf,line_num,text)
+        o,lines = self.yg.parse(rf,line_num,offset,text)
         # convert the output based on string values
         param_value = self._convert(o)
         return param.strip(),param_value,lines
