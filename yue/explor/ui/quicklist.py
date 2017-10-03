@@ -9,6 +9,8 @@ from yue.core.settings import Settings
 
 from yue.core.yml import YmlSettings
 
+import posixpath
+
 class ShortcutEditDialog(QDialog):
     """docstring for ShortcutEditDialog"""
     def __init__(self, qpath, ipath, lpath, parent=None):
@@ -18,12 +20,16 @@ class ShortcutEditDialog(QDialog):
         self.vbox.setContentsMargins(16,0,16,0)
 
         self.grid = QGridLayout()
-        self.grid.addWidget(QLabel("Quick path"),0,0)
-        self.grid.addWidget(QLabel("Icon"),1,0)
-        self.grid.addWidget(QLabel("Local Path"),2,0)
+        self.grid.addWidget(QLabel("Quick Path"),0,0)
+        self.grid.addWidget(QLabel("Quick Name"),1,0)
+        self.grid.addWidget(QLabel("Icon"),      2,0)
+        self.grid.addWidget(QLabel("Local Path"),3,0)
 
+        path,name = posixpath.split(qpath)
         self.edit_qpath = QLineEdit(self)
-        self.edit_qpath.setText(qpath)
+        self.edit_qpath.setText(path)
+        self.edit_qname = QLineEdit(self)
+        self.edit_qname.setText(name)
         self.cbox_ipath = QComboBox(self)
         # dont make the cbox editable, instead, have an option for custom and
         # then insert a line edit below for the custom path
@@ -48,8 +54,9 @@ class ShortcutEditDialog(QDialog):
         self.edit_lpath.setText(lpath)
 
         self.grid.addWidget(self.edit_qpath,0,1)
-        self.grid.addWidget(self.cbox_ipath,1,1)
-        self.grid.addWidget(self.edit_lpath,2,1)
+        self.grid.addWidget(self.edit_qname,1,1)
+        self.grid.addWidget(self.cbox_ipath,2,1)
+        self.grid.addWidget(self.edit_lpath,3,1)
 
         self.btn_accept = QPushButton("Save",self)
         self.btn_cancel = QPushButton("Cancel",self)
@@ -68,9 +75,12 @@ class ShortcutEditDialog(QDialog):
 
     def getSpecifier(self):
 
-        qpath = self.edit_qpath.text()
+        path = self.edit_qpath.text()
+        name = self.edit_qname.text()
         ipath = self.cbox_ipath.currentData()
         lpath = self.edit_lpath.text()
+
+        qpath = posixpath.join(path,name)
 
         return {"qpath":qpath,"ipath":ipath,"lpath":lpath}
 
@@ -275,7 +285,7 @@ class QuickAccessTable(LargeTree):
             ipath=":/img/app_folder.png"
             lpath=""
         else:
-            qpath=node.path(1)
+            qpath=node.path(1) + "/New Child"
             ipath=node.ipath
             lpath=node.data
 
