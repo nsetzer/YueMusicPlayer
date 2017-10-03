@@ -425,6 +425,7 @@ def main(script_file=__file__,version="",commitdate="",builddate=""):
 
     version_info = (version,commitdate,builddate)
     window = MainWindow(version_info,args.path,args.path_r)
+
     window.showWindow()
 
     sys.exit(app.exec_())

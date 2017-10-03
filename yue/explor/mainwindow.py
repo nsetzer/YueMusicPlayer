@@ -261,6 +261,9 @@ class MainWindow(QMainWindow):
         act = self.file_menu.addAction("Edit Preferences")
         act.triggered.connect(self.editSettings)
 
+        act = self.file_menu.addAction("Restore Previous Session")
+        act.triggered.connect(self.onRestorePreviousSession)
+
         self.file_menu.addSeparator()
 
         act = self.file_menu.addAction("Open FTP")
@@ -308,7 +311,6 @@ class MainWindow(QMainWindow):
         about_text += "PyQt Version: %s\n"%PYQT_VERSION_STR
         self.help_menu.addAction("About",\
             lambda:QMessageBox.about(self,"Explor",about_text))
-
 
     def onAboutToShowFileMenu(self):
         self.invalidate_vagrant_menu = True
@@ -557,6 +559,29 @@ class MainWindow(QMainWindow):
     def onSyncRemoteFiles(self):
 
         self.wfctrl.onPostAll()
+
+    def onRestorePreviousSession(self):
+        base,_ = os.path.split(YmlSettings.instance().path())
+        path = os.path.join(base,"session.yml")
+        yml = YmlSettings(path)
+        paths = yml.getKey("explor","active_views",[]);
+        self.controller.restoreActiveViews(paths);
+
+    def saveCurrentSession(self):
+        paths = self.controller.stashActiveViews()
+        base,_ = os.path.split(YmlSettings.instance().path())
+        path = os.path.join(base,"session.yml")
+        yml = YmlSettings(path)
+        yml.setKey("explor","active_views",paths);
+        yml.save();
+        sys.stdout.write("saved yml session\n")
+
+    def closeEvent(self, event):
+
+        self.saveCurrentSession();
+
+        sys.stdout.write("Closing Application\n")
+
 
 class Pane(QWidget):
     """docstring for Pane"""

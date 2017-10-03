@@ -6,7 +6,7 @@ from PyQt5.QtGui import *
 from yue.core.settings import Settings
 
 from yue.qtcommon.explorer.controller import ExplorerController
-from yue.core.explorer.source import DataSource
+from yue.core.explorer.source import DirectorySource,DataSource
 from yue.explor.fileutil import extract_supported, do_extract, do_compress
 import shlex
 import subprocess
@@ -147,7 +147,25 @@ class ExplorController(ExplorerController):
             if isinstance(widget,ExplorerView):
                 mdl1 = widget.ex_main
                 mdl2 = widget.ex_secondary
-                views.append(mdl1.view)
+                if isinstance(mdl1.view.source,DirectorySource):
+                    views.append(mdl1.view)
                 #if mdl2.isVisible():
-                views.append(mdl2.view)
+                if isinstance(mdl1.view.source,DirectorySource):
+                    views.append(mdl2.view)
         return views
+
+    def stashActiveViews(self):
+
+        return [ view.pwd()
+            for view in self.getContextPaths()]
+
+    def restoreActiveViews(self, paths):
+
+        for i in range(0,len(paths),2):
+            path1 = paths[i]
+            path2 = ""
+            if i+1 < len(paths):
+                path2 = paths[i+1]
+            self.window.newTab(path1,path2)
+
+

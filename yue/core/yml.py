@@ -455,7 +455,7 @@ class YML(object):
         se = " "*len(te)
 
         if len(item)==0:
-            return "()"
+            return ["()",]
 
         items_s=[]
         for v in item:
@@ -483,8 +483,8 @@ class YML(object):
         for i in range(1,len(items_s)-1):
             if not items_s[i].endswith(sm):
                 items_s[i] += sm
-            if depth > 1:
-                items_s[i] = ss + items_s[i]
+            #if depth > 1:
+            items_s[i] = ss + items_s[i]
 
         if depth > 1 or len(item)==1:
             items_s[0] = ts + items_s[0]
@@ -512,7 +512,7 @@ class YML(object):
         for k,v in sorted(item.items()):
             ks = self._stringify(k,depth+1,width-len(ts))
             if len(ks)>1:
-                raise YmlException("error")
+                raise YmlException("Key Error: `%s` is not a basic type"%k)
             ks = ks[0]
             vs = self._stringify(v,depth+1,width-len(ts))
 

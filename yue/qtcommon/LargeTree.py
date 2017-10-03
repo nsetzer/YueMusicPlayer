@@ -96,7 +96,6 @@ class TreeColumn(TableColumn):
 
         if row_item.icon != None and not self.parent.checkable:
             x_ = x+offset+self.paint_control_width
-            print("icon",wxh,wxh,h)
             painter.drawPixmap(x_+icon_offset_x,y+icon_offset_y,wxh,wxh,row_item.icon)
         ################################################
         # draw text

@@ -365,3 +365,10 @@ class TestYml(unittest.TestCase):
         }""",
         {"section":{"param":{"a":"b","c":"d"}}})
 
+        o1 = {
+            "section": {
+                "key": [{"list0":list(), "list1":[1,], "list2":[1,2]},]
+            }
+        }
+        self._dump_load(o1);
+
