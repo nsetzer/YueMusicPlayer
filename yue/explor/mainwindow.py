@@ -184,7 +184,12 @@ class MainWindow(QMainWindow):
         """
         super(MainWindow, self).__init__()
 
+        self.sources = set()
+
         self.version,self.versiondate,self.builddate = version_info
+
+        self.initMenuBar()
+        self.initStatusBar()
 
         self.splitter = QSplitter(self)
 
@@ -239,9 +244,6 @@ class MainWindow(QMainWindow):
 
         self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape),self)
         self.xcut_refresh.activated.connect(self.refresh)
-
-        self.initMenuBar()
-        self.initStatusBar()
 
     def initMenuBar(self):
 
@@ -332,10 +334,12 @@ class MainWindow(QMainWindow):
 
         statusbar = self.statusBar()
 
+        self.sbar_lbl_nsources = QLabel() #watchers
         self.sbar_lbl_w_nfiles = QLabel() #watchers
         self.sbar_lbl_p_nfiles = QLabel() # delete me
         self.sbar_lbl_s_nfiles = QLabel() # delete me
 
+        statusbar.addWidget(self.sbar_lbl_nsources)
         statusbar.addWidget(self.sbar_lbl_w_nfiles)
         statusbar.addWidget(self.sbar_lbl_p_nfiles)
         statusbar.addWidget(self.sbar_lbl_s_nfiles)
@@ -377,6 +381,9 @@ class MainWindow(QMainWindow):
         self.dashboard.startJob(job)
 
     def newTabFromSource(self,src):
+
+        self.sources.add(src);
+        self.onUpdateSources()
 
         view = self._newTab(src)
         view.chdir(src.root())
@@ -438,6 +445,9 @@ class MainWindow(QMainWindow):
         self.tabview.setTabsClosable(self.tabview.count()>1)
 
         self.tabview.setCurrentWidget(view)
+
+        self.sources.add(source)
+        self.onUpdateSources()
 
         return view
 
@@ -506,10 +516,47 @@ class MainWindow(QMainWindow):
         else:
             w.chdir_r(path)
 
+    def getActiveSources(self):
+        sources = set()
+
+        for i in range(self.tabview.count()):
+            widget = self.tabview.widget(i)
+            if isinstance(widget,ExplorerView):
+                mdl1 = widget.ex_main
+                mdl2 = widget.ex_secondary
+
+                sources.add(mdl1.view.source)
+                sources.add(mdl2.view.source)
+
+        return sources
+
+    def closeInactiveSources(self):
+        sources = self.getActiveSources()
+
+        # get the set of sources that are no longer connected to a tab
+        orphaned = self.sources - sources;
+        for src in orphaned:
+            # todo: sources need to check for sources that depend on them
+            # and cannot be closed until the dependencies are closed
+            # add them to `sources` instead of closing
+
+            # do not close the default source, it is needed for new tabs
+            if src is not self.source:
+                src.close();
+            else:
+                # add sources that cannot be closed to the set of sources
+                sources.add(src)
+
+        # update the set of opened sources
+        self.sources = sources
+
+        self.onUpdateSources()
+
     def onTabCloseRequest(self,idx):
         self.tabview.removeTab(idx)
         self.tabview.setTabsClosable(self.tabview.count()>1)
 
+        self.closeInactiveSources()
     def refresh(self):
         w = self.tabview.currentWidget()
         w.refresh()
@@ -531,6 +578,12 @@ class MainWindow(QMainWindow):
             self.sbar_lbl_p_nfiles.setText("nfiles: %d"%nFiles)
         else:
             self.sbar_lbl_s_nfiles.setText("nfiles: %d"%nFiles)
+
+    def onUpdateSources(self):
+        if len(self.sources) == 1:
+            self.sbar_lbl_nsources.setText("1 source")
+        else:
+            self.sbar_lbl_nsources.setText("%d sources"%len(self.sources))
 
     def onOpenRemote(self, tab, display, path):
 
@@ -581,7 +634,6 @@ class MainWindow(QMainWindow):
         self.saveCurrentSession();
 
         sys.stdout.write("Closing Application\n")
-
 
 class Pane(QWidget):
     """docstring for Pane"""

@@ -549,4 +549,7 @@ class ExplorerModel(QWidget):
 
         if view is not None:
             self.view.chdir( path )
+            #self.view = view
+            #self.tbl_file.view = view
             self.tbl_file.update()
+            print ("set",self.view is view)
