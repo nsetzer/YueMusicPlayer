@@ -557,6 +557,7 @@ class MainWindow(QMainWindow):
         self.tabview.setTabsClosable(self.tabview.count()>1)
 
         self.closeInactiveSources()
+
     def refresh(self):
         w = self.tabview.currentWidget()
         w.refresh()

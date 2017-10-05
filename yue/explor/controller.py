@@ -147,11 +147,11 @@ class ExplorController(ExplorerController):
             if isinstance(widget,ExplorerView):
                 mdl1 = widget.ex_main
                 mdl2 = widget.ex_secondary
-                if isinstance(mdl1.view.source,DirectorySource):
-                    views.append(mdl1.view)
+                #if isinstance(mdl1.view.source,DirectorySource):
+                views.append(mdl1.view)
                 #if mdl2.isVisible():
-                if isinstance(mdl1.view.source,DirectorySource):
-                    views.append(mdl2.view)
+                #if isinstance(mdl1.view.source,DirectorySource):
+                views.append(mdl2.view)
         return views
 
     def stashActiveViews(self):

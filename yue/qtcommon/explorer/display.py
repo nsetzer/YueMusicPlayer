@@ -16,6 +16,10 @@ from yue.qtcommon.explorer.filetable import ResourceManager
 from yue.qtcommon.explorer.jobs import Job, \
     RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
 
+from yue.core.settings import Settings
+
+from yue.qtcommon.explorer.source import LazySourceListView
+
 class LineEdit_Path(LineEdit):
 
     def __init__(self,parent,table):
@@ -61,7 +65,6 @@ class ContextBarPath(ContextBar):
 
     def eventFilter(self,target,event):
         if target == self and event.type() == QEvent.MouseButtonPress:
-            print("Button press")
             self.fillComboBox()
         return False
 
@@ -75,7 +78,6 @@ class ContextBarPath(ContextBar):
         self.clear();
         self.addItem(text,None)
         for i,view in enumerate(views):
-            print("ContextBox: ",i,view.source)
             self.addItem(view.pwd(),view)
 
 class ExplorerModel(QWidget):
@@ -230,7 +232,7 @@ class ExplorerModel(QWidget):
         self.tbl_file.setData(view)
         self.txt_path.setText(view.pwd())
 
-        self.directory_history.append(view.pwd())
+        self.directory_history = [view.pwd(),]
 
     def showSplitButton(self,bShow):
         self.btn_split.setHidden(not bShow)
@@ -254,6 +256,7 @@ class ExplorerModel(QWidget):
                 print(type(self.view),path)
                 QMessageBox.critical(self,"Access Error","Error Opening:\n`%s`\nDirectory Does Not Exist"%path)
                 return;
+
 
             self.view.chdir(path)
 
@@ -545,11 +548,13 @@ class ExplorerModel(QWidget):
         # I need to build out a way for views to be closed
         # when there are no more references.
         view = self.txt_path.itemData(index)
-        path = self.txt_path.itemText(index)
 
         if view is not None:
-            self.view.chdir( path )
-            #self.view = view
-            #self.tbl_file.view = view
-            self.tbl_file.update()
-            print ("set",self.view is view)
+            # bit of a hack here
+            # replace the source, then change directories
+            # this preserves any signals attached to the view.
+            # anything dependant on the old source must be reset to
+            # the factory default
+            self.view.source = view.source
+            self.directory_history = []
+            self.chdir(view.pwd())
