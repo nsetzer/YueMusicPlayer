@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 import traceback
 
 from yue.qtcommon.LineEdit import LineEdit
-
+from yue.core.explorer.source import DirectorySource
 from yue.core.util import format_date, format_bytes, format_mode
 
 from yue.qtcommon.explorer.ContextBar import ContextBar
@@ -97,6 +97,9 @@ class ExplorerModel(QWidget):
 
     filterFiles = pyqtSignal(str)
 
+    # emitted when the source for the current view is changed
+    viewSourceChanged = pyqtSignal(object)
+
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
 
@@ -118,8 +121,10 @@ class ExplorerModel(QWidget):
 
         self.txt_path = ContextBarPath(self, controller, self.tbl_file)
 
-        self.txt_path.currentIndexChanged.connect(self.onContextIndexChanged)
+        self.lbl_viewName = QLabel("");
+        self.lbl_viewName.setAlignment(Qt.AlignCenter)
 
+        self.txt_path.currentIndexChanged.connect(self.onContextIndexChanged)
 
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
         #self.txt_path.textEdited.connect(self.onTextChanged)
@@ -208,6 +213,7 @@ class ExplorerModel(QWidget):
         self.hbox.addWidget(self.txt_filter)
         self.hbox.addWidget(self.btn_split)
         self.vbox.addLayout( self.hbox )
+        self.vbox.addWidget( self.lbl_viewName )
         self.vbox.addWidget( self.txt_path )
         self.vbox.addWidget( self.tbl_file.container )
         self.vbox.addLayout( self.hbox_st )
@@ -223,6 +229,8 @@ class ExplorerModel(QWidget):
         # this is set to a name that should be selected after a load completes
         self.chdir_on_load_select = None
 
+        self.viewSourceChanged.connect(self.onViewSourceChanged)
+
     def _getNewFileTable(self,view):
         raise NotImplementedError("return a table in a subclass")
 
@@ -233,6 +241,8 @@ class ExplorerModel(QWidget):
         self.txt_path.setText(view.pwd())
 
         self.directory_history = [view.pwd(),]
+
+        self.viewSourceChanged.emit(view)
 
     def showSplitButton(self,bShow):
         self.btn_split.setHidden(not bShow)
@@ -555,6 +565,20 @@ class ExplorerModel(QWidget):
             # this preserves any signals attached to the view.
             # anything dependant on the old source must be reset to
             # the factory default
+
+            # TODO: this may need to clear copy/cut/paste buffers
+            #
             self.view.source = view.source
             self.directory_history = []
             self.chdir(view.pwd())
+
+            self.viewSourceChanged.emit(self.view)
+
+    def onViewSourceChanged(self,view):
+
+        if not isinstance(view.source,DirectorySource):
+            self.lbl_viewName.setText(view.name())
+            self.lbl_viewName.setHidden(False)
+        else:
+            self.lbl_viewName.setHidden(True)
+
