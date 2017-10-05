@@ -424,6 +424,8 @@ class MainWindow(QMainWindow):
         else:
             view.ex_secondary.chdir(view.pwd_r())
 
+
+
     def _newTab(self,source,icon_path=':/img/app_folder.png'):
         view = ExplorerView(source,self.controller,self)
 
@@ -505,6 +507,24 @@ class MainWindow(QMainWindow):
             self.newTab("~",path)
         else:
             w.chdir_r(path)
+
+    def setTabCloseable(self, idx, bCloseable):
+        """
+        QTabBar *tabBar = ui->tabWidget->findChild<QTabBar *>();
+        tabBar->setTabButton(0, QTabBar::RightSide, 0);
+        tabBar->setTabButton(0, QTabBar::LeftSide, 0);
+
+        tabWidget->tabBar()->tabButton(0, QTabBar::RightSide)->resize(0, 0);
+        """
+
+        btn1 = self.tabview.tabBar().tabButton(0,QTabBar.RightSide)
+        btn2 = self.tabview.tabBar().tabButton(0,QTabBar.LeftSide)
+
+        if btn1:
+            btn1.setHidden(not bCloseable)
+
+        if btn2:
+            btn2.setHidden(not bCloseable)
 
     def onTabCloseRequest(self,idx):
         self.tabview.removeTab(idx)
