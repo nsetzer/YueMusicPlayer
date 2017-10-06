@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 import traceback
 
 from yue.qtcommon.LineEdit import LineEdit
-
+from yue.core.explorer.source import DirectorySource
 from yue.core.util import format_date, format_bytes, format_mode
 
 from yue.qtcommon.explorer.ContextBar import ContextBar
@@ -15,6 +15,10 @@ from yue.qtcommon.explorer.ContextBar import ContextBar
 from yue.qtcommon.explorer.filetable import ResourceManager
 from yue.qtcommon.explorer.jobs import Job, \
     RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
+
+from yue.core.settings import Settings
+
+from yue.qtcommon.explorer.source import LazySourceListView
 
 class LineEdit_Path(LineEdit):
 
@@ -61,7 +65,6 @@ class ContextBarPath(ContextBar):
 
     def eventFilter(self,target,event):
         if target == self and event.type() == QEvent.MouseButtonPress:
-            print("Button press")
             self.fillComboBox()
         return False
 
@@ -75,7 +78,6 @@ class ContextBarPath(ContextBar):
         self.clear();
         self.addItem(text,None)
         for i,view in enumerate(views):
-            print("ContextBox: ",i,view.source)
             self.addItem(view.pwd(),view)
 
 class ExplorerModel(QWidget):
@@ -94,6 +96,9 @@ class ExplorerModel(QWidget):
     infoNumFiles = pyqtSignal(int)
 
     filterFiles = pyqtSignal(str)
+
+    # emitted when the source for the current view is changed
+    viewSourceChanged = pyqtSignal(object)
 
     def __init__(self, view, controller, parent=None):
         super(ExplorerModel, self).__init__(parent)
@@ -116,8 +121,10 @@ class ExplorerModel(QWidget):
 
         self.txt_path = ContextBarPath(self, controller, self.tbl_file)
 
-        self.txt_path.currentIndexChanged.connect(self.onContextIndexChanged)
+        self.lbl_viewName = QLabel("");
+        self.lbl_viewName.setAlignment(Qt.AlignCenter)
 
+        self.txt_path.currentIndexChanged.connect(self.onContextIndexChanged)
 
         self.txt_path.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
         #self.txt_path.textEdited.connect(self.onTextChanged)
@@ -206,6 +213,7 @@ class ExplorerModel(QWidget):
         self.hbox.addWidget(self.txt_filter)
         self.hbox.addWidget(self.btn_split)
         self.vbox.addLayout( self.hbox )
+        self.vbox.addWidget( self.lbl_viewName )
         self.vbox.addWidget( self.txt_path )
         self.vbox.addWidget( self.tbl_file.container )
         self.vbox.addLayout( self.hbox_st )
@@ -221,6 +229,8 @@ class ExplorerModel(QWidget):
         # this is set to a name that should be selected after a load completes
         self.chdir_on_load_select = None
 
+        self.viewSourceChanged.connect(self.onViewSourceChanged)
+
     def _getNewFileTable(self,view):
         raise NotImplementedError("return a table in a subclass")
 
@@ -230,7 +240,9 @@ class ExplorerModel(QWidget):
         self.tbl_file.setData(view)
         self.txt_path.setText(view.pwd())
 
-        self.directory_history.append(view.pwd())
+        self.directory_history = [view.pwd(),]
+
+        self.viewSourceChanged.emit(view)
 
     def showSplitButton(self,bShow):
         self.btn_split.setHidden(not bShow)
@@ -254,6 +266,7 @@ class ExplorerModel(QWidget):
                 print(type(self.view),path)
                 QMessageBox.critical(self,"Access Error","Error Opening:\n`%s`\nDirectory Does Not Exist"%path)
                 return;
+
 
             self.view.chdir(path)
 
@@ -545,8 +558,27 @@ class ExplorerModel(QWidget):
         # I need to build out a way for views to be closed
         # when there are no more references.
         view = self.txt_path.itemData(index)
-        path = self.txt_path.itemText(index)
 
         if view is not None:
-            self.view.chdir( path )
-            self.tbl_file.update()
+            # bit of a hack here
+            # replace the source, then change directories
+            # this preserves any signals attached to the view.
+            # anything dependant on the old source must be reset to
+            # the factory default
+
+            # TODO: this may need to clear copy/cut/paste buffers
+            #
+            self.view.source = view.source
+            self.directory_history = []
+            self.chdir(view.pwd())
+
+            self.viewSourceChanged.emit(self.view)
+
+    def onViewSourceChanged(self,view):
+
+        if not isinstance(view.source,DirectorySource):
+            self.lbl_viewName.setText(view.name())
+            self.lbl_viewName.setHidden(False)
+        else:
+            self.lbl_viewName.setHidden(True)
+

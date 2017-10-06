@@ -281,7 +281,7 @@ class QuickAccessTable(LargeTree):
         # node is the currently selected node in the tree
 
         if node is self.root:
-            qpath="/"
+            qpath="/New Child"
             ipath=":/img/app_folder.png"
             lpath=""
         else:

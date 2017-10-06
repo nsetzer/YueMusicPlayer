@@ -53,6 +53,11 @@ class ExplorerView(Tab):
         self.ex_main.openRemote.connect(self.onOpenRemote)
         self.ex_secondary.openRemote.connect(self.onOpenRemote)
 
+        self.ex_main.viewSourceChanged.connect(lambda v:
+            self.onViewSourceChanged(self.ex_main,v))
+        self.ex_secondary.viewSourceChanged.connect(lambda v:
+            self.onViewSourceChanged(self.ex_secondary,v))
+
         self.hbox = QHBoxLayout(self)
         self.hbox.setContentsMargins(0,0,0,0)
         self.hbox.addWidget(self.ex_main)
@@ -139,3 +144,8 @@ class ExplorerView(Tab):
     def onInfoNumFiles(self,onLeft,nFiles):
 
         self.directoryInfo.emit(onLeft,nFiles)
+
+    def onViewSourceChanged(self, model, view):
+        # view can be None...
+        #if self.ex_main.view.source is not self.ex_secondary.view.source:
+        pass
