@@ -165,8 +165,7 @@ class ExplorModel(ExplorerModel):
 
         cmdstr = Settings.instance()['cmd_launch_terminal']
         path = self.view.pwd()
-        print(cmdstr)
-        os.system(cmdstr%path)
+        proc_exec(cmdstr%(path),path)
 
     def action_open_file(self, item):
         path = self.view.realpath(item['name'])
