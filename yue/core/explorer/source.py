@@ -835,3 +835,119 @@ class SourceListView(SourceView):
                 filter = filter + '*'
             self.text_filter = filter.lower()
         self.setData(self.data)
+
+class SourceGraphicsView(SourceListView):
+
+    """
+    This view has the added ability to iterate through the pwd optionally
+    filtering the items automatically.
+
+    Iteration is done with next() and prev() and is lazy
+    """
+    def __init__(self,source,dirpath,dirsOnly=False):
+        self.index = 0
+        self.index_changed = False
+        super(SourceGraphicsView,self).__init__(source,dirpath,dirsOnly)
+
+    def alert(self,boolean):
+        """ stub function """
+        return boolean
+
+    def move(self,oldpath,newpath):
+        self.index_changed = True
+        return super().move(oldpath,newpath)
+
+    def delete(self,path):
+        self.index_changed = True
+        return super().delete(path)
+
+    def position(self):
+        return self.index
+
+    def next(self,_jmp=1):
+
+        if len(self.data)==0:
+            return None
+        if not self.index_changed:
+            self.index = (self.index+_jmp)%len(self.data)
+            if _jmp>0 and self.index==0 or \
+               _jmp<0 and self.index==len(self.data)-1:
+                self.alert(True)
+        else:
+            self.index_changed = False
+        return self.getResource()
+
+    def prev(self):
+        return self.next(-1)
+
+    def getResource(self):
+
+        if self.index >= len(self.data):
+            self.index=0
+
+        while self.index < len(self.data) and \
+              ( not self.validateIndex( self.index ) ) :
+            self.data.pop( self.index )
+
+        if self.index < len(self.data):
+            if self.validateIndex(self.index):
+                fname = self.data[self.index]
+                path = self.join( self.pwd(), fname )
+                #print(path)
+                return path
+
+        return None
+
+    def peakResource(self,n=1):
+
+        if len(self.data) == 0:
+            return None
+
+        idx = (self.index + n)%len(self.data)
+
+        while idx < len(self.data) and \
+              ( not self.validateIndex( idx ) ) :
+            self.data.pop( idx )
+
+        if idx < len(self.data):
+            if self.validateIndex(idx):
+                fname = self.data[idx]
+                return self.join( self.pwd(), fname )
+
+        return None
+
+    def getResourceName(self):
+
+        if self.index >= len(self.data):
+            self.index=0
+        if self.index < len(self.data):
+            return self.data[self.index]
+        return ""
+
+    def indexExists(self,index):
+        if index >= len(self.data):
+            return False
+        fname = self.data[index]
+        filepath = self.join( self.pwd(), fname )
+        return self.exists( filepath )
+
+    def setIndex(self,path):
+        # add the file if it exists in the pwd
+        # and is not in data : it may be newer than
+        # the most recent load.
+        _,name = os.path.split(path)
+        if name not in self.data and \
+           self.exists(self.join(self.pwd(),name)):
+           self.data.append(name)
+        self.index = self.data.index(name)
+
+    def validateIndex(self,index):
+        """ return true if the indicated resource should be displayed """
+        if len(self.data)==0 or index > len(self.data):
+            return False;
+
+        return self.indexExists(index) and self.validateResource( self.data[index] )
+
+    def validateResource(self,path):
+        """ should be reimplemented in a child class """
+        raise NotImplementedError("")

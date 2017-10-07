@@ -19,16 +19,18 @@ class ResourceManager(object):
     SONG      = 0x003
     ARCHIVE   = 0x004
     IMAGE     = 0x005
-    MOVIE     = 0x006
-    DOCUMENT  = 0x007
+    GIF       = 0x006
+    MOVIE     = 0x007
+    DOCUMENT  = 0x008
 
     LINK_DIRECTORY = 0x101
     LINK_FILE      = 0x102
     LINK_SONG      = 0x103
     LINK_ARCHIVE   = 0x104
     LINK_IMAGE     = 0x105
-    LINK_MOVIE     = 0x106
-    LINK_DOCUMENT  = 0x107
+    LINK_GIF       = 0x106
+    LINK_MOVIE     = 0x107
+    LINK_DOCUMENT  = 0x108
 
     @staticmethod
     def instance():
@@ -43,7 +45,8 @@ class ResourceManager(object):
 
         # configure default file associations
         self.ext_archive  = [".gz",".zip",".7z",".rar",".iz",".bz2"]
-        self.ext_image    = [".jpg",".png",".bmp",".jpeg",".gif"]
+        self.ext_image    = [".jpg",".png",".bmp",".jpeg",]
+        self.ext_gif    = [".gif"]
         self.ext_movie    = [".avi",".mp4",".webm",".mkv"]
         self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
 
@@ -58,6 +61,7 @@ class ResourceManager(object):
         self.resources[ResourceManager.DIRECTORY] = QPixmap(':/img/app_folder.png')
         self.resources[ResourceManager.ARCHIVE]   = QPixmap(':/img/app_archive.png')
         self.resources[ResourceManager.IMAGE]     = QPixmap(':/img/app_media.png')
+        self.resources[ResourceManager.GIF]       = QPixmap(':/img/app_media.png')
         self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_video.png')
         self.resources[ResourceManager.DOCUMENT]  = QPixmap(':/img/app_document.png')
 
@@ -65,8 +69,8 @@ class ResourceManager(object):
 
         for res in [ResourceManager.FILE,ResourceManager.SONG,
                     ResourceManager.DIRECTORY,ResourceManager.ARCHIVE,
-                    ResourceManager.IMAGE,ResourceManager.MOVIE,
-                    ResourceManager.DOCUMENT]:
+                    ResourceManager.IMAGE, ResourceManager.GIF,
+                    ResourceManager.MOVIE, ResourceManager.DOCUMENT]:
             img = self.compose(self.resources[res],self.img_link)
             self.resources[ResourceManager.LINK|res] = img
 
@@ -82,6 +86,9 @@ class ResourceManager(object):
 
         for ext in self.ext_image:
             self.map_ext[ext] = ResourceManager.IMAGE
+
+        for ext in self.ext_gif:
+            self.map_ext[ext] = ResourceManager.GIF
 
         for ext in self.ext_movie:
             self.map_ext[ext] = ResourceManager.MOVIE
@@ -108,6 +115,8 @@ class ResourceManager(object):
             self.ext_archive = set(lst)
         elif kind == ResourceManager.IMAGE:
             self.ext_image = set(lst)
+        elif kind == ResourceManager.GIF:
+            self.ext_gif = set(lst)
         elif kind == ResourceManager.MOVIE:
             self.ext_movie = set(lst)
         elif kind == ResourceManager.DOCUMENT:
@@ -122,6 +131,8 @@ class ResourceManager(object):
             return list(self.ext_archive)
         elif kind == ResourceManager.IMAGE:
             return list(self.ext_image)
+        elif kind == ResourceManager.GIF:
+            return list(self.ext_gif)
         elif kind == ResourceManager.MOVIE:
             return list(self.ext_movie)
         elif kind == ResourceManager.DOCUMENT:
