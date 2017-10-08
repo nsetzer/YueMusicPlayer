@@ -1,6 +1,7 @@
  <!DOCTYPE RCC><RCC version="1.0">
  <qresource>
      <file>img/icon.png</file>
+     <file>img/icon_explor.png</file>
      <file>img/app_archive.png</file>
      <file>img/app_check.png</file>
      <file>img/app_document.png</file>
@@ -9,6 +10,7 @@
      <file>img/app_fav.png</file>
      <file>img/app_file.png</file>
      <file>img/app_folder.png</file>
+     <file>img/app_fullscreen.png</file>
      <file>img/app_import.png</file>
      <file>img/app_list.png</file>
      <file>img/app_media.png</file>

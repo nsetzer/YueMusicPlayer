@@ -36,11 +36,18 @@ class ImageDisplayDialog(QDialog):
 
         self.display.displayResource.connect(self.onDisplayResource)
 
+        self.toolbar = QToolBar(self)
+        self.tbar_btn_fullscreen = QToolButton(self)
+        self.tbar_btn_fullscreen.setIcon(QIcon(":/img/app_fullscreen.png"))
+        self.tbar_btn_fullscreen.clicked.connect(self.toggleFullScreen)
+        self.toolbar.addWidget(self.tbar_btn_fullscreen)
+
         self.statusbar = QStatusBar(self)
         self.sbar_lbl_imginfo = QLabel(self)
 
         self.statusbar.addWidget(self.sbar_lbl_imginfo)
 
+        self.vbox.addWidget(self.toolbar)
         self.vbox.addWidget(self.display)
         self.vbox.addWidget(self.statusbar)
 
@@ -73,3 +80,31 @@ class ImageDisplayDialog(QDialog):
 
         name=self.display.getSource().split(path)[1]
         self.setWindowTitle(name)
+
+        if isinstance(item,QImage):
+            txt = "(%d, %d)"%(item.width(),item.height())
+            self.sbar_lbl_imginfo.setText(txt)
+
+        elif isinstance(item,tuple):
+            img,map,map_params = item
+            txt = "(%d, %d)"%(img.width(),img.height())
+            self.sbar_lbl_imginfo.setText(txt)
+
+        elif isinstance(item,QByteArray):
+            self.sbar_lbl_imginfo.setText("")
+        else:
+            self.sbar_lbl_imginfo.setText("")
+
+
+    def keyPressEvent(self,event):
+
+        if event.key() ==  Qt.Key_Escape and self.isFullScreen():
+            self.toggleFullScreen();
+
+    def toggleFullScreen(self):
+        self.setWindowState(self.windowState() ^ Qt.WindowFullScreen);
+
+        self.toolbar.setHidden(self.isFullScreen())
+        self.statusbar.setHidden(self.isFullScreen())
+
+

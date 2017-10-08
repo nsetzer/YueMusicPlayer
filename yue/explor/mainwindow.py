@@ -1,4 +1,4 @@
-#! python ../../explor.py C:\\Users\\Nick\\Documents\\playground C:\\Users\\Nick\\Documents\\playground
+#! python ../../explor.py C:\\Users\\Nick\\Pictures
 
 from sip import SIP_VERSION_STR
 from PyQt5.QtCore import *
