@@ -85,12 +85,15 @@ class TreeColumn(TableColumn):
         wxh = 0
         icon_offset_x=5
         icon_offset_y=2
-        if row_item.icon != None or row_item.checkable:
+        if row_item.icon is not None or row_item.checkable:
             wxh_a = self.parent.row_height-1
-            wxh_b = row_item.icon.height()
-            wxh = min(wxh_a,wxh_b)
-            icon_offset_x += (row_item.icon.width()-wxh+.5)//2
-            icon_offset_y += (row_item.icon.height()-wxh+.5)//2
+            if row_item.icon:
+                wxh_b = row_item.icon.height()
+                wxh = min(wxh_a,wxh_b)
+                icon_offset_x += (row_item.icon.width()-wxh+.5)//2
+                icon_offset_y += (row_item.icon.height()-wxh+.5)//2
+            else:
+                wxh = wxh_a
         ################################################
         # draw the icon
 

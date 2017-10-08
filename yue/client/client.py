@@ -30,7 +30,7 @@ from ..core.library import Library
 from ..core.playlist import PlaylistManager
 from ..core.history import History
 from ..core.sound.device import MediaState
-from ..core.song import Song , get_album_art_data, ArtNotFound
+from ..core.song import Song
 from ..core.util import string_quote, backupDatabase, format_delta
 from ..core.repl import YueRepl, ReplArgumentParser
 from ..core.bass import pybass
@@ -93,6 +93,7 @@ from yue.qtcommon.playbutton import PlayButton, AdvanceButton
 from yue.qtcommon.slider import PositionSlider
 from yue.qtcommon.closebutton import  CloseTabButton
 from yue.qtcommon.ResourceManager import  ResourceManager
+
 try:
     from yue.qtcommon.scieditor import CodeEditor
 except ImportError:

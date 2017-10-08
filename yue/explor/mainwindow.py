@@ -619,10 +619,8 @@ class MainWindow(QMainWindow):
         # if it already exists, reuse the existing dialog
         if self.imgview_dialog is None:
             self.imgview_dialog = ImageDisplayDialog(self)
-
-        self.imgview_dialog.finished.connect(self.onViewImageDialogClosed)
-
-        self.imgview_dialog.setAttribute(Qt.WA_DeleteOnClose);
+            self.imgview_dialog.finished.connect(self.onViewImageDialogClosed)
+            self.imgview_dialog.setAttribute(Qt.WA_DeleteOnClose);
 
         self.imgview_dialog.setSource(view.source, path)
         self.imgview_dialog.show();

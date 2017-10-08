@@ -39,7 +39,7 @@ class AlbumArtView(QLabel):
     def __init__(self, parent=None):
         super(AlbumArtView, self).__init__(parent)
 
-        self.dialog = AlbumArtDialog(self)
+        self.dialog = None
 
     def setArt(self, song):
         try:
@@ -56,6 +56,17 @@ class AlbumArtView(QLabel):
             self.setHidden(True)
 
     def mouseReleaseEvent(self,event):
+
+        if self.dialog is None:
+            self.dialog = AlbumArtDialog(self)
+            self.dialog.finished.connect(self.onDialogClosed)
+            self.dialog.setAttribute(Qt.WA_DeleteOnClose);
         self.dialog.setImage( self.image )
         self.dialog.resize(512,512)
         self.dialog.show()
+
+    def onDialogClosed(self):
+
+        if self.dialog:
+            self.dialog.setParent(None)
+            self.dialog = None
