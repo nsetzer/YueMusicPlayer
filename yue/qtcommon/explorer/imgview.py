@@ -235,7 +235,7 @@ class ImageDisplay(QWidget):
     speedChanged    = pyqtSignal(int)
     resourceChanged = pyqtSignal(object)
     imageChanged    = pyqtSignal(object)
-    displayResource = pyqtSignal(object)
+    displayResource = pyqtSignal(str, object)
 
     def __init__(self,parent):
         super(ImageDisplay, self).__init__()
@@ -302,13 +302,13 @@ class ImageDisplay(QWidget):
         # TODO: this should be a PUSH instead of a PULL
         return self.source
 
-    def loadResource(self,res):
-        if res != None :
-            self.resourceChanged.emit( res )
-            if res.kind in (ResourceManager.IMAGE,ResourceManager.GIF):
-                self.load(res.kind,res.file.read())
+    #def loadResource(self,res):
+    #    if res != None :
+    #        self.resourceChanged.emit( res )
+    #        if res.kind in (ResourceManager.IMAGE,ResourceManager.GIF):
+    #            self.load(res.kind,res.file.read())
 
-    def load(self,item):
+    def load(self, path, item):
         # called by the display thread
 
         if isinstance(item,QImage):
@@ -605,7 +605,7 @@ class DisplayThread(QThread):
         if item is None:
             item = self.parent.default_resource
 
-        self.parent.displayResource.emit( item )
+        self.parent.displayResource.emit( self.resource_path, item )
 
         self.parent.perf_update = time.perf_counter()
 

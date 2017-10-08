@@ -34,7 +34,15 @@ class ImageDisplayDialog(QDialog):
 
         self.display = ImageDisplay(self);
 
+        self.display.displayResource.connect(self.onDisplayResource)
+
+        self.statusbar = QStatusBar(self)
+        self.sbar_lbl_imginfo = QLabel(self)
+
+        self.statusbar.addWidget(self.sbar_lbl_imginfo)
+
         self.vbox.addWidget(self.display)
+        self.vbox.addWidget(self.statusbar)
 
         self.resize(640,480);
 
@@ -60,3 +68,8 @@ class ImageDisplayDialog(QDialog):
     def reject(self):
         self.display.close()
         super(ImageDisplayDialog,self).reject()
+
+    def onDisplayResource(self, path, item):
+
+        name=self.display.getSource().split(path)[1]
+        self.setWindowTitle(name)

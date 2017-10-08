@@ -198,9 +198,9 @@ class ExplorerModel(QWidget):
 
         self.lbl_st_nfiles = QLabel("",self)
         self.lbl_st_nsel   = QLabel("",self)
-        self.lbl_st_src    = QLabel("",self)
+        #self.lbl_st_src    = QLabel("",self)
         self.hbox_st = QHBoxLayout()
-        self.hbox_st.addWidget(self.lbl_st_src)
+        #self.hbox_st.addWidget(self.lbl_st_src)
         self.hbox_st.addWidget(self.lbl_st_nfiles)
         self.hbox_st.addWidget(self.lbl_st_nsel)
         self.hbox_st.addStretch(1)
@@ -544,8 +544,10 @@ class ExplorerModel(QWidget):
 
         self.lbl_st_nfiles.setText(' | '.join(ntxt))
 
-        n = self.view.name()
-        self.lbl_st_src.setText(n)
+        #n = self.view.name()
+        #self.lbl_st_src.setText(n)
+
+        return
 
     def onRenameFinished(self):
         pass

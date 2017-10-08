@@ -32,7 +32,7 @@ def proc_exec(cmdstr,pwd=None,blocking=False):
         proc = subprocess.Popen(args,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            cwd=pwd)
+            cwd=pwd, shell=True)
         if blocking:
             proc.communicate()
     except:

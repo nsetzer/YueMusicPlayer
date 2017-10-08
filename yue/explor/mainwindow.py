@@ -577,8 +577,10 @@ class MainWindow(QMainWindow):
         self.onUpdateSources()
 
     def onTabCloseRequest(self,idx):
-        self.tabview.removeTab(idx)
-        self.tabview.setTabsClosable(self.tabview.count()>1)
+
+        if 0 <= idx < self.tabview.count():
+            self.tabview.removeTab(idx)
+            self.tabview.setTabsClosable(self.tabview.count()>1)
 
         self.closeInactiveSources()
 
@@ -672,13 +674,15 @@ class MainWindow(QMainWindow):
         yml = YmlSettings(path)
         yml.setKey("explor","active_views",paths);
         yml.save();
-        sys.stdout.write("saved yml session\n")
+        print("saved yml session\n")
 
     def closeEvent(self, event):
 
         self.saveCurrentSession();
 
-        sys.stdout.write("Closing Application\n")
+        print("Closing Application\n")
+
+        super(MainWindow,self).closeEvent(event)
 
 class Pane(QWidget):
     """docstring for Pane"""
