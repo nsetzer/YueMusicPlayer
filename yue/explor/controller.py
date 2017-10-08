@@ -5,8 +5,9 @@ from PyQt5.QtGui import *
 
 from yue.core.settings import Settings
 
+from yue.qtcommon.ResourceManager import ResourceManager
 from yue.qtcommon.explorer.controller import ExplorerController
-from yue.core.explorer.source import DirectorySource,DataSource
+from yue.core.explorer.source import DirectorySource, DataSource
 from yue.explor.fileutil import extract_supported, do_extract, do_compress
 import shlex
 import subprocess
@@ -14,6 +15,8 @@ import subprocess
 from yue.explor.ui.tabview import ExplorerView
 
 class ExplorController(ExplorerController):
+
+    viewImage = pyqtSignal(object, str) # source path
 
     def __init__(self, window):
         super(ExplorController,self).__init__()
@@ -45,6 +48,8 @@ class ExplorController(ExplorerController):
             # by file extension, and open alternatives
             # for now, there are only three classes I care about
 
+
+
             # todo:
             #   Open as ...
             #       Image (edit)  -- paint
@@ -69,6 +74,15 @@ class ExplorController(ExplorerController):
             menu.addAction("Audio", lambda : model.action_openas_audio( items[0] ))
             menu.addAction("Video", lambda : model.action_openas_video( items[0] ))
             menu.addAction("Native", lambda : model.action_openas_native( items[0] ))
+
+
+            # add a menu option for opening the selected image in a
+            # pop up window
+            ext = model.view.splitext(items[0]['name'])[1]
+            kind = ResourceManager.instance().getExtType(ext)
+            if kind in (ResourceManager.IMAGE,ResourceManager.GIF):
+                ctxtmenu.addAction("View Image",lambda : \
+                    self.viewImage.emit(model.view, items[0]['name']))
 
 
         self._ctxtMenu_addFileOperations1(ctxtmenu,model,items)

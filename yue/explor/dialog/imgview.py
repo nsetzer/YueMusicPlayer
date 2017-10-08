@@ -9,13 +9,28 @@ from yue.core.settings import Settings
 from yue.qtcommon.Tab import TabWidget,Tab
 from yue.qtcommon.explorer.imgview import ImageDisplay
 
+from yue.core.explorer.source import SourceGraphicsView
+from yue.qtcommon.ResourceManager import ResourceManager
+
+
+class SourceImageView(SourceGraphicsView):
+    """docstring for SourceImageView"""
+    def __init__(self, source, dirpath):
+        super(SourceImageView, self).__init__(source, dirpath)
+
+    def validateResource(self,path):
+        ext = self.source.splitext(path)[1]
+        kind = ResourceManager.instance().getExtType(ext)
+        return kind in (ResourceManager.IMAGE,ResourceManager.GIF);
+
+
 class ImageDisplayDialog(QDialog):
 
     def __init__(self, parent=None):
         super(ImageDisplayDialog, self).__init__(parent)
 
         self.vbox=QVBoxLayout(self)
-        self.vbox.setContentsMargins(16,8,16,8)
+        self.vbox.setContentsMargins(0,0,0,0)
 
         self.display = ImageDisplay(self);
 
@@ -23,9 +38,18 @@ class ImageDisplayDialog(QDialog):
 
         self.resize(640,480);
 
-    def setSource(self, source):
+    def setSource(self, source, path):
 
-        self.display.setSource(source)
+        if not source.isdir(path):
+            dirpath, name = source.split(path)
+            view = SourceImageView( source, dirpath)
+            view.chdir( dirpath )
+            view.setIndex( name )
+        else:
+            view = SourceImageView( source, path)
+            view.chdir( path )
+
+        self.display.setSource( view )
         self.display.update()
         self.display.current()
 

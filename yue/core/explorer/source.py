@@ -935,7 +935,7 @@ class SourceGraphicsView(SourceListView):
         # add the file if it exists in the pwd
         # and is not in data : it may be newer than
         # the most recent load.
-        _,name = os.path.split(path)
+        _,name = self.source.split(path)
         if name not in self.data and \
            self.exists(self.join(self.pwd(),name)):
            self.data.append(name)

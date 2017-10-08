@@ -30,6 +30,7 @@ from yue.explor.assoc import FileAssoc
 from yue.explor.watchfile import WatchFileController, WatchFileTable
 from yue.explor.dialog.sshcred import SshCredentialsDialog
 from yue.explor.dialog.settings import SettingsDialog
+from yue.explor.dialog.imgview import ImageDisplayDialog
 from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
 from yue.explor.util import proc_exec
 """"
@@ -202,6 +203,7 @@ class MainWindow(QMainWindow):
         self.controller = ExplorController( self )
         self.controller.forceReload.connect(self.refresh)
         self.controller.submitJob.connect(self.dashboard.startJob)
+        self.controller.viewImage.connect(self.onViewImage)
 
         self.btn_newTab = QToolButton(self)
         self.btn_newTab.clicked.connect(self.newTab)
@@ -244,6 +246,8 @@ class MainWindow(QMainWindow):
 
         self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape),self)
         self.xcut_refresh.activated.connect(self.refresh)
+
+        self.imgview_dialog = None
 
     def initMenuBar(self):
 
@@ -605,6 +609,28 @@ class MainWindow(QMainWindow):
             self.sbar_lbl_nsources.setText("1 source")
         else:
             self.sbar_lbl_nsources.setText("%d sources"%len(self.sources))
+
+    def onViewImage(self,view,path):
+        """
+        Open a dialog to display an image given by path for the source
+        """
+        path = view.realpath(path)
+
+        # if it already exists, reuse the existing dialog
+        if self.imgview_dialog is None:
+            self.imgview_dialog = ImageDisplayDialog(self)
+
+        self.imgview_dialog.finished.connect(self.onViewImageDialogClosed)
+
+        self.imgview_dialog.setAttribute(Qt.WA_DeleteOnClose);
+
+        self.imgview_dialog.setSource(view.source, path)
+        self.imgview_dialog.show();
+
+    def onViewImageDialogClosed(self):
+        if self.imgview_dialog:
+            self.imgview_dialog.setParent(None)
+            self.imgview_dialog = None
 
     def onOpenRemote(self, tab, display, path):
 

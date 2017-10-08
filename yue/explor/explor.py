@@ -1,4 +1,4 @@
-#! python ../../explor.py C:\\Users\\Nick\\Documents\\playground C:\\Users\\Nick\\Documents\\playground
+#! python ../../explor.py  D:\\git\\YueMusicPlayer\\img
 
 """
 support for symlinks
@@ -425,7 +425,6 @@ def main(script_file=__file__,version="",commitdate="",builddate=""):
 
     version_info = (version,commitdate,builddate)
     window = MainWindow(version_info,args.path,args.path_r)
-
     window.showWindow()
 
     sys.exit(app.exec_())
