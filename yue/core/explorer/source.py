@@ -647,7 +647,10 @@ class SourceListView(SourceView):
     def setData(self,data):
         self.data = data
         if self.text_filter is not None:
-            f = lambda x: self.statcache[x]['isDir'] or fnmatch(x.lower(),self.text_filter)
+            # if an item x does not exist in the statcache, display it anyways
+            # renaming/creating new files or directories will likely not appear
+            # in the statcache
+            f = lambda x: self.statcache.get(x,{}).get('isDir',True) or fnmatch(x.lower(),self.text_filter)
             self.data_filtered = [ x for x in data if f(x) ]
         else:
             self.data_filtered = data
