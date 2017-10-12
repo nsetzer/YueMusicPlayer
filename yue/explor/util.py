@@ -29,10 +29,11 @@ def proc_exec(cmdstr,pwd=None,blocking=False):
         else:
             safeprint("execute process: " + ' '.join(cmdstr))
             args = cmdstr
+        shell = sys.platform=="win32"
         proc = subprocess.Popen(args,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            cwd=pwd, shell=True)
+            cwd=pwd, shell=shell)
         if blocking:
             proc.communicate()
     except:

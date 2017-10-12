@@ -37,10 +37,28 @@ class ImageDisplayDialog(QDialog):
         self.display.displayResource.connect(self.onDisplayResource)
 
         self.toolbar = QToolBar(self)
+
+        self.tbar_btn_close = QToolButton(self)
+        self.tbar_btn_close.setIcon(QIcon(":/img/app_x.png"))
+        self.tbar_btn_close.clicked.connect(self.reject)
+
+
         self.tbar_btn_fullscreen = QToolButton(self)
         self.tbar_btn_fullscreen.setIcon(QIcon(":/img/app_fullscreen.png"))
         self.tbar_btn_fullscreen.clicked.connect(self.toggleFullScreen)
+
+        self.tbar_btn_prev = QToolButton(self)
+        self.tbar_btn_prev.setIcon(QIcon(":/img/app_prev.png"))
+        self.tbar_btn_prev.clicked.connect(self.display.prev)
+
+        self.tbar_btn_next = QToolButton(self)
+        self.tbar_btn_next.setIcon(QIcon(":/img/app_next.png"))
+        self.tbar_btn_next.clicked.connect(self.display.next)
+
+        self.toolbar.addWidget(self.tbar_btn_close)
         self.toolbar.addWidget(self.tbar_btn_fullscreen)
+        self.toolbar.addWidget(self.tbar_btn_prev)
+        self.toolbar.addWidget(self.tbar_btn_next)
 
         self.statusbar = QStatusBar(self)
         self.sbar_lbl_imginfo = QLabel(self)
