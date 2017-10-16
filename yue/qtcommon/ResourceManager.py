@@ -22,6 +22,7 @@ class ResourceManager(object):
     GIF       = 0x006
     MOVIE     = 0x007
     DOCUMENT  = 0x008
+    CODE      = 0x009
 
     LINK_DIRECTORY = 0x101
     LINK_FILE      = 0x102
@@ -31,6 +32,7 @@ class ResourceManager(object):
     LINK_GIF       = 0x106
     LINK_MOVIE     = 0x107
     LINK_DOCUMENT  = 0x108
+    LINK_CODE      = 0x109
 
     @staticmethod
     def instance():
@@ -49,6 +51,8 @@ class ResourceManager(object):
         self.ext_gif    = [".gif"]
         self.ext_movie    = [".avi",".mp4",".webm",".mkv"]
         self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
+        self.ext_code     = [".py", ".sh", ".pl", ".bat",
+                             ".c", ".c++", ".cpp",".h", ".h++", ".hpp"]
 
         self.rebuildFileAssociations()
 
@@ -64,13 +68,15 @@ class ResourceManager(object):
         self.resources[ResourceManager.GIF]       = QPixmap(':/img/app_media.png')
         self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_video.png')
         self.resources[ResourceManager.DOCUMENT]  = QPixmap(':/img/app_document.png')
+        self.resources[ResourceManager.CODE]      = QPixmap(':/img/app_code.png')
 
         self.img_link = QPixmap(':/img/app_shortcut.png')
 
         for res in [ResourceManager.FILE,ResourceManager.SONG,
                     ResourceManager.DIRECTORY,ResourceManager.ARCHIVE,
                     ResourceManager.IMAGE, ResourceManager.GIF,
-                    ResourceManager.MOVIE, ResourceManager.DOCUMENT]:
+                    ResourceManager.MOVIE, ResourceManager.DOCUMENT,
+                    ResourceManager.CODE]:
             img = self.compose(self.resources[res],self.img_link)
             self.resources[ResourceManager.LINK|res] = img
 
@@ -95,6 +101,9 @@ class ResourceManager(object):
 
         for ext in self.ext_document:
             self.map_ext[ext] = ResourceManager.DOCUMENT
+
+        for ext in self.ext_code:
+            self.map_ext[ext] = ResourceManager.CODE
 
     def setFileAssociation(self,kind,lst):
         """
@@ -121,6 +130,8 @@ class ResourceManager(object):
             self.ext_movie = set(lst)
         elif kind == ResourceManager.DOCUMENT:
             self.ext_document = set(lst)
+        elif kind == ResourceManager.CODE:
+            self.ext_code = set(lst)
 
     def getFileAssociation(self,kind):
         if   kind == ResourceManager.FILE:
@@ -137,6 +148,8 @@ class ResourceManager(object):
             return list(self.ext_movie)
         elif kind == ResourceManager.DOCUMENT:
             return list(self.ext_document)
+        elif kind == ResourceManager.CODE:
+            return list(self.ext_code)
 
     def compose(self,imga,imgb):
 

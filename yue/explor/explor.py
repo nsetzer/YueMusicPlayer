@@ -124,15 +124,14 @@ def initSettings(path_base):
     fAssoc = ResourceManager.instance().getFileAssociation
 
     # TODO: resource manager doesnt keep track of text files, should it?
-    data['ext_text'] = [".txt",".log",".md",
-                        ".c",".cpp",".c++",".h",".hpp", ".h++",
-                        ".py", ".sh", ".pl",".bat",]
+    data['ext_text'] = [".txt",".log",".md",]
 
-    data['ext_archive'] = fAssoc(ResourceManager.ARCHIVE)
-    data['ext_image'] = fAssoc(ResourceManager.IMAGE)
-    data['ext_audio'] = fAssoc(ResourceManager.SONG);
-    data['ext_movie'] = fAssoc(ResourceManager.MOVIE)
+    data['ext_archive']  = fAssoc(ResourceManager.ARCHIVE)
+    data['ext_image']    = fAssoc(ResourceManager.IMAGE)
+    data['ext_audio']    = fAssoc(ResourceManager.SONG);
+    data['ext_movie']    = fAssoc(ResourceManager.MOVIE)
     data['ext_document'] = fAssoc(ResourceManager.DOCUMENT)
+    data['ext_code']     = fAssoc(ResourceManager.CODE)
 
     if sys.platform == 'darwin':
         cmd_edit_text = "\"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl\" \"%s\""
