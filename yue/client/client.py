@@ -1166,12 +1166,25 @@ class MainWindow(QMainWindow):
         self.controller.play_index( 0 )
         self.plview.updateData()
 
-    def createNewPlaylist(self,query="",create=True):
+    def createNewPlaylist(self,query="", config = None):
+
+        if not config:
+            config = {}
+
+        create  = config.get("create",True);
+        ordered = config.get("ordered",True);
+
+        #songs = Library.instance().search( \
+        #            params['query'],
+        #            orderby=dialog.getSortOrder(),
+        #            limit=params['limit'])
+        #lst = [ song[Song.uid] for song in songs ]
 
         s = Settings.instance();
         limit = s['playlist_size']
         presets = s['playlist_presets']
-        dialog = NewPlaylistDialog(query,limit=limit,parent=self,create=create)
+        dialog = NewPlaylistDialog(query,limit=limit,parent=self,
+                                   create=create,ordered=ordered)
 
         if dialog.exec():
 
@@ -1181,11 +1194,6 @@ class MainWindow(QMainWindow):
                 params['query'],
                 params['limit'],
                 dialog.getSortOrder())
-            #songs = Library.instance().search( \
-            #            params['query'],
-            #            orderby=dialog.getSortOrder(),
-            #            limit=params['limit'])
-            #lst = [ song[Song.uid] for song in songs ]
 
             if dialog.getCreatePlaylist():
                 self.setNewPlaylist( lst )

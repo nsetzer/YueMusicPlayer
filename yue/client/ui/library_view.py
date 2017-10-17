@@ -218,7 +218,7 @@ class LibraryView(Tab):
     """docstring for MainWindow"""
 
     # emit this signal to create a new playlist from a given query string
-    create_playlist = pyqtSignal(str,bool)
+    create_playlist = pyqtSignal(str,dict)
 
     insert_playlist = pyqtSignal(list,bool)
     set_playlist = pyqtSignal(list)
@@ -264,10 +264,16 @@ class LibraryView(Tab):
 
         self.btn_newlist = QToolButton(self)
         self.menu_newlist = QMenu()
-        act = self.menu_newlist.addAction("Insert Songs")
-        act.triggered.connect(lambda:self.create_playlist.emit(self.txt_search.text(),False))
+        act = self.menu_newlist.addAction("Insert Songs (Random)")
+
+        act.triggered.connect(lambda:self.create_playlist.emit(\
+            self.txt_search.text(), {"create": False, "ordered": False}))
+        act = self.menu_newlist.addAction("Insert Songs (Album Order)")
+        act.triggered.connect(lambda:self.create_playlist.emit(\
+            self.txt_search.text(), {"create": False, "ordered": True}))
         act = self.menu_newlist.addAction("Create New Playist")
-        act.triggered.connect(lambda:self.create_playlist.emit(self.txt_search.text(),True))
+        act.triggered.connect(lambda:self.create_playlist.emit(\
+            self.txt_search.text(), {"create": True, "ordered": False}))
         self.btn_newlist.setMenu(self.menu_newlist)
         self.btn_newlist.setIcon(QIcon(":/img/app_newlist.png"))
         self.btn_newlist.setPopupMode(QToolButton.InstantPopup)

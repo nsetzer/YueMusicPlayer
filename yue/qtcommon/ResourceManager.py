@@ -46,12 +46,13 @@ class ResourceManager(object):
         self.resources = {}
 
         # configure default file associations
-        self.ext_archive  = [".gz",".zip",".7z",".rar",".iz",".bz2"]
+        self.ext_archive  = [".gz",".zip",".7z",".rar",".iz",".bz2",
+                             ".tar", ".tgz", ".rpm", '.xz']
         self.ext_image    = [".jpg",".png",".bmp",".jpeg",]
-        self.ext_gif    = [".gif"]
+        self.ext_gif      = [".gif"]
         self.ext_movie    = [".avi",".mp4",".webm",".mkv"]
         self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
-        self.ext_code     = [".py", ".sh", ".pl", ".bat",
+        self.ext_code     = [".py", ".sh", ".pl", ".bat", ".xml", ".yml",
                              ".c", ".c++", ".cpp",".h", ".h++", ".hpp"]
 
         self.rebuildFileAssociations()

@@ -15,7 +15,7 @@ from collections import defaultdict
 # for windows, the dummy path lists all available drive letters
 if sys.platform == "win32":
     import ctypes
-
+import unicodedata
 
 class SourceException(Exception):
     pass
@@ -266,6 +266,13 @@ class DirectorySource(DataSource):
     def listdir(self,path):
         if path == DirectorySource.dummy_path:
             return get_drives()
+        # OSX normalized the file name
+        # a="大喝采/05_片恋マンドレイク.mp3" # osx file path
+        # b="大喝采/05_片恋マンドレイク.mp3"   # correct string
+        # c=unicodedata.normalize('NFC', a)
+        # c!=a and c==b
+        if sys.platform == 'darwin':
+            return [unicodedata.normalize('NFC', a) for a in os.listdir(path)]
         return os.listdir(path)
 
     def parent(self,path):

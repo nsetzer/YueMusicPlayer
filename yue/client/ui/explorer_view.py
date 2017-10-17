@@ -108,7 +108,15 @@ class YueExplorerModel(ExplorerModel):
         return tbl
 
     def indexInLibrary(self,idx):
-        return self.view[idx]['name'].lower() in self.list_library_files
+        exists = self.view[idx]['name'].lower() in self.list_library_files
+        #print(exists,self.view[idx]['name'].lower())
+        # OSX normalized the file name
+        # a="/Users/nsetzer/Music/Library/大凶作_(Dai_kyousaku)/大喝采/05_片恋マンドレイク.mp3"
+        # b="/Users/nsetzer/Music/Library/大凶作_(Dai_kyousaku)/大喝采/05_片恋マンドレイク.mp3"
+        # c=unicodedata.normalize('NFC', a)
+        # c==b
+
+        return exists
 
     def action_play_song(self,item):
         path = self.view.realpath(item['name'])
@@ -144,6 +152,7 @@ class YueExplorerModel(ExplorerModel):
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
         self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
                                        for song in songs )
+        print(self.list_library_files)
 
     def action_open_directory(self):
         # open the cwd in explorer
@@ -154,6 +163,7 @@ class YueExplorerModel(ExplorerModel):
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
         self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
                                        for song in songs )
+        print(self.list_library_files)
         self.tbl_file.update()
 
 

@@ -10,7 +10,7 @@ from yue.core.song import Song
 import os,sys
 
 class NewPlaylistDialog(QDialog):
-    def __init__(self,query="",limit=50,parent=None,create=True):
+    def __init__(self,query="",limit=50,parent=None,create=True,ordered=False,):
         super(NewPlaylistDialog,self).__init__(parent);
         self.setWindowTitle("Create New Playlist")
 
@@ -61,7 +61,11 @@ class NewPlaylistDialog(QDialog):
             self.rbCreate.setChecked(True)
         else:
             self.rbInsert.setChecked(True)
-        self.rbOrderRandom.setChecked(True)
+
+        if ordered:
+            self.rbOrderIndex.setChecked(True)
+        else:
+            self.rbOrderRandom.setChecked(True)
 
         # --------------------------
         # Layout

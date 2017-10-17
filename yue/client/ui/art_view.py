@@ -59,14 +59,15 @@ class AlbumArtView(QLabel):
 
         if self.dialog is None:
             self.dialog = AlbumArtDialog(self)
-            self.dialog.finished.connect(self.onDialogClosed)
-            self.dialog.setAttribute(Qt.WA_DeleteOnClose);
+            #self.dialog.finished.connect(self.onDialogClosed)
+            #self.dialog.setAttribute(Qt.WA_DeleteOnClose);
         self.dialog.setImage( self.image )
         self.dialog.resize(512,512)
         self.dialog.show()
 
     def onDialogClosed(self):
 
-        if self.dialog:
-            self.dialog.setParent(None)
-            self.dialog = None
+        #if self.dialog:
+        #    self.dialog.setParent(None)
+        #   s self.dialog = None
+        pass
