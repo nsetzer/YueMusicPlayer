@@ -77,7 +77,11 @@ class DownloadJob(Job):
             temp[Song.path] = path
             del temp[Song.artist_key]
             del temp[Song.remote] # delete it before adding to db
-            lib.insert(**temp)
+            # add the song to the library if the key does not exist
+            try:
+                lib.songFromId(temp[Song.uid])
+            except KeyError:
+                lib.insert(**temp)
             song[Song.remote] = 0 # no longer remote
 
     def _dlprogress(self,x,y):
