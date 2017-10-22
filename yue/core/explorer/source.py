@@ -59,7 +59,7 @@ class DataSource(object):
         return False
 
     def isOpenSupported(self):
-        """ can a filepath be opened and returna file-like object?
+        """ can a filepath be opened and return a file-like object?
         """
         return True
 
@@ -178,9 +178,10 @@ class DataSource(object):
         only directory entry information
         """
         result = {
-            "size"  : 0,
-            "isDir" : self.isdir(path),
+            "size"   : 0,
+            "isDir"  : self.isdir(path),
             "isLink" : self.islink(path),
+            "mode"   : 0,
         }
         return result
 
@@ -779,12 +780,13 @@ class SourceListView(SourceView):
                     # from self.data_filtered. "Empty File" instead
                     # of the renamed value. only applies when
                     # there is a filter in use.
-                    print("unhandled",idx,self.text_filter, name)
+                    print("Source Unhandled FileNotFoundError",idx,self.text_filter, name)
                     self.statcache_index[idx]  = {
-                        "name"  : "",
-                        "size"  : 0,
-                        "isDir" : False,
+                        "name"   : "",
+                        "size"   : 0,
+                        "isDir"  : False,
                         "isLink" : False,
+                        "mode"   : 0,
                     }
             return self.statcache_index[idx]
 

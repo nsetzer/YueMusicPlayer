@@ -249,7 +249,7 @@ class SSHClientSource(DataSource):
         self.ftp.putfo(fo,path,callback=callback,confirm=False)
 
     def move(self,oldpath,newpath):
-        pass
+        self.ftp.rename(oldpath,newpath)
 
     def delete(self,path):
         if self.isdir(path):
@@ -288,7 +288,6 @@ class SSHClientSource(DataSource):
             return
         elif not self.isdir(path):
             raise SourceException("path exists and is not directory")
-
 
     def mklink(self,target,path):
         self.ftp.symlink(target,path)

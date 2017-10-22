@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+import io
 import traceback
 
 from yue.qtcommon.LineEdit import LineEdit
@@ -412,7 +413,11 @@ class ExplorerModel(QWidget):
 
     def action_touch(self,name):
         try:
-            self.view.open(name,"w").close()
+            #TODO: I kind of want to move touch into the view
+            if self.view.isOpenSupported():
+                self.view.open(name,"w").close()
+            else:
+                self.view.putfo(name,io.BytesIO(b""));
             self.chdir_on_load_select = name
         finally:
             self.refresh()
