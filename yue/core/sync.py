@@ -353,7 +353,14 @@ class CopyAlbumArtProcess(IterativeProcess):
             #buf.seek(0)
             fo = io.BytesIO(ba.data())
             print(path)
-            src.putfo(path,fo)
+
+            try:
+                src.putfo(path,fo)
+            except Exception as e:
+                print("Exception copying art:")
+                print("from: %s"%path)
+                print("to  : %s"%fo)
+                print("%s"%e)
 
         else:
             print("copy not supported for album art")
