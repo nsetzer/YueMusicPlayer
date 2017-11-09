@@ -288,7 +288,10 @@ class CopyJob(Job):
             self.tot_size_copied += source_copy_file(*opts)
 
     def fo_cbk(self,tr,to):
-        self.setProgress(100*(self.tot_size_copied+tr)/self.tot_size)
+        if (self.tot_size < 1):
+            self.setProgress(100)
+        else:
+            self.setProgress(100*(self.tot_size_copied+tr)/self.tot_size)
 
 class MoveJob(Job):
     def __init__(self, src_view, src_paths, dst_path):
