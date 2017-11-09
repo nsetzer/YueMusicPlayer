@@ -195,10 +195,6 @@ class ClientRepl(object):
 
             `.art one two` is the same as 'artist=one && artist=two'
 
-
-
-
-
         """
 
     def register(self, repl):
@@ -253,8 +249,6 @@ class ClientRepl(object):
     def exbackup(self, args):
         """ backup the database """
         self.client.backup_database( True )
-
-
 
     def exexplorer(self, args):
         """ open directory of the database in explorer """
@@ -332,7 +326,6 @@ class ClientRepl(object):
             for field,value in sorted(Settings.instance().items()):
                 print("%s=%s"%(field,Settings.instance()[field]))
 
-
     def exhistory_old(self,args):
         """
         0 : disable
@@ -364,16 +357,16 @@ class ClientRepl(object):
         $0 [-s] export path
             write history database to a file (history.log)
             -s --simple : write playtime records as last_played.
-
         $0 import path
             read back the history log and place the values in the database
+        $0 updatedb path
+            import a database and overwriting local records that match
         $0 clear
             wipe the history database
         $0 pl name path
             export playlist metadata given by name to path as a history log file
         $0 info
             print information about the current history state
-
         """
         args = ReplArgumentParser(args,{'s':'simple'})
         args.assertMinArgs( 1 )
@@ -433,7 +426,40 @@ class ClientRepl(object):
             finally:
                 History.instance().setUpdateEnabled( bUpdate )
 
+        elif cmd == "updatedb":
+            args.assertMinArgs( 2 )
+            remote_db = args[1]
+            if not os.path.exists(remote_db):
+                print("EEXIST %s"%remote_db)
+                return
+
+            hist = History.instance().export()
+            songs = Library.instance().search("");
+            lut = { song['uid']:song for song in songs }
+            updates = {}
+            newLibrary = Library(SQLStore(remote_db))
+            for rs in newLibrary.search(""):
+                uid = rs['uid']
+                if uid in lut:
+                    for key in [Song.uid,Song.artist_key,Song.path]:
+                        if key in rs:
+                            del rs[key]
+                    updates[uid] = rs
+
+            bl = History.instance().setLogEnabled(False)
+            bu = History.instance().setUpdateEnabled(False)
+            Library.instance().update_all(updates)
+            Library.instance().import_record(hist,False)
+            bl = History.instance().setLogEnabled(bl)
+            bu = History.instance().setUpdateEnabled(bu)
+            print("updated %d history records"%len(hist))
+            print("updated %d library records"%len(updates))
+            print("history log: %d"%(History.instance().isLogEnabled()))
+            print("history update: %d"%(History.instance().isUpdateEnabled()))
+
+
         elif cmd == "clear":
+
             History.instance().clear()
 
         elif cmd == "pl":
@@ -468,6 +494,7 @@ class ClientRepl(object):
                     a = song[Song.title]
                     t = (s,song[Song.uid],Song.title,a)
                     wf.write("%d %-6d %s=%s\n"%t)
+
         elif cmd == "info":
             print("history log: %d"%(History.instance().isLogEnabled()))
             print("history update: %d"%(History.instance().isUpdateEnabled()))
@@ -492,8 +519,6 @@ class ClientRepl(object):
             alternatives = args[1:]
             print(alternatives)
             Library.instance().songPathHack( alternatives )
-
-
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
