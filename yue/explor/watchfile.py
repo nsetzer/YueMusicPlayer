@@ -64,11 +64,14 @@ class WatchFile(object):
         self.localPath = localPath
         self.remotePath = remotePath
         self.st = self.localSource.stat(self.localPath)
+        self.dirty = False;
 
     def hasChanged(self):
         """ return True if the file has changed on disk """
-        st = self.localSource.stat(self.localPath)
-        return st['mtime'] != self.st['mtime'] or st['size'] != self.st['size']
+        if self.dirty == False:
+            st = self.localSource.stat(self.localPath)
+            self.dirty = st['mtime'] != self.st['mtime'] or st['size'] != self.st['size']
+        return self.dirty;
 
     def sync(self):
 
@@ -83,6 +86,7 @@ class WatchFile(object):
             sys.stderr.write("error syncing file: %s"%self.remotePath)
 
         self.st = st
+        self.dirty = False
 
     def close(self):
         """
@@ -162,6 +166,13 @@ class WatchFileController(QObject):
     def count(self):
         return len(self.watch_list)
 
+    def getDirtyFiles(self):
+        files = []
+        for path, wf in self.watch_list.items():
+            if wf.hasChanged():
+                files.append(wf);
+        return files
+
     def iter(self):
 
         for path,wf in self.watch_list.items():
@@ -181,6 +192,18 @@ class WatchFileTable(LargeTable):
 
         self.onWatchersChanged(self.wfctrl.count())
 
+        self.hbox = QHBoxLayout()
+        self.btnDetect = QPushButton("Check")
+        self.btnDetect.clicked.connect(self.checkForChanges)
+        self.btnSync   = QPushButton("Sync")
+        self.btnSync.clicked.connect(self.syncDirtyFiles)
+        self.hbox.addWidget(self.btnDetect)
+        self.hbox.addWidget(self.btnSync)
+        self.vbox.addLayout(self.hbox)
+
+        self.rule_dirty = lambda row: self.data[row][3]
+        self.addRowTextColorComplexRule(self.rule_dirty,  QColor(200,32,48))
+
     def initColumns(self):
         self.columns.append( TableColumn(self,1,"Name") )
         self.columns[-1].setWidthByCharCount(12)
@@ -194,7 +217,7 @@ class WatchFileTable(LargeTable):
         data = []
         for wf in self.wfctrl.iter():
             _,name = wf.remoteSource.split(wf.remotePath)
-            d = [wf,name,wf.localPath]
+            d = [wf, name, wf.localPath, wf.hasChanged()]
             data.append(d)
         self.setData(data)
 
@@ -205,7 +228,6 @@ class WatchFileTable(LargeTable):
                 item = self.data[row]
                 wf = item[0]
                 self.action_open(wf)
-
 
     def mouseReleaseRight(self,event):
 
@@ -251,6 +273,14 @@ class WatchFileTable(LargeTable):
         ftemp = os.path.join(Settings.instance()['database_directory'],"remote")
         self.changeDirectory.emit(ftemp)
 
+    def checkForChanges(self):
+        files = self.wfctrl.getDirtyFiles();
+        self.onWatchersChanged(self.wfctrl.count())
+
+    def syncDirtyFiles(self):
+        for wf in self.wfctrl.getDirtyFiles():
+            wf.sync();
+        self.onWatchersChanged(self.wfctrl.count())
 
 
 
