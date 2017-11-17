@@ -1,5 +1,5 @@
 
-
+import os, sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -15,7 +15,8 @@ from yue.qtcommon.explorer.ContextBar import ContextBar
 
 from yue.qtcommon.explorer.filetable import ResourceManager
 from yue.qtcommon.explorer.jobs import Job, \
-    RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob
+    RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob, \
+    QuickFindJob
 
 from yue.core.settings import Settings
 
@@ -81,6 +82,30 @@ class ContextBarPath(ContextBar):
         for i, view in enumerate(views):
             self.addItem(view.pwd(), view)
 
+class FindBarWidget(QWidget):
+    """docstring for FindBarWidget"""
+
+    findFiles = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super(FindBarWidget, self).__init__(parent)
+
+        self.hbox = QHBoxLayout(self)
+        self.hbox.setContentsMargins(0,0,0,0)
+        self.hbox.addWidget(QLabel("Find", self))
+
+        self.edit = QLineEdit(self)
+        self.hbox.addWidget(self.edit)
+
+        self.btn_runFind = QPushButton("Find")
+        self.btn_runFind.clicked.connect(self.runFind)
+        self.hbox.addWidget(self.btn_runFind)
+
+    def runFind(self):
+
+        pattern = "*" + self.edit.text() + "*"
+        self.findFiles.emit(pattern)
+
 class ExplorerModel(QWidget):
     """docstring for MainWindow"""
 
@@ -118,7 +143,8 @@ class ExplorerModel(QWidget):
         self.tbl_file.focusUp.connect(self.onTableFocusUp)
 
         self.tbl_file.selection_changed.connect(self.onTableSelectionChanged)
-        self.tbl_file.deletePaths.connect(lambda lst: self.controller.action_delete(self, lst))
+        self.tbl_file.deletePaths.connect(
+            lambda lst: self.controller.action_delete(self, lst))
 
         self.txt_path = ContextBarPath(self, controller, self.tbl_file)
 
@@ -135,7 +161,8 @@ class ExplorerModel(QWidget):
         self.txt_filter.setText("")
         self.txt_filter.textEdited.connect(self.onFilterTextChanged)
 
-        self.tbl_file.focusQuery.connect(lambda: self.txt_filter.setFocus(Qt.ShortcutFocusReason))
+        self.tbl_file.focusQuery.connect(
+            lambda: self.txt_filter.setFocus(Qt.ShortcutFocusReason))
 
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
@@ -197,9 +224,12 @@ class ExplorerModel(QWidget):
             }
         """)
 
+        self.bar_find = FindBarWidget(self)
+        self.bar_find.findFiles.connect(self.onFindFiles)
+
         self.lbl_st_nfiles = QLabel("", self)
         self.lbl_st_nsel   = QLabel("", self)
-        #self.lbl_st_src    = QLabel("",self)
+        # self.lbl_st_src    = QLabel("",self)
         self.hbox_st = QHBoxLayout()
         # self.hbox_st.addWidget(self.lbl_st_src)
         self.hbox_st.addWidget(self.lbl_st_nfiles)
@@ -218,6 +248,7 @@ class ExplorerModel(QWidget):
         self.vbox.addWidget(self.txt_path)
         self.vbox.addWidget(self.tbl_file.container)
         self.vbox.addLayout(self.hbox_st)
+        self.vbox.addWidget(self.bar_find)
 
         self.directory_history = []
         self.directory_history_index = 0
@@ -548,7 +579,7 @@ class ExplorerModel(QWidget):
 
         self.lbl_st_nfiles.setText(' | '.join(ntxt))
 
-        #n = self.view.name()
+        # n = self.view.name()
         # self.lbl_st_src.setText(n)
 
         return
@@ -587,4 +618,14 @@ class ExplorerModel(QWidget):
             self.lbl_viewName.setHidden(False)
         else:
             self.lbl_viewName.setHidden(True)
+
+    def onFindFiles(self, pattern):
+
+        def printResult(view, path):
+            path = view.relpath(path, view.pwd())
+            print(path)
+
+        job = QuickFindJob(self.view, self.view.pwd(), pattern)
+        job.partialResult.connect(printResult)
+        self.submitJob.emit(job)
 

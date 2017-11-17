@@ -77,7 +77,7 @@ class Job(QThread):
 
     exception = pyqtSignal(object, object, object)
 
-    partialResult = pyqtSignal(object)
+    partialResult = pyqtSignal(object, object)  # view, data
 
     def __init__(self):
         super(Job, self).__init__()
@@ -136,14 +136,14 @@ class Job(QThread):
             self.progressChanged.emit(iValue)
             self._progress = iValue
 
-    def emitPartialResult(self, value):
+    def emitPartialResult(self, view, value):
         """
         TODO: implement rate limiting,
         the first couple calls should go through immediately
         after that, batch calls to prevent the event queue from filling.
         limit the number of calls per second
         """
-        selg.partialResult.emit(value)
+        self.partialResult.emit(view, value)
 
     def getInput(self, title, message, options=None):
         """
@@ -372,10 +372,10 @@ class QuickFindJob(Job):
 
     def doTask(self):
 
-        for name in self.view.listdir(root):
+        for name in self.view.listdir(self.root):
             if fnmatch.fnmatch(name, self.pattern):
-                res = (self.view, self.view.join(self.root, name))
-                self.emitPartialResult(res)
+                self.emitPartialResult(self.view,
+                                       self.view.join(self.root, name))
 
 
 class DropRequestJob(Job):
