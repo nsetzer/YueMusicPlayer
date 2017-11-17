@@ -1,12 +1,12 @@
 
-import os,sys
+import os, sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from enum import Enum
 import traceback
 
-from yue.core.explorer.source import DirectorySource,SourceListView
+from yue.core.explorer.source import DirectorySource, SourceListView
 from yue.core.explorer.fsutil import generateUniquePath, \
     walk_files, iter_copy, source_copy, source_copy_file, iter_remove
 from yue.core.util import format_bytes
@@ -17,6 +17,7 @@ import time
 
 class JobMessageBox(QDialog):
     """docstring for JobMessage"""
+
     def __init__(self, arg):
         super(JobMessageBox, self).__init__()
         self.arg = arg
@@ -31,29 +32,29 @@ class JobRunner(QObject):
 
         self.jobs = []
 
-    def startJob(self,job):
+    def startJob(self, job):
 
-        job.showMessageBox.connect(lambda t,m,o: self.handleMessageBox(job,t,m,o))
-        job.finished.connect(lambda : self.jobFinished(job))
+        job.showMessageBox.connect(lambda t, m, o: self.handleMessageBox(job, t, m, o))
+        job.finished.connect(lambda: self.jobFinished(job))
 
         self.jobs.append(job)
 
         job.start()
 
-    def handleMessageBox(self,job,title,msg,options):
+    def handleMessageBox(self, job, title, msg, options):
 
-        mbox = QMessageBox(QMessageBox.Question,title,msg)
+        mbox = QMessageBox(QMessageBox.Question, title, msg)
         if not options:
             options = ["ok"]
 
         for text in options:
-            mbox.addButton(text,QMessageBox.AcceptRole)
+            mbox.addButton(text, QMessageBox.AcceptRole)
 
         result = mbox.exec_()
 
         job.notifyMessageBoxResult(result)
 
-    def jobFinished(self,job):
+    def jobFinished(self, job):
 
         self.jobs.remove(job)
 
@@ -68,16 +69,16 @@ class Job(QThread):
     """
 
     # type, message
-    showMessageBox = pyqtSignal(str,str,object)
+    showMessageBox = pyqtSignal(str, str, object)
 
     progressChanged = pyqtSignal(int)
 
-    exception = pyqtSignal(object,object,object)
+    exception = pyqtSignal(object, object, object)
 
     def __init__(self):
         super(Job, self).__init__()
 
-        #print("create",self.__class__.__name__)
+        # print("create",self.__class__.__name__)
         self.msgbox_result = None
 
         self.cond = QWaitCondition()
@@ -115,7 +116,7 @@ class Job(QThread):
         with QMutexLocker(self.mutex):
             self._alive = True
 
-    def setProgress(self,iValue):
+    def setProgress(self, iValue):
         """
         set the current progress (0-100)
         or busy indicator (-1)
@@ -131,7 +132,7 @@ class Job(QThread):
             self.progressChanged.emit(iValue)
             self._progress = iValue
 
-    def getInput(self,title,message,options=None):
+    def getInput(self, title, message, options=None):
         """
         display a dialog and wait for the result (user accept/reject)
 
@@ -147,7 +148,7 @@ class Job(QThread):
 
         with QMutexLocker(self.mutex):
 
-            self.showMessageBox.emit(title,message,options)
+            self.showMessageBox.emit(title, message, options)
 
             if not self._alive:
                 raise AbortJob()
@@ -159,12 +160,12 @@ class Job(QThread):
 
             return self.msgbox_result
 
-    def notifyMessageBoxResult(self,result):
+    def notifyMessageBoxResult(self, result):
         with QMutexLocker(self.mutex):
             self.msgbox_result = result
             self.cond.wakeOne()
 
-def move_one_lib(src,lib,src_path,dst_path):
+def move_one_lib(src, lib, src_path, dst_path):
     """
     Library aware file move
 
@@ -172,19 +173,20 @@ def move_one_lib(src,lib,src_path,dst_path):
     in the library, the database is updated to reflect the song
     """
     if src.isdir(src_path):
-        songs = lib.searchDirectory( src_path ,True)
-        src.move(src_path,dst_path)
+        songs = lib.searchDirectory(src_path, True)
+        src.move(src_path, dst_path)
         for song in songs:
             tmp = dst_path + song[Song.path][len(src_path):]
-            lib.update(song[Song.uid],path=tmp)
+            lib.update(song[Song.uid], path=tmp)
     else:
-        songs = lib.searchPath( src_path )
-        src.move(src_path,dst_path)
-        for song in songs: # this will update duplicate songs by path
-            lib.update(song[Song.uid],path=dst_path)
+        songs = lib.searchPath(src_path)
+        src.move(src_path, dst_path)
+        for song in songs:  # this will update duplicate songs by path
+            lib.update(song[Song.uid], path=dst_path)
 
 class RenameJob(Job):
     """docstring for RenameJob"""
+
     def __init__(self, view, args):
         """ args as list of 2-tuple (src,tgt)
 
@@ -201,15 +203,15 @@ class RenameJob(Job):
         if Library.instance():
             self.lib = Library.instance().reopen()
 
-        for i,(src,dst) in enumerate(self.args):
-            src=self.view.normpath(src,self.wd)
-            dst=self.view.normpath(dst,self.wd)
+        for i, (src, dst) in enumerate(self.args):
+            src = self.view.normpath(src, self.wd)
+            dst = self.view.normpath(dst, self.wd)
 
             if self.lib:
-                move_one_lib(self.view,self.lib,src,dst)
+                move_one_lib(self.view, self.lib, src, dst)
             else:
-                self.view.move(src,dst)
-            self.setProgress(100*(i+1)/len(self.args))
+                self.view.move(src, dst)
+            self.setProgress(100 * (i + 1) / len(self.args))
 
 class CopyJob(Job):
     def __init__(self, src_view, src_paths, dst_view, dst_path):
@@ -227,52 +229,52 @@ class CopyJob(Job):
         self.tot_size_copied = 0
         self.num_files = 0
 
-        self.chunksize = 32*1024
+        self.chunksize = 32 * 1024
 
     def doTask(self):
 
         self.setProgress(0)
         self.calculate_totals()
 
-        print(self.tot_size,self.num_files)
+        print(self.tot_size, self.num_files)
 
-        if self.tot_size > 10*1024:
-            self.getInput("title",format_bytes(self.tot_size),["ok","cancel"])
+        if self.tot_size > 10 * 1024:
+            self.getInput("title", format_bytes(self.tot_size), ["ok", "cancel"])
 
         nfiles = 0
-        for src_path,dst_path in iter_copy(self.src_view,self.src_paths,
-                                         self.dst_view,self.dst_path):
-            self.copy_one(src_path,dst_path)
+        for src_path, dst_path in iter_copy(self.src_view, self.src_paths,
+                                         self.dst_view, self.dst_path):
+            self.copy_one(src_path, dst_path)
             nfiles += 1
-            self.setProgress(100*nfiles/self.num_files)
+            self.setProgress(100 * nfiles / self.num_files)
 
     def calculate_totals(self):
 
-        for path,_ in walk_files(self.src_view,self.src_paths):
+        for path, _ in walk_files(self.src_view, self.src_paths):
             st = self.src_view.stat_fast(path)
             self.tot_size += st["size"]
             self.num_files += 1
 
-    def copy_one(self,src_path,dst_path):
-        dst_dir,_ = self.dst_view.split(dst_path)
+    def copy_one(self, src_path, dst_path):
+        dst_dir, _ = self.dst_view.split(dst_path)
         if self.dst_view.exists(dst_path):
-            src_dir,_ = self.dst_view.split(src_path)
+            src_dir, _ = self.dst_view.split(src_path)
 
             if src_dir == dst_dir:
                 idx = 1
             else:
-                options = ["Replace","Keep Both","Skip"]
+                options = ["Replace", "Keep Both", "Skip"]
                 title = "Confirm Overwrite"
                 text = "input file \"%s\" already exists.\n" \
                        "Overwrite?" % (dst_path)
-                idx = self.getInput(title,text,options)
+                idx = self.getInput(title, text, options)
 
             if idx == 2:
                 return
             elif idx == 1:
-                dst_path = generateUniquePath(self.dst_view,dst_path)
+                dst_path = generateUniquePath(self.dst_view, dst_path)
 
-        print("cp",src_path,dst_path)
+        print("cp", src_path, dst_path)
         self.source_copy(src_path, dst_path)
 
     # TODO: eventually. refactor source_copy
@@ -281,17 +283,17 @@ class CopyJob(Job):
 
     def source_copy(self, input, target):
 
-        for src,dst in iter_copy(self.src_view, input, self.dst_view, target):
-            dname,_ = self.dst_view.split(dst)
-            self.dst_view.mkdir( dname )
+        for src, dst in iter_copy(self.src_view, input, self.dst_view, target):
+            dname, _ = self.dst_view.split(dst)
+            self.dst_view.mkdir(dname)
             opts = self.src_view, src, self.dst_view, dst, self.chunksize, self.fo_cbk
             self.tot_size_copied += source_copy_file(*opts)
 
-    def fo_cbk(self,tr,to):
+    def fo_cbk(self, tr, to):
         if (self.tot_size < 1):
             self.setProgress(100)
         else:
-            self.setProgress(100*(self.tot_size_copied+tr)/self.tot_size)
+            self.setProgress(100 * (self.tot_size_copied + tr) / self.tot_size)
 
 class MoveJob(Job):
     def __init__(self, src_view, src_paths, dst_path):
@@ -319,21 +321,21 @@ class MoveJob(Job):
         if Library.instance() is not None:
             self.lib = Library.instance().reopen()
 
-        for i,path in enumerate(self.src_paths):
+        for i, path in enumerate(self.src_paths):
 
             name = self.view.split(path)[1]
-            dst_path = self.view.join(self.dst_path,name)
-            dst_path = generateUniquePath(self.view,dst_path)
+            dst_path = self.view.join(self.dst_path, name)
+            dst_path = generateUniquePath(self.view, dst_path)
 
             if self.lib:
-                move_one_lib(self.view,self.lib,path,dst_path)
+                move_one_lib(self.view, self.lib, path, dst_path)
             else:
-                self.move_one(path,dst_path)
+                self.move_one(path, dst_path)
 
-            self.setProgress(100*(i+1)/len(self.src_paths))
+            self.setProgress(100 * (i + 1) / len(self.src_paths))
 
-    def move_one(self,src_path,dst_path):
-        self.view.move(src_path,dst_path)
+    def move_one(self, src_path, dst_path):
+        self.view.move(src_path, dst_path)
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):
@@ -351,10 +353,9 @@ class DropRequestJob(Job):
         self.dst_view = dst_view
         self.dst_path = dst_path
 
-        self.chunksize = 1024*32
+        self.chunksize = 1024 * 32
 
     def doTask(self):
-
 
         print(self.src_view)
         print(self.src_urls)
@@ -362,32 +363,32 @@ class DropRequestJob(Job):
         paths = []
         for url in self.src_urls:
             if url.isLocalFile():
-                paths.append( url.toLocalFile() )
+                paths.append(url.toLocalFile())
 
         print(paths)
 
-        for i,path in enumerate(paths):
+        for i, path in enumerate(paths):
 
             name = self.src_view.split(path)[1]
-            dst_path = self.src_view.join(self.dst_path,name)
-            dst_path = generateUniquePath(self.src_view,dst_path)
+            dst_path = self.src_view.join(self.dst_path, name)
+            dst_path = generateUniquePath(self.src_view, dst_path)
 
-            self.move_one(path,dst_path)
+            self.move_one(path, dst_path)
 
-            self.setProgress(100*(i+1)/len(paths))
+            self.setProgress(100 * (i + 1) / len(paths))
 
-
-    def move_one(self,src_path,dst_path):
+    def move_one(self, src_path, dst_path):
         """ this could be reimplented, say to update a database? """
 
         if self.src_view.equals(self.dst_view):
-            self.dst_view.move(src_path,dst_path)
+            self.dst_view.move(src_path, dst_path)
         else:
-            source_copy(self.src_view,src_path, \
-                        self.dst_view,dst_path,self.chunksize)
+            source_copy(self.src_view, src_path,
+                        self.dst_view, dst_path, self.chunksize)
 
 class DeleteJob(Job):
     """docstring for RenameJob"""
+
     def __init__(self, view, paths):
         """ paths as list of str
 
@@ -411,12 +412,12 @@ class DeleteJob(Job):
         # of how much work needs to be done. its arbitrary
         # but >100 is "a lot of work"
 
-        idx = self.getInput("Confirm Delete","are you serious?",["Delete","Cancel"])
+        idx = self.getInput("Confirm Delete", "are you serious?", ["Delete", "Cancel"])
 
         if idx != 0:
             return
 
-        for path in iter_remove(self.view,self.paths):
+        for path in iter_remove(self.view, self.paths):
             self.view.delete(path)
 
 class LoadDirectoryJob(Job):
@@ -437,30 +438,29 @@ class LoadDirectoryJob(Job):
             data = self.view.source.listdir(self.view.path)
 
             if not self.view.show_hidden:
-                data =  [ x for x in data if not self.view.source.hidden(x) ]
+                data = [x for x in data if not self.view.source.hidden(x)]
 
             st = self.view.stat
-            if self.view.sort_column_name in {"name","size"}:
+            if self.view.sort_column_name in {"name", "size"}:
                 st = self.view.stat_fast
 
             # stat all the files, emit progress for slow directories
             items = []
-            for idx,name in enumerate(data):
-                self.setProgress( int(100*(idx+1)/len(data)) )
+            for idx, name in enumerate(data):
+                self.setProgress(int(100 * (idx + 1) / len(data)))
                 items.append(st(name))
             # on windows, stat uncovers additional hidden resources
             if sys.platform == "win32" and not self.view.show_hidden:
-                items = [ x for x in items if "isHidden" not in x]
+                items = [x for x in items if "isHidden" not in x]
 
             items = self.view._sort(items)
 
-            data = [ x['name'] for x in items ]
+            data = [x['name'] for x in items]
 
         except OSError as e:
             data = []
             traceback.print_exc()
-            self.getInput("Access Error",str(e)+"\n"+self.view.pwd(), ["Ok"])
-
+            self.getInput("Access Error", str(e) + "\n" + self.view.pwd(), ["Ok"])
 
         self.loadComplete.emit(data)
 
@@ -471,37 +471,38 @@ class Dashboard(QWidget):
     this allows the user to cancel the job if needed. when the job
     completes it is removed from the dashboard.
     """
+
     def __init__(self, parent):
         super(Dashboard, self).__init__(parent)
 
         self.job_runner = JobRunner(self)
 
         self.vbox = QVBoxLayout(self)
-        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setContentsMargins(0, 0, 0, 0)
 
         self.widgets = []
 
         self.setMinimumHeight(0)
-        self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Minimum)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-    def startJob(self,job):
+    def startJob(self, job):
 
         job.exception.connect(self.onHandleException)
 
-        jw = JobWidget(job,self)
+        jw = JobWidget(job, self)
         jw.deleteJob.connect(self.onDeleteJob)
         self.widgets.append(jw)
         self.vbox.addWidget(jw)
 
         self.job_runner.startJob(job)
 
-    def onDeleteJob(self,jw):
+    def onDeleteJob(self, jw):
         self.vbox.removeWidget(jw)
         jw.setParent(None)
         jw.deleteLater()
 
-    def onHandleException(self,ex_type, ex_value, ex_traceback):
-        #any uncaught exception thrown by a job is caught and
+    def onHandleException(self, ex_type, ex_value, ex_traceback):
+        # any uncaught exception thrown by a job is caught and
         # processed by the registered exception handler
         sys.excepthook(ex_type, ex_value, ex_traceback)
 
@@ -514,7 +515,7 @@ class JobWidget(QWidget):
         super(JobWidget, self).__init__(parent)
         self.job = job
 
-        self.label = QLabel(job.__class__.__name__,self)
+        self.label = QLabel(job.__class__.__name__, self)
         self.pbar = QProgressBar(self)
         self.job.progressChanged.connect(self.setProgress)
 
@@ -542,11 +543,11 @@ class JobWidget(QWidget):
         self.setVisible(False)
         self.timer_show.start()
 
-    def setProgress(self,iValue):
+    def setProgress(self, iValue):
         self.pbar.setValue(iValue)
 
     def onJobFinished(self):
-        if isinstance(self.job,LoadDirectoryJob):
+        if isinstance(self.job, LoadDirectoryJob):
             self.deleteJob.emit(self)
         elif self.isHidden():
             self.timer_show.stop()
