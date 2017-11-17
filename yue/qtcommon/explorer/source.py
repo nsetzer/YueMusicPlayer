@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from yue.core.explorer.source import SourceListView
 
 
-class LazySourceListView(SourceListView,QObject):
+class LazySourceListView(SourceListView, QObject):
     """docstring for LazySourceListView"""
     loadDirectory = pyqtSignal(object)
 

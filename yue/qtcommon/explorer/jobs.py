@@ -15,6 +15,8 @@ from yue.core.song import Song
 from yue.core.library import Library
 import time
 
+import fnmatch
+
 class JobMessageBox(QDialog):
     """docstring for JobMessage"""
 
@@ -75,6 +77,8 @@ class Job(QThread):
 
     exception = pyqtSignal(object, object, object)
 
+    partialResult = pyqtSignal(object)
+
     def __init__(self):
         super(Job, self).__init__()
 
@@ -131,6 +135,15 @@ class Job(QThread):
 
             self.progressChanged.emit(iValue)
             self._progress = iValue
+
+    def emitPartialResult(self, value):
+        """
+        TODO: implement rate limiting,
+        the first couple calls should go through immediately
+        after that, batch calls to prevent the event queue from filling.
+        limit the number of calls per second
+        """
+        selg.partialResult.emit(value)
 
     def getInput(self, title, message, options=None):
         """
@@ -297,9 +310,7 @@ class CopyJob(Job):
 
 class MoveJob(Job):
     def __init__(self, src_view, src_paths, dst_path):
-        """ args as list of 2-tuple (src,tgt)
-
-        rename the set of files in the cwd.
+        """
         """
         super(MoveJob, self).__init__()
         self.view = src_view
@@ -336,6 +347,36 @@ class MoveJob(Job):
 
     def move_one(self, src_path, dst_path):
         self.view.move(src_path, dst_path)
+
+class QuickFindJob(Job):
+    """QuickFindJob finds files matching a pattern -- but it isnt fast
+
+    find requires new features to be implemented and this is just
+    a quick implmentation to prove a point
+    """
+
+    def __init__(self, view, root, pattern, recursive=False, regex=False):
+        """
+        view: view on a source
+        root: directory within view
+        pattern: file name pattern to match (unix style glob, or regex)
+        recursive: search child directories as well
+        regex: pattern is a regular expression
+        """
+        super(QuickFindJob, self).__init__()
+        self.view = view
+        self.root = root
+        self.pattern = pattern
+        self.recursive = recursive
+        self.regex = regex
+
+    def doTask(self):
+
+        for name in self.view.listdir(root):
+            if fnmatch.fnmatch(name, self.pattern):
+                res = (self.view, self.view.join(self.root, name))
+                self.emitPartialResult(res)
+
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):

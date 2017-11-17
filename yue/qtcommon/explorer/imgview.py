@@ -20,7 +20,7 @@ Scaling Strategies:
 
 """
 
-import os,sys
+import os, sys
 import sip
 
 import time
@@ -32,31 +32,31 @@ from PyQt5.QtGui import *
 
 from yue.qtcommon.ResourceManager import ResourceManager
 
-def scale_pixmap(map,w,h):
-    img = map.scaled(w,h,Qt.KeepAspectRatio, \
-                          Qt.SmoothTransformation)
+def scale_pixmap(map, w, h):
+    img = map.scaled(w, h, Qt.KeepAspectRatio,
+                     Qt.SmoothTransformation)
     return img
 
-def scale_image_to_map_i(img,w,h):
+def scale_image_to_map_i(img, w, h):
 
-    #return img.scaled(w,h,Qt.KeepAspectRatio,Qt.FastTransformation)
-    return QPixmap.fromImage(img.scaled(w,h,Qt.KeepAspectRatio, \
-                                            Qt.SmoothTransformation))
+    # return img.scaled(w,h,Qt.KeepAspectRatio,Qt.FastTransformation)
+    return QPixmap.fromImage(img.scaled(w, h, Qt.KeepAspectRatio,
+                                        Qt.SmoothTransformation))
 
-def scale_image_to_map(img,w,h,mode):
+def scale_image_to_map(img, w, h, mode):
 
-    iw,ih = img.width() , img.height()
+    iw, ih = img.width(), img.height()
 
     if (mode == ImageDisplay.SC_WINDOW) or \
-       (mode == ImageDisplay.SC_LARGE and  (iw > w or ih > h)):
-        map = scale_image_to_map_i(img,w,h)
+       (mode == ImageDisplay.SC_LARGE and (iw > w or ih > h)):
+        map = scale_image_to_map_i(img, w, h)
     elif mode == ImageDisplay.SC_WIDTH and ih > h:
         # .9 is a fudge factor, so that the image is scaled to
         # the width of the screen with some margin on the left and right
-        h2 = int( (.9*w/iw)*ih )
-        map = scale_image_to_map_i(img,w,h2)
+        h2 = int((.9 * w / iw) * ih)
+        map = scale_image_to_map_i(img, w, h2)
     else:
-        map = QPixmap.fromImage(img);
+        map = QPixmap.fromImage(img)
     return map
 
 class Viewport(QScrollArea):
@@ -72,10 +72,10 @@ class Viewport(QScrollArea):
     DISPLAY_SCROLLBAR_WIDTH_TIMEOUT_END = 200
     DISPLAY_SCROLLBAR_WIDTH_TIMEOUT_LOAD = 250
 
-    def __init__(self,parent):
+    def __init__(self, parent):
         super(Viewport, self).__init__(parent)
 
-        self.screen = QLabel(self);
+        self.screen = QLabel(self)
         self.screen.setSizePolicy(QSizePolicy.Expanding,
                                   QSizePolicy.Expanding)
         self.screen.setAlignment(Qt.AlignCenter)
@@ -84,7 +84,7 @@ class Viewport(QScrollArea):
         self.setWidget(self.screen)
         self.setWidgetResizable(True)
         #self.wheelEvent = self.wheelEvent
-        self.setBackgroundColor( Qt.black )
+        self.setBackgroundColor(Qt.black)
 
         vbar = self.verticalScrollBar()
         vbar.setSingleStep(Viewport.DISPLAY_SCROLLBAR_VERTICAL_STEP)
@@ -92,24 +92,23 @@ class Viewport(QScrollArea):
         hbar.setSingleStep(Viewport.DISPLAY_SCROLLBAR_HORIZONTAL_STEP)
 
         self.scroll_enabled = True
-        self.scroll_past_count = 0;
-        self.scroll_endof = False # if true, on image load set scroll bar to max
+        self.scroll_past_count = 0
+        self.scroll_endof = False  # if true, on image load set scroll bar to max
         self.lk_scrollwheel = QMutex()
 
         self.scale = ImageDisplay.SC_LARGE
 
-    def setBackgroundColor(self,qcolor):
+    def setBackgroundColor(self, qcolor):
         p = self.palette()
         p.setColor(self.backgroundRole(), qcolor)
         self.setPalette(p)
 
-    def setMovie(self,mov):
+    def setMovie(self, mov):
         # read: gif
         self.screen.setMovie(mov)
 
-    def setPixmap(self,map):
+    def setPixmap(self, map):
         self.screen.setPixmap(map)
-
 
     def FIXME_autoscroll(self):
         # this code needs to be called after the image is displayed
@@ -129,13 +128,13 @@ class Viewport(QScrollArea):
     def getScaleMode(self):
         return self.scale
 
-    def setScale(self,sc):
-        if sc!=self.scale:
+    def setScale(self, sc):
+        if sc != self.scale:
             self.scaleChanged.emit(sc)
         self.scale = sc
         self.update()
 
-    def setScrollEnabled(self,b=True):
+    def setScrollEnabled(self, b=True):
         self.lk_scrollwheel.lock()
         self.scroll_enabled = b
         self.lk_scrollwheel.unlock()
@@ -146,31 +145,31 @@ class Viewport(QScrollArea):
         self.lk_scrollwheel.unlock()
         return b
 
-    def wheelEvent_width(self,event):
+    def wheelEvent_width(self, event):
 
-        velocity = (event.angleDelta()/120)
+        velocity = (event.angleDelta() / 120)
         # d is 1 if scrolling down and -1 otherwise.
         # also not sure on OSX... ha
         d = 1 if velocity.y() < 0 else -1
 
         vbar = self.verticalScrollBar()
 
-        if self.scroll_past_count==0 or \
-           (self.scroll_past_count<0 and d>0) or \
-           (self.scroll_past_count>0 and d<0):
-            super(QScrollArea,self).wheelEvent(event)
+        if self.scroll_past_count == 0 or \
+           (self.scroll_past_count < 0 and d > 0) or \
+           (self.scroll_past_count > 0 and d < 0):
+            super(QScrollArea, self).wheelEvent(event)
             self.scroll_past_count = 0
 
-        if vbar.value()==vbar.maximum():
-            self.wheelEvent_width_main( d )
+        if vbar.value() == vbar.maximum():
+            self.wheelEvent_width_main(d)
             event.accept()
-        elif vbar.value()==vbar.minimum():
-            self.wheelEvent_width_main( d )
+        elif vbar.value() == vbar.minimum():
+            self.wheelEvent_width_main(d)
             event.accept()
-        #else:
+        # else:
         #    self.scroll_past_count = 0
 
-    def wheelEvent_width_main(self,direction):
+    def wheelEvent_width_main(self, direction):
         """ when the scale is `Width` the scroll event has special meaning
         scroll the image up and down, automatically go to the next/prev image
         when scrolling down/up after the bar reaches the end of the range
@@ -180,52 +179,52 @@ class Viewport(QScrollArea):
         end_timeout = Viewport.DISPLAY_SCROLLBAR_WIDTH_TIMEOUT_END
         load_timeout = Viewport.DISPLAY_SCROLLBAR_WIDTH_TIMEOUT_LOAD
 
-        if self.scroll_past_count == 1*direction:
+        if self.scroll_past_count == 1 * direction:
             self.setScrollEnabled(False)
-            QTimer.singleShot(end_timeout,self.setScrollEnabled)
+            QTimer.singleShot(end_timeout, self.setScrollEnabled)
 
-        if self.scroll_past_count == 2*direction:
+        if self.scroll_past_count == 2 * direction:
             if direction > 0:
                 self.scroll_endof = False
                 self.displayNext.emit()
             else:
                 self.scroll_endof = True
                 self.displayPrev.emit()
-            self.scroll_past_count=0
+            self.scroll_past_count = 0
             self.setScrollEnabled(False)
-            QTimer.singleShot(load_timeout,self.setScrollEnabled)
-            QTimer.singleShot(30,self.FIXME_autoscroll)
+            QTimer.singleShot(load_timeout, self.setScrollEnabled)
+            QTimer.singleShot(30, self.FIXME_autoscroll)
         else:
             self.scroll_past_count += direction
 
-    def wheelEvent(self,event):
+    def wheelEvent(self, event):
 
         if not self.getScrollEnabled():
             return
 
-        velocity = (event.angleDelta()/120)
+        velocity = (event.angleDelta() / 120)
 
         if self.scale == ImageDisplay.SC_WIDTH:
             self.wheelEvent_width(event)
         elif self.scale != ImageDisplay.SC_NONE:
 
-            if velocity.y() < 0 :
+            if velocity.y() < 0:
                 self.displayNext.emit()
-            elif velocity.y() > 0 :
+            elif velocity.y() > 0:
                 self.displayPrev.emit()
 
             event.accept()
         else:
-            super(QScrollArea,self).wheelEvent(event)
+            super(QScrollArea, self).wheelEvent(event)
 
 class ImageDisplay(QWidget):
     """implements a widget for displaying images
     """
 
-    SC_NONE=0x01    # do not perform scaling
-    SC_LARGE=0x02   # scale down only large images
-    SC_WINDOW=0x04  # scale only everything to the window
-    SC_WIDTH=0x05   # scale large images to window width
+    SC_NONE = 0x01    # do not perform scaling
+    SC_LARGE = 0x02   # scale down only large images
+    SC_WINDOW = 0x04  # scale only everything to the window
+    SC_WIDTH = 0x05   # scale large images to window width
 
     # current API does not emit these signals when the appropriate
     # setters are called, as the setters are provided so that the UI
@@ -237,12 +236,12 @@ class ImageDisplay(QWidget):
     imageChanged    = pyqtSignal(object)
     displayResource = pyqtSignal(str, object)
 
-    def __init__(self,parent):
+    def __init__(self, parent):
         super(ImageDisplay, self).__init__()
 
-        self.img = None # primary image source
-        self.map = None # a prescaled copy of img
-        self.map_params = (0,0,0) # cached parameters that produced self.map
+        self.img = None  # primary image source
+        self.map = None  # a prescaled copy of img
+        self.map_params = (0, 0, 0)  # cached parameters that produced self.map
         self.mov = None
         self._buf = None
         self.paused = True
@@ -267,7 +266,7 @@ class ImageDisplay(QWidget):
 
         self.vbox = QVBoxLayout(self)
         self.vbox.addWidget(self.viewport)
-        self.vbox.setContentsMargins(0,0,0,0)
+        self.vbox.setContentsMargins(0, 0, 0, 0)
         self.vbox.setSpacing(0)
 
         self._init_default_resource()
@@ -295,14 +294,14 @@ class ImageDisplay(QWidget):
         self.default_resource = QImage.fromData(self.default_resource_data)
         qf.close()
 
-    def setSource(self,src):
+    def setSource(self, src):
         self.source = src
 
     def getSource(self):
         # TODO: this should be a PUSH instead of a PULL
         return self.source
 
-    #def loadResource(self,res):
+    # def loadResource(self,res):
     #    if res != None :
     #        self.resourceChanged.emit( res )
     #        if res.kind in (ResourceManager.IMAGE,ResourceManager.GIF):
@@ -311,18 +310,18 @@ class ImageDisplay(QWidget):
     def load(self, path, item):
         # called by the display thread
 
-        if isinstance(item,QImage):
+        if isinstance(item, QImage):
             self.img = item
             self.map = None
-            self.map_params = (0,0,0)
+            self.map_params = (0, 0, 0)
             #self.map = QPixmap.fromImage(self.img)
             self._post_load_image()
 
-        elif isinstance(item,tuple):
-            self.img,self.map,self.map_params = item
+        elif isinstance(item, tuple):
+            self.img, self.map, self.map_params = item
             self._post_load_image()
 
-        elif isinstance(item,QByteArray):
+        elif isinstance(item, QByteArray):
 
             # Qt will crash if the QByteArray is garbage collected.
             # QMovie needs both a QByteArray and QBuffer as input
@@ -337,7 +336,7 @@ class ImageDisplay(QWidget):
             # ----------------------------
             self._buf = QBuffer(item)
             self._buf.open(QIODevice.ReadOnly)
-            self.mov = QMovie(self._buf,item)
+            self.mov = QMovie(self._buf, item)
 
             self._post_load_movie()
 
@@ -347,7 +346,7 @@ class ImageDisplay(QWidget):
         self.viewport.update()
         self.update()
 
-        #self.show_perf_stats()
+        # self.show_perf_stats()
         return
 
     def show_perf_stats(self):
@@ -360,27 +359,27 @@ class ImageDisplay(QWidget):
 
         """
         self.perf_end = time.perf_counter()
-        ldtime = self.perf_update-self.perf_start
-        sctime = self.perf_scale_e - self.perf_scale_s;
+        ldtime = self.perf_update - self.perf_start
+        sctime = self.perf_scale_e - self.perf_scale_s
         dptime = self.perf_end - self.perf_scale_e
-        total  = self.perf_end-self.perf_start
+        total  = self.perf_end - self.perf_start
         ldpercent = 0
         scpercent = 0
         dppercent = 0
         if total > 0:
-            ldpercent = ldtime/total*100
-            scpercent = sctime/total*100
-            dppercent = dptime/total*100
-        s = "  load:%.4fs %.2f%%"%(ldtime,ldpercent) + \
-            "  scale:%.4fs %.2f%%"%(sctime,scpercent) + \
-            "  post:%.4fs %.2f%%"%(dptime,dppercent)
-        print("perf time | total:%.4f%s"%(total, s))
+            ldpercent = ldtime / total * 100
+            scpercent = sctime / total * 100
+            dppercent = dptime / total * 100
+        s = "  load:%.4fs %.2f%%" % (ldtime, ldpercent) + \
+            "  scale:%.4fs %.2f%%" % (sctime, scpercent) + \
+            "  post:%.4fs %.2f%%" % (dptime, dppercent)
+        print("perf time | total:%.4f%s" % (total, s))
 
     def _post_load_movie(self):
 
         self.mov.scaledSize()
         self.mov.setCacheMode(QMovie.CacheAll)
-        self.mov.setSpeed( self.speed )
+        self.mov.setSpeed(self.speed)
 
         self.img = None
         self.map = None
@@ -393,7 +392,7 @@ class ImageDisplay(QWidget):
         # clear movie data
         self.mov = None
         if self.getScaleMode() == ImageDisplay.SC_WIDTH:
-            self.scroll_past_count = 0;
+            self.scroll_past_count = 0
             vbar = self.viewport.verticalScrollBar()
             vbar.setValue(vbar.minimum())
 
@@ -404,13 +403,13 @@ class ImageDisplay(QWidget):
             # option 1, scale in main thread
             self.perf_scale_s = time.perf_counter()
             #map = self.__get_scaled_map()
-            #self.viewport.setPixmap(map)
+            # self.viewport.setPixmap(map)
             self.perf_scale_e = time.perf_counter()
 
             # option 2, scale in secondary thread
-            self.threadScale.setImage( self.img )
+            self.threadScale.setImage(self.img)
 
-            self.imageChanged.emit( self.img )
+            self.imageChanged.emit(self.img)
 
         elif self.mov:
             if self.paused:
@@ -419,13 +418,13 @@ class ImageDisplay(QWidget):
                 #self.mov_ar = self.mov.currentImage().size()
             #w,h = self.__get_scale_size()
             #f = int( h/self.mov_ar.height()/.05 ) * .05
-            #print(f,h/self.mov_ar.height())
+            # print(f,h/self.mov_ar.height())
             #w = self.mov_ar.width()*h/self.mov_ar.height()
             #w = self.mov_ar.width()*f
             #h = self.mov_ar.height()*f
-            #self.mov.setScaledSize(QSize(w,h))
-            self.mov.setSpeed( self.speed )
-            self.imageChanged.emit( self.mov )
+            # self.mov.setScaledSize(QSize(w,h))
+            self.mov.setSpeed(self.speed)
+            self.imageChanged.emit(self.mov)
 
     def getScaleMode(self):
 
@@ -437,47 +436,45 @@ class ImageDisplay(QWidget):
 
         # remove the contents margins so that NO scroll bar will show
         # when scaled.
-        l,t,r,b = self.viewport.getContentsMargins()
+        l, t, r, b = self.viewport.getContentsMargins()
         w -= l + r
         h -= t + b
 
-        return w,h
+        return w, h
 
     def __get_scaled_map(self):
-
 
         if not self.img:
             raise ValueError("Image Not Set")
 
-        w,h = self.getScaleSize()
+        w, h = self.getScaleSize()
         mode = self.getScaleMode()
-        if (w,h,mode) != self.map_params:
-            self.map = scale_image_to_map(self.img,w,h,self.getScaleMode())
-
+        if (w, h, mode) != self.map_params:
+            self.map = scale_image_to_map(self.img, w, h, self.getScaleMode())
 
         return self.map
 
-    def setScale(self,sc):
+    def setScale(self, sc):
         self.viewport.setScale(sc)
         self.update()
 
     def getMaxSpeed(self):
 
-        return self.speed_max//self.speed_tick_snap
+        return self.speed_max // self.speed_tick_snap
 
     def getSpeed(self):
 
-        return self.speed//self.speed_tick_snap
+        return self.speed // self.speed_tick_snap
 
-    def setSpeed(self,spd):
+    def setSpeed(self, spd):
         self.speed = spd * self.speed_tick_snap
         self.update()
 
-    def rotate(self,angle):
+    def rotate(self, angle):
         if self.img is not None:
             tr = QTransform()
             tr.rotate(angle)
-            self.img = self.img.transformed(tr);
+            self.img = self.img.transformed(tr)
             #self.map = QPixmap.fromImage(self.img)
             self._post_load_image()
             self.update()
@@ -496,20 +493,20 @@ class ImageDisplay(QWidget):
 
     @staticmethod
     def supportedScaleFactors():
-        return [ ImageDisplay.SC_NONE,
-                 ImageDisplay.SC_LARGE,
-                 ImageDisplay.SC_WINDOW,
-                 ImageDisplay.SC_WIDTH]
+        return [ImageDisplay.SC_NONE,
+                ImageDisplay.SC_LARGE,
+                ImageDisplay.SC_WINDOW,
+                ImageDisplay.SC_WIDTH]
 
     @staticmethod
     def scaleFactorToString(sc):
-        if sc==ImageDisplay.SC_NONE:
+        if sc == ImageDisplay.SC_NONE:
             return "None"
-        elif sc==ImageDisplay.SC_LARGE:
+        elif sc == ImageDisplay.SC_LARGE:
             return "Large"
-        elif sc==ImageDisplay.SC_WINDOW:
+        elif sc == ImageDisplay.SC_WINDOW:
             return "Window"
-        elif sc==ImageDisplay.SC_WIDTH:
+        elif sc == ImageDisplay.SC_WIDTH:
             return "Window Width"
         return "Unknown"
 
@@ -519,14 +516,14 @@ class DisplayThread(QThread):
         when ready to display, emits parent.displayResource
     """
 
-    def __init__(self,parent):
+    def __init__(self, parent):
         super(DisplayThread, self).__init__()
 
         self.parent = parent
         self.alive = True
 
-        self.resource_path = None # resource to load
-        self.resource_next = None # resource to load in background
+        self.resource_path = None  # resource to load
+        self.resource_next = None  # resource to load in background
 
         # two state system:
         #   accepting : wait for signal for a resource to load
@@ -540,7 +537,7 @@ class DisplayThread(QThread):
         self.lk_cache = threading.Lock()
         self.item_cache = {}
         self.item_paths = []
-        self.cache_size = 32;
+        self.cache_size = 32
 
     def current(self):
         with self.lk_accept:
@@ -556,7 +553,7 @@ class DisplayThread(QThread):
             if self.accepting:
                 self.accepting = False
                 self.resource_path = self.parent.getSource().next()
-                self.resource_next = self.parent.getSource().peakResource( 1)
+                self.resource_next = self.parent.getSource().peakResource(1)
                 self.cv_accept.notify()
                 return
 
@@ -570,7 +567,6 @@ class DisplayThread(QThread):
                 return
 
     def run(self):
-
         """
         todo
             1. peek and auto load the next image when done loading current
@@ -589,39 +585,39 @@ class DisplayThread(QThread):
                 self.accepting = True
                 self.cv_accept.wait()
                 if not self.alive:
-                    return;
+                    return
             self.update()
             self.preload()
 
     def update(self):
         item = None
         if self.resource_path is not None:
-            item = self.cache_get( self.resource_path )
+            item = self.cache_get(self.resource_path)
             if item is None:
-                item = self.load_resource( self.resource_path )
+                item = self.load_resource(self.resource_path)
                 # load resource here
-                self.cache_insert(self.resource_path,item)
+                self.cache_insert(self.resource_path, item)
 
         if item is None:
             item = self.parent.default_resource
 
-        self.parent.displayResource.emit( self.resource_path, item )
+        self.parent.displayResource.emit(self.resource_path, item)
 
         self.parent.perf_update = time.perf_counter()
 
     def preload(self):
         if self.resource_next is not None:
-            item = self.cache_get( self.resource_next )
+            item = self.cache_get(self.resource_next)
             if item is None:
-                item = self.load_resource( self.resource_next )
-                self.cache_insert( self.resource_next, item )
+                item = self.load_resource(self.resource_next)
+                self.cache_insert(self.resource_next, item)
                 self.resource_next = None
 
-    def load_resource(self,path):
+    def load_resource(self, path):
         """return a in-memory representation of path"""
 
         ext = os.path.splitext(path)[1]
-        kind =  ResourceManager.instance().getExtType( ext )
+        kind = ResourceManager.instance().getExtType(ext)
         # todo read the first few bytes to check the kind
         source = self.parent.getSource()
 
@@ -629,35 +625,35 @@ class DisplayThread(QThread):
         # cases. I believe because there are more sequence points for
         # the threading system to preempt this thread.
         data = b""
-        with source.open(path,"rb") as rb:
-            buf = rb.read(32*1024)
+        with source.open(path, "rb") as rb:
+            buf = rb.read(32 * 1024)
             while buf:
                 data += buf
-                buf = rb.read(32*1024)
+                buf = rb.read(32 * 1024)
 
         if kind == ResourceManager.GIF:
-            return QByteArray( data )
+            return QByteArray(data)
         elif kind == ResourceManager.IMAGE:
-            img = QImage.fromData( data )
+            img = QImage.fromData(data)
 
             # note:
             # return (img, None, (0,0,0))
             # to disable pre-scaling
-            return (img, None, (0,0,0))
+            return (img, None, (0, 0, 0))
 
             # prescale the image
             #w,h = self.parent.getScaleSize()
             #mode = self.parent.getScaleMode()
             #map = scale_image_to_map(img,w,h,mode)
             #params = (w,h,mode)
-            #if img.width()*img.height() > 1920*1080:
+            # if img.width()*img.height() > 1920*1080:
             #    img = scale_image(img,1920,1080)
             #map = QPixmap.fromImage(img)
-            #return (img,map,params)
+            # return (img,map,params)
         else:
             return None
 
-    def cache_insert(self,path,item):
+    def cache_insert(self, path, item):
         with self.lk_cache:
             if path in self.item_cache:
                 return
@@ -669,12 +665,12 @@ class DisplayThread(QThread):
                 path = self.item_paths.pop(0)
                 del self.item_cache[path]
 
-    def cache_get(self,path):
+    def cache_get(self, path):
 
         with self.lk_cache:
             if path in self.item_cache:
                 return self.item_cache[path]
-        return None;
+        return None
 
     def kill(self):
         with self.lk_accept:
@@ -687,7 +683,7 @@ class ScaleImageThread(QThread):
 
     displayPixmap = pyqtSignal(QPixmap)
 
-    def __init__(self,parent):
+    def __init__(self, parent):
         super(ScaleImageThread, self).__init__()
 
         self.parent = parent
@@ -701,7 +697,7 @@ class ScaleImageThread(QThread):
 
         self.displayPixmap.connect(self.parent.viewport.setPixmap)
 
-    def setImage(self,img):
+    def setImage(self, img):
 
         with QMutexLocker(self.lk_scale):
             self.img_src = img
@@ -727,9 +723,9 @@ class ScaleImageThread(QThread):
 
             # scale the image outside the lock
             if img:
-                w,h = self.parent.getScaleSize()
+                w, h = self.parent.getScaleSize()
                 mode = self.parent.getScaleMode()
-                map = scale_image_to_map(img,w,h,mode)
+                map = scale_image_to_map(img, w, h, mode)
 
     def kill(self):
         with QMutexLocker(self.lk_scale):
