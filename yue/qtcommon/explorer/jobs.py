@@ -82,7 +82,6 @@ class Job(QThread):
     def __init__(self):
         super(Job, self).__init__()
 
-        # print("create",self.__class__.__name__)
         self.msgbox_result = None
 
         self.cond = QWaitCondition()
@@ -95,7 +94,7 @@ class Job(QThread):
         try:
             self.doTask()
         except AbortJob as e:
-            sys.stderr.write("job aborted\n")
+            sys.stderr.write("%s aborted\n"%self.__class__.__name__)
         except Exception as e:
             traceback.print_exc()
             # emit the exception so that the main thread can
@@ -113,12 +112,13 @@ class Job(QThread):
     def checkAbort(self):
 
         with QMutexLocker(self.mutex):
-            return self._alive
+            if not self._alive:
+                raise AbortJob()
 
     def abort(self):
 
         with QMutexLocker(self.mutex):
-            self._alive = True
+            self._alive = False
 
     def setProgress(self, iValue):
         """
@@ -128,9 +128,8 @@ class Job(QThread):
         to prevent too many signals being emitted, this only emits
         a notification to the system if the actual progress changes.
         """
-
         self.checkAbort()
-
+        iValue = int(iValue)
         if iValue != self._progress:
 
             self.progressChanged.emit(iValue)
@@ -372,10 +371,25 @@ class QuickFindJob(Job):
 
     def doTask(self):
 
-        for name in self.view.listdir(self.root):
-            if fnmatch.fnmatch(name, self.pattern):
-                self.emitPartialResult(self.view,
-                                       self.view.join(self.root, name))
+        dirs = [self.root]
+        count = 0
+
+        while len(dirs) > 0:
+            root = dirs.pop()
+
+            items = list(self.view.listdir(self.root))
+            count += len(items)
+
+            for i,name in enumerate(items):
+                self.setProgress(100*((i+1)/count))
+                if fnmatch.fnmatch(name, self.pattern):
+                    self.emitPartialResult(self.view,
+                                           self.view.join(self.root, name))
+
+                # todo check if path is a directory
+                # if recursive, add it to the list of dirs to check
+                # ignore .git directories?
+                time.sleep(1)
 
 
 class DropRequestJob(Job):
@@ -558,6 +572,10 @@ class JobWidget(QWidget):
 
         self.label = QLabel(job.__class__.__name__, self)
         self.pbar = QProgressBar(self)
+        self.btn_abort = QToolButton(self)
+        self.btn_abort.clicked.connect(self.onAbortJob)
+        self.btn_abort.setIcon( QIcon(':/img/app_x.png') )
+
         self.job.progressChanged.connect(self.setProgress)
 
         # delay showing this widget
@@ -580,6 +598,7 @@ class JobWidget(QWidget):
         self.hbox = QHBoxLayout(self)
         self.hbox.addWidget(self.label)
         self.hbox.addWidget(self.pbar)
+        self.hbox.addWidget(self.btn_abort)
 
         self.setVisible(False)
         self.timer_show.start()
@@ -600,3 +619,8 @@ class JobWidget(QWidget):
 
     def onDeleteTimerEnd(self):
         self.deleteJob.emit(self)
+
+    def onAbortJob(self):
+        self.job.abort();
+        self.btn_abort.setEnabled(False)
+
