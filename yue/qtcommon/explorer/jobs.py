@@ -363,11 +363,13 @@ class QuickFindJob(Job):
         regex: pattern is a regular expression
         """
         super(QuickFindJob, self).__init__()
-        self.view = view
+        self.view = SourceListView(view, view.pwd())
         self.root = root
         self.pattern = pattern
         self.recursive = recursive
         self.regex = regex
+
+        self.ignore_dirs = {".git","__pycache__"}
 
     def doTask(self):
 
@@ -377,20 +379,19 @@ class QuickFindJob(Job):
         while len(dirs) > 0:
             root = dirs.pop()
 
-            items = list(self.view.listdir(self.root))
+            items = list(self.view.listdir(root))
             count += len(items)
 
             for i,name in enumerate(items):
                 self.setProgress(100*((i+1)/count))
                 if fnmatch.fnmatch(name, self.pattern):
                     self.emitPartialResult(self.view,
-                                           self.view.join(self.root, name))
+                                           self.view.join(root, name))
 
-                # todo check if path is a directory
-                # if recursive, add it to the list of dirs to check
-                # ignore .git directories?
-                time.sleep(1)
-
+                if self.recursive and name not in self.ignore_dirs:
+                    path = self.view.join(root, name)
+                    if self.view.isdir(path):
+                        dirs.append( path )
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):
@@ -621,6 +622,8 @@ class JobWidget(QWidget):
         self.deleteJob.emit(self)
 
     def onAbortJob(self):
+        # TODO: job api for asking if it should be canceled
+        # "Are You Sure?"
         self.job.abort();
         self.btn_abort.setEnabled(False)
 

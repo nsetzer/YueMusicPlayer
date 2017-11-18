@@ -7,6 +7,7 @@ from PyQt5.QtGui import *
 import io
 import traceback
 
+from yue.qtcommon.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
 from yue.qtcommon.LineEdit import LineEdit
 from yue.core.explorer.source import DirectorySource
 from yue.core.util import format_date, format_bytes, format_mode
@@ -40,6 +41,8 @@ class LineEdit_Path(LineEdit):
     def keyReleaseEnter(self, text):
         self.table.scrollTo(0)
         self.parent().chdir(self.text())
+
+
 
 class ContextBarPath(ContextBar):
 
@@ -85,7 +88,8 @@ class ContextBarPath(ContextBar):
 class FindBarWidget(QWidget):
     """docstring for FindBarWidget"""
 
-    findFiles = pyqtSignal(str)
+    findFiles = pyqtSignal(str,bool)
+    hideBar = pyqtSignal()
 
     def __init__(self, parent=None):
         super(FindBarWidget, self).__init__(parent)
@@ -97,17 +101,78 @@ class FindBarWidget(QWidget):
         self.edit = QLineEdit(self)
         self.hbox.addWidget(self.edit)
 
+        self.chk_recursive = QCheckBox("Recursive", self)
+        self.chk_recursive.setChecked(True)
+
         self.btn_runFind = QPushButton("Find")
         self.btn_runFind.clicked.connect(self.runFind)
+
+        self.btn_hide = QPushButton("Hide")
+        self.btn_hide.clicked.connect(self.hideBar.emit)
+
+
+        self.hbox.addWidget(self.chk_recursive)
         self.hbox.addWidget(self.btn_runFind)
+        self.hbox.addWidget(self.btn_hide)
 
     def runFind(self):
 
         pattern = "*" + self.edit.text() + "*"
-        self.findFiles.emit(pattern)
+        recursive = self.chk_recursive.isChecked();
+        self.findFiles.emit(pattern,recursive)
+
+    def onFocus(self):
+        self.edit.setFocus(Qt.ShortcutFocusReason)
+
+class FindResultsTable(LargeTable):
+
+    """
+    I think I need nothing more than a custom
+    source to hold the results, one that cant change
+    directories. and listdir returns all results
+    """
+
+    def __init__(self, parent=None):
+        super(FindResultsTable, self).__init__(parent)
+
+        self.results = []
+
+    def initColumns(self):
+
+        self.columns.append(TableColumnImage(self, 0, "Icon"))
+        self.columns[-1].setShortName("")
+        self.columns[-1].setTextTransform(lambda item, _: self.item2img(item[0]))
+        self.columns[-1].width = ResourceManager.instance().width() + 4  # arbitrary pad, image is centered
+
+
+        self.columns.append(TableColumn(self, 1, "File Name"))
+        self.columns[-1].setWidthByCharCount(35)
+
+    def item2img(self, item):
+        return self.parent().item2img(item)
+
+    def addPartialResult( self, view, path ):
+
+        st = view.stat_fast(path)
+
+        relpath = view.relpath(path, view.pwd())
+        self.results.append([st, relpath, path])
+
+        self.setData(self.results)
+
+    def clearResults(self):
+        self.results = []
+
+    def mouseReleaseRight(self, event):
+        pass
+
+
 
 class ExplorerModel(QWidget):
-    """docstring for MainWindow"""
+    """docstring for MainWindow
+
+    shortcuts are handled in the file table
+    """
 
     # TODO: ExplorerModel should be renamed "ExplorerDisplayBase"
     # an ExplorerDisplayBase combines the source/view (model) of the directory
@@ -163,6 +228,10 @@ class ExplorerModel(QWidget):
 
         self.tbl_file.focusQuery.connect(
             lambda: self.txt_filter.setFocus(Qt.ShortcutFocusReason))
+
+        self.tbl_file.findFiles.connect(self.onFindFilesShowBar)
+
+        self.tbl_results = FindResultsTable(self)
 
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
@@ -226,6 +295,7 @@ class ExplorerModel(QWidget):
 
         self.bar_find = FindBarWidget(self)
         self.bar_find.findFiles.connect(self.onFindFiles)
+        self.bar_find.hideBar.connect(self.onFindFilesHideBar)
 
         self.lbl_st_nfiles = QLabel("", self)
         self.lbl_st_nsel   = QLabel("", self)
@@ -247,8 +317,11 @@ class ExplorerModel(QWidget):
         self.vbox.addWidget(self.lbl_viewName)
         self.vbox.addWidget(self.txt_path)
         self.vbox.addWidget(self.tbl_file.container)
+        self.vbox.addWidget(self.tbl_results.container)
         self.vbox.addLayout(self.hbox_st)
         self.vbox.addWidget(self.bar_find)
+
+        self.onFindFilesHideBar()
 
         self.directory_history = []
         self.directory_history_index = 0
@@ -619,13 +692,21 @@ class ExplorerModel(QWidget):
         else:
             self.lbl_viewName.setHidden(True)
 
-    def onFindFiles(self, pattern):
+    def onFindFilesShowBar(self):
+        self.tbl_results.container.show()
+        self.bar_find.show()
+        self.bar_find.onFocus()
 
-        def printResult(view, path):
-            path = view.relpath(path, view.pwd())
-            print(path)
+    def onFindFilesHideBar(self):
+        self.tbl_results.container.hide()
+        self.bar_find.hide()
 
-        job = QuickFindJob(self.view, self.view.pwd(), pattern)
-        job.partialResult.connect(printResult)
+    def onFindFiles(self, pattern, recursive):
+
+        self.tbl_results.clearResults()
+        job = QuickFindJob(self.view, self.view.pwd(), pattern,
+                           recursive=recursive)
+        job.partialResult.connect(self.tbl_results.addPartialResult)
         self.submitJob.emit(job)
+        print(pattern, recursive)
 

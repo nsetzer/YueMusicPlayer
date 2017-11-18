@@ -37,6 +37,7 @@ class ExplorerFileTable(LargeTable):
     createFile = pyqtSignal(str)
     createDirectory = pyqtSignal(str)
     focusQuery = pyqtSignal()
+    findFiles = pyqtSignal()
     deletePaths = pyqtSignal(list)  # list of items
     focusUp = pyqtSignal()
 
@@ -63,6 +64,10 @@ class ExplorerFileTable(LargeTable):
         self.xcut_filter = QShortcut(QKeySequence(QKeySequence.Find), self)
         self.xcut_filter.setContext(Qt.WidgetShortcut)
         self.xcut_filter.activated.connect(self.focusQuery.emit)
+
+        self.xcut_filter = QShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_F), self)
+        self.xcut_filter.setContext(Qt.WidgetShortcut)
+        self.xcut_filter.activated.connect(self.findFiles.emit)
 
         # shortcuts must be disabled during editing
         self.xcuts_all = [self.xcut_copy, self.xcut_cut, self.xcut_paste,
