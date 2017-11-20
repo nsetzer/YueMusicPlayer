@@ -347,31 +347,34 @@ class MoveJob(Job):
     def move_one(self, src_path, dst_path):
         self.view.move(src_path, dst_path)
 
-class QuickFindJob(Job):
-    """QuickFindJob finds files matching a pattern -- but it isnt fast
+class QuickFindBaseJob(Job):
+    """QuickFindBaseJob finds files matching a pattern -- but it isnt fast
 
     find requires new features to be implemented and this is just
     a quick implmentation to prove a point
     """
 
-    def __init__(self, view, root, pattern, recursive=False, regex=False):
+    def __init__(self, view, root, filter, recursive=False, regex=False):
         """
         view: view on a source
         root: directory within view
-        pattern: file name pattern to match (unix style glob, or regex)
+        filter: file name pattern to match (unix style glob, or regex)
         recursive: search child directories as well
         regex: pattern is a regular expression
         """
-        super(QuickFindJob, self).__init__()
+        super(QuickFindBaseJob, self).__init__()
         self.view = SourceListView(view, view.pwd())
         self.root = root
-        self.pattern = pattern
+        self.filter = filter
         self.recursive = recursive
         self.regex = regex
 
         self.ignore_dirs = {".git","__pycache__"}
 
     def doTask(self):
+        self.walkDirectories()
+
+    def walkDirectories(self):
 
         dirs = [self.root]
         count = 0
@@ -384,14 +387,58 @@ class QuickFindJob(Job):
 
             for i,name in enumerate(items):
                 self.setProgress(100*((i+1)/count))
-                if fnmatch.fnmatch(name, self.pattern):
-                    self.emitPartialResult(self.view,
-                                           self.view.join(root, name))
+
+                self.processFile(root, name)
 
                 if self.recursive and name not in self.ignore_dirs:
                     path = self.view.join(root, name)
                     if self.view.isdir(path):
                         dirs.append( path )
+
+    def matchFileName(self, name):
+        return self.filter == "" or fnmatch.fnmatch(name, self.filter)
+
+    def processFile(self, dir, name):
+        raise NotImplementedError();
+
+class QuickFindJob(QuickFindBaseJob):
+
+    def __init__(self, view, root, filter, recursive=False, regex=False):
+        super(QuickFindJob, self).__init__(view, root, filter, recursive, regex)
+
+    def processFile(self, dir, name):
+        if self.matchFileName(name):
+            self.emitPartialResult(self.view, self.view.join(dir, name))
+
+class QuickFindInFilesJob(QuickFindBaseJob):
+
+    def __init__(self, view, root, filter, pattern, recursive=False, regex=False):
+        super(QuickFindInFilesJob, self).__init__(view, root, filter, recursive, regex)
+        self.pattern = pattern
+
+    def isText(self, fullpath):
+
+        if self.view.isdir(fullpath):
+            return False
+
+        dir,name = self.view.split(fullpath)
+        name,ext = self.view.splitext(name)
+        if name.startswith(".") and ext =="":
+            return True # dot file
+        return True
+
+    def matchFileContents(self):
+        return True
+
+    def processFile(self, dir, name):
+        """
+        yield a file if name matches the file name a filter
+        and the contents of the file matches the given pattern
+        """
+        path = self.view.join(dir, name)
+        if self.matchFileName(name):
+            if self.matchFileContents(path):
+                self.emitPartialResult(self.view,path)
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):
