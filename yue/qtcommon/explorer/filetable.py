@@ -232,7 +232,8 @@ class ExplorerFileTable(LargeTable):
             self.columns[col].editor_start(*opts)
 
     def mouseReleaseRight(self, event):
-        self.parent().controller.contextMenu(event, self.parent(), self.getSelection())
+        self.parent().controller.contextMenu(
+            event, self.parent(), self.getSelection())
 
     def mouseReleaseOther(self, event=None):
 

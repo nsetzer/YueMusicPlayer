@@ -389,7 +389,13 @@ class MainWindow(QMainWindow):
         self.sources.add(src);
         self.onUpdateSources()
 
-        view = self._newTab(src)
+        # todo: need a proper icon, and need
+        # to update the icons whent he source changes.
+        icon_path=':/img/app_folder.png'
+        if not isinstance(src,DirectorySource):
+            icon_path = ':/img/app_archive.png'
+
+        view = self._newTab(src, icon_path)
         view.chdir(src.root())
 
     def newSshTabTest(self):

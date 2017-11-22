@@ -7,7 +7,8 @@ from PyQt5.QtGui import *
 import io
 import traceback
 
-from yue.qtcommon.LargeTable import LargeTable, TableColumn, TableDualColumn, TableColumnImage
+from yue.qtcommon.LargeTable import LargeTable, TableColumn, \
+                                    TableDualColumn, TableColumnImage
 from yue.qtcommon.LineEdit import LineEdit
 from yue.core.explorer.source import DirectorySource
 from yue.core.util import format_date, format_bytes, format_mode
@@ -41,8 +42,6 @@ class LineEdit_Path(LineEdit):
     def keyReleaseEnter(self, text):
         self.table.scrollTo(0)
         self.parent().chdir(self.text())
-
-
 
 class ContextBarPath(ContextBar):
 
@@ -85,44 +84,123 @@ class ContextBarPath(ContextBar):
         for i, view in enumerate(views):
             self.addItem(view.pwd(), view)
 
+class LineEditSearch(LineEdit):
+
+    returnPressed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(LineEditSearch, self).__init__(parent)
+
+    def keyReleaseEvent(self, event=None):
+        super(LineEditSearch, self).keyReleaseEvent(event)
+        if event.key() == Qt.Key_Return:
+            self.returnPressed.emit()
+
 class FindBarWidget(QWidget):
     """docstring for FindBarWidget"""
 
-    findFiles = pyqtSignal(str,bool)
+    findFiles = pyqtSignal(str, bool)
     hideBar = pyqtSignal()
 
     def __init__(self, parent=None):
         super(FindBarWidget, self).__init__(parent)
 
-        self.hbox = QHBoxLayout(self)
-        self.hbox.setContentsMargins(0,0,0,0)
-        self.hbox.addWidget(QLabel("Find", self))
+        self.__init_layout()
 
-        self.edit = QLineEdit(self)
-        self.hbox.addWidget(self.edit)
+    def __init_layout(self):
 
-        self.chk_recursive = QCheckBox("Recursive", self)
+        self.lbl_mode = QLabel("Find", self)
+
+        self.edit_filter = LineEditSearch(self)
+        self.edit_filter.setPlaceholderText("All Files")
+        self.edit_filter.returnPressed.connect(self.runFind)
+        self.edit_filter.setWhatsThis("Find files matching a pattern")
+        self.edit_filter.setToolTip("Find files matching a pattern")
+
+        self.edit_pattern = QLineEdit(self)
+        self.edit_pattern.setPlaceholderText("Find Text")
+        self.edit_pattern.setWhatsThis("Find files containing given text")
+        self.edit_pattern.setToolTip("Find files containing given text")
+
+        self.edit_replace = QLineEdit(self)
+        self.edit_replace.setPlaceholderText("Replace Text")
+        self.edit_replace.setWhatsThis("The text to replace")
+        self.edit_replace.setToolTip("The text to replace")
+
+        self.chk_recursive = QToolButton(self)
+        self.chk_recursive.setText("R")
+        self.chk_recursive.setWhatsThis("Recursive")
+        self.chk_recursive.setToolTip("Recursive")
+        self.chk_recursive.setCheckable(True)
         self.chk_recursive.setChecked(True)
+
+        self.chk_case = QToolButton(self)
+        self.chk_case.setText("Aa")
+        self.chk_case.setWhatsThis("Case Sensitive")
+        self.chk_case.setToolTip("Case Sensitive")
+        self.chk_case.setCheckable(True)
+        self.chk_case.setChecked(True)
 
         self.btn_runFind = QPushButton("Find")
         self.btn_runFind.clicked.connect(self.runFind)
 
-        self.btn_hide = QPushButton("Hide")
+        self.btn_hide = QToolButton()
+        self.btn_hide.setIcon(QIcon(":/img/app_x.png"))
+        self.btn_hide.setWhatsThis("Hide Search Bar")
+        self.btn_hide.setToolTip("Hide Search Bar")
         self.btn_hide.clicked.connect(self.hideBar.emit)
 
-
+        self.hbox = QHBoxLayout(self)
+        self.hbox.setContentsMargins(0, 0, 0, 0)
+        self.hbox.addWidget(self.lbl_mode)
+        self.hbox.addWidget(self.edit_filter)
+        self.hbox.addWidget(self.edit_pattern)
+        self.hbox.addWidget(self.edit_replace)
         self.hbox.addWidget(self.chk_recursive)
+        self.hbox.addWidget(self.chk_case)
         self.hbox.addWidget(self.btn_runFind)
         self.hbox.addWidget(self.btn_hide)
 
+    def setMode(self, mode):
+
+        if mode == 0:
+            self.lbl_mode.setText("Find")
+            self.edit_pattern.hide()
+            self.edit_replace.hide()
+        if mode == 1:
+            self.lbl_mode.setText("Find in Files")
+            self.edit_pattern.show()
+            self.edit_replace.hide()
+        if mode == 2:
+            self.lbl_mode.setText("Find / Replace")
+            self.edit_pattern.show()
+            self.edit_replace.show()
+
+    def getFilterText(self):
+        filter = self.edit_filter.text().strip()
+
+        if filter == "*" or \
+           filter == "":
+            return ""
+        elif "*" in filter or "?" in filter:
+            # return = filter.lower()
+            return filter
+        else:
+            if not filter.startswith("*"):
+                filter = '*' + filter
+            if not filter.endswith("*"):
+                filter = filter + '*'
+            # return = filter.lower()
+            return filter
+
     def runFind(self):
 
-        pattern = "*" + self.edit.text() + "*"
-        recursive = self.chk_recursive.isChecked();
-        self.findFiles.emit(pattern,recursive)
+        pattern = self.getFilterText()
+        recursive = self.chk_recursive.isChecked()
+        self.findFiles.emit(pattern, recursive)
 
     def onFocus(self):
-        self.edit.setFocus(Qt.ShortcutFocusReason)
+        self.edit_filter.setFocus(Qt.ShortcutFocusReason)
 
 class FindResultsTable(LargeTable):
 
@@ -132,9 +210,13 @@ class FindResultsTable(LargeTable):
     directories. and listdir returns all results
     """
 
+    openDirectory = pyqtSignal(str)
+    editFile = pyqtSignal(dict)
+
     def __init__(self, parent=None):
         super(FindResultsTable, self).__init__(parent)
 
+        self.setLastColumnExpanding(True)
         self.results = []
 
     def initColumns(self):
@@ -142,8 +224,8 @@ class FindResultsTable(LargeTable):
         self.columns.append(TableColumnImage(self, 0, "Icon"))
         self.columns[-1].setShortName("")
         self.columns[-1].setTextTransform(lambda item, _: self.item2img(item[0]))
-        self.columns[-1].width = ResourceManager.instance().width() + 4  # arbitrary pad, image is centered
-
+        # arbitrary pad, image is centered
+        self.columns[-1].width = ResourceManager.instance().width() + 4
 
         self.columns.append(TableColumn(self, 1, "File Name"))
         self.columns[-1].setWidthByCharCount(35)
@@ -151,12 +233,13 @@ class FindResultsTable(LargeTable):
     def item2img(self, item):
         return self.parent().item2img(item)
 
-    def addPartialResult( self, view, path ):
+    def addPartialResult(self, view, path):
 
         st = view.stat_fast(path)
 
         relpath = view.relpath(path, view.pwd())
-        self.results.append([st, relpath, path])
+        dirpath = view.split(path)[0]
+        self.results.append([st, relpath, path, dirpath])
 
         self.setData(self.results)
 
@@ -164,9 +247,32 @@ class FindResultsTable(LargeTable):
         self.results = []
 
     def mouseReleaseRight(self, event):
-        pass
+        items = self.getSelection()
+        ctxtmenu = QMenu(self)
 
+        if len(items) == 1:
+            ctxtmenu.addAction(QIcon(":/img/app_open.png"), "Open Directory",
+                lambda: self.action_open_directory(items[0]))
 
+        action = ctxtmenu.exec_(event.globalPos())
+
+    def mouseDoubleClick(self, row, col, event):
+        print("double click")
+        print(row, col)
+
+        if 0 <= row < len(self.data):
+            item = self.data[row]
+
+            if item[0]['isDir']:
+                self.openDirectory.emit(item[2])
+            else:
+                # hack, downstream view.realpath(name) is used
+                item[0]['name'] = item[2]
+                self.editFile.emit(item[0])
+
+    def action_open_directory(self, item):
+        path = item[3]
+        self.openDirectory.emit(path)
 
 class ExplorerModel(QWidget):
     """docstring for MainWindow
@@ -232,6 +338,8 @@ class ExplorerModel(QWidget):
         self.tbl_file.findFiles.connect(self.onFindFilesShowBar)
 
         self.tbl_results = FindResultsTable(self)
+        self.tbl_results.openDirectory.connect(self.onFileResultsOpenDirectory)
+        self.tbl_results.editFile.connect(self.onFileResultsEditFile)
 
         self.btn_split = QToolButton(self)
         self.btn_split.setIcon(QIcon(":/img/app_split.png"))
@@ -478,6 +586,7 @@ class ExplorerModel(QWidget):
         pass
 
     def action_file(self, item):
+        # TODO: remove
         # double click file action
         path = self.view.realpath(item['name'])
         cmdstr = Settings.instance()['cmd_open_native']
@@ -587,8 +696,7 @@ class ExplorerModel(QWidget):
         return ResourceManager.instance().get(l | ResourceManager.instance().getExtType(ext))
 
     def action_open_file(self, item):
-        # TODO this function seems inappropriate
-        self.controller.action_open_file(self.view.realpath(item['name']))
+        raise NotImplementedError()
 
     def onJobFinished(self):
 
@@ -692,8 +800,9 @@ class ExplorerModel(QWidget):
         else:
             self.lbl_viewName.setHidden(True)
 
-    def onFindFilesShowBar(self):
+    def onFindFilesShowBar(self, mode=0):
         self.tbl_results.container.show()
+        self.bar_find.setMode(mode)
         self.bar_find.show()
         self.bar_find.onFocus()
 
@@ -708,5 +817,11 @@ class ExplorerModel(QWidget):
                            recursive=recursive)
         job.partialResult.connect(self.tbl_results.addPartialResult)
         self.submitJob.emit(job)
-        print(pattern, recursive)
+
+    def onFileResultsOpenDirectory(self, path):
+        self.chdir(path)
+
+    def onFileResultsEditFile(self, item):
+        self.action_open_file(item)
+
 
