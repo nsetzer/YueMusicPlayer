@@ -3,7 +3,9 @@
 # contains boolean : save history true false
 # mimic update pattern
 
-from .search import SearchGrammar, BlankSearchRule, sql_search, sqlFromRule, ParseError
+from .search import SearchGrammar, BlankSearchRule, AndSearchRule, \
+    LessThanEqualSearchRule, GreaterThanEqualSearchRule, \
+    sql_search, sqlFromRule, ParseError
 from yue.core.song import Song
 from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
@@ -106,7 +108,7 @@ class History(object):
     def size(self):
         return self.db.count()
 
-    def update(self,c, uid,**kwargs):
+    def update(self, c, uid, **kwargs):
 
         if not self.enabled_update:
             return
@@ -131,24 +133,24 @@ class History(object):
             return
 
         kwargs = {
-            "date" : date,
-            "uid"  : uid,
-            "column" : Song.playtime
+            "date": date,
+            "uid": uid,
+            "column": Song.playtime
         }
-        self.db._insert(c,**kwargs)
+        self.db._insert(c, **kwargs)
 
-    def export(self,rule=None , case_insensitive=True, orderby=None, reverse = False, limit = None, offset=0):
+    def export(self, rule=None, case_insensitive=True, orderby=None, reverse=False, limit=None, offset=0):
         """
         this returns raw database results from this History Database
         see search(), which returns values from the History View, which
         would be better for displaying to a user
         """
         if rule is None:
-            rule = BlankSearchRule();
-        elif isinstance(rule,(str,unicode)):
-            rule = self.raw_grammar.ruleFromString( rule )
-            limit = self.raw_grammar.getMetaValue("limit",limit)
-            offset = self.raw_grammar.getMetaValue("offset",offset)
+            rule = BlankSearchRule()
+        elif isinstance(rule, (str, unicode)):
+            rule = self.raw_grammar.ruleFromString(rule)
+            limit = self.raw_grammar.getMetaValue("limit", limit)
+            offset = self.raw_grammar.getMetaValue("offset", offset)
         else:
             raise ParseError("invalid rule type: %s"%type(rule))
         if isinstance(rule,(str,unicode)):
@@ -158,6 +160,26 @@ class History(object):
                 orderby = [ orderby, ]
 
         return sql_search( self.db, rule, case_insensitive, orderby, reverse, limit, offset )
+
+    def export_date_range(self, start, end=None):
+        """
+        start, end:  unix timestamps
+
+        import datetime
+        e=int(datetime.datetime.now().timestamp())
+        s=e-(1000*60)
+        data=History.export_date_range(s)
+        _max=max((r['date'] for r in data))
+        _min=min((r['date'] for r in data))
+        print(_min,_max,_max-_min)
+
+        """
+        rule = GreaterThanEqualSearchRule("date", start, type_=int)
+        if end is not None:
+            rule = AndSearchRule([rule,
+                LessThanEqualSearchRule("date", end, type_=int)])
+        return sql_search(self.db, rule)
+
 
     def _import(self,records):
         """

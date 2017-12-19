@@ -6,7 +6,7 @@ import random
 
 class ShuffleElement(object):
 
-    def __init__( self, key, ref , index ):
+    def __init__(self, key, ref, index):
         self.key = key
         self.ref = ref
         self.index = index
@@ -15,10 +15,10 @@ class ShuffleElement(object):
 def fisher_yates(data):
     N = len(data)
     for i in range(N):
-        j = random.randint(i,N-1)
-        data[i],data[j] = data[j],data[i]
+        j = random.randint(i, N - 1)
+        data[i], data[j] = data[j], data[i]
 
-def binshuffle(data,group_mapping=lambda x:x):
+def binshuffle(data, group_mapping=lambda x: x):
     grpcounts = {}
     grpoffset = {}
     temp = []
@@ -26,7 +26,7 @@ def binshuffle(data,group_mapping=lambda x:x):
     N = len(data)
 
     if N < 2:
-        return data;
+        return data
 
     # pre shuffle the data to randomize the output
     # Otherwise items within a group would always be output
@@ -47,22 +47,22 @@ def binshuffle(data,group_mapping=lambda x:x):
     # the offset is random, and the range is chosen to
     # solve the degenerate problem where some groups contain a few
     # elements, and others contain many elements.
-    for grp,count in grpcounts.items():
-        grpoffset[grp] = random.random() * (N/count)
+    for grp, count in grpcounts.items():
+        grpoffset[grp] = random.random() * (N / count)
 
     # calculate a score for each element
     # the score ranges from 0-h/2 to N+h/2.
     # elements within a group are spaced
     # evenly within this range.
-    for i,elem in enumerate(temp):
+    for i, elem in enumerate(temp):
         count = grpcounts[elem.key]
-        h = (N/count)/2
-        offset = random.random()*h - h/2 + grpoffset[elem.key]
-        elem.score = N*elem.index/count + offset
+        h = (N / count) / 2
+        offset = random.random() * h - h / 2 + grpoffset[elem.key]
+        elem.score = N * elem.index / count + offset
 
     # finally sort by the score, randomizing the elements
     # while separating items that belong to the same group
-    temp = sorted(temp,key=lambda x:x.score)
+    temp = sorted(temp, key=lambda x: x.score)
 
     return [x.ref for x in temp]
 
@@ -70,8 +70,8 @@ def binshuffle(data,group_mapping=lambda x:x):
 def main():
 
     colors = "rgby"
-    counts = [3,3,3,3]
-    data = sum([ [c,]*n for c,n in zip(colors,counts) ],[])
+    counts = [3, 3, 3, 3]
+    data = sum([[c, ] * n for c, n in zip(colors, counts)], [])
     data.append("A")
     data.append("B")
     data.append("C")
@@ -80,3 +80,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
