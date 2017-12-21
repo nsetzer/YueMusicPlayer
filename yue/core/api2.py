@@ -6,9 +6,23 @@ import urllib.request
 import json
 from io import BytesIO
 import gzip
+import base64
 
 from .song import Song
 from .history import History
+
+_key_map = {
+    "uid": "ref_id",
+    "playcount": "play_count",
+    "lang": "language",
+    "path": "file_path"
+}
+def remap_keys(song):
+    for akey, bkey in _key_map.items():
+        if akey in song:
+            song[bkey] = song[akey]
+            del song[akey]
+    return song
 
 class ApiClient(object):
     """docstring for ApiClient"""
@@ -40,6 +54,18 @@ class ApiClient(object):
     def getApiKey(self):
         return self.key
 
+    def login(self, username, password):
+        urlpath = "api/user"
+        headers = dict()
+        s = ("%s:%s" % (username, password)).encode("utf-8")
+        self.token = "Basic %s" % (base64.b64encode(s).decode("utf-8"))
+        headers['Authorization'] = self.token
+        url = "%s/%s" % (self.hostname, urlpath)
+        request = urllib.request.Request(url, method='GET', headers=headers)
+        r = urllib.request.urlopen(request, context=self.ctx)
+        result = json.loads(r.read().decode("utf-8"))
+        return result['result']
+
     def history_get(self, start=0, end=None, page=0, page_size=500, callback=None):
         params = {
             "start": 0,
@@ -70,8 +96,40 @@ class ApiClient(object):
     def history_delete(self):
         pass
 
-    def library_put(self, songs):
-        pass
+    def library_update_songs(self, songs):
+        headers = {"Content-Type": "application/json"}
+
+        songs = [remap_keys(song) for song in songs]
+
+        r = self._put("api/library",
+            data=json.dumps(songs).encode("utf-8"),
+            headers=headers)
+
+        if r.getcode() != 200:
+            raise Exception("%s %s" % (r.getcode(), r.msg))
+
+    def library_create_song(self, song):
+
+        headers = {"Content-Type": "application/json"}
+
+        r = self._post("api/library",
+            data=json.dumps(remap_keys(song)).encode("utf-8"),
+            headers=headers)
+
+        if r.getcode() != 200:
+            raise Exception("%s %s" % (r.getcode(), r.msg))
+
+        result = json.loads(r.read().decode("utf-8"))
+        return result['result']
+
+    def library_get_song(self, song_id):
+        r = self._get("api/library/" + song_id)
+
+        if r.getcode() != 200:
+            raise Exception("%s %s" % (r.getcode(), r.msg))
+
+        result = json.loads(r.read().decode("utf-8"))
+        return result['result']
 
     def library_get(self, query="", page_size=100, callback=None):
         pass
@@ -248,7 +306,7 @@ class ApiClientWrapper(object):
             results = [{"date": r['timestamp'], "column": Song.playtime,
                 "uid": self.songs[r['song_id']]['ref_id'], 'value': None}
                 for r in results if (r['song_id'] in self.songs and
-                    r['timestamp'] not in records_set)]
+                    r['timestamp'])]
             if n != len(results):
                 print("got %d results, filtered to %d." % (n, len(results)))
 
