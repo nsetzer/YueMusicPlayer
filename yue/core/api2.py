@@ -18,10 +18,19 @@ _key_map = {
     "path": "file_path"
 }
 def remap_keys(song):
+    """convert the old song format to the new format"""
     for akey, bkey in _key_map.items():
         if akey in song:
             song[bkey] = song[akey]
             del song[akey]
+    return song
+
+def remap_keys_r(song):
+    """ convert the new song format to the old format"""
+    for akey, bkey in _key_map.items():
+        if bkey in song:
+            song[akey] = song[bkey]
+            del song[bkey]
     return song
 
 class ApiClient(object):
@@ -96,10 +105,8 @@ class ApiClient(object):
     def history_delete(self):
         pass
 
-    def library_update_songs(self, songs):
+    def library_update_songs(self, songs, callback=None):
         headers = {"Content-Type": "application/json"}
-
-        songs = [remap_keys(song) for song in songs]
 
         r = self._put("api/library",
             data=json.dumps(songs).encode("utf-8"),
@@ -108,12 +115,12 @@ class ApiClient(object):
         if r.getcode() != 200:
             raise Exception("%s %s" % (r.getcode(), r.msg))
 
-    def library_create_song(self, song):
+    def library_create_song(self, song, callback=None):
 
         headers = {"Content-Type": "application/json"}
 
         r = self._post("api/library",
-            data=json.dumps(remap_keys(song)).encode("utf-8"),
+            data=json.dumps(song).encode("utf-8"),
             headers=headers)
 
         if r.getcode() != 200:
@@ -122,7 +129,7 @@ class ApiClient(object):
         result = json.loads(r.read().decode("utf-8"))
         return result['result']
 
-    def library_get_song(self, song_id):
+    def library_get_song(self, song_id, callback=None):
         r = self._get("api/library/" + song_id)
 
         if r.getcode() != 200:
@@ -268,6 +275,15 @@ class ApiClientWrapper(object):
         self.api.download_song(fname, song_id, callback=callback)
         return fname
 
+    def login(self, username, password):
+
+        user = self.api.login(username, password)
+
+        self.api.setApiUser(username)
+        self.api.setApiKey(user['apikey'])
+
+        return user
+
     def connect(self, callback=None, mapReferences=True):
 
         songs = []
@@ -291,6 +307,31 @@ class ApiClientWrapper(object):
         else:
             self.songs = {}
             self.songs_r = {}
+
+    def library_update_songs(self, songs, callback=None):
+        self.api.library_update_songs([remap_keys(s) for s in songs], callback)
+
+    def library_create_song(self, song, callback=None):
+
+        song = remap_keys(song)
+        song_id = self.api.library_create_song(song, callback)
+
+        song['id'] = song_id
+        self.songs_r[song['ref_id']] = song
+        self.songs[song['id']] = song
+
+        return song_id
+
+    def library_get_song(self, uid, callback=None):
+        """ get a song given a uid """
+        song_id = self.songs_r[uid]['id']
+        song = self.api.library_get_song(song_id, callback)
+
+        # update the local record for the song
+        self.songs_r[song['ref_id']] = song
+        self.songs[song['id']] = song
+
+        return remap_keys_r(song)
 
     def history_get(self, start=0, end=None, page=0, page_size=500, callback=None):
         # determine start and end, deduplicate results retrieved from remote
