@@ -1,6 +1,4 @@
 
-
-
 import os, sys
 
 from PyQt5.QtCore import *
@@ -17,7 +15,8 @@ from yue.core.sqlstore import SQLStore
 from yue.core.library import Library
 from yue.core.history import History
 from yue.core.settings import Settings
-from yue.core.api import ApiClient
+# from yue.core.api import ApiClient
+from yue.core.api2 import ApiClient, ApiClientWrapper
 from yue.qtcommon.explorer.jobs import Job, Dashboard
 
 from yue.qtcommon.Tab import Tab
@@ -27,24 +26,25 @@ from yue.client.ui.library_view import LineEdit_Search
 
 class RemoteTable(SongTable):
     """docstring for RemoteTable"""
+
     def __init__(self, parent):
         super(RemoteTable, self).__init__(parent)
 
-        self.addRowTextColorComplexRule(self.remoteSongRule,self.color_text_played_recent)
+        self.addRowTextColorComplexRule(self.remoteSongRule, self.color_text_played_recent)
 
-    def remoteSongRule(self,row):
+    def remoteSongRule(self, row):
         return self.data[row][Song.remote] == 1
 
-    def mouseReleaseRight(self,event):
+    def mouseReleaseRight(self, event):
 
         items = self.getSelection()
 
         menu = QMenu(self)
 
         act = menu.addAction("Download")
-        act.triggered.connect(lambda:self.parent().action_downloadSelection(items))
+        act.triggered.connect(lambda: self.parent().action_downloadSelection(items))
 
-        action = menu.exec_( event.globalPos() )
+        action = menu.exec_(event.globalPos())
 
     # disable song drag and drop on this table
     # the file paths are likely invalid.
@@ -60,6 +60,7 @@ class RemoteTable(SongTable):
 
 class DownloadJob(Job):
     """docstring for DownloadJob"""
+
     def __init__(self, client, songs, dir_base):
         super(DownloadJob, self).__init__()
         self.client = client
@@ -70,34 +71,35 @@ class DownloadJob(Job):
     def doTask(self):
 
         lib = Library.instance().reopen()
-        for i,song in enumerate(self.songs):
-            self._iterprogress = float(i)/len(self.songs)
-            path = self.client.download_song(self.dir_base,song,self._dlprogress)
+        for i, song in enumerate(self.songs):
+            self._iterprogress = float(i) / len(self.songs)
+            path = self.client.download_song(self.dir_base, song, self._dlprogress)
             temp = song.copy()
             temp[Song.path] = path
             del temp[Song.artist_key]
-            del temp[Song.remote] # delete it before adding to db
+            del temp[Song.remote]  # delete it before adding to db
             # add the song to the library if the key does not exist
             try:
                 lib.songFromId(temp[Song.uid])
             except KeyError:
                 lib.insert(**temp)
-            song[Song.remote] = 0 # no longer remote
+            song[Song.remote] = 0  # no longer remote
 
-    def _dlprogress(self,x,y):
-        p = self._iterprogress + (x/y)/len(self.songs)
-        self.setProgress(int(100*p))
+    def _dlprogress(self, x, y):
+        p = self._iterprogress + (x / y) / len(self.songs)
+        self.setProgress(int(100 * p))
 
 class ConnectJob(Job):
     """docstring for ConnectJob"""
     newLibrary = pyqtSignal(list)
+    newApiKey = pyqtSignal(str, str)  # username, apikey
 
     def __init__(self, client, basedir):
         super(ConnectJob, self).__init__()
         self.client = client
         self.basedir = basedir
 
-    def addToDbIfMissing(self,lib,song):
+    def addToDbIfMissing(self, lib, song):
         """
         if we found the song locally, but not in the database
         add the song record to the database
@@ -110,15 +112,22 @@ class ConnectJob(Job):
             del temp['artist_key']
             lib.insert(**temp)
 
-    def _dlprogress(self,x,y):
+    def _dlprogress(self, x, y):
         # downloading accounts  for 90% of the progress bar
         # the last 10% is for post processing.
-        self.setProgress(int(90*x/y))
+        self.setProgress(int(90 * x / y))
 
     def doTask(self):
 
-        page_size = 1000
-        songs=self.client.library_get(page_size=page_size,callback=self._dlprogress)
+        username = self.client.getUserName()
+        if ":" in username:
+            username, password = username.split(":")
+            user = self.client.login(username, password)
+            self.newApiKey.emit(username, user['apikey'])
+            print(username)
+            print(user['apikey'])
+
+        songs = self.client.connect(callback=self._dlprogress)
 
         lib = Library.instance().reopen()
         for song in songs:
@@ -133,12 +142,12 @@ class ConnectJob(Job):
                 pass
 
             # match by path
-            path = ApiClient.local_path(self.basedir,song)
+            path = self.client.local_path(self.basedir, song)
             if os.path.exists(path):
                 song[Song.path] = path
                 song[Song.remote] = 0
 
-                self.addToDbIfMissing(lib,song)
+                # self.addToDbIfMissing(lib, song)
 
                 continue
 
@@ -164,27 +173,27 @@ class HistoryPullJob(Job):
 
         records = []
         page_size = 100
-        result = self.client.history_get(0,page_size)
+        result = self.client.history_get(0, page_size)
         num_pages = result['num_pages']
         records += result['records']
 
-        for page in range(1,num_pages):
-            p = 90.0*(page+1)/num_pages
+        for page in range(1, num_pages):
+            p = 90.0 * (page + 1) / num_pages
             self.setProgress(p)
-            result = self.client.history_get(page,page_size)
+            result = self.client.history_get(page, page_size)
             records += result['records']
 
-        print("num history pages: %d"%num_pages)
-        print("num history records: %d"%len(records))
+        print("num history pages: %d" % num_pages)
+        print("num history records: %d" % len(records))
 
-        title="Import History"
-        message="Import %d records?"%len(records)
-        options=["cancel","ok"]
-        i=self.getInput(title,message,options)
+        title = "Import History"
+        message = "Import %d records?" % len(records)
+        options = ["cancel", "ok"]
+        i = self.getInput(title, message, options)
 
-        if i>0:
+        if i > 0:
             #hist = History.instance().reopen()
-            #hist._import(records)
+            # hist._import(records)
             lib = Library.instance().reopen()
             lib.import_record(records)
 
@@ -211,6 +220,7 @@ class HistoryHardSyncJob(Job):
     take meta data  from a list of songs and apply
     it to the internal library
     """
+
     def __init__(self, songs):
         super(HistoryHardSyncJob, self).__init__()
         self.songs = songs
@@ -220,12 +230,12 @@ class HistoryHardSyncJob(Job):
         lib = Library.instance().reopen()
 
         updates = {}
-        for i,song in enumerate(self.songs):
+        for i, song in enumerate(self.songs):
             # skip songs that are not local
             if song[Song.remote]:
                 continue
 
-            self.setProgress(90.0*(i+1.0)/len(self.songs))
+            self.setProgress(90.0 * (i + 1.0) / len(self.songs))
 
             exif = {}
 
@@ -246,11 +256,11 @@ class HistoryHardSyncJob(Job):
 
             updates[song[Song.uid]] = exif
 
-        title="Update Metadata"
-        message="Overwrite metadata for %d songs?"%len(updates)
-        options=["cancel","ok"]
-        i=self.getInput(title,message,options)
-        if i>0:
+        title = "Update Metadata"
+        message = "Overwrite metadata for %d songs?" % len(updates)
+        options = ["cancel", "ok"]
+        i = self.getInput(title, message, options)
+        if i > 0:
             lib.update_all(updates)
 
         self.setProgress(100)
@@ -264,6 +274,7 @@ class HistoryHardPushJob(Job):
     to correctly locate songs after a hard sync
 
     """
+
     def __init__(self, client):
         super(HistoryHardPushJob, self).__init__()
         self.client = client
@@ -271,8 +282,8 @@ class HistoryHardPushJob(Job):
     def doTask(self):
 
         lib = Library.instance().reopen()
-        songs = lib.search("",limit=10)
-        self.client.library_put( songs )
+        songs = lib.search("", limit=10)
+        self.client.library_put(songs)
 
 class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar
@@ -284,17 +295,16 @@ class RemoteSongSearchGrammar(SongSearchGrammar):
     def __init__(self):
         super(RemoteSongSearchGrammar, self).__init__()
 
-    def translateColumn(self,colid):
+    def translateColumn(self, colid):
         if colid == Song.remote:
             return Song.remote
-        return super().translateColumn( colid );
+        return super().translateColumn(colid)
 
 class RemoteView(Tab):
     """docstring for RemoteView"""
 
     def __init__(self, parent=None):
         super(RemoteView, self).__init__(parent)
-
 
         self.grid_info = QGridLayout()
         self.hbox_search = QHBoxLayout()
@@ -309,37 +319,37 @@ class RemoteView(Tab):
         self.edit_dir      = QLineEdit(self)
 
         self.tbl_remote = RemoteTable(self)
-        self.tbl_remote.showColumnHeader( True )
-        self.tbl_remote.showRowHeader( False )
+        self.tbl_remote.showColumnHeader(True)
+        self.tbl_remote.showRowHeader(False)
 
-        self.edit_search = LineEdit_Search(self,self.tbl_remote,"Search Remote")
+        self.edit_search = LineEdit_Search(self, self.tbl_remote, "Search Remote")
 
-        self.btn_connect = QPushButton("Connect",self)
+        self.btn_connect = QPushButton("Connect", self)
 
         lbl = QLabel("Hostname:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid_info.addWidget(lbl,0,0)
-        self.grid_info.addWidget(self.edit_hostname,0,1)
+        self.grid_info.addWidget(lbl, 0, 0)
+        self.grid_info.addWidget(self.edit_hostname, 0, 1)
 
         lbl = QLabel("User Name:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid_info.addWidget(lbl,0,2)
-        self.grid_info.addWidget(self.edit_username,0,3)
+        self.grid_info.addWidget(lbl, 0, 2)
+        self.grid_info.addWidget(self.edit_username, 0, 3)
 
         lbl = QLabel("Local Directory:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid_info.addWidget(lbl,1,0)
-        self.grid_info.addWidget(self.edit_dir,1,1)
+        self.grid_info.addWidget(lbl, 1, 0)
+        self.grid_info.addWidget(self.edit_dir, 1, 1)
 
         lbl = QLabel("API Key:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.grid_info.addWidget(lbl,1,2)
-        self.grid_info.addWidget(self.edit_apikey,1,3)
+        self.grid_info.addWidget(lbl, 1, 2)
+        self.grid_info.addWidget(self.edit_apikey, 1, 3)
 
         self.lbl_error  = QLabel("")
         self.lbl_search  = QLabel("")
 
-        self.cb_remote = QCheckBox("Remote Only",self)
+        self.cb_remote = QCheckBox("Remote Only", self)
         self.cb_remote.setChecked(True)
 
         self.btn_hardsync = QPushButton("Hard Sync", self)
@@ -382,12 +392,12 @@ class RemoteView(Tab):
         self.btn_hardsync.clicked.connect(self.onHistoryHardSyncClicked)
         self.btn_hardpush.clicked.connect(self.onHistoryHardPushClicked)
 
-        self.tbl_remote.update_data.connect(self.refresh) # on sort...
+        self.tbl_remote.update_data.connect(self.refresh)  # on sort...
 
         self.cb_remote.clicked.connect(self.refresh)
 
         self.grammar = RemoteSongSearchGrammar()
-        self.song_library=[]
+        self.song_library = []
         """
         # generate simple library for testing purposes.
         songs = Library.instance().search("",limit=100)
@@ -403,44 +413,46 @@ class RemoteView(Tab):
         self.run_search(text)
 
     def refresh(self):
-        self.run_search( self.edit_search.text() )
+        self.run_search(self.edit_search.text())
 
-    def run_search(self,text):
+    def run_search(self, text):
 
         try:
-            rule = self.grammar.ruleFromString( text )
-            limit = self.grammar.getMetaValue("limit",None)
-            offset = self.grammar.getMetaValue("offset",0)
+            rule = self.grammar.ruleFromString(text)
+            limit = self.grammar.getMetaValue("limit", None)
+            offset = self.grammar.getMetaValue("offset", 0)
 
             if self.cb_remote.isChecked():
-                rule = AndSearchRule.join(rule,ExactSearchRule(Song.remote,1,type_=int))
+                rule = AndSearchRule.join(rule, ExactSearchRule(Song.remote, 1, type_=int))
 
-            songs = naive_search(self.song_library,rule,
-                orderby = self.tbl_remote.sort_orderby,
-                reverse = self.tbl_remote.sort_reverse,
-                limit=limit,offset=offset)
+            songs = naive_search(self.song_library, rule,
+                orderby=self.tbl_remote.sort_orderby,
+                reverse=self.tbl_remote.sort_reverse,
+                limit=limit, offset=offset)
 
             self.setSongs(songs)
 
         except ParseError as e:
             self.edit_search.setStyleSheet("background: #CC0000;")
-            self.lbl_error.setText("%s"%e)
+            self.lbl_error.setText("%s" % e)
             self.lbl_error.show()
 
-    def setSongs(self,songs):
+    def setSongs(self, songs):
 
         self.tbl_remote.setData(songs)
         self.edit_search.setStyleSheet("")
         self.lbl_error.hide()
-        self.lbl_search.setText("%d/%d"%(len(songs),len(self.song_library)))
+        self.lbl_search.setText("%d/%d" % (len(songs), len(self.song_library)))
 
     def getNewClient(self):
 
-        client = ApiClient(self.edit_hostname.text().strip())
-        client.setApiKey(self.edit_apikey.text().strip())
-        client.setApiUser(self.edit_username.text().strip())
+        api_client = ApiClient(self.edit_hostname.text().strip())
 
-        return client
+        self.client = ApiClientWrapper(api_client)
+        self.client.setApiKey(self.edit_apikey.text().strip())
+        self.client.setApiUser(self.edit_username.text().strip())
+
+        return self.client
 
     def onConnectClicked(self):
 
@@ -450,22 +462,28 @@ class RemoteView(Tab):
 
         self.btn_connect.setEnabled(False)
 
-        job = ConnectJob(client,basedir)
+        job = ConnectJob(client, basedir)
         job.newLibrary.connect(self.onNewLibrary)
-        job.finished.connect(lambda:self.btn_connect.setEnabled(True))
+        job.newApiKey.connect(self.onNewApiKey)
+        job.finished.connect(lambda: self.btn_connect.setEnabled(True))
         self.dashboard.startJob(job)
 
-    def onNewLibrary(self,songs):
-        self.song_library = songs
-        self.refresh() # run the current query, update table
+    def onNewApiKey(self, username, apikey):
 
-    def action_downloadSelection(self,items):
+        self.edit_username.setText(username)
+        self.edit_apikey.setText(apikey)
+
+    def onNewLibrary(self, songs):
+        self.song_library = songs
+        self.refresh()  # run the current query, update table
+
+    def action_downloadSelection(self, items):
 
         client = ApiClient(self.edit_hostname.text())
         client.setApiKey(self.edit_apikey.text())
         client.setApiUser(self.edit_username.text())
 
-        job = DownloadJob(client,items,self.edit_dir.text())
+        job = DownloadJob(client, items, self.edit_dir.text())
         self.dashboard.startJob(job)
 
     def onHistoryPullClicked(self):

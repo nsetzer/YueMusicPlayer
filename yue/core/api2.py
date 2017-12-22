@@ -23,6 +23,8 @@ def remap_keys(song):
         if akey in song:
             song[bkey] = song[akey]
             del song[akey]
+    del song["opm"]
+    del song["file_size"]
     return song
 
 def remap_keys_r(song):
@@ -31,6 +33,8 @@ def remap_keys_r(song):
         if bkey in song:
             song[akey] = song[bkey]
             del song[bkey]
+    song["opm"] = 0
+    song["file_size"] = 0
     return song
 
 class ApiClient(object):
@@ -275,6 +279,24 @@ class ApiClientWrapper(object):
         self.api.download_song(fname, song_id, callback=callback)
         return fname
 
+    def getUserName(self):
+        return self.api.username
+
+    def setApiKey(self, key):
+        self.api.setApiKey(key)
+
+    def setApiUser(self, username):
+        self.api.setApiUser(username)
+
+    def getHostName(self):
+        return self.api.hostname
+
+    def getUserName(self):
+        return self.api.username
+
+    def getApiKey(self):
+        return self.api.key
+
     def login(self, username, password):
 
         user = self.api.login(username, password)
@@ -292,21 +314,25 @@ class ApiClientWrapper(object):
         total_size = 0
         while True:
 
-            tmp, size = self.api._get_songs(page=page, page_size=page_size)
+            tmp, size = self.api._get_songs(page=page,
+                page_size=page_size,
+                callback=callback)
 
             if len(tmp) == 0:
                 break
 
-            songs += tmp
+            songs += [remap_keys_r(s) for s in tmp]
             page += 1
             total_size += size
 
         if mapReferences:
-            self.songs = {s['id']: s for s in songs}
-            self.songs_r = {s['ref_id']: s for s in songs}
+            self.songs = {s['id']: s for s in songs}  # new format
+            self.songs_r = {s['uid']: s for s in songs}   # old format
         else:
             self.songs = {}
             self.songs_r = {}
+
+        return songs
 
     def library_update_songs(self, songs, callback=None):
         self.api.library_update_songs([remap_keys(s) for s in songs], callback)
