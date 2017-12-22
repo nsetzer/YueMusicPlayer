@@ -265,20 +265,6 @@ class ApiClientWrapper(object):
         fname = os.path.join(basedir, *path)
         return fname
 
-    def download_song(self, basedir, song, callback=None):
-
-        if 'song_id' in song:
-            song_id = self.songs['song_id']
-        elif "uid" in song:
-            song_id = self.songs_r[song['uid']]['song_id']
-
-        fname = self.local_path(basedir, song)
-        dname, _ = os.path.split(fname)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
-        self.api.download_song(fname, song_id, callback=callback)
-        return fname
-
     def getUserName(self):
         return self.api.username
 
@@ -333,6 +319,23 @@ class ApiClientWrapper(object):
             self.songs_r = {}
 
         return songs
+
+    def download_song(self, basedir, song, callback=None):
+
+        if 'id' in song:
+            song_id = song['id']
+        elif "uid" in song:
+            song_id = self.songs_r[song['uid']]['id']
+        else:
+            print(song)
+            raise Exception("invalid song")
+
+        fname = self.local_path(basedir, song)
+        dname, _ = os.path.split(fname)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+        self.api.download_song(fname, song_id, callback=callback)
+        return fname
 
     def library_update_songs(self, songs, callback=None):
         self.api.library_update_songs([remap_keys(s) for s in songs], callback)

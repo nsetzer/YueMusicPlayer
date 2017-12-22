@@ -80,7 +80,10 @@ class DownloadJob(Job):
             del temp[Song.remote]  # delete it before adding to db
             # add the song to the library if the key does not exist
             try:
-                lib.songFromId(temp[Song.uid])
+                if temp[Song.uid]:
+                    lib.songFromId(temp[Song.uid])
+                else:
+                    lib.insert(**temp)
             except KeyError:
                 lib.insert(**temp)
             song[Song.remote] = 0  # no longer remote
