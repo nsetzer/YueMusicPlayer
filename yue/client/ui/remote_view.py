@@ -30,7 +30,14 @@ class RemoteTable(SongTable):
     def __init__(self, parent):
         super(RemoteTable, self).__init__(parent)
 
-        self.addRowTextColorComplexRule(self.remoteSongRule, self.color_text_played_recent)
+        self.addRowTextColorComplexRule(self.localSongRule,
+            self.color_text_played_not_recent)
+
+        self.addRowTextColorComplexRule(self.remoteSongRule,
+            self.color_text_played_recent)
+
+    def localSongRule(self, row):
+        return self.data[row][Song.remote] == 2
 
     def remoteSongRule(self, row):
         return self.data[row][Song.remote] == 1
@@ -41,8 +48,18 @@ class RemoteTable(SongTable):
 
         menu = QMenu(self)
 
+        enable_download = all([s[Song.remote] == 1 for s in items])
+        enable_upload = all([s[Song.remote] == 2 for s in items])
+
         act = menu.addAction("Download")
-        act.triggered.connect(lambda: self.parent().action_downloadSelection(items))
+        act.triggered.connect(
+            lambda: self.parent().action_downloadSelection(items))
+        # act.setEnabled(enable_download)
+
+        act = menu.addAction("Upload Metadata")
+        act.triggered.connect(
+            lambda: self.parent().action_uploadSelection(items))
+        # act.setEnabled(enable_upload)
 
         action = menu.exec_(event.globalPos())
 
@@ -89,6 +106,32 @@ class DownloadJob(Job):
             song[Song.remote] = 0  # no longer remote
 
     def _dlprogress(self, x, y):
+        p = self._iterprogress + (x / y) / len(self.songs)
+        self.setProgress(int(100 * p))
+
+class UploadJob(Job):
+    """docstring for DownloadJob"""
+
+    def __init__(self, client, songs, dir_base):
+        super(UploadJob, self).__init__()
+        self.client = client
+        self.songs = songs
+        self.dir_base = dir_base
+        self._iterprogress = 0
+
+    def doTask(self):
+
+        lib = Library.instance().reopen()
+        for i, song in enumerate(self.songs):
+            self._iterprogress = float(i) / len(self.songs)
+
+            # todo create or update
+            song_id = self.client.library_create_song(
+                song, self._ulprogress)
+
+            song[Song.remote] = 0  # no longer local
+
+    def _ulprogress(self, x, y):
         p = self._iterprogress + (x / y) / len(self.songs)
         self.setProgress(int(100 * p))
 
@@ -319,6 +362,8 @@ class RemoteView(Tab):
     def __init__(self, parent=None):
         super(RemoteView, self).__init__(parent)
 
+        self.client = None
+
         self.grid_info = QGridLayout()
         self.hbox_search = QHBoxLayout()
         self.hbox_admin = QHBoxLayout()
@@ -366,6 +411,7 @@ class RemoteView(Tab):
         self.cb_remote.addItem("Show All")
         self.cb_remote.addItem("Show Remote")  # index 1
         self.cb_remote.addItem("Show Local")   # index 2
+        self.cb_remote.addItem("Show Sync")    # index 3
         self.cb_remote.currentIndexChanged.connect(self.onRemoteIndexChanged)
 
         self.btn_hardsync = QPushButton("Hard Sync", self)
@@ -436,7 +482,10 @@ class RemoteView(Tab):
             limit = self.grammar.getMetaValue("limit", None)
             offset = self.grammar.getMetaValue("offset", 0)
 
-            if self.cb_remote.currentIndex() == 2:
+            if self.cb_remote.currentIndex() == 3:
+                rule = AndSearchRule.join(rule,
+                    ExactSearchRule(Song.remote, 0, type_=int))
+            elif self.cb_remote.currentIndex() == 2:
                 rule = AndSearchRule.join(rule,
                     ExactSearchRule(Song.remote, 2, type_=int))
             elif self.cb_remote.currentIndex() == 1:
@@ -464,11 +513,14 @@ class RemoteView(Tab):
 
     def getNewClient(self):
 
-        api_client = ApiClient(self.edit_hostname.text().strip())
+        hostname = self.edit_hostname.text().strip()
+        apikey = self.edit_apikey.text().strip()
+        username = self.edit_username.text().strip()
 
-        self.client = ApiClientWrapper(api_client)
-        self.client.setApiKey(self.edit_apikey.text().strip())
-        self.client.setApiUser(self.edit_username.text().strip())
+        if self.client is None:
+            self.client = ApiClientWrapper(ApiClient(hostname))
+            self.client.setApiKey(apikey)
+            self.client.setApiUser(username)
 
         return self.client
 
@@ -495,16 +547,19 @@ class RemoteView(Tab):
         self.edit_apikey.setText(apikey)
 
     def onNewLibrary(self, songs):
+        # TODO: convert the connect button to a disconnect button
         self.song_library = songs
         self.refresh()  # run the current query, update table
 
     def action_downloadSelection(self, items):
-
-        client = ApiClient(self.edit_hostname.text())
-        client.setApiKey(self.edit_apikey.text())
-        client.setApiUser(self.edit_username.text())
-
+        client = self.getNewClient()
         job = DownloadJob(client, items, self.edit_dir.text())
+        self.dashboard.startJob(job)
+
+    def action_uploadSelection(self, items):
+        client = self.getNewClient()
+        job = UploadJob(client, items, self.edit_dir.text())
+        job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
 
     def onHistoryPullClicked(self):

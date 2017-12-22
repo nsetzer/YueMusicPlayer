@@ -19,6 +19,7 @@ _key_map = {
 }
 def remap_keys(song):
     """convert the old song format to the new format"""
+    song = song.copy()
     for akey, bkey in _key_map.items():
         if akey in song:
             song[bkey] = song[akey]
@@ -29,6 +30,7 @@ def remap_keys(song):
 
 def remap_keys_r(song):
     """ convert the new song format to the old format"""
+    song = song.copy()
     for akey, bkey in _key_map.items():
         if bkey in song:
             song[akey] = song[bkey]
