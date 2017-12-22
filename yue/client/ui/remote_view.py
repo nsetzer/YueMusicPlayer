@@ -130,32 +130,42 @@ class ConnectJob(Job):
             print(username)
             print(user['apikey'])
 
-        songs = self.client.connect(callback=self._dlprogress)
-
         lib = Library.instance().reopen()
-        for song in songs:
+
+        remote_songs = self.client.connect(callback=self._dlprogress)
+        local_map = {s['uid']: s for s in lib.search(None)}
+
+        for song in remote_songs:
 
             # match by id
-            try:
-                local_song = lib.songFromId(song[Song.uid])
+            if song[Song.uid] in local_map:
+                local_song = local_map[song[Song.uid]]
+                del local_map[song[Song.uid]]
                 song[Song.path] = local_song[Song.path]
                 song[Song.remote] = 0
-                continue
-            except KeyError:
-                pass
 
-            # match by path
-            path = self.client.local_path(self.basedir, song)
-            if os.path.exists(path):
-                song[Song.path] = path
-                song[Song.remote] = 0
+            else:
+                # not found locally
+                song[Song.remote] = 1
+                # match by path
+                # path = self.client.local_path(self.basedir, song)
+                # if os.path.exists(path):
+                #    song[Song.path] = path
+                #    song[Song.remote] = 0
+                #    # self.addToDbIfMissing(lib, song)
+                #    continue
 
-                # self.addToDbIfMissing(lib, song)
+        # songs not found on remote
+        local_songs = list(local_map.values())
+        for song in local_songs:
+            song[Song.remote] = 2
 
-                continue
+        songs = remote_songs + local_songs
 
-            # not found locally
-            song[Song.remote] = 1
+        clss = {0: 0, 1: 0, 2: 0}
+        for s in songs:
+            clss[s[Song.remote]] += 1
+        print(clss)
 
         self.setProgress(100)
         self.newLibrary.emit(songs)
@@ -352,8 +362,11 @@ class RemoteView(Tab):
         self.lbl_error  = QLabel("")
         self.lbl_search  = QLabel("")
 
-        self.cb_remote = QCheckBox("Remote Only", self)
-        self.cb_remote.setChecked(True)
+        self.cb_remote = QComboBox(self)
+        self.cb_remote.addItem("Show All")
+        self.cb_remote.addItem("Show Remote")  # index 1
+        self.cb_remote.addItem("Show Local")   # index 2
+        self.cb_remote.currentIndexChanged.connect(self.onRemoteIndexChanged)
 
         self.btn_hardsync = QPushButton("Hard Sync", self)
         self.btn_hardpush = QPushButton("Hard Push", self)
@@ -397,8 +410,6 @@ class RemoteView(Tab):
 
         self.tbl_remote.update_data.connect(self.refresh)  # on sort...
 
-        self.cb_remote.clicked.connect(self.refresh)
-
         self.grammar = RemoteSongSearchGrammar()
         self.song_library = []
         """
@@ -425,8 +436,12 @@ class RemoteView(Tab):
             limit = self.grammar.getMetaValue("limit", None)
             offset = self.grammar.getMetaValue("offset", 0)
 
-            if self.cb_remote.isChecked():
-                rule = AndSearchRule.join(rule, ExactSearchRule(Song.remote, 1, type_=int))
+            if self.cb_remote.currentIndex() == 2:
+                rule = AndSearchRule.join(rule,
+                    ExactSearchRule(Song.remote, 2, type_=int))
+            elif self.cb_remote.currentIndex() == 1:
+                rule = AndSearchRule.join(rule,
+                    ExactSearchRule(Song.remote, 1, type_=int))
 
             songs = naive_search(self.song_library, rule,
                 orderby=self.tbl_remote.sort_orderby,
@@ -470,6 +485,9 @@ class RemoteView(Tab):
         job.newApiKey.connect(self.onNewApiKey)
         job.finished.connect(lambda: self.btn_connect.setEnabled(True))
         self.dashboard.startJob(job)
+
+    def onRemoteIndexChanged(self, idx):
+        self.refresh()
 
     def onNewApiKey(self, username, apikey):
 
