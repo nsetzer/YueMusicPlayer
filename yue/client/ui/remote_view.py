@@ -24,6 +24,11 @@ from yue.qtcommon.SongTable import SongTable
 
 from yue.client.ui.library_view import LineEdit_Search
 
+from urllib.error import HTTPError
+
+SONG_SYNCED = 0
+SONG_REMOTE = 1
+SONG_LOCAL = 2
 class RemoteTable(SongTable):
     """docstring for RemoteTable"""
 
@@ -112,12 +117,18 @@ class DownloadJob(Job):
 class UploadJob(Job):
     """docstring for DownloadJob"""
 
-    def __init__(self, client, songs, dir_base):
+    def __init__(self, client, songs, dir_base, upload_filepath=False):
         super(UploadJob, self).__init__()
         self.client = client
         self.songs = songs
+
+        if not dir_base.endswith("/"):
+            dir_base += "/"
+
         self.dir_base = dir_base
+
         self._iterprogress = 0
+        self.upload_filepath = upload_filepath
 
     def doTask(self):
 
@@ -125,11 +136,35 @@ class UploadJob(Job):
         for i, song in enumerate(self.songs):
             self._iterprogress = float(i) / len(self.songs)
 
-            # todo create or update
-            song_id = self.client.library_create_song(
-                song, self._ulprogress)
+            _song = song.copy()
+            if self.upload_filepath:
+                path = _song[Song.path]
+                if path.startswith(self.dir_base):
+                    # remove the base from the path
+                    path = path[len(self.dir_base):]
+                    _song[Song.path] = "+" + path
+                else:
+                    # the file does not start with the given base,
+                    # remove the path from the request to prevent updating
+                    # the filepath
+                    del _song[Song.path]
+            else:
+                del _song[Song.path]
 
-            song[Song.remote] = 0  # no longer local
+            try:
+                if _song[Song.remote] == SONG_LOCAL:
+                    song_id = self.client.library_create_song(
+                        _song, self._ulprogress)
+                    song[Song.remote] = SONG_SYNCED  # no longer local
+
+                elif _song[Song.remote] == SONG_SYNCED:
+                    self.client.library_update_songs(
+                        [_song, ], self._ulprogress)
+                else:
+                    print("cannot upload remote song %s" % song[Song.uid])
+            except HTTPError as e:
+                print(e)
+
 
     def _ulprogress(self, x, y):
         p = self._iterprogress + (x / y) / len(self.songs)
@@ -558,7 +593,8 @@ class RemoteView(Tab):
 
     def action_uploadSelection(self, items):
         client = self.getNewClient()
-        job = UploadJob(client, items, self.edit_dir.text())
+        upload_filepath = True
+        job = UploadJob(client, items, self.edit_dir.text(), upload_filepath)
         job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
 
