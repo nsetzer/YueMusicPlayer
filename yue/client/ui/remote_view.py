@@ -117,7 +117,7 @@ class DownloadJob(Job):
 class UploadJob(Job):
     """docstring for DownloadJob"""
 
-    def __init__(self, client, songs, dir_base, upload_filepath=False):
+    def __init__(self, client, songs, dir_base, upload_filepath=True):
         super(UploadJob, self).__init__()
         self.client = client
         self.songs = songs
@@ -139,18 +139,23 @@ class UploadJob(Job):
             _song = song.copy()
             if self.upload_filepath:
                 path = _song[Song.path]
-                if path.startswith(self.dir_base):
+                _path = path.lower().replace("\\","/")
+                _root = self.dir_base.lower().replace("\\","/")
+                if _path.startswith(_root):
                     # remove the base from the path
                     path = path[len(self.dir_base):]
-                    _song[Song.path] = "+" + path
+                    _song[Song.path] = path
                 else:
                     # the file does not start with the given base,
                     # remove the path from the request to prevent updating
                     # the filepath
+                    print(_path)
+                    print(_root)
                     del _song[Song.path]
             else:
                 del _song[Song.path]
 
+            print(_song)
             try:
                 if _song[Song.remote] == SONG_LOCAL:
                     song_id = self.client.library_create_song(

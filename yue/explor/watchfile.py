@@ -83,7 +83,7 @@ class WatchFile(object):
         st_r = self.remoteSource.stat(self.remotePath)
 
         if st_r['size'] != st['size']:
-            sys.stderr.write("error syncing file: %s"%self.remotePath)
+            print("error syncing file: %s"%self.remotePath)
 
         self.st = st
         self.dirty = False
