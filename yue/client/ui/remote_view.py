@@ -180,6 +180,7 @@ class UploadJob(Job):
         updates = []
         for i, song in enumerate(self.songs):
             self._iterprogress = float(i) / len(self.songs)
+            self._ulprogress(1,1)
 
             _song = song.copy()
             if self.upload_filepath:
@@ -200,7 +201,7 @@ class UploadJob(Job):
 
             try:
                 if _song[Song.remote] == SONG_LOCAL:
-                    print("upload %s" % song[Song.uid])
+                    print("create %s" % song[Song.uid])
                     song_id = self.client.library_create_song(
                         _song, self._ulprogress)
                     song[Song.remote] = SONG_SYNCED  # no longer local
@@ -211,14 +212,17 @@ class UploadJob(Job):
                 else:
                     print("cannot upload remote song %s" % song[Song.uid])
             except HTTPError as e:
-                print(e)
+                print("%s: %s" % (e,e.reason))
 
         try:
-            print("update %d" % len(updates))
+            print("update %d songs" % len(updates))
 
-            self.client.library_update_songs(updates, self._ulprogress)
+            for i in range(0,len(updates),100):
+                self._iterprogress = float(i) / len(updates)
+                self._ulprogress(1,1)
+                self.client.library_update_songs(updates[i:i+100], self._ulprogress)
         except HTTPError as e:
-            print(e)
+            print("%s: %s" % (e,e.reason))
 
 
     def _ulprogress(self, x, y):
