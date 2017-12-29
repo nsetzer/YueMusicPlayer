@@ -364,9 +364,9 @@ class ApiClientWrapper(object):
 
         return remap_keys_r(song)
 
-    def history_get(self, start=0, end=None, page=0, page_size=500, callback=None):
+    def history_get(self, history, start=0, end=None, page=0, page_size=500, callback=None):
         # determine start and end, deduplicate results retrieved from remote
-        db_records = History.instance().export_date_range(start, end)
+        db_records = history.export_date_range(start, end)
         records_set = set((r['date'] for r in db_records))
 
         results = self.api.history_get(start, end, page, page_size, callback=callback)
@@ -376,11 +376,13 @@ class ApiClientWrapper(object):
         if len(self.songs) > 0:
             n = len(results)
             results = [{"date": r['timestamp'], "column": Song.playtime,
-                "uid": self.songs[r['song_id']]['ref_id'], 'value': None}
+                "uid": self.songs[r['song_id']]['uid'], 'value': None}
                 for r in results if (r['song_id'] in self.songs and
-                    r['timestamp'])]
+                    r['timestamp'] not in records_set)]
             if n != len(results):
                 print("got %d results, filtered to %d." % (n, len(results)))
+        else:
+            print("got %d results" % (len(results)))
 
         return results
 
@@ -398,7 +400,9 @@ class ApiClientWrapper(object):
                 for r in records if (r['uid'] in self.songs_r and
                     r['column'] == Song.playtime)]
             if n != len(records):
-                print("put %d results, filtered to %d." % (n, len(records)))
+                print("put %d records, filtered to %d." % (n, len(records)))
+        else:
+            print("sending %d records" % (len(results)))
 
         self.api.history_put(records, callback=callback)
 

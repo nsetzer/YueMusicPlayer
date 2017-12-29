@@ -26,9 +26,14 @@ from yue.client.ui.library_view import LineEdit_Search
 
 from urllib.error import HTTPError
 
-SONG_SYNCED = 0
+import datetime
+from yue.core.search import AndSearchRule, ExactSearchRule, GreaterThanEqualSearchRule
+
+SONG_ALL = 0
+SONG_SYNCED = 3
 SONG_REMOTE = 1
 SONG_LOCAL = 2
+
 class RemoteTable(SongTable):
     """docstring for RemoteTable"""
 
@@ -42,10 +47,10 @@ class RemoteTable(SongTable):
             self.color_text_played_recent)
 
     def localSongRule(self, row):
-        return self.data[row][Song.remote] == 2
+        return self.data[row][Song.remote] == SONG_LOCAL
 
     def remoteSongRule(self, row):
-        return self.data[row][Song.remote] == 1
+        return self.data[row][Song.remote] == SONG_REMOTE
 
     def mouseReleaseRight(self, event):
 
@@ -53,8 +58,8 @@ class RemoteTable(SongTable):
 
         menu = QMenu(self)
 
-        enable_download = all([s[Song.remote] == 1 for s in items])
-        enable_upload = all([s[Song.remote] == 2 for s in items])
+        enable_download = all([s[Song.remote] == SONG_REMOTE for s in items])
+        enable_upload = all([s[Song.remote] == SONG_LOCAL for s in items])
 
         act = menu.addAction("Download")
         act.triggered.connect(
@@ -108,7 +113,7 @@ class DownloadJob(Job):
                     lib.insert(**temp)
             except KeyError:
                 lib.insert(**temp)
-            song[Song.remote] = 0  # no longer remote
+            song[Song.remote] = SONG_SYNCED  # no longer remote
 
     def _dlprogress(self, x, y):
         p = self._iterprogress + (x / y) / len(self.songs)
@@ -133,6 +138,8 @@ class UploadJob(Job):
     def doTask(self):
 
         lib = Library.instance().reopen()
+
+        updates = []
         for i, song in enumerate(self.songs):
             self._iterprogress = float(i) / len(self.songs)
 
@@ -149,13 +156,10 @@ class UploadJob(Job):
                     # the file does not start with the given base,
                     # remove the path from the request to prevent updating
                     # the filepath
-                    print(_path)
-                    print(_root)
                     del _song[Song.path]
             else:
                 del _song[Song.path]
 
-            print(_song)
             try:
                 if _song[Song.remote] == SONG_LOCAL:
                     song_id = self.client.library_create_song(
@@ -163,12 +167,17 @@ class UploadJob(Job):
                     song[Song.remote] = SONG_SYNCED  # no longer local
 
                 elif _song[Song.remote] == SONG_SYNCED:
-                    self.client.library_update_songs(
-                        [_song, ], self._ulprogress)
+                    updates.append(_song)
+
                 else:
                     print("cannot upload remote song %s" % song[Song.uid])
             except HTTPError as e:
                 print(e)
+
+        try:
+            self.client.library_update_songs(updates, self._ulprogress)
+        except HTTPError as e:
+            print(e)
 
 
     def _ulprogress(self, x, y):
@@ -225,27 +234,27 @@ class ConnectJob(Job):
                 local_song = local_map[song[Song.uid]]
                 del local_map[song[Song.uid]]
                 song[Song.path] = local_song[Song.path]
-                song[Song.remote] = 0
+                song[Song.remote] = SONG_SYNCED
 
             else:
                 # not found locally
-                song[Song.remote] = 1
+                song[Song.remote] = SONG_REMOTE
                 # match by path
                 # path = self.client.local_path(self.basedir, song)
                 # if os.path.exists(path):
                 #    song[Song.path] = path
-                #    song[Song.remote] = 0
+                #    song[Song.remote] = SONG_SYNCED
                 #    # self.addToDbIfMissing(lib, song)
                 #    continue
 
         # songs not found on remote
         local_songs = list(local_map.values())
         for song in local_songs:
-            song[Song.remote] = 2
+            song[Song.remote] = SONG_LOCAL
 
         songs = remote_songs + local_songs
 
-        clss = {0: 0, 1: 0, 2: 0}
+        clss = {0: 0, 1: 0, 2: 0, 3:0}
         for s in songs:
             clss[s[Song.remote]] += 1
         print(clss)
@@ -267,19 +276,25 @@ class HistoryPullJob(Job):
 
     def doTask(self):
 
-        records = []
-        page_size = 100
-        result = self.client.history_get(0, page_size)
-        num_pages = result['num_pages']
-        records += result['records']
+        hist = History.instance().reopen()
 
-        for page in range(1, num_pages):
+        ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
+
+        records = []
+        page_size = 500
+        result = self.client.history_get(hist, ts, None, 0, page_size)
+        records += result
+
+        page = 1
+        num_pages = 20
+        while len(result) > 0 and page < 20:
             p = 90.0 * (page + 1) / num_pages
             self.setProgress(p)
-            result = self.client.history_get(page, page_size)
-            records += result['records']
+            result = self.client.history_get(hist, ts, None, page, page_size)
+            records += result
+            page += 1
 
-        print("num history pages: %d" % num_pages)
+        print("num history pages: %d" % page)
         print("num history records: %d" % len(records))
 
         title = "Import History"
@@ -299,10 +314,19 @@ class HistoryPushJob(Job):
         self.client = client
 
     def doTask(self):
-        page_size = 100
         hist = History.instance().reopen()
-        self.client.history_put(hist.export())
 
+        ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
+
+        rule = AndSearchRule(
+                [ExactSearchRule("column", "playtime"),
+                 GreaterThanEqualSearchRule("date", ts, type_=int)])
+        # get all records in the local database
+        records = hist.export(rule)
+
+        self.client.history_put(records)
+
+"""
 class HistoryDeleteJob(Job):
     def __init__(self, client):
         super(HistoryDeleteJob, self).__init__()
@@ -312,10 +336,10 @@ class HistoryDeleteJob(Job):
         self.client.history_delete()
 
 class HistoryHardSyncJob(Job):
-    """
+    '''
     take meta data  from a list of songs and apply
     it to the internal library
-    """
+    '''
 
     def __init__(self, songs):
         super(HistoryHardSyncJob, self).__init__()
@@ -328,7 +352,7 @@ class HistoryHardSyncJob(Job):
         updates = {}
         for i, song in enumerate(self.songs):
             # skip songs that are not local
-            if song[Song.remote]:
+            if song[Song.remote] != SONG_SYNCED:
                 continue
 
             self.setProgress(90.0 * (i + 1.0) / len(self.songs))
@@ -362,14 +386,13 @@ class HistoryHardSyncJob(Job):
         self.setProgress(100)
 
 class HistoryHardPushJob(Job):
-    """
+    '''
     push the local library to remote
 
     this includes the file path.
     the server must have the path alternatives set
     to correctly locate songs after a hard sync
-
-    """
+    '''
 
     def __init__(self, client):
         super(HistoryHardPushJob, self).__init__()
@@ -380,6 +403,7 @@ class HistoryHardPushJob(Job):
         lib = Library.instance().reopen()
         songs = lib.search("", limit=10)
         self.client.library_put(songs)
+"""
 
 class RemoteSongSearchGrammar(SongSearchGrammar):
     """docstring for SongSearchGrammar
@@ -448,17 +472,19 @@ class RemoteView(Tab):
         self.lbl_search  = QLabel("")
 
         self.cb_remote = QComboBox(self)
-        self.cb_remote.addItem("Show All")
-        self.cb_remote.addItem("Show Remote")  # index 1
-        self.cb_remote.addItem("Show Local")   # index 2
-        self.cb_remote.addItem("Show Sync")    # index 3
+        self.cb_remote.addItem("Show All", SONG_ALL)
+        self.cb_remote.addItem("Show Remote", SONG_REMOTE)  # index 1
+        self.cb_remote.addItem("Show Local", SONG_LOCAL)   # index 2
+        self.cb_remote.addItem("Show Sync", SONG_SYNCED)    # index 3
         self.cb_remote.currentIndexChanged.connect(self.onRemoteIndexChanged)
 
-        self.btn_hardsync = QPushButton("Hard Sync", self)
-        self.btn_hardpush = QPushButton("Hard Push", self)
+        #self.btn_hardsync = QPushButton("Hard Sync", self)
+        #self.btn_hardpush = QPushButton("Hard Push", self)
         self.btn_push     = QPushButton("Push", self)
         self.btn_pull     = QPushButton("Pull", self)
-        self.btn_delete   = QPushButton("Delete", self)
+        self.btn_upload   = QPushButton("Upload", self)
+        self.btn_download = QPushButton("Download", self)
+        #self.btn_delete   = QPushButton("Delete", self)
 
         self.hbox_search.addWidget(self.btn_connect)
         self.hbox_search.addWidget(self.edit_search)
@@ -466,11 +492,19 @@ class RemoteView(Tab):
         self.hbox_search.addWidget(self.lbl_search)
 
         self.hbox_admin.addWidget(QLabel("History:"))
-        self.hbox_admin.addWidget(self.btn_hardsync)
-        self.hbox_admin.addWidget(self.btn_hardpush)
+        #self.hbox_admin.addWidget(self.btn_hardsync)
+        #self.hbox_admin.addWidget(self.btn_hardpush)
         self.hbox_admin.addWidget(self.btn_push)
         self.hbox_admin.addWidget(self.btn_pull)
-        self.hbox_admin.addWidget(self.btn_delete)
+        #self.hbox_admin.addWidget(self.btn_delete)
+
+        self.hbox_admin.addWidget(QLabel("Library:"))
+        #self.hbox_admin.addWidget(self.btn_hardsync)
+        #self.hbox_admin.addWidget(self.btn_hardpush)
+        self.hbox_admin.addWidget(self.btn_upload)
+        self.hbox_admin.addWidget(self.btn_download)
+        #self.hbox_admin.addWidget(self.btn_delete)
+
 
         self.vbox.addLayout(self.grid_info)
         self.vbox.addLayout(self.hbox_admin)
@@ -490,9 +524,11 @@ class RemoteView(Tab):
 
         self.btn_pull.clicked.connect(self.onHistoryPullClicked)
         self.btn_push.clicked.connect(self.onHistoryPushClicked)
-        self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
-        self.btn_hardsync.clicked.connect(self.onHistoryHardSyncClicked)
-        self.btn_hardpush.clicked.connect(self.onHistoryHardPushClicked)
+        self.btn_upload.clicked.connect(self.onLibraryUploadClicked)
+        self.btn_download.clicked.connect(self.onLibraryDownloadClicked)
+        #self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
+        #self.btn_hardsync.clicked.connect(self.onHistoryHardSyncClicked)
+        #self.btn_hardpush.clicked.connect(self.onHistoryHardPushClicked)
 
         self.tbl_remote.update_data.connect(self.refresh)  # on sort...
 
@@ -502,7 +538,7 @@ class RemoteView(Tab):
         # generate simple library for testing purposes.
         songs = Library.instance().search("",limit=100)
         for song in songs:
-            song['remote'] = 1
+            song['remote'] = SONG_REMOTE
         self.song_library = songs
         """
         self.setSongs(self.song_library)
@@ -522,15 +558,18 @@ class RemoteView(Tab):
             limit = self.grammar.getMetaValue("limit", None)
             offset = self.grammar.getMetaValue("offset", 0)
 
-            if self.cb_remote.currentIndex() == 3:
+            # TODO: instead of comparing index, store the
+            # enum value with the combo box item
+            remote = int(self.cb_remote.currentData())
+            if remote == SONG_SYNCED:
                 rule = AndSearchRule.join(rule,
-                    ExactSearchRule(Song.remote, 0, type_=int))
-            elif self.cb_remote.currentIndex() == 2:
+                    ExactSearchRule(Song.remote, SONG_SYNCED, type_=int))
+            elif remote == SONG_LOCAL:
                 rule = AndSearchRule.join(rule,
-                    ExactSearchRule(Song.remote, 2, type_=int))
-            elif self.cb_remote.currentIndex() == 1:
+                    ExactSearchRule(Song.remote, SONG_LOCAL, type_=int))
+            elif remote == SONG_REMOTE:
                 rule = AndSearchRule.join(rule,
-                    ExactSearchRule(Song.remote, 1, type_=int))
+                    ExactSearchRule(Song.remote, SONG_REMOTE, type_=int))
 
             songs = naive_search(self.song_library, rule,
                 orderby=self.tbl_remote.sort_orderby,
@@ -613,17 +652,26 @@ class RemoteView(Tab):
         job = HistoryPushJob(client)
         self.dashboard.startJob(job)
 
-    def onHistoryDeleteClicked(self):
+    def onLibraryUploadClicked(self):
         client = self.getNewClient()
-        job = HistoryDeleteJob(client)
+        job = HistoryPullJob(client)
         self.dashboard.startJob(job)
 
-    def onHistoryHardSyncClicked(self):
+    def onLibraryDownloadClicked(self):
         client = self.getNewClient()
-        job = HistoryHardSyncJob(self.song_library)
+        job = HistoryPushJob(client)
         self.dashboard.startJob(job)
 
-    def onHistoryHardPushClicked(self):
-        client = self.getNewClient()
-        job = HistoryHardPushJob(client)
-        self.dashboard.startJob(job)
+
+    # def onHistoryDeleteClicked(self):
+    #     client = self.getNewClient()
+    #     job = HistoryDeleteJob(client)
+    #     self.dashboard.startJob(job)
+    # def onHistoryHardSyncClicked(self):
+    #     client = self.getNewClient()
+    #     job = HistoryHardSyncJob(self.song_library)
+    #     self.dashboard.startJob(job)
+    # def onHistoryHardPushClicked(self):
+    #     client = self.getNewClient()
+    #     job = HistoryHardPushJob(client)
+    #     self.dashboard.startJob(job)

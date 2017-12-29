@@ -3,11 +3,15 @@ from yue.core.api2 import ApiClient, ApiClientWrapper
 from yue.core.sqlstore import SQLStore
 from yue.core.history import History
 from yue.core.library import Library
+from yue.core.search import AndSearchRule, ExactSearchRule, GreaterThanEqualSearchRule
 import json
+
+import datetime
 
 def _connect():
 
-    db_path = "/Users/nsetzer/Music/Library/yue.db"
+    # db_path = "/Users/nsetzer/Music/Library/yue.db"
+    db_path = "D:\\Dropbox\\ConsolePlayer\\yue.db"
     sqlstore = SQLStore(db_path)
     History.init(sqlstore)
     Library.init(sqlstore)
@@ -29,14 +33,34 @@ def _connect():
 
     return songs, api, apiw
 
+def test_history_export():
+
+    # db_path = "/Users/nsetzer/Music/Library/yue.db"
+    db_path = "D:\\Dropbox\\ConsolePlayer\\yue.db"
+    sqlstore = SQLStore(db_path)
+    History.init(sqlstore)
+
+    ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
+
+    rule = AndSearchRule([ExactSearchRule("column", "playtime"),
+                          GreaterThanEqualSearchRule("date", ts, type_=int)])
+    # get all records in the local database
+    records = History.instance().export(rule)
+
+    print(records)
+
 def test_history(songs, api, apiw):
 
     songs = list(apiw.songs.values())
     with open("songs.JSON", "w") as wf:
         wf.write(json.dumps(songs))
 
+    ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
+
+    rule = AndSearchRule([ExactSearchRule("column", "playtime"),
+                          GreaterThanEqualSearchRule("date", ts, type_=int)])
     # get all records in the local database
-    records = History.instance().export()
+    records = History.instance().export(rule)
 
     # add these records to the remote database
     apiw.history_put(records)
@@ -80,9 +104,11 @@ def test_download(songs, api, apiw):
     apiw.download_song("/tmp/", song)
 
 def main():
-    songs, api, apiw = _connect()
+    # songs, api, apiw = _connect()
+    # test_download(songs, api, apiw)
+    # test_history(songs, api, apiw)
 
-    test_download(songs, api, apiw)
+    test_history_export()
 
 
 if __name__ == '__main__':

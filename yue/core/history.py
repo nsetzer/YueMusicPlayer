@@ -7,6 +7,7 @@ from .search import SearchGrammar, BlankSearchRule, AndSearchRule, \
     LessThanEqualSearchRule, GreaterThanEqualSearchRule, \
     sql_search, sqlFromRule, ParseError
 from yue.core.song import Song
+from yue.core.search import SearchRule
 from yue.core.sqlstore import SQLTable, SQLView
 from calendar import timegm
 import time
@@ -151,8 +152,9 @@ class History(object):
             rule = self.raw_grammar.ruleFromString(rule)
             limit = self.raw_grammar.getMetaValue("limit", limit)
             offset = self.raw_grammar.getMetaValue("offset", offset)
-        else:
+        elif not isinstance(rule, SearchRule):
             raise ParseError("invalid rule type: %s"%type(rule))
+
         if isinstance(rule,(str,unicode)):
             raise ParseError("invalid rule type: %s"%type(rule))
         if orderby is not None:
