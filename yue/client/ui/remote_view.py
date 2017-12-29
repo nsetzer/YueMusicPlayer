@@ -119,6 +119,44 @@ class DownloadJob(Job):
         p = self._iterprogress + (x / y) / len(self.songs)
         self.setProgress(int(100 * p))
 
+class DownloadMetadataJob(Job):
+    """docstring for DownloadJob"""
+
+    def __init__(self, client, songs):
+        super(DownloadMetadataJob, self).__init__()
+        self.client = client
+        self.songs = songs
+        self._iterprogress = 0
+
+    def doTask(self):
+
+        records = {}
+
+        lib = Library.instance().reopen()
+        for i, song in enumerate(self.songs):
+            self._iterprogress = float(i) / len(self.songs)
+            if song[Song.remote] != SONG_SYNCED:
+                continue
+            self._dlprogress()
+
+            temp = song.copy()
+            uid = temp[Song.uid]
+            del temp[Song.path]
+            del temp[Song.artist_key]
+            del temp[Song.remote]
+            del temp[Song.uid]
+            for  key in ["id", "art_path", "domain_id", "user_id", "file_size"]:
+                if key in temp:
+                    del temp[key]
+
+            records[uid] = temp
+
+        lib.update_all(records)
+
+    def _dlprogress(self):
+        p = self._iterprogress
+        self.setProgress(int(100 * p))
+
 class UploadJob(Job):
     """docstring for DownloadJob"""
 
@@ -162,6 +200,7 @@ class UploadJob(Job):
 
             try:
                 if _song[Song.remote] == SONG_LOCAL:
+                    print("upload %s" % song[Song.uid])
                     song_id = self.client.library_create_song(
                         _song, self._ulprogress)
                     song[Song.remote] = SONG_SYNCED  # no longer local
@@ -175,6 +214,8 @@ class UploadJob(Job):
                 print(e)
 
         try:
+            print("update %d" % len(updates))
+
             self.client.library_update_songs(updates, self._ulprogress)
         except HTTPError as e:
             print(e)
@@ -654,12 +695,16 @@ class RemoteView(Tab):
 
     def onLibraryUploadClicked(self):
         client = self.getNewClient()
-        job = HistoryPullJob(client)
+        upload_filepath = True
+        job = UploadJob(client, self.song_library, self.edit_dir.text(), upload_filepath)
+        job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
 
     def onLibraryDownloadClicked(self):
         client = self.getNewClient()
-        job = HistoryPushJob(client)
+        upload_filepath = True
+        job = DownloadMetadataJob(client, self.song_library)
+        job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
 
 
