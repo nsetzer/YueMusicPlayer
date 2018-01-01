@@ -34,6 +34,10 @@ SONG_SYNCED = 3
 SONG_REMOTE = 1
 SONG_LOCAL = 2
 
+STATE_DISCONNECTED = 1
+STATE_CONNECTED = 2
+STATE_CONNECTING = 3
+
 class RemoteTable(SongTable):
     """docstring for RemoteTable"""
 
@@ -172,6 +176,7 @@ class UploadJob(Job):
 
         self._iterprogress = 0
         self.upload_filepath = upload_filepath
+        print("Upload job, update path: %s" % upload_filepath)
 
     def doTask(self):
 
@@ -218,9 +223,11 @@ class UploadJob(Job):
             print("update %d songs" % len(updates))
 
             for i in range(0,len(updates),100):
+                e = i + 100
+                print(i,e)
                 self._iterprogress = float(i) / len(updates)
                 self._ulprogress(1,1)
-                self.client.library_update_songs(updates[i:i+100], self._ulprogress)
+                self.client.library_update_songs(updates[i:e], self._ulprogress)
         except HTTPError as e:
             print("%s: %s" % (e,e.reason))
 
@@ -472,6 +479,7 @@ class RemoteView(Tab):
         super(RemoteView, self).__init__(parent)
 
         self.client = None
+        self.current_state = STATE_DISCONNECTED;
 
         self.grid_info = QGridLayout()
         self.hbox_search = QHBoxLayout()
@@ -519,31 +527,38 @@ class RemoteView(Tab):
         self.cb_remote = QComboBox(self)
         self.cb_remote.addItem("Show All", SONG_ALL)
         self.cb_remote.addItem("Show Remote", SONG_REMOTE)  # index 1
-        self.cb_remote.addItem("Show Local", SONG_LOCAL)   # index 2
+        self.cb_remote.addItem("Show Local", SONG_LOCAL)    # index 2
         self.cb_remote.addItem("Show Sync", SONG_SYNCED)    # index 3
         self.cb_remote.currentIndexChanged.connect(self.onRemoteIndexChanged)
 
-        #self.btn_hardsync = QPushButton("Hard Sync", self)
-        #self.btn_hardpush = QPushButton("Hard Push", self)
         self.btn_push     = QPushButton("Push", self)
         self.btn_pull     = QPushButton("Pull", self)
         self.btn_upload   = QPushButton("Upload", self)
         self.btn_download = QPushButton("Download", self)
-        #self.btn_delete   = QPushButton("Delete", self)
+        self.chk_mode     = QCheckBox("Master", self)
+        self.chk_path     = QCheckBox("Update Path", self)
+
+        self.lbl_library = QLabel("Library:")
+        self.lbl_library.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.lbl_history = QLabel("History:")
+        self.lbl_history.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.hbox_search.addWidget(self.btn_connect)
         self.hbox_search.addWidget(self.edit_search)
         self.hbox_search.addWidget(self.cb_remote)
         self.hbox_search.addWidget(self.lbl_search)
 
-        self.hbox_admin.addWidget(QLabel("History:"))
+        self.hbox_admin.addWidget(self.chk_mode)
+        self.hbox_admin.addWidget(self.chk_path)
+        self.hbox_admin.addWidget(self.lbl_history)
         #self.hbox_admin.addWidget(self.btn_hardsync)
         #self.hbox_admin.addWidget(self.btn_hardpush)
         self.hbox_admin.addWidget(self.btn_push)
         self.hbox_admin.addWidget(self.btn_pull)
         #self.hbox_admin.addWidget(self.btn_delete)
 
-        self.hbox_admin.addWidget(QLabel("Library:"))
+        self.hbox_admin.addWidget(self.lbl_library)
         #self.hbox_admin.addWidget(self.btn_hardsync)
         #self.hbox_admin.addWidget(self.btn_hardpush)
         self.hbox_admin.addWidget(self.btn_upload)
@@ -571,6 +586,7 @@ class RemoteView(Tab):
         self.btn_push.clicked.connect(self.onHistoryPushClicked)
         self.btn_upload.clicked.connect(self.onLibraryUploadClicked)
         self.btn_download.clicked.connect(self.onLibraryDownloadClicked)
+        self.chk_mode.stateChanged.connect(self.onModeStateChanged)
         #self.btn_delete.clicked.connect(self.onHistoryDeleteClicked)
         #self.btn_hardsync.clicked.connect(self.onHistoryHardSyncClicked)
         #self.btn_hardpush.clicked.connect(self.onHistoryHardPushClicked)
@@ -587,6 +603,11 @@ class RemoteView(Tab):
         self.song_library = songs
         """
         self.setSongs(self.song_library)
+        self.chk_mode.setChecked(Qt.Checked)
+        self.hbox_admin.setEnabled(False)
+        self.edit_search.setEnabled(False)
+        self.cb_remote.setEnabled(False)
+
 
     def onSearchTextChanged(self):
 
@@ -650,17 +671,43 @@ class RemoteView(Tab):
 
     def onConnectClicked(self):
 
-        client = self.getNewClient()
+        if self.current_state == STATE_DISCONNECTED:
+            # get a new client, try to connect
+            self.client = None
+            client = self.getNewClient()
 
-        basedir = self.edit_dir.text().strip()
+            basedir = self.edit_dir.text().strip()
 
-        self.btn_connect.setEnabled(False)
+            self.btn_connect.setEnabled(False)
 
-        job = ConnectJob(client, basedir)
-        job.newLibrary.connect(self.onNewLibrary)
-        job.newApiKey.connect(self.onNewApiKey)
-        job.finished.connect(lambda: self.btn_connect.setEnabled(True))
-        self.dashboard.startJob(job)
+            job = ConnectJob(client, basedir)
+            job.newLibrary.connect(self.onNewLibrary)
+            job.newApiKey.connect(self.onNewApiKey)
+            job.complete.connect(self.onConnectComplete)
+            self.dashboard.startJob(job)
+
+            self.current_state = STATE_CONNECTING
+
+        elif self.current_state == STATE_CONNECTED:
+            self.client = None
+            self.current_state = STATE_DISCONNECTED
+
+    def onConnectComplete(self, success):
+
+        self.btn_connect.setEnabled(True)
+
+        if success:
+            self.btn_connect.setText("Disconnect")
+            self.hbox_admin.setEnabled(True)
+            self.edit_search.setEnabled(True)
+            self.cb_remote.setEnabled(True)
+            self.current_state = STATE_CONNECTED
+        else:
+            self.btn_connect.setText("Connect")
+            self.hbox_admin.setEnabled(False)
+            self.edit_search.setEnabled(False)
+            self.cb_remote.setEnabled(False)
+            self.current_state = STATE_DISCONNECTED
 
     def onRemoteIndexChanged(self, idx):
         self.refresh()
@@ -699,7 +746,7 @@ class RemoteView(Tab):
 
     def onLibraryUploadClicked(self):
         client = self.getNewClient()
-        upload_filepath = True
+        upload_filepath = self.chk_path.isChecked()
         job = UploadJob(client, self.song_library, self.edit_dir.text(), upload_filepath)
         job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
@@ -711,6 +758,13 @@ class RemoteView(Tab):
         job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
 
+    def onModeStateChanged(self, state):
+
+        checked = state == Qt.Checked
+        self.btn_push.setEnabled(not checked)
+        self.btn_pull.setEnabled(checked)
+        self.btn_upload.setEnabled(checked)
+        self.btn_download.setEnabled(not checked)
 
     # def onHistoryDeleteClicked(self):
     #     client = self.getNewClient()

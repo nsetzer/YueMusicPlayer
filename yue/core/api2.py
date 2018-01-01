@@ -39,6 +39,28 @@ def remap_keys_r(song):
     song["file_size"] = 0
     return song
 
+class ErrorResponse(object):
+    """docstring for ErrorResponse"""
+    def __init__(self, error):
+        super(ErrorResponse, self).__init__()
+        self.error = error
+        self._body = error.read()
+        print(dir(self._body))
+        print(self._body)
+
+        try:
+            self._json = json.loads(self._body.decode("utf-8"))
+            self.reason = self._json.error
+        except:
+            self._json = None
+            self.reason = "bad request"
+
+    def getcode(self):
+        return self.error.status
+
+    def body(self):
+        return self._body
+
 class ApiClient(object):
     """docstring for ApiClient"""
     def __init__(self, hostname):
@@ -119,7 +141,8 @@ class ApiClient(object):
             headers=headers)
 
         if r.getcode() != 200:
-            raise Exception("%s %s" % (r.getcode(), r.msg))
+            print(dir(r))
+            raise Exception("%s %s" % (r.getcode(), r.reason))
 
     def library_create_song(self, song, callback=None):
 
@@ -210,7 +233,13 @@ class ApiClient(object):
         url = "%s/%s?%s" % (self.hostname, urlpath, s)
         request = urllib.request.Request(url, data=data,
             method='PUT', headers=headers)
-        return urllib.request.urlopen(request, context=self.ctx)
+        try:
+            r = urllib.request.urlopen(request, context=self.ctx)
+            print(r)
+            return r
+        except Exception as e:
+            print("caugt")
+            return ErrorResponse(e)
 
     def _get(self, urlpath, params=None, headers=None):
         params = params or dict()

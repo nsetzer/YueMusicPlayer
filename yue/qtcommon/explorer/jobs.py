@@ -79,6 +79,10 @@ class Job(QThread):
 
     partialResult = pyqtSignal(object, object)  # view, data
 
+    # finished() # via QThread
+
+    complete = pyqtSignal(bool) # emit true when finished with no errors
+
     def __init__(self):
         super(Job, self).__init__()
 
@@ -91,15 +95,21 @@ class Job(QThread):
         self._alive = True
 
     def run(self):
+        _result = True
         try:
-            self.doTask()
+            if self.doTask() is False:
+                _result = False
         except AbortJob as e:
             sys.stderr.write("%s aborted\n"%self.__class__.__name__)
+            _result = False
         except Exception as e:
             traceback.print_exc()
             # emit the exception so that the main thread can
             # handle it
             self.exception.emit(*sys.exc_info())
+            _result = False
+
+        self.complete.emit(_result)
 
     def doTask(self):
         """ reimplement this function to perform your task
