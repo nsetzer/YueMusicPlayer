@@ -39,18 +39,18 @@ def remap_keys_r(song):
     song["file_size"] = 0
     return song
 
-class ErrorResponse(object):
+class ErrorResponse(Exception):
     """docstring for ErrorResponse"""
     def __init__(self, error):
         super(ErrorResponse, self).__init__()
         self.error = error
         self._body = error.read()
-        print(dir(self._body))
+        print(dir(self.error))
         print(self._body)
 
         try:
             self._json = json.loads(self._body.decode("utf-8"))
-            self.reason = self._json.error
+            self.reason = self._json['error']
         except:
             self._json = None
             self.reason = "bad request"
@@ -60,6 +60,9 @@ class ErrorResponse(object):
 
     def body(self):
         return self._body
+
+    def __str__(self):
+        return "<ErrorResponse: [%s] %s>"%(self.error.status, self.reason)
 
 class ApiClient(object):
     """docstring for ApiClient"""
@@ -234,11 +237,8 @@ class ApiClient(object):
         request = urllib.request.Request(url, data=data,
             method='PUT', headers=headers)
         try:
-            r = urllib.request.urlopen(request, context=self.ctx)
-            print(r)
-            return r
+            return urllib.request.urlopen(request, context=self.ctx)
         except Exception as e:
-            print("caugt")
             return ErrorResponse(e)
 
     def _get(self, urlpath, params=None, headers=None):
@@ -262,7 +262,13 @@ class ApiClient(object):
     def _retrieve(self, path, urlpath, params=None, callback=None):
         params = params or dict()
         params['apikey'] = self.key
-        with self._get(urlpath, params) as r:
+
+        try:
+            r = self._get(urlpath, params)
+        except Exception as e:
+            raise ErrorResponse(e)
+
+        with r:
             if r.getcode() != 200:
                 raise Exception("%s %s" % (r.getcode(), r.msg))
 

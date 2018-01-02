@@ -109,6 +109,10 @@ class DownloadJob(Job):
             temp[Song.path] = path
             del temp[Song.artist_key]
             del temp[Song.remote]  # delete it before adding to db
+            for  key in ["id", "art_path", "domain_id", "user_id", "file_size"]:
+                if key in temp:
+                    del temp[key]
+            print(temp)
             # add the song to the library if the key does not exist
             try:
                 if temp[Song.uid]:
@@ -139,9 +143,9 @@ class DownloadMetadataJob(Job):
         lib = Library.instance().reopen()
         for i, song in enumerate(self.songs):
             self._iterprogress = float(i) / len(self.songs)
+            self._dlprogress()
             if song[Song.remote] != SONG_SYNCED:
                 continue
-            self._dlprogress()
 
             temp = song.copy()
             uid = temp[Song.uid]
@@ -206,7 +210,7 @@ class UploadJob(Job):
 
             try:
                 if _song[Song.remote] == SONG_LOCAL:
-                    print("create %s" % song[Song.uid])
+                    print("create %s -- `%s`" % (song[Song.uid], song.get("path","None")))
                     song_id = self.client.library_create_song(
                         _song, self._ulprogress)
                     song[Song.remote] = SONG_SYNCED  # no longer local
@@ -691,6 +695,7 @@ class RemoteView(Tab):
         elif self.current_state == STATE_CONNECTED:
             self.client = None
             self.current_state = STATE_DISCONNECTED
+            self.onConnectComplete(True)
 
     def onConnectComplete(self, success):
 
@@ -729,7 +734,7 @@ class RemoteView(Tab):
 
     def action_uploadSelection(self, items):
         client = self.getNewClient()
-        upload_filepath = True
+        upload_filepath = self.chk_path.isChecked()
         job = UploadJob(client, items, self.edit_dir.text(), upload_filepath)
         job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
@@ -753,7 +758,6 @@ class RemoteView(Tab):
 
     def onLibraryDownloadClicked(self):
         client = self.getNewClient()
-        upload_filepath = True
         job = DownloadMetadataJob(client, self.song_library)
         job.finished.connect(self.refresh)
         self.dashboard.startJob(job)
