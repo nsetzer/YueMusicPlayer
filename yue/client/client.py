@@ -422,7 +422,34 @@ class ClientRepl(object):
             # disable logging updates while importing
             bUpdate = History.instance().setUpdateEnabled(False)
             try:
-                Library.instance().import_record_file(path)
+
+                records = []
+
+                # read the records file
+                with codecs.open(path, "r", "utf-8") as rf:
+                    for line in rf:
+                        line = line.strip()
+                        timestamp, uid, record = line.split(None, 2)
+                        column, value = record.split('=', 2)
+                        record = {"column": column,
+                                  "uid": int(uid),
+                                  "date": int(timestamp)}
+                        if column != Song.playtime:
+                            record['value'] = value
+                        records.append(record)
+
+                # deduplicate the record set
+                n = len(records)
+                start = min((r['date'] for r in records))
+                end   = max((r['date'] for r in records))
+                db_records = History.instance().export_date_range(start, end)
+                records_set = set((r['date'] for r in db_records))
+                records = [r for r in records if r['date'] not in records_set]
+                print("history import: filtered %d records into %d" %
+                    (n, len(records)))
+
+                # finally import the records
+                Library.instance().import_records(records)
             finally:
                 History.instance().setUpdateEnabled(bUpdate)
 

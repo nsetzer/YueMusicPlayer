@@ -189,13 +189,13 @@ class UploadJob(Job):
         updates = []
         for i, song in enumerate(self.songs):
             self._iterprogress = float(i) / len(self.songs)
-            self._ulprogress(1,1)
+            self._ulprogress(1, 1)
 
             _song = song.copy()
             if self.upload_filepath:
                 path = _song[Song.path]
-                _path = path.lower().replace("\\","/")
-                _root = self.dir_base.lower().replace("\\","/")
+                _path = path.lower().replace("\\", "/")
+                _root = self.dir_base.lower().replace("\\", "/")
                 if _path.startswith(_root):
                     # remove the base from the path
                     path = path[len(self.dir_base):]
@@ -210,7 +210,7 @@ class UploadJob(Job):
 
             try:
                 if _song[Song.remote] == SONG_LOCAL:
-                    print("create %s -- `%s`" % (song[Song.uid], song.get("path","None")))
+                    print("create %s -- `%s`" % (song[Song.uid], song.get("path", "None")))
                     song_id = self.client.library_create_song(
                         _song, self._ulprogress)
                     song[Song.remote] = SONG_SYNCED  # no longer local
@@ -221,20 +221,19 @@ class UploadJob(Job):
                 else:
                     print("cannot upload remote song %s" % song[Song.uid])
             except HTTPError as e:
-                print("%s: %s" % (e,e.reason))
+                print("%s: %s" % (e, e.reason))
 
         try:
             print("update %d songs" % len(updates))
 
-            for i in range(0,len(updates),100):
+            for i in range(0, len(updates), 100):
                 e = i + 100
-                print(i,e)
+                print(i, e)
                 self._iterprogress = float(i) / len(updates)
-                self._ulprogress(1,1)
+                self._ulprogress(1, 1)
                 self.client.library_update_songs(updates[i:e], self._ulprogress)
         except HTTPError as e:
-            print("%s: %s" % (e,e.reason))
-
+            print("%s: %s" % (e, e.reason))
 
     def _ulprogress(self, x, y):
         p = self._iterprogress + (x / y) / len(self.songs)
@@ -310,7 +309,7 @@ class ConnectJob(Job):
 
         songs = remote_songs + local_songs
 
-        clss = {0: 0, 1: 0, 2: 0, 3:0}
+        clss = {0: 0, 1: 0, 2: 0, 3: 0}
         for s in songs:
             clss[s[Song.remote]] += 1
         print(clss)
@@ -371,12 +370,13 @@ class HistoryPushJob(Job):
 
     def doTask(self):
         hist = History.instance().reopen()
-
         ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
 
         rule = AndSearchRule(
                 [ExactSearchRule("column", "playtime"),
                  GreaterThanEqualSearchRule("date", ts, type_=int)])
+
+        print(rule)
         # get all records in the local database
         records = hist.export(rule)
 

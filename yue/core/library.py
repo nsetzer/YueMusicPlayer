@@ -771,7 +771,7 @@ class Library(object):
                 if (new_path != old_path):
                     self._update_one(c, song[Song.uid], **{Song.path: new_path})
 
-    def import_record_file(self, path):
+    def import_records(self, records):
         """
         read in a file containing history records and apply them to
         the library to update the current state
@@ -789,20 +789,12 @@ class Library(object):
         value is taken literally, including any whitespace terminating at a
         newline. thus there must be one record per line.
         """
+
         with self.sqlstore.conn as conn:
             c = conn.cursor()
-            with codecs.open(path, "r", "utf-8") as rf:
-                for line in rf:
-                    line = line.strip()
-                    timestamp, uid, record = line.split(None, 2)
-                    column, value = record.split('=', 2)
-                    record = {"column": column,
-                              "uid": int(uid),
-                              "date": int(timestamp)}
-                    if column != Song.playtime:
-                        record['value'] = value
-                    print(record)
-                    self._import_record(c, record)
+            for record in records:
+                print(record)
+                self._import_record(c, record)
 
     def import_record(self, record_lst, addToHistory=True):
         """
