@@ -38,6 +38,7 @@ class ExplorerFileTable(LargeTable):
     createDirectory = pyqtSignal(str)
     focusQuery = pyqtSignal()
     findFiles = pyqtSignal()
+    findReplaceInFiles = pyqtSignal()
     deletePaths = pyqtSignal(list)  # list of items
     focusUp = pyqtSignal()
 
@@ -61,13 +62,17 @@ class ExplorerFileTable(LargeTable):
         self.xcut_refresh.setContext(Qt.WidgetShortcut)
         self.xcut_refresh.activated.connect(self.onShortcutRefresh)
 
-        self.xcut_filter = QShortcut(QKeySequence(QKeySequence.Find), self)
-        self.xcut_filter.setContext(Qt.WidgetShortcut)
-        self.xcut_filter.activated.connect(self.focusQuery.emit)
+        self.xcut_find = QShortcut(QKeySequence(QKeySequence.Find), self)
+        self.xcut_find.setContext(Qt.WidgetShortcut)
+        self.xcut_find.activated.connect(self.focusQuery.emit)
 
         self.xcut_filter = QShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_F), self)
         self.xcut_filter.setContext(Qt.WidgetShortcut)
         self.xcut_filter.activated.connect(self.findFiles.emit)
+
+        self.xcut_replace = QShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_H), self)
+        self.xcut_replace.setContext(Qt.WidgetShortcut)
+        self.xcut_replace.activated.connect(self.findReplaceInFiles.emit)
 
         # shortcuts must be disabled during editing
         self.xcuts_all = [self.xcut_copy, self.xcut_cut, self.xcut_paste,

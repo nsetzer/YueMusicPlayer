@@ -99,17 +99,24 @@ class LineEditSearch(LineEdit):
 class FindBarWidget(QWidget):
     """docstring for FindBarWidget"""
 
+    # find files with a filename that matches a pattern.
     findFiles = pyqtSignal(str, bool)
+    # find files with a filename that matches a pattern, and contains text
+    findInFiles = pyqtSignal(str, str, bool)
+    # replace text found in files with new text
+    findReplaceInFiles = pyqtSignal(str, str, str, bool)
     hideBar = pyqtSignal()
 
     def __init__(self, parent=None):
         super(FindBarWidget, self).__init__(parent)
 
+        self.mode = 0
+
         self.__init_layout()
 
     def __init_layout(self):
 
-        self.lbl_mode = QLabel("Find", self)
+        #self.lbl_mode = QLabel("Find", self)
 
         self.edit_filter = LineEditSearch(self)
         self.edit_filter.setPlaceholderText("All Files")
@@ -144,37 +151,48 @@ class FindBarWidget(QWidget):
         self.btn_runFind = QPushButton("Find")
         self.btn_runFind.clicked.connect(self.runFind)
 
+        self.btn_runReplace = QPushButton("Replace")
+        self.btn_runReplace.clicked.connect(self.runReplace)
+
         self.btn_hide = QToolButton()
         self.btn_hide.setIcon(QIcon(":/img/app_x.png"))
         self.btn_hide.setWhatsThis("Hide Search Bar")
         self.btn_hide.setToolTip("Hide Search Bar")
         self.btn_hide.clicked.connect(self.hideBar.emit)
 
-        self.hbox = QHBoxLayout(self)
-        self.hbox.setContentsMargins(0, 0, 0, 0)
-        self.hbox.addWidget(self.lbl_mode)
-        self.hbox.addWidget(self.edit_filter)
-        self.hbox.addWidget(self.edit_pattern)
-        self.hbox.addWidget(self.edit_replace)
-        self.hbox.addWidget(self.chk_recursive)
-        self.hbox.addWidget(self.chk_case)
-        self.hbox.addWidget(self.btn_runFind)
-        self.hbox.addWidget(self.btn_hide)
+        self.grid = QGridLayout(self)
+        self.grid.setContentsMargins(2, 2, 2, 2)
+        #self.grid.addWidget(self.lbl_mode,         0, 0, 1, 1)
+        self.grid.addWidget(self.edit_filter,      0, 1, 1, 4)
+        self.grid.addWidget(self.chk_recursive,    0, 5, 1, 1)
+        self.grid.addWidget(self.chk_case,         0, 6, 1, 1)
+        self.grid.addWidget(self.btn_runFind,      0, 7, 1, 1)
+        self.grid.addWidget(self.btn_hide,         0, 8, 1, 1)
+        self.grid.addWidget(self.edit_pattern,     1, 1, 1, 2)
+        self.grid.addWidget(self.edit_replace,     1, 3, 1, 2)
+        self.grid.addWidget(self.btn_runReplace,   1, 7, 1, 1)
 
     def setMode(self, mode):
 
         if mode == 0:
-            self.lbl_mode.setText("Find")
+            #self.lbl_mode.setText("Find")
             self.edit_pattern.hide()
             self.edit_replace.hide()
+            self.btn_runReplace.hide()
         if mode == 1:
-            self.lbl_mode.setText("Find in Files")
+            # don't need this mode, ctrl+shift+h will
+            # open mode 2, which allows this feature
+            #self.lbl_mode.setText("Find in Files")
             self.edit_pattern.show()
             self.edit_replace.hide()
+            self.btn_runReplace.hide()
         if mode == 2:
-            self.lbl_mode.setText("Find / Replace")
+            #self.lbl_mode.setText("Find / Replace")
             self.edit_pattern.show()
             self.edit_replace.show()
+            self.btn_runReplace.show()
+
+        self.mode = mode
 
     def getFilterText(self):
         filter = self.edit_filter.text().strip()
@@ -193,11 +211,29 @@ class FindBarWidget(QWidget):
             # return = filter.lower()
             return filter
 
-    def runFind(self):
+    def getPatternText(self):
+        text = self.edit_pattern.text().strip()
+        return text
 
-        pattern = self.getFilterText()
+    def getReplaceText(self):
+        text = self.edit_replace.text().strip()
+        return text
+
+    def runFind(self):
+        filter = self.getFilterText()
         recursive = self.chk_recursive.isChecked()
-        self.findFiles.emit(pattern, recursive)
+        if self.mode == 0:
+            self.findFiles.emit(filter, recursive)
+        else:
+            pattern = self.getPatternText()
+            self.findInFiles.emit(filter, pattern, recursive)
+
+    def runReplace(self):
+        filter = self.getFilterText()
+        pattern = self.getPatternText()
+        replace = self.getReplaceText()
+        recursive = self.chk_recursive.isChecked()
+        self.findReplaceInFiles.emit(filter, pattern, replace, recursive)
 
     def onFocus(self):
         self.edit_filter.setFocus(Qt.ShortcutFocusReason)
@@ -336,6 +372,7 @@ class ExplorerModel(QWidget):
             lambda: self.txt_filter.setFocus(Qt.ShortcutFocusReason))
 
         self.tbl_file.findFiles.connect(self.onFindFilesShowBar)
+        self.tbl_file.findReplaceInFiles.connect(lambda: self.onFindFilesShowBar(2))
 
         self.tbl_results = FindResultsTable(self)
         self.tbl_results.openDirectory.connect(self.onFileResultsOpenDirectory)
@@ -403,6 +440,8 @@ class ExplorerModel(QWidget):
 
         self.bar_find = FindBarWidget(self)
         self.bar_find.findFiles.connect(self.onFindFiles)
+        self.bar_find.findInFiles.connect(self.onFindInFiles)
+        self.bar_find.findReplaceInFiles.connect(self.onFindReplaceInFiles)
         self.bar_find.hideBar.connect(self.onFindFilesHideBar)
 
         self.lbl_st_nfiles = QLabel("", self)
@@ -810,13 +849,20 @@ class ExplorerModel(QWidget):
         self.tbl_results.container.hide()
         self.bar_find.hide()
 
-    def onFindFiles(self, pattern, recursive):
-
+    def onFindFiles(self, filter, recursive):
         self.tbl_results.clearResults()
-        job = QuickFindJob(self.view, self.view.pwd(), pattern,
+        job = QuickFindJob(self.view, self.view.pwd(), filter,
                            recursive=recursive)
         job.partialResult.connect(self.tbl_results.addPartialResult)
         self.submitJob.emit(job)
+
+    def onFindInFiles(self, filter, pattern):
+        # TODO:
+        self.tbl_results.clearResults()
+
+    def onFindReplaceInFiles(self, filter, pattern, replace, recursive):
+        # TODO:
+        self.tbl_results.clearResults()
 
     def onFileResultsOpenDirectory(self, path):
         self.chdir(path)
