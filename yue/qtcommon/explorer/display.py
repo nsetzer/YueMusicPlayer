@@ -18,7 +18,7 @@ from yue.qtcommon.explorer.ContextBar import ContextBar
 from yue.qtcommon.explorer.filetable import ResourceManager
 from yue.qtcommon.explorer.jobs import Job, \
     RenameJob, CopyJob, MoveJob, DeleteJob, DropRequestJob, \
-    QuickFindJob
+    QuickFindJob, QuickFindInFilesJob
 
 from yue.core.settings import Settings
 
@@ -851,14 +851,19 @@ class ExplorerModel(QWidget):
 
     def onFindFiles(self, filter, recursive):
         self.tbl_results.clearResults()
-        job = QuickFindJob(self.view, self.view.pwd(), filter,
-                           recursive=recursive)
+        job = QuickFindJob(self.view, self.view.pwd(),
+            filter,
+            recursive=recursive)
         job.partialResult.connect(self.tbl_results.addPartialResult)
         self.submitJob.emit(job)
 
-    def onFindInFiles(self, filter, pattern):
-        # TODO:
+    def onFindInFiles(self, filter, pattern, recursive):
         self.tbl_results.clearResults()
+        job = QuickFindInFilesJob(self.view, self.view.pwd(),
+            filter, pattern,
+            recursive=recursive)
+        job.partialResult.connect(self.tbl_results.addPartialResult)
+        self.submitJob.emit(job)
 
     def onFindReplaceInFiles(self, filter, pattern, replace, recursive):
         # TODO:

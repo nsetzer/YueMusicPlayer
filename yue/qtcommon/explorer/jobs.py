@@ -16,6 +16,7 @@ from yue.core.library import Library
 import time
 
 import fnmatch
+import codecs
 
 class JobMessageBox(QDialog):
     """docstring for JobMessage"""
@@ -431,14 +432,21 @@ class QuickFindInFilesJob(QuickFindBaseJob):
         if self.view.isdir(fullpath):
             return False
 
-        dir,name = self.view.split(fullpath)
-        name,ext = self.view.splitext(name)
-        if name.startswith(".") and ext =="":
-            return True # dot file
+        dir, name = self.view.split(fullpath)
+        name, ext = self.view.splitext(name)
+        if name.startswith(".") and ext == "":
+            return True  # dot file
         return True
 
-    def matchFileContents(self):
-        return True
+    def matchFileContents(self, path):
+        with self.view.open(path, "rb") as rb:
+            w = codecs.getwriter("utf-8")
+            r = codecs.getreader("utf-8")
+            reader = codecs.StreamReaderWriter(rb, r, w)
+            for line in reader.readlines():
+                if self.pattern in line:
+                    return True
+        return False
 
     def processFile(self, dir, name):
         """
@@ -448,7 +456,9 @@ class QuickFindInFilesJob(QuickFindBaseJob):
         path = self.view.join(dir, name)
         if self.matchFileName(name):
             if self.matchFileContents(path):
-                self.emitPartialResult(self.view,path)
+                # TODO: consider attaching meta data to partial results
+                # emit the line that matched for a given file
+                self.emitPartialResult(self.view, path)
 
 class DropRequestJob(Job):
     def __init__(self, src_view, urls, dst_view, dst_path):
