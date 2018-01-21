@@ -72,8 +72,6 @@ class YueExplorerController(ExplorerController):
         ctxtmenu.addSeparator()
 
 
-
-
         self._ctxtMenu_addFileOperations2(ctxtmenu,model,items)
 
         if model.view.islocal():
@@ -81,8 +79,11 @@ class YueExplorerController(ExplorerController):
 
         ctxtmenu.addAction("Refresh",model.action_refresh)
 
-        action = ctxtmenu.exec_( event.globalPos() )
+        if len(items) > 0 and is_files:
+            ctxtmenu.addSeparator()
+            act = ctxtmenu.addAction("update/replace *", lambda: model.action_update_replace(items))
 
+        action = ctxtmenu.exec_( event.globalPos() )
 
 class YueExplorerModel(ExplorerModel):
 
@@ -122,6 +123,46 @@ class YueExplorerModel(ExplorerModel):
         path = self.view.realpath(item['name'])
         self.play_file.emit(path)
 
+    def action_update_replace(self, items):
+
+        for item in items:
+            path = self.view.realpath(item['name'])
+            self.action_update_replace_impl(path)
+
+        self.action_refresh()
+
+    def action_update_replace_impl(self, path):
+
+        def strmatch(s1,s2,field):
+            return s1[field].lower().replace(" ","") == \
+                   s2[field].lower().replace(" ","")
+
+        def _match(song, temp):
+            # match songs based on index or title
+            a = strmatch(song,temp,Song.artist) and \
+                strmatch(song,temp,Song.title)
+            i = False
+            if temp[Song.album_index] > 0:
+                i = song[Song.album_index] == temp[Song.album_index]
+            return a or i
+
+        # load the given path as a song to get meta data
+        temp = Song.fromPath( path );
+
+        p, n = os.path.split( path )
+        gp, _ = os.path.split( p )
+
+        # search grandparent for songs
+        songs = Library.instance().searchDirectory( gp, recursive=True )
+
+        sys.stdout.write(gp+"\n")
+        for song in songs:
+            if _match(song, temp):
+                Library.instance().update(song[Song.uid],**{Song.path:path})
+                break;
+        else:
+            print("failed to update/replace record.")
+
     def action_ingest(self,items):
         paths = [ self.view.realpath(item['name']) for item in items ]
         self.do_ingest.emit( paths )
@@ -152,7 +193,6 @@ class YueExplorerModel(ExplorerModel):
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
         self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
                                        for song in songs )
-        print(self.list_library_files)
 
     def action_open_directory(self):
         # open the cwd in explorer
@@ -163,7 +203,6 @@ class YueExplorerModel(ExplorerModel):
         songs = Library.instance().searchDirectory(self.view.pwd(),False)
         self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
                                        for song in songs )
-        print(self.list_library_files)
         self.tbl_file.update()
 
 
@@ -219,7 +258,6 @@ class ExplorerView(Tab):
 
         # delay creating the views until the tab is entered for the first
         # time, this slightly improves startup performance
-        print("on enter yue",self.ex_main.view)
         if (self.ex_main.view is None):
             view1 = LazySourceListView(self.source,self.source.root())
             view2 = LazySourceListView(self.source,self.source.root())
@@ -252,18 +290,14 @@ class ExplorerView(Tab):
 
         self.ex_main.chdir(path)
 
-        print("expview chdir",path)
-
     def onLazyLoadDirectory(self,model):
 
         job = LoadDirectoryJob(model)
         self.dashboard.startJob(job)
 
     def refresh(self):
-        print(self.ex_main.view.pwd())
         self.ex_main.refresh()
         if self.ex_secondary.isVisible():
-            print(self.ex_secondary.view.pwd())
             self.ex_secondary.refresh()
 
     def onToggleSecondaryView(self):
