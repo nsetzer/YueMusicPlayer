@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+from yue.core.settings import Settings
 #from enum import IntEnum
 
 import os, sys
@@ -33,7 +34,7 @@ from collections import namedtuple
 class QuickSelectView(Tab):
     """docstring for MainWindow"""
 
-    # signal to emit when a playlist a new playlist is requested.
+    # signal to emit when a new playlist is requested.
     create_playlist = pyqtSignal( str )
 
     def __init__(self,parent=None):
@@ -109,8 +110,6 @@ class QuickSelectView(Tab):
         self.cbox_sort.currentIndexChanged.connect(self.onSortIndexChanged)
         self.chbox_reverse.clicked.connect(self.onSortReverseClicked)
 
-
-
     def setData(self, data):
         self.data = data
         self.formatData()
@@ -120,12 +119,13 @@ class QuickSelectView(Tab):
         return (len(self.data)//self.col_count) + (1 if len(self.data)%self.col_count else 0)
 
     def generateData(self, songs=None):
+        m = Settings.instance()['quicklist_minimum_song_count']
         if songs is None:
-            songs = Library.instance().search(None)
+            songs = Library.instance().search("ban=0")
         text_transform = lambda x : [x,]
         if self.display_class == Song.genre:
             text_transform = lambda x : [ x.strip().title() for x in (x.replace(",",";").split(";")) if x.strip() ]
-        data = buildQuickList(songs,self.display_class,text_transform,minimum=2)
+        data = buildQuickList(songs,self.display_class,text_transform,minimum=m)
         self.setData(data)
 
     def setFavorites(self,kind,favorites):

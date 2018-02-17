@@ -128,6 +128,7 @@ class ClientRepl(object):
         self.actions["clear"] = self.exclear
         self.actions["clr"] = self.exclear
         self.actions["settings"] = self.exset
+        self.actions["quick"] = self.exquick
 
         self.helptopics['search'] = """ information on search format
 
@@ -203,6 +204,13 @@ class ClientRepl(object):
 
         for name, string in self.helptopics.items():
             repl.registerTopic(name, string)
+
+    def exquick(self, args):
+        """ set minimum song count for artists displayed in the quicklist
+        """
+        args = ReplArgumentParser(args)
+        args.assertMinArgs(1)
+        Settings.instance()['quicklist_minimum_song_count'] = int(args[0])
 
     def exclear(self, args):
         """ clear the error log """
@@ -1521,6 +1529,8 @@ def setSettingsDefaults():
     data["remote_history_push"]  = 0
     data["remote_history_pull"]  = 0
 
+    data["quicklist_minimum_song_count"]  = 2
+
     Settings.instance().setMulti(data, False)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -1547,7 +1557,7 @@ def main(version="", commitdate="", builddate=""):
                    help='use separate db for settings')
     args = parser.parse_args()
 
-    with LogView(trace=False, echo=True) as diag:
+    with LogView(trace=False, echo=False) as diag:
 
         start = time.time()
         sys.excepthook = handle_exception
