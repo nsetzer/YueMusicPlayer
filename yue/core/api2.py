@@ -139,13 +139,16 @@ class ApiClient(object):
     def library_update_songs(self, songs, callback=None):
         headers = {"Content-Type": "application/json"}
 
+        song_json = json.dumps(songs).encode("utf-8")
         r = self._put("api/library",
-            data=json.dumps(songs).encode("utf-8"),
+            data=song_json,
             headers=headers)
 
         if r.getcode() != 200:
             print(dir(r))
-            raise Exception("%s %s" % (r.getcode(), r.reason))
+            print(song_json)
+            print(str(r.reason).encode("utf-8"))
+            raise Exception("%s" % (r.getcode()))
 
     def library_create_song(self, song, callback=None):
 

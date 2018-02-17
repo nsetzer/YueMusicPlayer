@@ -191,6 +191,9 @@ class UploadJob(Job):
             self._iterprogress = float(i) / len(self.songs)
             self._ulprogress(1, 1)
 
+            if song[Song.blocked]:
+                continue
+
             _song = song.copy()
             if self.upload_filepath:
                 path = _song[Song.path]
@@ -693,9 +696,7 @@ class RemoteView(Tab):
             self.current_state = STATE_CONNECTING
 
         elif self.current_state == STATE_CONNECTED:
-            self.client = None
-            self.current_state = STATE_DISCONNECTED
-            self.onConnectComplete(True)
+            self.onConnectComplete(False)
 
     def onConnectComplete(self, success):
 
@@ -708,6 +709,7 @@ class RemoteView(Tab):
             self.cb_remote.setEnabled(True)
             self.current_state = STATE_CONNECTED
         else:
+            self.client = None
             self.btn_connect.setText("Connect")
             self.hbox_admin.setEnabled(False)
             self.edit_search.setEnabled(False)
