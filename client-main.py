@@ -1,4 +1,4 @@
-#!python $this
+#!C:\\Python36\\python.exe $this
 """
 changelog
 
@@ -7,8 +7,12 @@ changelog
     move to Qt 5.6
     use Visual Studio 2015 to build C libraries
 
+2018-02-17 1.3.0
+    move to python3.6
+    move to Qt 5.10
+
 """
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 __datetime__ = ""
 __builddate__ = ""
 import codecs,traceback,sys

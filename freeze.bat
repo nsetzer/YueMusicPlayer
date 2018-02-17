@@ -5,4 +5,4 @@
 
 cd %~dp0
 
-C:\Python35\Scripts\pyinstaller yue.spec
+C:\Python36\Scripts\pyinstaller yue.spec
