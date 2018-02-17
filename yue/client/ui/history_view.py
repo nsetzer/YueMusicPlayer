@@ -171,7 +171,9 @@ class HistoryView(Tab):
         try:
             hist = History.instance()
             rule = hist.grammar.ruleFromString(text)
-            limit = hist.grammar.getMetaValue("limit",None)
+            # set a default limit to improve performace for large data sets
+            # large is > 50,000 records
+            limit = hist.grammar.getMetaValue("limit", 500)
             offset = hist.grammar.getMetaValue("offset",0)
 
             action = self.cbox_action.currentData()
