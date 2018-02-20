@@ -53,11 +53,11 @@ class SQLStore(object):
         with self.conn:
             cursor = self.conn.cursor()
             if safe_backup:
-                cursor.execute('begin immediate')
+                cursor.execute('BEGIN IMMEDIATE')
             sys.stdout.write("saving database to `%s`\n"%backup_path)
             shutil.copyfile(self.filepath, backup_path)
             if safe_backup:
-                cursor.execute('begin')
+                cursor.execute('END')
             #cursor.execute('rollback')
 
     def path(self):
