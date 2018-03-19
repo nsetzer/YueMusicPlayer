@@ -793,7 +793,6 @@ class Library(object):
         with self.sqlstore.conn as conn:
             c = conn.cursor()
             for record in records:
-                print(record)
                 self._import_record(c, record)
 
     def import_record(self, record_lst, addToHistory=True):
@@ -843,10 +842,12 @@ class Library(object):
         playcount, frequency, last_played = item
         # only update frequency, last_played if the item is newer
         if date > last_played:
+            print("%s :: date %s -> %s; playcount %s -> %s" % (uid, last_played, date, playcount, playcount+1))
             d, freq = Song.calculateFrequency(playcount, frequency, last_played, date)
             c.execute("UPDATE songs SET playcount=playcount+1, frequency=?, last_played=? WHERE uid=?",
                       (freq, date, uid))
         else:
+            print("%s :: playcount %s -> %s" % (uid, playcount, playcount+1))
             c.execute("UPDATE songs SET playcount=playcount+1 WHERE uid=?", (uid,))
 
     def import_record_update(self, c, record):
