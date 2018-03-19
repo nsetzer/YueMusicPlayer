@@ -37,6 +37,7 @@ def remap_keys_r(song):
             del song[bkey]
     song["opm"] = 0
     song["file_size"] = 0
+    del song["banished"]
     return song
 
 class ErrorResponse(Exception):
@@ -178,7 +179,8 @@ class ApiClient(object):
 
     def download_song(self, fname, song_id, callback=None):
         urlpath = "api/library/%s/audio" % (song_id)
-        return self._retrieve(fname, urlpath, callback=callback)
+        query = {"mode": "raw"}
+        return self._retrieve(fname, urlpath, query, callback=callback)
 
     # --------------------------
 

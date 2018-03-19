@@ -894,44 +894,52 @@ class SourceGraphicsView(SourceListView):
 
     def getResource(self):
 
+        ii = self.index
         if self.index >= len(self.data):
-            self.index=0
+            self.index = 0
 
-        while self.index < len(self.data) and \
-              ( not self.validateIndex( self.index ) ) :
-            self.data.pop( self.index )
+        while self.index < len(self.data):
+
+            if self.validateIndex(self.index):
+                break
+
+            self.data.pop(self.index)
+
+            if self.index >= len(self.data):
+                self.index = 0
+        print(ii, self.index, self.validateIndex(self.index))
 
         if self.index < len(self.data):
             if self.validateIndex(self.index):
                 fname = self.data[self.index]
-                path = self.join( self.pwd(), fname )
-                #print(path)
+                path = self.join(self.pwd(), fname)
+                # print(path)
                 return path
 
         return None
 
-    def peakResource(self,n=1):
+    def peakResource(self, n=1):
 
         if len(self.data) == 0:
             return None
 
-        idx = (self.index + n)%len(self.data)
+        idx = (self.index + n) % len(self.data)
 
-        while idx < len(self.data) and \
-              ( not self.validateIndex( idx ) ) :
-            self.data.pop( idx )
+        while idx < len(self.data) and (
+                not self.validateIndex(idx)):
+            self.data.pop(idx)
 
         if idx < len(self.data):
             if self.validateIndex(idx):
                 fname = self.data[idx]
-                return self.join( self.pwd(), fname )
+                return self.join(self.pwd(), fname)
 
         return None
 
     def getResourceName(self):
 
         if self.index >= len(self.data):
-            self.index=0
+            self.index = 0
         if self.index < len(self.data):
             return self.data[self.index]
         return ""
@@ -956,9 +964,9 @@ class SourceGraphicsView(SourceListView):
     def validateIndex(self,index):
         """ return true if the indicated resource should be displayed """
         if len(self.data)==0 or index > len(self.data):
-            return False;
-
-        return self.indexExists(index) and self.validateResource( self.data[index] )
+            return False
+        return self.indexExists(index) and \
+            self.validateResource(self.data[index])
 
     def validateResource(self,path):
         """ should be reimplemented in a child class """

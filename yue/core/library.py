@@ -259,6 +259,31 @@ class Library(object):
             c.execute("DELETE FROM artists WHERE count=0")
             c.execute("DELETE FROM albums WHERE count=0")
 
+    def remove(self, uid):
+        return self.remove_many([uid, ])
+
+    def remove_many(self, uids):
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            for uid in uids:
+                self._remove_one(c, uid)
+            c.execute("DELETE FROM artists WHERE count=0")
+            c.execute("DELETE FROM albums WHERE count=0")
+
+    def _remove_one(self, c, uid):
+        c.execute("SELECT artist,album FROM songs WHERE uid=?", (uid,))
+
+        item = c.fetchone()
+        if item is None:
+            raise KeyError(key)
+        art_id, alb_id = item
+
+        c.execute("DELETE FROM songs WHERE uid=?", (uid,))
+
+        c.execute("UPDATE artists SET count=count-1 WHERE uid=?", (art_id,))
+        c.execute("UPDATE albums SET count=count-1 WHERE uid=?", (alb_id,))
+
     def incrementPlaycount(self, uid):
 
         with self.sqlstore.conn:
