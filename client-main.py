@@ -12,7 +12,7 @@ changelog
     move to Qt 5.10
 
 """
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 __datetime__ = ""
 __builddate__ = ""
 import codecs,traceback,sys
