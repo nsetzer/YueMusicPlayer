@@ -78,7 +78,6 @@ class TestLibrary(unittest.TestCase):
         albums = list(lib.getAlbums(art))
         self.assertEqual( len(albums), 1 )
 
-
     def test_library_findpath(self):
 
         if os.path.exists(DB_PATH):
@@ -130,4 +129,24 @@ class TestLibrary(unittest.TestCase):
 
         result = list(lib.searchPlaylist('current',"art = art", invert=True))
         self.assertEqual(result[0]['artist'] , 'artist3')
+
+    def test_library_delete(self):
+
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+
+        sqlstore = SQLStore( DB_PATH )
+        lib = Library( sqlstore )
+
+        uid = lib.insert(artist="artist1",
+                         album='album1',
+                         title='title1',
+                         path='/path')
+
+        lib.remove(uid)
+
+        with self.assertRaises(KeyError):
+            lib.songFromId(uid)
+
+
 

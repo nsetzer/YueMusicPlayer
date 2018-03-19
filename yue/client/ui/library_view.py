@@ -146,7 +146,18 @@ class LibraryTable(SongTable):
         # these songs must be addded to a set so that undo delete
         # can be implemented.
         # display a warning message before emiting any signal
-        sys.stderr.write("delete not implemented\n");
+        uids = [song[Song.uid] for song in songs]
+        print(uids)
+        text = "Are you sure you want to delete %d songs?" % len(uids)
+        msgbox = QMessageBox(QMessageBox.Question, "Delete Songs", text)
+        msgbox.addButton("Delete", QMessageBox.DestructiveRole)
+        msgbox.addButton(QMessageBox.Cancel)
+        msgbox.setDefaultButton(QMessageBox.Cancel);
+        result = msgbox.exec_()
+        print(result)
+        if result == 0:
+            Library.instance().remove_many(uids)
+        self.parent().refresh()
 
     def action_bannish(self, songs, state):
         """ bannish or restore a set of songs """
