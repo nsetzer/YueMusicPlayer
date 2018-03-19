@@ -6,7 +6,7 @@ import io
 
 # ------------------
 
-def generateUniquePath(view,path):
+def generateUniquePath(view, path):
     count=1
     dir,name = view.split(path)
     name,ext = view.splitext(path)
@@ -180,7 +180,7 @@ def source_copy_file(src_view,src_path,dst_view,dst_path,chunksize=32*1024,callb
     bytes_copied = 0;
 
     # 4 possible casses
-    #   assuming at least one ove open or get/put is supported
+    #   assuming at least one of open or get/put is supported
     # | src     | dst     | methods
     # | open    | open    | open -> open
     # | open    | get/put | open -> put
