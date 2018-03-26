@@ -885,8 +885,21 @@ class Library(object):
 
         col = record['column']
         val = record['value']
-        if col in Song.numberFields():
-            new_value = {col: int(val)}
-        else:
-            new_value = {col: val}
-        self._update_one(c, record['uid'], **new_value)
+        try:
+            if col == Song.blocked:
+                return;
+            elif col in Song.numberFields():
+                new_value = {col: int(val)}
+            else:
+                new_value = {col: val}
+
+            self._update_one(c, record['uid'], **new_value)
+
+            return
+        except Exception as e:
+            print(e)
+            pass
+
+        raise ValueError("unable to update column `%s` = %s" %
+            (col, val))
+
