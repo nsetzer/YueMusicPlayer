@@ -227,20 +227,38 @@ class ClientRepl(object):
         --search -s : select from songs matching query string
         --limit  -l : select N songs
         --preset -p : use a query preset (instead of --search)
+        --help   -h : print list of presets
         """
-        args = ReplArgumentParser(args, {'p': 'preset', 's': 'search', 'l': 'limit'})
+        args = ReplArgumentParser(args,
+            {'p': 'preset',
+            's': 'search',
+            'l': 'limit',
+            'h': 'help'})
+
+        default_idx = Settings.instance()["playlist_preset_default"]
+        presets = Settings.instance()["playlist_presets"]
+
+        if 'help' in args:
+            for idx, preset in enumerate(presets):
+                c = '*' if idx==default_idx else ' '
+                print("% 2d%s:%s" %(idx, c, preset))
+            return
 
         limit = 50
         if 'limit' in args:
             query = int(args['limit'])
 
         query = None
-        if 'search' in args:
+        if 'preset' in args:
+            query = presets[int(args['preset'])]
+        elif 'search' in args:
             query = str(args['search'])
+        else:
+            query = presets[default_idx]
 
-        songs = Library.instance().search(query, orderby=Song.random, limit=limit)
+        print(query, limit)
+        lst = Library.instance().createPlaylist(query, limit=limit)
         pl = PlaylistManager.instance().openCurrent()
-        lst = [song['uid'] for song in songs]
         pl.set(lst)
         self.client.plview.updateData()
 
