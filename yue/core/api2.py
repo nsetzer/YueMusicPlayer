@@ -11,6 +11,11 @@ import base64
 from .song import Song
 from .history import History
 
+from .sqlstore import SQLStore
+from .library import Library
+
+from .util import pathCorrectCase
+
 _key_map = {
     "uid": "ref_id",
     "playcount": "play_count",
@@ -39,6 +44,55 @@ def remap_keys_r(song):
     song["file_size"] = 0
     del song["banished"]
     return song
+
+def export_database(lib, query="", chroot=None):
+
+    src = None
+    dst = None
+    if chroot:
+        src, dst = chroot
+        src = src.lower().replace("\\", "/")
+
+
+    for song in lib.search(query):
+
+        if src is not None:
+            path = song[Song.path].replace("\\", "/")
+            if path.lower().startswith(src):
+                path = os.path.join(dst,path[len(src):].lstrip("/"))
+                path = pathCorrectCase(path)
+                song[Song.path] = path
+
+        # experimental hack to allow searching by genre
+        # all genrs are now formated as: 'foo;'
+        gen = song[Song.genre].replace(",", ";").strip()
+        if not gen:
+            gen  = [ ]
+        else:
+            gen = [g.strip().title() for g in gen.split(";")]
+        song[Song.genre] = ";" + ";".join([ g for g in gen if g]) + ";"
+
+
+        # ----
+
+        new_song = remap_keys(song)
+        new_song["ref_id"] = song[Song.uid]
+        new_song["banished"] = song[Song.blocked]
+
+        song["art_path"] = ""
+
+        #try:
+        #    temp_path = os.path.splitext(song[YueSong.path])[0] + ".jpg"
+        #    art_path = get_album_art(song[YueSong.path], temp_path)
+        #    new_song[Song.art_path] = art_path
+        #except ArtNotFound as e:
+        #    pass
+        #except Exception as e:
+        #    pass
+
+        yield new_song
+
+
 
 class ErrorResponse(Exception):
     """docstring for ErrorResponse"""
