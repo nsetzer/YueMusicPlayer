@@ -134,12 +134,12 @@ class PlaylistTable(LargeTable):
 class PlayListViewWidget(QWidget):
     """docstring for MainWindow"""
 
-    play_index = pyqtSignal( int )
+    play_index = pyqtSignal(int)
 
     # signal that is emitted whenever the playlist duration changes.
     # (total duration, time remaining)
     # time remaining includes current song
-    playlist_duration = pyqtSignal(int,int)
+    playlist_duration = pyqtSignal(int, int)
 
     playlist_changed = pyqtSignal()
 
@@ -159,7 +159,9 @@ class PlayListViewWidget(QWidget):
         #self.brush_current = self.tbl.addRowHighlightComplexRule( self.rowIsCurrentSong , self.color_current)
         self.tbl.addRowTextColorComplexRule(self.rowIsCurrentSong, self.color_current)
 
-        self.vbox.addWidget( self.tbl.container )
+        self.tbl.selection_changed.connect(self.update_playlist_duration)
+
+        self.vbox.addWidget(self.tbl.container)
 
         self.playlist = None
         self.current_index = -1
@@ -207,26 +209,41 @@ class PlayListViewWidget(QWidget):
         this must be called after making any changes to the playlist
         """
 
-        self.current_index = -1;
+        self.current_index = -1
 
         try:
             if self.playlist is not None:
-                self.current_index,_ = self.playlist.current()
+                self.current_index, _ = self.playlist.current()
         except IndexError:
             pass
 
-        duration = 0
-        remaining = 0
-        for idx,song in enumerate(self.tbl.data):
-            duration += song[Song.length]
-            if idx >= self.current_index:
-                remaining += song[Song.length]
-        #print(duration,remaining)
-        self.playlist_duration.emit(duration,remaining)
+        self.update_playlist_duration()
 
-        super(PlayListViewWidget,self).update()
+        super(PlayListViewWidget, self).update()
 
         self.tbl.update()
+
+    def update_playlist_duration(self):
+        """ calculate the playlist duration and remaining time
+        if multiple songs are selected calculate the duration of the
+        selected songs instead
+        """
+        items = self.tbl.getSelection()
+        duration = 0
+        remaining = 0
+
+        if len(items) == 1 or len(items) == len(self.tbl.data):
+
+            for idx, song in enumerate(self.tbl.data):
+                duration += song[Song.length]
+                if idx >= self.current_index:
+                    remaining += song[Song.length]
+
+        else:
+            for idx, song in enumerate(items):
+                duration += song[Song.length]
+
+        self.playlist_duration.emit(duration, remaining)
 
     def sizeHint(self):
         # the first number width, is the default initial size for this widget
