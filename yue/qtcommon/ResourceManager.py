@@ -23,6 +23,8 @@ class ResourceManager(object):
     MOVIE     = 0x007
     DOCUMENT  = 0x008
     CODE      = 0x009
+    BINARY    = 0x00A
+    EXE       = 0x00B
 
     LINK_DIRECTORY = 0x101
     LINK_FILE      = 0x102
@@ -33,6 +35,8 @@ class ResourceManager(object):
     LINK_MOVIE     = 0x107
     LINK_DOCUMENT  = 0x108
     LINK_CODE      = 0x109
+    LINK_BINARY    = 0x10A
+    LINK_EXE       = 0x10B
 
     @staticmethod
     def instance():
@@ -54,6 +58,8 @@ class ResourceManager(object):
         self.ext_document = [".doc",".docx",".xls",".xlsx",".pdf"]
         self.ext_code     = [".py", ".sh", ".pl", ".bat", ".xml", ".yml",
                              ".c", ".c++", ".cpp",".h", ".h++", ".hpp"]
+        self.ext_bin      = ['.bin']
+        self.ext_exe      = ['.exe']
 
         self.rebuildFileAssociations()
 
@@ -70,6 +76,8 @@ class ResourceManager(object):
         self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_video.png')
         self.resources[ResourceManager.DOCUMENT]  = QPixmap(':/img/app_document.png')
         self.resources[ResourceManager.CODE]      = QPixmap(':/img/app_code.png')
+        self.resources[ResourceManager.BINARY]    = QPixmap(':/img/app_code.png')
+        self.resources[ResourceManager.EXE]       = QPixmap(':/img/app_code.png')
 
         self.img_link = QPixmap(':/img/app_shortcut.png')
 
@@ -77,7 +85,8 @@ class ResourceManager(object):
                     ResourceManager.DIRECTORY,ResourceManager.ARCHIVE,
                     ResourceManager.IMAGE, ResourceManager.GIF,
                     ResourceManager.MOVIE, ResourceManager.DOCUMENT,
-                    ResourceManager.CODE]:
+                    ResourceManager.CODE, ResourceManager.BINARY,
+                    ResourceManager.EXE]:
             img = self.compose(self.resources[res],self.img_link)
             self.resources[ResourceManager.LINK|res] = img
 
@@ -106,7 +115,13 @@ class ResourceManager(object):
         for ext in self.ext_code:
             self.map_ext[ext] = ResourceManager.CODE
 
-    def setFileAssociation(self,kind,lst):
+        for ext in self.ext_bin:
+            self.map_ext[ext] = ResourceManager.BINARY
+
+        for ext in self.ext_exe:
+            self.map_ext[ext] = ResourceManager.EXE
+
+    def setFileAssociation(self, kind, lst):
         """
         update the file associations for a given kind
         lst should be the list of all extensions that map to kind
@@ -133,6 +148,10 @@ class ResourceManager(object):
             self.ext_document = set(lst)
         elif kind == ResourceManager.CODE:
             self.ext_code = set(lst)
+        elif kind == ResourceManager.BINARY:
+            self.ext_bin = set(lst)
+        elif kind == ResourceManager.EXE:
+            self.ext_exe = set(lst)
 
     def getFileAssociation(self,kind):
         if   kind == ResourceManager.FILE:
@@ -151,30 +170,34 @@ class ResourceManager(object):
             return list(self.ext_document)
         elif kind == ResourceManager.CODE:
             return list(self.ext_code)
+        elif kind == ResourceManager.BINARY:
+            return list(self.ext_bin)
+        elif kind == ResourceManager.EXE:
+            return list(self.ext_exe)
 
-    def compose(self,imga,imgb):
+    def compose(self, imga, imgb):
 
-        imgc = QImage(imga.size(), QImage.Format_ARGB32_Premultiplied);
-        painter = QPainter(imgc);
+        imgc = QImage(imga.size(), QImage.Format_ARGB32_Premultiplied)
+        painter = QPainter(imgc)
 
-        painter.setCompositionMode(QPainter.CompositionMode_Source);
-        painter.fillRect(imgc.rect(), Qt.transparent);
+        painter.setCompositionMode(QPainter.CompositionMode_Source)
+        painter.fillRect(imgc.rect(), Qt.transparent)
 
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver);
-        painter.drawPixmap(0, 0, imga);
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.drawPixmap(0, 0, imga)
 
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver);
-        painter.drawPixmap(0, 0, imgb);
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.drawPixmap(0, 0, imgb)
 
-        painter.end();
+        painter.end()
 
         return QPixmap.fromImage(imgc);
 
-    def get(self,kind):
+    def get(self, kind):
         """ return the icon associated with the given kind """
         return self.resources[kind]
 
-    def getExtType(self,ext):
+    def getExtType(self, ext):
         """ given an extension return the matching kind """
         return self.map_ext.get(ext.lower(),ResourceManager.FILE)
 
