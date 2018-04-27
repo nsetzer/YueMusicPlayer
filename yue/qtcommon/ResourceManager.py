@@ -76,8 +76,8 @@ class ResourceManager(object):
         self.resources[ResourceManager.MOVIE]     = QPixmap(':/img/app_video.png')
         self.resources[ResourceManager.DOCUMENT]  = QPixmap(':/img/app_document.png')
         self.resources[ResourceManager.CODE]      = QPixmap(':/img/app_code.png')
-        self.resources[ResourceManager.BINARY]    = QPixmap(':/img/app_code.png')
-        self.resources[ResourceManager.EXE]       = QPixmap(':/img/app_code.png')
+        self.resources[ResourceManager.BINARY]    = QPixmap(':/img/app_bin.png')
+        self.resources[ResourceManager.EXE]       = QPixmap(':/img/app_exe.png')
 
         self.img_link = QPixmap(':/img/app_shortcut.png')
 
