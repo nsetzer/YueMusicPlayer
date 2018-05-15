@@ -124,16 +124,17 @@ class Calculator(QWidget):
     def __init__(self, parent=None):
         super(Calculator, self).__init__(parent)
 
-        self.layout = QVBoxLayout(self);
-        self.layout.setContentsMargins(16,0,16,0)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(16, 0, 16, 0)
         self.input = LineEditHistory(self)
-        self.output = QLabel(self);
+        self.output = QLabel(self)
         self.output.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.output.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed);
+        self.output.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.output.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         self.input.accepted.connect(self.evaluate)
-        self.layout.addWidget(self.input);
-        self.layout.addWidget(self.output);
+        self.layout.addWidget(self.input)
+        self.layout.addWidget(self.output)
 
         self.globals = {"__builtins__":None}
         self.locals = {}
@@ -224,6 +225,8 @@ class MainWindow(QMainWindow):
         self.tabview.setCornerWidget(self.btn_newTab)
         self.tabview.tabCloseRequested.connect(self.onTabCloseRequest)
         self.tabview.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        self.tabview.tabBar().setUsesScrollButtons(True)
+        self.tabview.tabBar().setElideMode(Qt.ElideNone)
 
         self.pain_main.addWidget(self.tabview)
         self.pain_main.addWidget(self.dashboard)
