@@ -1,5 +1,6 @@
 
 import os
+import sys
 import ssl
 import urllib
 import urllib.request
@@ -7,6 +8,7 @@ import json
 from io import BytesIO
 import gzip
 import base64
+import argparse
 
 from .song import Song
 from .history import History
@@ -22,6 +24,7 @@ _key_map = {
     "lang": "language",
     "path": "file_path"
 }
+
 def remap_keys(song):
     """convert the old song format to the new format"""
     song = song.copy()
@@ -46,6 +49,10 @@ def remap_keys_r(song):
     return song
 
 def export_database(lib, query="", chroot=None):
+
+    if isinstance(lib, str):
+        sqlstore = SQLStore(lib)
+        lib = Library(sqlstore)
 
     src = None
     dst = None
@@ -92,8 +99,6 @@ def export_database(lib, query="", chroot=None):
 
         yield new_song
 
-
-
 class ErrorResponse(Exception):
     """docstring for ErrorResponse"""
     def __init__(self, error):
@@ -135,7 +140,12 @@ class ApiClient(object):
 
     def setApiKey(self, key):
         self.key = key
-        self.token = "APIKEY %s" % key
+        if not key.startswith("Basic"):
+            self.key   = key
+            self.token = "APIKEY %s" % key
+        else:
+            self.key = key[6:]
+            self.token = key
 
     def setApiUser(self, username):
         self.username = username
@@ -307,7 +317,17 @@ class ApiClient(object):
         s = '&'.join(["%s=%s" % (k, v) for k, v in params.items()])
         url = "%s/%s?%s" % (self.hostname, urlpath, s)
         request = urllib.request.Request(url, method='GET', headers=headers)
-        return urllib.request.urlopen(request, context=self.ctx)
+        # workaround for a Python3/OpenSSL error on OSX
+        # when not installed via homebrew
+        for i in range(5):
+            try:
+                return urllib.request.urlopen(request, context=self.ctx)
+            except Exception as e:
+                #urllib.error.URLError as e:
+                # <urlopen error [SSL: UNEXPECTED_RECORD] unexpected record (_ssl.c:833)>
+                print("%s" % e)
+        else:
+            raise Exception("unable to get...")
 
     def _delete(self, urlpath, params=None):
         params = params or dict()
@@ -500,3 +520,35 @@ class ApiClientWrapper(object):
 
         self.api.history_put(records, callback=callback)
 
+def main():
+
+    parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument('db', type=str,
+                        help='path to yue database')
+
+    parser.add_argument("--query", type=str, default = "",
+                        help="export files matching query")
+
+    parser.add_argument("--src", type=str, default = None,
+                        help="file path source root")
+
+    parser.add_argument("--dst", type=str, default = None,
+                        help="file path destination root")
+
+    args = parser.parse_args()
+
+    chroot = None
+    if args.src is not None and args.dst is not None:
+        chroot = (args.src, args.dst)
+
+    if not os.path.exists(args.db):
+        sys.stderr.write("cannot find: %s" % args.db)
+        sys.exit(1)
+
+    data = list(export_database(args.db, args.query, chroot=chroot))
+    json.dump(data, sys.stdout, sort_keys=True, indent=4)
+
+
+if __name__ == '__main__':
+    main()
