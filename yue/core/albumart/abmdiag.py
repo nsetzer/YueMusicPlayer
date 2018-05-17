@@ -3,7 +3,7 @@
 import os
 import sys
 import argparse
-
+import traceback
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -18,12 +18,51 @@ from ...qtcommon.LibraryTree import LibraryTree
 
 from .getart import img_search_google, img_retrieve
 
+class ImageSearchThread(QThread):
+    """docstring for SocketListen"""
 
+    newResults = pyqtSignal(list)
+    newImage = pyqtSignal(int, QImage)
+
+    def __init__(self, query, parent=None):
+        super(ImageSearchThread, self).__init__(parent)
+        self.query = query
+        self.alive = True
+        self.mutex = QMutex()
+
+    def run(self):
+
+        images = img_search_google(self.query)
+
+        print(images)
+
+        self.newResults.emit(images)
+
+        for index, image in enumerate(images):
+            with QMutexLocker(self.mutex):
+                if not self.alive:
+                    break
+            try:
+                data = img_retrieve(image['url'])
+
+                image = QImage.fromData(data)
+                self.newImage.emit(index, image)
+                print(index, image.width(), image.height())
+            except Exception as e:
+                print(e)
+
+    def kill(self):
+        with QMutexLocker(self.mutex):
+            self.alive = False
+
+    def join(self):
+        self.wait()
 
 class ArtLibraryTree(LibraryTree):
     """docstring for ArtLibraryTree"""
 
     search_rule = pyqtSignal(object)
+    selectedAlbum = pyqtSignal(str, str)
 
     def __init__(self, parent=None):
         super(ArtLibraryTree, self).__init__(parent)
@@ -36,6 +75,9 @@ class ArtLibraryTree(LibraryTree):
             rule = None
         else:
             rule = self.formatSelectionAsQueryString()
+
+            art, alb = self.formatSelectionAsTuple()
+            self.selectedAlbum.emit(art, alb)
 
         self.search_rule.emit(rule)
 
@@ -54,7 +96,6 @@ class FlowLayout(QLayout):
         self._margin = 4 if margin < 0 else margin
 
     def addItem(self, item):
-        print(item)
         self._itemList.append(item)
 
     def horizontalSpacing(self):
@@ -90,6 +131,19 @@ class FlowLayout(QLayout):
         if index >= 0 and index < len(self._itemList):
             return self._itemList[index]
         return None
+
+    def clear(self):
+
+        while self.count() > 0:
+            item = self.takeAt(0)
+
+            if item.widget():
+                self.removeWidget(item.widget())
+                item.widget().setParent(None)
+            if item.layout():
+                self.removeItem(item)
+                item.layout().setParent(None)
+        self.update()
 
     def minimumSize(self):
 
@@ -193,6 +247,7 @@ class MainWindow(QMainWindow):
         self.table = ArtLibraryTree(self)
         self.table.refreshData()
         self.table.search_rule.connect(self.onSearchRuleChanged)
+        self.table.selectedAlbum.connect(self.onSelectedAlbumChanged)
 
         self._defaultArt = self._makeDefaultAlbumArt()
         self.artview = AlbumArtView(self)
@@ -209,7 +264,9 @@ class MainWindow(QMainWindow):
         self.vbox_right = QVBoxLayout(self.pane_right)
         self.hbox_right = QHBoxLayout()
         self.edit_search = QLineEdit(self)
+        self.edit_search.setText("stone temple pilots core album art")
         self.btn_search = QPushButton("Search", self)
+        self.btn_search.clicked.connect(self.onSearchClicked)
         # self.flow = QVBoxLayout()
         self.flow = FlowLayout()
         self.scroll_widget = QWidget(self)
@@ -232,7 +289,8 @@ class MainWindow(QMainWindow):
             lbl = QLabel("A" * (i+1), self)
             self.flow.addWidget(lbl)
             lbl.show()
-        self.flow.update()
+
+        self.thread = None
 
     def _makeOptionsIcon(self):
         # no icon? make an icon!
@@ -281,15 +339,51 @@ class MainWindow(QMainWindow):
     def showOptionDialog(self):
         pass
 
+    def onSelectedAlbumChanged(self, artist, album):
+        query = "%s %s album art" % (artist, album)
+        self.edit_search.setText(query)
+
     def onSearchRuleChanged(self, rule):
 
         song = {}
         if rule is not None:
-            songs=Library.instance().search(rule, orderby=Song.album_index)
-            if len(songs)>0:
+            songs = Library.instance().search(rule, orderby=Song.album_index)
+            if len(songs) > 0:
                 song = songs[0]
 
         self.artview.setArt(song)
+
+    def onSearchClicked(self):
+
+        if self.thread is None or not self.thread.isRunning():
+            self.thread = ImageSearchThread(self.edit_search.text())
+            self.thread.finished.connect(self.onSearchThreadFinished)
+            self.thread.newResults.connect(self.onNewResults)
+            self.thread.newImage.connect(self.onNewImage)
+            self.thread.start()
+            self.btn_search.setText("Cancel")
+        else:
+            self.thread.kill()
+
+    def onSearchThreadFinished(self):
+        self.btn_search.setText("Search")
+
+    def onNewResults(self, images):
+
+        self.flow.clear()
+        self.art_widgets = []
+
+        for image in images:
+            artview = AlbumArtView(self)
+            artview.setFixedHeight(128)
+            artview.setFixedWidth(128)
+            artview.setDefaultArt(self._defaultArt)
+            self.art_widgets.append(artview)
+            self.flow.addWidget(artview)
+
+    def onNewImage(self, index, image):
+
+        self.art_widgets[index].setImage(image)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     for line in traceback.format_exception(exc_type, exc_value, exc_traceback):
@@ -309,11 +403,10 @@ def main():
 
     sqlstore = SQLStore(args.db)
     Library.init(sqlstore)
-    PlaylistManager.init( sqlstore )
+    PlaylistManager.init(sqlstore)
 
     window = MainWindow()
-
-    window.resize(768,512)
+    window.resize(768, 512)
     window.show()
 
     sys.excepthook = handle_exception

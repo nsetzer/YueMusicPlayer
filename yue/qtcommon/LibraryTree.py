@@ -136,10 +136,25 @@ class LibraryTree(LargeTree):
             return self.formatItemAsQueryString(self.data[i])
         raise IndexError("nothing selected")
 
-    def formatItemAsQueryRule(self,item):
-        if item==self.root:
+    def formatSelectionAsTuple(self):
+        temp = list(self.selection)
+        if len(temp) > 0:
+            item = self.data[temp[0]]
+            if item == self.root:
+                return (None, None)
+            elif item.parent is not None and item.parent == self.root:
+                return (str(item), None)
+            else:
+                text1 = str(item.parent)
+                text2 = str(item)
+                return (text1, text2)
+
+        return (None, None)
+
+    def formatItemAsQueryRule(self, item):
+        if item == self.root:
             return BlankSearchRule()
-        elif item.parent != None and item.parent == self.root:
+        elif item.parent is not None and item.parent == self.root:
             text = str(item)
             return PartialStringSearchRule(Song.artist,text)
         else:

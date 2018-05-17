@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 from urllib.parse import quote
 from urllib.request import urlopen, Request
+import ssl
 import codecs
 
 def img_search_google(query):
@@ -16,7 +17,12 @@ def img_search_google(query):
               Chrome/43.0.2357.134 Safari/537.36'''
              }
 
-    soup = BeautifulSoup(urlopen(Request(url, headers=header)), "html.parser")
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    response = urlopen(Request(url, headers=header), context=ctx)
+    soup = BeautifulSoup(response, "html.parser")
 
     g = soup.findAll("div", {"class": "rg_meta"})
     art_results = []
@@ -40,7 +46,11 @@ def img_retrieve(url):
                 Chrome/43.0.2357.134 Safari/537.36'''
                }
 
-    response = urlopen(Request(url, headers=header))
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    response = urlopen(Request(url, headers=header), context=ctx)
     return response.read()
 
 def main():
@@ -52,8 +62,6 @@ def main():
     url = images[0]['url']
     with open("test.jpg", "wb") as wb:
         wb.write(img_retrieve(url))
-
-
 
 if __name__ == '__main__':
     main()
