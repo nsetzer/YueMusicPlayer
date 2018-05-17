@@ -50,7 +50,7 @@ class LargeTableCore(QWidget):
     column_header_resize = pyqtSignal() #emit this when the headers are resized
     column_header_sort_request = pyqtSignal('int') # emit this, when a header needs to be sorted
     column_changed_signal = pyqtSignal() # general signal for changing the order of, hiding, adding columns
-    selection_changed = pyqtSignal() # general signal for wwhen the user changes the selection
+    selection_changed = pyqtSignal() # general signal for when the user changes the selection
 
     scroll_horizontal = pyqtSignal('int') # emit whenever you want to scroll the window left (neg) or right (pos)
 

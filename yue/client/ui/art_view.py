@@ -40,30 +40,50 @@ class AlbumArtView(QLabel):
         super(AlbumArtView, self).__init__(parent)
 
         self.dialog = None
+        self.default_pixmap = None
+
+        self.image = None
+        self.pixmap = None
+
+    def setDefaultArt(self, pixmap):
+        self.default_pixmap = pixmap
+
+        if self.pixmap is None:
+            self.pixmap = pixmap
+            super().setPixmap(self.pixmap)
+            self.setHidden(False)
 
     def setArt(self, song):
         try:
-            self.image = QImage.fromData(get_album_art_data(song))
-            self.pixmap = QPixmap.fromImage(self.image).scaled(
-                                self.size(),
-                                Qt.KeepAspectRatio,
-                                Qt.SmoothTransformation)
-            self.setPixmap(self.pixmap)
-            self.setHidden(False)
-        except ArtNotFound:
+            image = QImage.fromData(get_album_art_data(song))
+            self.setImage(image)
+        except (ArtNotFound, KeyError) as e:
             # surpress error not interesting
             #sys.stderr.write("%s\n"%e)
-            self.setHidden(True)
+            if self.default_pixmap is None:
+                self.setHidden(True)
+            else:
+                self.setPixmap(self.default_pixmap)
+
+    def setImage(self, image):
+        self.image = image
+        self.pixmap = QPixmap.fromImage(image).scaled(
+            self.size(),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation)
+        super().setPixmap(self.pixmap)
+        self.setHidden(False)
 
     def mouseReleaseEvent(self,event):
 
-        if self.dialog is None:
-            self.dialog = AlbumArtDialog(self)
-            #self.dialog.finished.connect(self.onDialogClosed)
-            #self.dialog.setAttribute(Qt.WA_DeleteOnClose);
-        self.dialog.setImage( self.image )
-        self.dialog.resize(512,512)
-        self.dialog.show()
+        if self.image is not None:
+            if self.dialog is None:
+                self.dialog = AlbumArtDialog(self)
+                #self.dialog.finished.connect(self.onDialogClosed)
+                #self.dialog.setAttribute(Qt.WA_DeleteOnClose);
+            self.dialog.setImage( self.image )
+            self.dialog.resize(512,512)
+            self.dialog.show()
 
     def onDialogClosed(self):
 

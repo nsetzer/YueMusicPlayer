@@ -185,6 +185,34 @@ class LibraryTree(LargeTree):
         self.setData( self.root.toList() )
         self.update();
 
+    def isAlbumSelected(self):
+
+        temp = list(self.selection)
+        if len(temp) == 0:
+            return False
+
+        item = self.data[temp[0]]
+
+        if item==self.root:
+            return False
+        elif item.parent != None and item.parent == self.root:
+            return False
+        return True
+
+    def isArtistSelected(self):
+
+        temp = list(self.selection)
+        if len(temp) == 0:
+            return False
+
+        item = self.data[temp[0]]
+
+        if item==self.root:
+            return False
+        elif item.parent != None and item.parent == self.root:
+            return True
+        return False
+
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
