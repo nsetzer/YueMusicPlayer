@@ -1,21 +1,20 @@
-import requests
 import json
 from bs4 import BeautifulSoup
 
 from urllib.parse import quote
 from urllib.request import urlopen, Request
 import ssl
-import codecs
 
 def img_search_google(query):
 
-    url = "https://www.google.com/search?q=" + \
-          quote(query.encode('utf-8')) + "&source=lnms&tbm=isch"
-    header = {'User-Agent':
-              '''Mozilla/5.0 (Windows NT 6.1; WOW64)
-              AppleWebKit/537.36 (KHTML,like Gecko)
-              Chrome/43.0.2357.134 Safari/537.36'''
-             }
+    enc = quote(query.encode('utf-8'))
+    url = "https://www.google.com/search?q=%s&source=lnms&tbm=isch" % enc
+
+    header = {
+        'User-Agent': "Mozilla/5.0 (Windows NT 6.1; WOW64)" +
+                      " AppleWebKit/537.36 (KHTML,like Gecko)" +
+                      " Chrome/43.0.2357.134 Safari/537.36"
+    }
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -28,23 +27,23 @@ def img_search_google(query):
     art_results = []
     for i, albumart_div in enumerate(g):
 
-      dat = json.loads(albumart_div.text)
+        dat = json.loads(albumart_div.text)
 
-      art_results.append({
-        "width": dat['ow'],
-        "height": dat['oh'],
-        "url": dat['ou'],
-      })
+        art_results.append({
+          "width": dat['ow'],
+          "height": dat['oh'],
+          "url": dat['ou'],
+        })
 
     return art_results
 
 def img_retrieve(url):
 
-    header = {'User-Agent':
-                '''Mozilla/5.0 (Windows NT 6.1; WOW64)
-                AppleWebKit/537.36 (KHTML,like Gecko)
-                Chrome/43.0.2357.134 Safari/537.36'''
-               }
+    header = {
+        'User-Agent': "Mozilla/5.0 (Windows NT 6.1; WOW64)" +
+                      " AppleWebKit/537.36 (KHTML,like Gecko)" +
+                      " Chrome/43.0.2357.134 Safari/537.36"
+    }
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
