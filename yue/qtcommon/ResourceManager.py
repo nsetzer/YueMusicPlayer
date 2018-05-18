@@ -153,10 +153,10 @@ class ResourceManager(object):
         elif kind == ResourceManager.EXE:
             self.ext_exe = set(lst)
 
-    def getFileAssociation(self,kind):
-        if   kind == ResourceManager.FILE:
+    def getFileAssociation(self, kind):
+        if kind == ResourceManager.FILE:
             raise Exception("Not Supported")
-        elif   kind == ResourceManager.SONG:
+        elif kind == ResourceManager.SONG:
             return list(Song.supportedExtensions())
         elif kind == ResourceManager.ARCHIVE:
             return list(self.ext_archive)

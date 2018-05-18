@@ -55,7 +55,6 @@ class EditLinkDialog(QDialog):
         target = view.readlink(path)
         self.edit_target = QLineEdit(target,self)
 
-
         self.grid.addWidget(QLabel("Link Name:"),0,0)
         self.grid.addWidget(QLabel(view.split(path)[1]),0,1)
         self.grid.addWidget(QLabel("Target:"),1,0)
@@ -101,9 +100,10 @@ class ExplorModel(ExplorerModel):
     # ExplorDisplay, to prevent confusion
     # a Display is a model/view into single directory
 
+    openAsTab = pyqtSignal(object, str)  # view, path
+    openRemote = pyqtSignal(object, str)  # model, path
 
-    openAsTab = pyqtSignal(object,str)  # view, path
-    openRemote = pyqtSignal(object,str) # model, path
+    selectionChanged = pyqtSignal(object, list)
 
     def _getNewFileTable(self,view):
         tbl = ExplorerFileTable(view,self)
@@ -114,6 +114,8 @@ class ExplorModel(ExplorerModel):
         tbl.renamePaths.connect(self.action_rename)
         tbl.createFile.connect(self.action_touch)
         tbl.createDirectory.connect(self.action_mkdir)
+        tbl.selection_changed.connect(lambda:
+            self.selectionChanged.emit(self.view, tbl.getSelection()))
 
         return tbl
 

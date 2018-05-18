@@ -20,6 +20,8 @@ from yue.core.explorer.ftpsource import parseFTPurl, FTPSource
 from yue.core.explorer.zipfs import ZipFS,isArchiveFile
 from yue.core.yml import YmlSettings
 
+from yue.client.ui.art_view import AlbumArtDialog
+
 from yue.qtcommon.explorer.jobs import Job, JobRunner, \
     RenameJob, CopyJob, MoveJob, DeleteJob, LoadDirectoryJob, Dashboard, JobWidget
 
@@ -33,6 +35,8 @@ from yue.explor.dialog.settings import SettingsDialog
 from yue.explor.dialog.imgview import ImageDisplayDialog
 from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
 from yue.explor.util import proc_exec
+
+from yue.qtcommon.ResourceManager import ResourceManager
 """"
 FTP protocol
     server:port
@@ -85,6 +89,78 @@ copy paste a directory within  a directory fails...
 """
 
 
+class ImageView(QLabel):
+    """docstring for AlbumArtView"""
+    _dialog = None
+
+    def __init__(self, parent=None):
+        super(ImageView, self).__init__(parent)
+
+        self.dialog = None
+
+        self.image = None
+        self.pixmap = None
+
+        self.setFixedHeight(128)
+        self.setHidden(True)
+
+        self.image_extensions = [".png", ".jpg"]
+
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+    def setPath(self, path):
+
+        if path is None:
+            self.setHidden(True)
+            return
+
+        try:
+            _, ext = os.path.splitext(path)
+            if ext.lower() in self.image_extensions:
+                image = QImage(path)
+                self.setImage(image)
+                return
+        except Exception as e:
+            print("failed to set image: %s" % e)
+        self.setHidden(True)
+
+    def setImage(self, image):
+        self.image = image
+        if image.width() > self.width() or \
+           image.height() > self.height():
+            self.pixmap = QPixmap.fromImage(image).scaled(
+                self.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation)
+        else:
+            self.pixmap = QPixmap.fromImage(image)
+        super().setPixmap(self.pixmap)
+        self.setHidden(False)
+
+    def mouseReleaseEvent(self, event):
+
+        if event.button() & Qt.LeftButton:
+            event.accept()
+            if self.image is not None:
+                if ImageView._dialog is None:
+                    ImageView._dialog = AlbumArtDialog(self)
+                    ImageView._dialog.finished.connect(self.onDialogClosed)
+                    ImageView._dialog.setAttribute(Qt.WA_DeleteOnClose)
+                ImageView._dialog.setImage(self.image)
+                ImageView._dialog.resize(512, 512)
+                ImageView._dialog.show()
+        else:
+            event.ignore()
+
+    def onDialogClosed(self):
+
+        # TODO dont do this on mac ?!?!?!
+        #if ImageView._dialog:
+        #    ImageView._dialog.setParent(None)
+        #    ImageView._dialog = None
+        pass
+
 class NewRemoteTabJob(Job):
     newSource = pyqtSignal(object)
 
@@ -93,13 +169,13 @@ class NewRemoteTabJob(Job):
         self.mainwindow = mainwindow
         self.cfg = {}
 
-    def setConfig(self,cfg):
+    def setConfig(self, cfg):
         self.cfg = cfg
 
     def doTask(self):
         self.doConnect(self.cfg)
 
-    def doConnect(self,cfg):
+    def doConnect(self, cfg):
         #except ConnectionRefusedErr
         src = SSHClientSource.connect_v2(cfg['hostname'],cfg['port'],
                 cfg['username'],cfg['password'],cfg['private_key'])
@@ -201,7 +277,7 @@ class MainWindow(QMainWindow):
 
         # controller maintains state between tabs
         self.source = DirectorySource()
-        self.controller = ExplorController( self )
+        self.controller = ExplorController(self)
         self.controller.forceReload.connect(self.refresh)
         self.controller.submitJob.connect(self.dashboard.startJob)
         self.controller.viewImage.connect(self.onViewImage)
@@ -212,19 +288,21 @@ class MainWindow(QMainWindow):
 
         self.quickview = QuickAccessTable(self)
         self.quickview.changeDirectory.connect(self.onChangeDirectory)
-        self.quickview.changeDirectoryRight.connect(self.onChangeDirectoryRight)
+        self.quickview.changeDirectoryRight.connect(
+            self.onChangeDirectoryRight)
 
         self.wfctrl = WatchFileController(self.source)
         self.wfctrl.watchersChanged.connect(self.onWatchersChanged)
 
-        self.wfview = WatchFileTable(self.wfctrl,self)
+        self.wfview = WatchFileTable(self.wfctrl, self)
         self.wfview.changeDirectory.connect(self.onChangeDirectory)
 
-        self.tabview = TabWidget( self )
+        self.tabview = TabWidget(self)
         self.tabview.tabBar().setMovable(True)
         self.tabview.setCornerWidget(self.btn_newTab)
         self.tabview.tabCloseRequested.connect(self.onTabCloseRequest)
-        self.tabview.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        self.tabview.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tabview.tabBar().setUsesScrollButtons(True)
         self.tabview.tabBar().setElideMode(Qt.ElideNone)
 
@@ -233,11 +311,16 @@ class MainWindow(QMainWindow):
 
         self.calculator = Calculator(self)
 
+        self.image_view = ImageView(self)
+        self.image_view.image_extensions = ResourceManager.instance(). \
+            getFileAssociation(ResourceManager.IMAGE)
+
         self.wview = QWidget()
         self.vbox_view = QVBoxLayout(self.wview)
-        self.vbox_view.setContentsMargins(0,0,0,0)
+        self.vbox_view.setContentsMargins(0, 0, 0, 0)
         self.vbox_view.addWidget(self.quickview.container)
         self.vbox_view.addWidget(self.wfview.container)
+        self.vbox_view.addWidget(self.image_view)
         self.vbox_view.addWidget(self.calculator)
         self.splitter.addWidget(self.wview)
         self.splitter.addWidget(self.pain_main)
@@ -245,9 +328,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.splitter)
 
         # create the first tab
-        self.newTab(defaultpath,defaultpath_r)
+        self.newTab(defaultpath, defaultpath_r)
 
-        self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape),self)
+        self.xcut_refresh = QShortcut(QKeySequence(Qt.Key_Escape), self)
         self.xcut_refresh.activated.connect(self.refresh)
 
         self.imgview_dialog = None
@@ -289,18 +372,17 @@ class MainWindow(QMainWindow):
 
         self.file_menu.addSeparator()
 
-
         act = self.file_menu.addAction("Sync")
         act.triggered.connect(self.onSyncRemoteFiles)
 
         act = self.file_menu.addAction("Clear Watch List")
         act.triggered.connect(self.onWatchersDelete)
 
-        #act = menu.addAction("Open SSH+FTP")
-        #act.triggered.connect(self.newSshTabTest)
+        # act = menu.addAction("Open SSH+FTP")
+        # act.triggered.connect(self.newSshTabTest)
 
-        #act = menu.addAction("Open AWS")
-        #act.triggered.connect(self.newSshTabTest)
+        # act = menu.addAction("Open AWS")
+        # act.triggered.connect(self.newSshTabTest)
 
         self.file_menu.addAction("Open SMB")
         self.file_menu.addSeparator()
@@ -310,16 +392,16 @@ class MainWindow(QMainWindow):
         # sip version, qt version, python version, application version
         about_text = ""
         v = sys.version_info
-        about_text += "Version: %s\n"%(self.version)
-        about_text += "Commit Date:%s\n"%(self.versiondate)
-        about_text += "Build Date:%s\n"%(self.builddate)
-        about_text += "Python Version: %d.%d.%d-%s\n"%(\
-            v.major,v.minor,v.micro,v.releaselevel)
-        about_text += "Qt Version: %s\n"%QT_VERSION_STR
-        about_text += "sip Version: %s\n"%SIP_VERSION_STR
-        about_text += "PyQt Version: %s\n"%PYQT_VERSION_STR
-        self.help_menu.addAction("About",\
-            lambda:QMessageBox.about(self,"Explor",about_text))
+        about_text += "Version: %s\n" % (self.version)
+        about_text += "Commit Date:%s\n" % (self.versiondate)
+        about_text += "Build Date:%s\n" % (self.builddate)
+        about_text += "Python Version: %d.%d.%d-%s\n" % (
+            v.major, v.minor, v.micro, v.releaselevel)
+        about_text += "Qt Version: %s\n" % QT_VERSION_STR
+        about_text += "sip Version: %s\n" % SIP_VERSION_STR
+        about_text += "PyQt Version: %s\n" % PYQT_VERSION_STR
+        self.help_menu.addAction("About",
+            lambda: QMessageBox.about(self, "Explor", about_text))
 
     def onAboutToShowFileMenu(self):
         self.invalidate_vagrant_menu = True
@@ -381,13 +463,13 @@ class MainWindow(QMainWindow):
 
             view.chdir(p['path'])
 
-    def newVagrantTab(self,vagrant_dir):
+    def newVagrantTab(self, vagrant_dir):
 
         job = NewVagrantTabJob(self,vagrant_dir)
         job.newSource.connect(self.newTabFromSource)
         self.dashboard.startJob(job)
 
-    def newTabFromSource(self,src):
+    def newTabFromSource(self, src):
 
         self.sources.add(src);
         self.onUpdateSources()
@@ -422,7 +504,7 @@ class MainWindow(QMainWindow):
         job.setConfig(cfg)
         self.dashboard.startJob(job)
 
-    def newArchiveTab(self,view,path):
+    def newArchiveTab(self, view, path):
 
         name=view.split(path)[1]
         #zfs = ZipFS(view.open(path,"rb"),name)
@@ -430,7 +512,7 @@ class MainWindow(QMainWindow):
         view = self._newTab(zfs,':/img/app_archive.png')
         view.chdir("/")
 
-    def newTab(self,defaultpath="~",defaultpath_r=""):
+    def newTab(self, defaultpath="~", defaultpath_r=""):
         view = self._newTab(self.source)
 
         view.ex_main.clearHistory()
@@ -444,16 +526,15 @@ class MainWindow(QMainWindow):
         else:
             view.ex_secondary.chdir(view.pwd_r())
 
-
-
-    def _newTab(self,source,icon_path=':/img/app_folder.png'):
-        view = ExplorerView(source,self.controller,self)
+    def _newTab(self, source, icon_path=':/img/app_folder.png'):
+        view = ExplorerView(source, self.controller, self)
 
         view.primaryDirectoryChanged.connect(lambda path: self.onDirectoryChanged(view,path))
         view.submitJob.connect(self.dashboard.startJob)
         view.openAsTab.connect(self.newArchiveTab)
         view.openRemote.connect(lambda model,path :self.onOpenRemote(view,model,path))
         view.directoryInfo.connect(self.onUpdateStatus)
+        view.selectionChanged.connect(self.onSelectionChanged)
 
         self.tabview.addTab(view,QIcon(icon_path),"temp name")
 
@@ -504,7 +585,7 @@ class MainWindow(QMainWindow):
         if cw > lw*2:
             self.splitter.setSizes([lw,cw-lw])
 
-    def onDirectoryChanged(self,view,path):
+    def onDirectoryChanged(self, view, path):
 
         index = self.tabview.indexOf(view)
         _,name = view.source.split(path)
@@ -513,7 +594,7 @@ class MainWindow(QMainWindow):
         else:
             self.tabview.setTabText(index,"root")
 
-    def onChangeDirectory(self,path):
+    def onChangeDirectory(self, path):
         w = self.tabview.currentWidget()
         if not isinstance(w.source,DirectorySource):
             # open a new tab to display the given path
@@ -522,7 +603,7 @@ class MainWindow(QMainWindow):
         else:
             w.chdir(path)
 
-    def onChangeDirectoryRight(self,path):
+    def onChangeDirectoryRight(self, path):
         w = self.tabview.currentWidget()
         if not isinstance(w.source,DirectorySource):
             # open a new tab to display the given path
@@ -585,7 +666,7 @@ class MainWindow(QMainWindow):
 
         self.onUpdateSources()
 
-    def onTabCloseRequest(self,idx):
+    def onTabCloseRequest(self, idx):
 
         if 0 <= idx < self.tabview.count():
             self.tabview.removeTab(idx)
@@ -597,7 +678,7 @@ class MainWindow(QMainWindow):
         w = self.tabview.currentWidget()
         w.refresh()
 
-    def onShowSecondaryWindow(self,bShow):
+    def onShowSecondaryWindow(self, bShow):
 
         w = self.tabview.currentWidget()
         if bShow:
@@ -609,7 +690,7 @@ class MainWindow(QMainWindow):
             w.ex_main.showSplitButton(True)
             w.ex_secondary.showSplitButton(False)
 
-    def onUpdateStatus(self,onLeft,nFiles):
+    def onUpdateStatus(self, onLeft, nFiles):
         if onLeft:
             self.sbar_lbl_p_nfiles.setText("nfiles: %d"%nFiles)
         else:
@@ -621,7 +702,7 @@ class MainWindow(QMainWindow):
         else:
             self.sbar_lbl_nsources.setText("%d sources"%len(self.sources))
 
-    def onViewImage(self,view,path):
+    def onViewImage(self, view, path):
         """
         Open a dialog to display an image given by path for the source
         """
@@ -658,7 +739,7 @@ class MainWindow(QMainWindow):
 
         self.wfctrl.addFile(ftemp,view,path)
 
-    def onWatchersChanged(self,nfiles):
+    def onWatchersChanged(self, nfiles):
 
         self.sbar_lbl_w_nfiles.setText("watching: %d"%nfiles)
 
@@ -692,6 +773,13 @@ class MainWindow(QMainWindow):
         print("Closing Application\n")
 
         super(MainWindow,self).closeEvent(event)
+
+    def onSelectionChanged(self, src, paths):
+
+        if len(paths) == 1:
+            self.image_view.setPath(paths[0])
+        else:
+            self.image_view.setPath(None)
 
 class Pane(QWidget):
     """docstring for Pane"""

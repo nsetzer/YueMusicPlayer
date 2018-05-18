@@ -25,6 +25,8 @@ class ExplorerView(Tab):
 
     directoryInfo = pyqtSignal(bool,int) # signature for now...
 
+    selectionChanged = pyqtSignal(object, list)
+
     def __init__(self, source, controller, parent=None):
         super(ExplorerView, self).__init__(parent)
 
@@ -34,6 +36,9 @@ class ExplorerView(Tab):
         self.ex_main = ExplorModel( None, self.controller, self )
         self.ex_secondary = ExplorModel( None, self.controller, self )
         self.ex_secondary.btn_split.setIcon(QIcon(":/img/app_join.png"))
+
+        self.ex_main.selectionChanged.connect(self.onSelectionChanged)
+        self.ex_secondary.selectionChanged.connect(self.onSelectionChanged)
 
         self.ex_main.toggleSecondaryView.connect(self.onToggleSecondaryView)
         self.ex_secondary.toggleSecondaryView.connect(self.onToggleSecondaryView)
@@ -149,3 +154,9 @@ class ExplorerView(Tab):
         # view can be None...
         #if self.ex_main.view.source is not self.ex_secondary.view.source:
         pass
+
+    def onSelectionChanged(self, src, items):
+        paths = []
+        for item in items:
+            paths.append(src.join(src.pwd(), item['name']))
+        self.selectionChanged.emit(src, paths)
