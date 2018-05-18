@@ -94,6 +94,8 @@ class AlbumArtView(QLabel):
 
     def onDialogClosed(self):
 
-        if AlbumArtView._dialog:
-            AlbumArtView._dialog.setParent(None)
-            AlbumArtView._dialog = None
+        # this causes osx to crash
+        #if AlbumArtView._dialog:
+        #    AlbumArtView._dialog.setParent(None)
+        #    AlbumArtView._dialog = None
+        pass
