@@ -36,6 +36,8 @@ class AlbumArtDialog(QDialog):
 
 class AlbumArtView(QLabel):
     """docstring for AlbumArtView"""
+    _dialog = None
+
     def __init__(self, parent=None):
         super(AlbumArtView, self).__init__(parent)
 
@@ -49,6 +51,7 @@ class AlbumArtView(QLabel):
         self.default_pixmap = pixmap
 
         if self.pixmap is None:
+            self.image = pixmap.toImage()
             self.pixmap = pixmap
             super().setPixmap(self.pixmap)
             self.setHidden(False)
@@ -76,18 +79,21 @@ class AlbumArtView(QLabel):
 
     def mouseReleaseEvent(self,event):
 
-        if self.image is not None:
-            if self.dialog is None:
-                self.dialog = AlbumArtDialog(self)
-                #self.dialog.finished.connect(self.onDialogClosed)
-                #self.dialog.setAttribute(Qt.WA_DeleteOnClose);
-            self.dialog.setImage( self.image )
-            self.dialog.resize(512,512)
-            self.dialog.show()
+        if event.button()&Qt.LeftButton:
+            event.accept()
+            if self.image is not None:
+                if AlbumArtView._dialog is None:
+                    AlbumArtView._dialog = AlbumArtDialog(self)
+                    AlbumArtView._dialog.finished.connect(self.onDialogClosed)
+                    AlbumArtView._dialog.setAttribute(Qt.WA_DeleteOnClose);
+                AlbumArtView._dialog.setImage( self.image )
+                AlbumArtView._dialog.resize(512,512)
+                AlbumArtView._dialog.show()
+        else:
+            event.ignore()
 
     def onDialogClosed(self):
 
-        #if self.dialog:
-        #    self.dialog.setParent(None)
-        #   s self.dialog = None
-        pass
+        if AlbumArtView._dialog:
+            AlbumArtView._dialog.setParent(None)
+            AlbumArtView._dialog = None

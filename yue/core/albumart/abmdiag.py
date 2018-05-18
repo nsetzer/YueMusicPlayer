@@ -58,6 +58,58 @@ class ImageSearchThread(QThread):
     def join(self):
         self.wait()
 
+class ImageView(QWidget):
+    """docstring for ImageView"""
+
+    saveImage = pyqtSignal(QImage)
+    saveAlbumArt = pyqtSignal(QImage)
+
+    def __init__(self, parent = None):
+        super(ImageView, self).__init__(parent)
+
+        self.vbox = QVBoxLayout(self)
+        self.artview = AlbumArtView(self)
+        self.artview.setFixedHeight(128)
+        self.artview.setFixedWidth(128)
+        self.lbl = QLabel("abc", self)
+
+        self.vbox.addWidget(self.artview)
+        self.vbox.addWidget(self.lbl)
+
+        self.image = None
+
+    def setImage(self, image):
+        self.image = image
+        self.artview.setImage(image)
+        self.lbl.setText("%d x %d" % (self.image.width(), self.image.height()))
+
+    def setPixmap(self, pixmap):
+        self.setImage(pixmap.toImage())
+
+    def minimumSize(self):
+
+        asize = QSize(self.artview.width(), self.artview.height())
+        bsize = QSize(0, self.lbl.height())
+        size = asize + bsize
+
+        return size
+
+    def sizeHint(self):
+
+        return self.minimumSize()
+
+    def mouseReleaseEvent(self,event):
+
+        if event.button()&Qt.RightButton:
+
+            menu = QMenu(self)
+            menu.addAction("save image",
+                lambda: self.saveImage.emit(self.image))
+            menu.addAction("save album art",
+                lambda: self.saveAlbumArt.emit(self.image))
+
+            menu.exec_(event.globalPos())
+
 class ArtLibraryTree(LibraryTree):
     """docstring for ArtLibraryTree"""
 
@@ -286,11 +338,15 @@ class MainWindow(QMainWindow):
         self.splitter.addWidget( self.pane_right )
 
         for i in range(14):
-            lbl = QLabel("A" * (i+1), self)
-            self.flow.addWidget(lbl)
-            lbl.show()
+            wid = ImageView(self)
+            wid.saveImage.connect(self.onSaveImage)
+            wid.saveAlbumArt.connect(self.onSaveAlbumArt)
+            wid.setPixmap(self._defaultArt)
+            self.flow.addWidget(wid)
 
         self.thread = None
+
+        self.album_directories = None
 
     def _makeOptionsIcon(self):
         # no icon? make an icon!
@@ -339,6 +395,23 @@ class MainWindow(QMainWindow):
     def showOptionDialog(self):
         pass
 
+    def setActiveSongs(self, songs):
+
+        dirs = []
+        for song in songs:
+            path = song[Song.path]
+            dir, _ = os.path.split(path)
+            for d in dirs:
+                if os.path.samefile(d, dir):
+                    break;
+            else:
+                dirs.append(dir)
+
+        for dir in dirs:
+            print(dir)
+
+        self.album_directories = dirs
+
     def onSelectedAlbumChanged(self, artist, album):
         query = "%s %s album art" % (artist, album)
         self.edit_search.setText(query)
@@ -348,6 +421,7 @@ class MainWindow(QMainWindow):
         song = {}
         if rule is not None:
             songs = Library.instance().search(rule, orderby=Song.album_index)
+            self.setActiveSongs(songs)
             if len(songs) > 0:
                 song = songs[0]
 
@@ -374,12 +448,37 @@ class MainWindow(QMainWindow):
         self.art_widgets = []
 
         for image in images:
-            artview = AlbumArtView(self)
-            artview.setFixedHeight(128)
-            artview.setFixedWidth(128)
-            artview.setDefaultArt(self._defaultArt)
+            artview = ImageView(self)
+            artview.artview.setDefaultArt(self._defaultArt)
+            artview.saveImage.connect(self.onSaveImage)
+            artview.saveAlbumArt.connect(self.onSaveAlbumArt)
             self.art_widgets.append(artview)
             self.flow.addWidget(artview)
+
+    def onSaveImage(self, image):
+
+        try:
+            path = os.path.join(os.getcwd(), "cover.png")
+            path, filter = QFileDialog.getSaveFileName(self, "caption",
+                path, "Images (*.png *.jpg);;")
+
+            if path:
+                image.save(path)
+        except Exception as e:
+            QMessageBox.warning(self, "Warning", "%s" % e)
+
+    def onSaveAlbumArt(self, image):
+
+        try:
+            for dir in self.album_directories:
+                path = os.path.join(dir, "cover.png")
+                path, filter = QFileDialog.getSaveFileName(self, "caption",
+                    path, "Images (*.png *.jpg);;")
+                if path:
+                    image.save(path)
+            self.artview.setImage(image)
+        except Exception as e:
+            QMessageBox.warning(self, "Warning", "%s" % e)
 
     def onNewImage(self, index, image):
 
