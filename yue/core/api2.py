@@ -51,7 +51,7 @@ def remap_keys_r(song):
     return song
 
 
-def export_database(lib, query="", chroot=None, cache_path=None):
+def export_database(lib, query="", chroot=None, cache_path=None, find_art=False):
 
     if isinstance(lib, str):
         sqlstore = SQLStore(lib)
@@ -97,17 +97,18 @@ def export_database(lib, query="", chroot=None, cache_path=None):
         song["art_path"] = ""
 
         try:
-            key = str(song[Song.uid])
-            if key in cache:
-                art_path = cache[key];
-            else:
-                cache[key] = ""
-                temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
-                art_path = get_album_art(song[Song.path], temp_path)
-                cache[key] = art_path
+            if find_art:
+                key = str(song[Song.uid])
+                if key in cache:
+                    art_path = cache[key];
+                else:
+                    cache[key] = ""
+                    temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
+                    art_path = get_album_art(song[Song.path], temp_path)
+                    cache[key] = art_path
 
-            if art_path:
-                new_song['art_path'] = art_path
+                if art_path:
+                    new_song['art_path'] = art_path
 
         except ArtNotFound as e:
             sys.stderr.write("art not found for %s\n" % song[Song.uid])
@@ -563,6 +564,9 @@ def main():
     parser.add_argument("--dst", type=str, default = None,
                         help="file path destination root")
 
+    parser.add_argument("--art", action="store_true",
+                        help="look for album art")
+
     args = parser.parse_args()
 
     output = sys.stdout if args.out == "-" else open(args.out, "w")
@@ -581,7 +585,8 @@ def main():
     first = True
     output.write("[\n")
     for o in export_database(args.db, args.query,
-                             chroot=chroot, cache_path=args.cache):
+                             chroot=chroot, cache_path=args.cache,
+                             find_art=args.art):
         if not first:
             output.write(",\n")
         json.dump(o, output, sort_keys=True, indent=4)
