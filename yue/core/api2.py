@@ -1,4 +1,3 @@
-
 import os
 import sys
 import ssl
@@ -9,6 +8,7 @@ from io import BytesIO
 import gzip
 import base64
 import argparse
+import hashlib
 
 from .song import Song, ArtNotFound, get_album_art
 from .history import History
@@ -26,6 +26,27 @@ _key_map = {
     "lang": "language",
     "path": "file_path"
 }
+
+def truncated_hash(s, n):
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:n]
+
+def getSongStaticPath(songv1):
+
+    artist = truncated_hash(songv1[Song.artist], 32)
+    album = truncated_hash(songv1[Song.album], 16)
+    title = truncated_hash(songv1[Song.title], 16)
+
+    _c = ord(songv1[Song.artist][0].upper())
+    prefix = artist[:2]
+    if ord('A') <= _c <= ord('Z'):
+        prefix = songv1[Song.artist][0].upper()
+    elif ord('0') <= _c <= ord('9'):
+        prefix = songv1[Song.artist][0]
+
+    name = title + "_%s" % songv1[Song.uid]
+
+    path = "%s/%s/%s/%s" % (prefix, artist, album, name)
+    return path
 
 def remap_keys(song):
     """convert the old song format to the new format"""
@@ -50,7 +71,6 @@ def remap_keys_r(song):
     del song["banished"]
     return song
 
-
 def export_database(lib, query="", chroot=None, cache_path=None, find_art=False):
 
     if isinstance(lib, str):
@@ -71,6 +91,36 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
 
     for song in lib.search(query):
 
+        extra = lib.songExtrasFromId(song[Song.uid])
+        extra_changed = False
+
+        if not extra['static_path']:
+            extra['static_path'] = getSongStaticPath(song)
+            extra_changed = True
+
+        try:
+            if not extra['art_path'] or not os.path.exists(extra['art_path']):
+                key = str(song[Song.uid])
+                if key in cache:
+                    art_path = cache[key]
+                else:
+                    cache[key] = ""
+                    temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
+                    art_path = get_album_art(song[Song.path], temp_path)
+                    cache[key] = art_path
+
+                if art_path:
+                    extra['art_path'] = art_path
+                    extra_changed = True
+
+        except ArtNotFound as e:
+            sys.stderr.write("art not found for %s\n" % song[Song.uid])
+        except Exception as e:
+            sys.stderr.write("unhandled exception: %s\n" % e)
+
+        if extra_changed:
+            lib.updateExtra(**extra)
+
         if src is not None:
             path = song[Song.path].replace("\\", "/")
             if path.lower().startswith(src):
@@ -82,11 +132,10 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
         # all genrs are now formated as: 'foo;'
         gen = song[Song.genre].replace(",", ";").strip()
         if not gen:
-            gen  = [ ]
+            gen  = []
         else:
             gen = [g.strip().title() for g in gen.split(";")]
-        song[Song.genre] = ";" + ";".join([ g for g in gen if g]) + ";"
-
+        song[Song.genre] = ";" + ";".join([g for g in gen if g]) + ";"
 
         # ----
 
@@ -94,26 +143,8 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
         new_song["ref_id"] = song[Song.uid]
         new_song["banished"] = song[Song.blocked]
 
-        song["art_path"] = ""
-
-        try:
-            if find_art:
-                key = str(song[Song.uid])
-                if key in cache:
-                    art_path = cache[key];
-                else:
-                    cache[key] = ""
-                    temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
-                    art_path = get_album_art(song[Song.path], temp_path)
-                    cache[key] = art_path
-
-                if art_path:
-                    new_song['art_path'] = art_path
-
-        except ArtNotFound as e:
-            sys.stderr.write("art not found for %s\n" % song[Song.uid])
-        except Exception as e:
-            sys.stderr.write("unhandled exception: %s\n" % e)
+        new_song['art_path'] = extra['art_path']
+        new_song['static_path'] = extra['static_path']
 
         yield new_song
 

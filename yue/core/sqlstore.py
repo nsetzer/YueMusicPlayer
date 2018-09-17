@@ -109,14 +109,14 @@ class SQLTable(object):
         with self.store.conn:
             self.store.conn.execute('''drop table if exists %s'''%self.name)
 
-    def get(self,key):
+    def get(self, key):
         with self.store.conn:
             c = self.store.conn.cursor()
-            item = self._get( c, key )
-            return dict(zip(self.column_names,item))
+            item = self._get(c, key)
+            return dict(zip(self.column_names, item))
 
     def _get(self, cursor, key):
-        cursor.execute("select * from %s where uid=?"%self.name,[key,])
+        cursor.execute("select * from %s where uid=?" % self.name, [key])
         item = cursor.fetchone()
         if item is None:
             raise KeyError(key)

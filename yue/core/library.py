@@ -130,10 +130,24 @@ class Library(object):
             "FOREIGN KEY(album) REFERENCES albums(uid)",
         ]
 
+        song_extras_columns = [
+            ('uid', 'integer'),
+            ('art_path', "text"),
+            ('static_path', "text"),
+        ]
+
+        song_extras_foreign_keys = [
+            "FOREIGN KEY(uid) REFERENCES songs(uid)",
+        ]
+
         self.sqlstore = sqlstore
         self.artist_db = SQLTable(sqlstore, "artists", artists)
-        self.album_db = SQLTable(sqlstore, "albums", albums, album_foreign_keys)
-        self.song_db = SQLTable(sqlstore, "songs", songs_columns, songs_foreign_keys)
+        self.album_db = SQLTable(sqlstore, "albums",
+            albums, album_foreign_keys)
+        self.song_db = SQLTable(sqlstore, "songs",
+            songs_columns, songs_foreign_keys)
+        self.song_extras_db = SQLTable(sqlstore, "song_extras",
+            song_extras_columns, song_extras_foreign_keys)
 
         colnames = ['uid', 'path', 'source_path',
                     'artist', 'artist_key',
@@ -225,6 +239,14 @@ class Library(object):
                     if not song[Song.uid]:  # prevent uid=0
                         del song[Song.uid]
                 return self._insert(c, **song)
+
+    def updateExtra(self, **kwargs):
+
+        uid = kwargs[Song.uid]
+
+        with self.sqlstore.conn:
+            c = self.sqlstore.conn.cursor()
+            self.song_extras_db._insert(c, **kwargs)
 
     def update(self, uid, **kwargs):
         """ update song values in the database """
@@ -430,6 +452,14 @@ class Library(object):
 
     def songFromId(self, uid):
         return self.song_view.get(uid)
+
+    def songExtrasFromId(self, uid):
+        try:
+            return self.song_extras_db.get(uid)
+        except KeyError:
+            temp = {x: "" for x in self.song_extras_db.column_names}
+            temp[Song.uid] = uid
+            return temp
 
     def songFromIds(self, lst):
 
