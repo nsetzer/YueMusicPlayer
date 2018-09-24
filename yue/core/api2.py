@@ -55,8 +55,13 @@ def remap_keys(song):
         if akey in song:
             song[bkey] = song[akey]
             del song[akey]
-    del song["opm"]
-    del song["file_size"]
+
+    if 'opm' in song:
+        del song["opm"]
+    if 'file_size' in song:
+        del song["file_size"]
+    if 'source_path' in song:
+        del song["source_path"]
     return song
 
 def remap_keys_r(song):
@@ -71,7 +76,7 @@ def remap_keys_r(song):
     del song["banished"]
     return song
 
-def export_database(lib, query="", chroot=None, cache_path=None, find_art=False):
+def export_database(lib, query="", chroot=None):
 
     if isinstance(lib, str):
         sqlstore = SQLStore(lib)
@@ -82,12 +87,6 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
     if chroot:
         src, dst = chroot
         src = src.lower().replace("\\", "/")
-
-    cache = {}
-    if cache_path is not None and os.path.exists(cache_path):
-        with open(cache_path, "r") as rf:
-            sys.stderr.write("loading: %s\n" % cache_path)
-            cache = json.load(rf)
 
     for song in lib.search(query):
 
@@ -100,18 +99,12 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
 
         try:
             if not extra['art_path'] or not os.path.exists(extra['art_path']):
-                key = str(song[Song.uid])
-                if key in cache:
-                    art_path = cache[key]
-                else:
-                    cache[key] = ""
-                    temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
-                    art_path = get_album_art(song[Song.path], temp_path)
-                    cache[key] = art_path
 
-                if art_path:
-                    extra['art_path'] = art_path
-                    extra_changed = True
+                temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
+                art_path = get_album_art(song[Song.path], temp_path)
+
+                extra['art_path'] = art_path
+                extra_changed = True
 
         except ArtNotFound as e:
             sys.stderr.write("art not found for %s\n" % song[Song.uid])
@@ -147,10 +140,6 @@ def export_database(lib, query="", chroot=None, cache_path=None, find_art=False)
         new_song['static_path'] = extra['static_path']
 
         yield new_song
-
-    if cache_path is not None:
-        with open(cache_path, "w") as rf:
-            json.dump(cache, rf, sort_keys=True, indent=4)
 
 class ErrorResponse(Exception):
     """docstring for ErrorResponse"""
@@ -583,9 +572,6 @@ def main():
     parser.add_argument("out", type=str, default = "-", nargs="?",
                         help="write results to file")
 
-    parser.add_argument("--cache", type=str, default = None,
-                        help="cache album art paths to a file")
-
     parser.add_argument("--query", type=str, default = "",
                         help="export files matching query")
 
@@ -594,9 +580,6 @@ def main():
 
     parser.add_argument("--dst", type=str, default = None,
                         help="file path destination root")
-
-    parser.add_argument("--art", action="store_true",
-                        help="look for album art")
 
     args = parser.parse_args()
 
@@ -615,9 +598,7 @@ def main():
 
     first = True
     output.write("[\n")
-    for o in export_database(args.db, args.query,
-                             chroot=chroot, cache_path=args.cache,
-                             find_art=args.art):
+    for o in export_database(args.db, args.query, chroot=chroot):
         if not first:
             output.write(",\n")
         json.dump(o, output, sort_keys=True, indent=4)
