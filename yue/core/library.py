@@ -434,9 +434,9 @@ class Library(object):
 
         for section in config.sections():
             song = {
-                "artist": get_default(section, "artist", "Unkown Artist"),
-                "album": get_default(section, "album", "Unkown Album"),
-                "title": get_default(section, "title", "Unkown Title"),
+                "artist": get_default(section, "artist", "Unknown Artist"),
+                "album": get_default(section, "album", "Unknown Album"),
+                "title": get_default(section, "title", "Unknown Title"),
                 "path": get_default(section, "path", ""),
 
             }

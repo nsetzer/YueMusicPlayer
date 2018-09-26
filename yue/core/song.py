@@ -351,10 +351,10 @@ def read_mp4_tags( song, path):
 
     audio = MP4( path )
 
-    song[Song.artist] = get_str(audio,"\xA9ART","unkown artist")
-    song[Song.album]  = get_str(audio,"\xA9alb","unkown album")
-    song[Song.title]  = get_str(audio,"\xA9nam","unkown title")
-    song[Song.genre]  = get_str(audio,"\xA9gen","unkown genre")
+    song[Song.artist] = get_str(audio,"\xA9ART","unknown artist")
+    song[Song.album]  = get_str(audio,"\xA9alb","unknown album")
+    song[Song.title]  = get_str(audio,"\xA9nam","unknown title")
+    song[Song.genre]  = get_str(audio,"\xA9gen","unknown genre")
     try:
         song[Song.album_index]  = int(audio["trkn"][0][0])
     except:
@@ -365,10 +365,10 @@ def read_asf_tags( song, path):
 
     audio = ASF( path )
 
-    song[Song.artist] = get_str(audio,"WM/AlbumArtist","unkown artist")
-    song[Song.album]  = get_str(audio,"WM/AlbumTitle","unkown album")
-    song[Song.title]  = get_str(audio,"Title","unkown title")
-    song[Song.genre]  = get_str(audio,"WM/Genre","unkown genre")
+    song[Song.artist] = get_str(audio,"WM/AlbumArtist","unknown artist")
+    song[Song.album]  = get_str(audio,"WM/AlbumTitle","unknown album")
+    song[Song.title]  = get_str(audio,"Title","unknown title")
+    song[Song.genre]  = get_str(audio,"WM/Genre","unknown genre")
     song[Song.album_index]  = get_int(audio,'WM/TrackNumber')
     song[Song.year]   = get_int(audio,"WM/Year",'-')
     song[Song.length] = int(audio.info.length)
@@ -376,18 +376,18 @@ def read_asf_tags( song, path):
 def read_ogg_tags( song, path):
 
     audio = OggVorbis( path )
-    song[Song.artist] = get_str(audio,"artist","unkown artist")
-    song[Song.album]  = get_str(audio,"album","unkown album")
-    song[Song.title]  = get_str(audio,"title","unkown title")
-    song[Song.genre]  = get_str(audio,"genre","unkown genre")
+    song[Song.artist] = get_str(audio,"artist","unknown artist")
+    song[Song.album]  = get_str(audio,"album","unknown album")
+    song[Song.title]  = get_str(audio,"title","unknown title")
+    song[Song.genre]  = get_str(audio,"genre","unknown genre")
     song[Song.album_index]  = get_int(audio,'tracknumber')
     song[Song.year]   = get_int(audio,"date",'-')
     song[Song.length] = int(audio.info.length)
 
-def get_str(audio,tag,unkown=None):
+def get_str(audio,tag,unknown=None):
     if tag in audio:
         return unicode(audio[tag][0])
-    return unkown or ('unknown ' + tag)
+    return unknown or ('unknown ' + tag)
 
 def get_int(audio,tag,split_on=None):
     try:
