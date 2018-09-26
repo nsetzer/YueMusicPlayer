@@ -73,7 +73,10 @@ def remap_keys_r(song):
             del song[bkey]
     song["opm"] = 0
     song["file_size"] = 0
-    del song["banished"]
+    if 'banished' in song:
+        del song["banished"]
+    if 'static_path' in song:
+        del song["static_path"]
     return song
 
 def export_database(lib, query="", chroot=None):
@@ -285,7 +288,7 @@ class ApiClient(object):
 
     def download_song(self, fname, song_id, callback=None):
         urlpath = "api/library/%s/audio" % (song_id)
-        query = {"mode": "raw"}
+        query = {"mode": "mp3"}
         return self._retrieve(fname, urlpath, query, callback=callback)
 
     # --------------------------
@@ -310,7 +313,8 @@ class ApiClient(object):
         if r.getcode() != 200:
             raise Exception("%s %s" % (r.getcode(), r.msg))
 
-        total_size = int(r.info()['Content-Length'].strip())
+        total_size = r.info()['Content-Length'] or "0"
+        total_size = int(total_size.strip())
         bytes_read = 0
         bufsize    = 4 * 1024
 
@@ -393,8 +397,8 @@ class ApiClient(object):
             if r.getcode() != 200:
                 raise Exception("%s %s" % (r.getcode(), r.msg))
 
-            total_size = r.info()['Content-Length'].strip()
-            total_size = int(total_size)
+            total_size = r.info()['Content-Length'] or "0"
+            total_size = int(total_size.strip())
             bytes_read = 0
             bufsize    = 32 * 1024
 

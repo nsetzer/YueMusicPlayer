@@ -109,7 +109,7 @@ class DownloadJob(Job):
             temp[Song.path] = path
             del temp[Song.artist_key]
             del temp[Song.remote]  # delete it before adding to db
-            for  key in ["id", "art_path", "domain_id", "user_id", "file_size"]:
+            for key in ["id", "art_path", "domain_id", "user_id", "file_size"]:
                 if key in temp:
                     del temp[key]
             print(temp)
@@ -124,8 +124,11 @@ class DownloadJob(Job):
             song[Song.remote] = SONG_SYNCED  # no longer remote
 
     def _dlprogress(self, x, y):
-        p = self._iterprogress + (x / y) / len(self.songs)
-        self.setProgress(int(100 * p))
+        if y < 1:
+            self.setProgress(int(100 * self._iterprogress))
+        else:
+            p = self._iterprogress + (x / y) / len(self.songs)
+            self.setProgress(int(100 * p))
 
 class DownloadMetadataJob(Job):
     """docstring for DownloadJob"""
