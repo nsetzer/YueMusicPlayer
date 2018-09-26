@@ -56,6 +56,9 @@ def remap_keys(song):
             song[bkey] = song[akey]
             del song[akey]
 
+    song[Song.equalizer] = max(20, min(200,
+        int(100 * song[Song.equalizer] / Song.eqfactor)))
+
     if 'opm' in song:
         del song["opm"]
     if 'file_size' in song:
