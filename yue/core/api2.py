@@ -82,7 +82,7 @@ def remap_keys_r(song):
         del song["static_path"]
     return song
 
-def export_database(lib, query="", chroot=None):
+def export_database(lib, query="", chroot=None, get_art=False):
 
     if isinstance(lib, str):
         sqlstore = SQLStore(lib)
@@ -104,7 +104,7 @@ def export_database(lib, query="", chroot=None):
             extra_changed = True
 
         try:
-            if not extra['art_path'] or not os.path.exists(extra['art_path']):
+            if get_art and (not extra['art_path'] or not os.path.exists(extra['art_path'])):
 
                 temp_path = os.path.splitext(song[Song.path])[0] + ".jpg"
                 art_path = get_album_art(song[Song.path], temp_path)
@@ -252,14 +252,14 @@ class ApiClient(object):
     def library_update_songs(self, songs, callback=None):
         headers = {"Content-Type": "application/json"}
 
-        song_json = json.dumps(songs).encode("utf-8")
+        song_list_json = json.dumps(songs).encode("utf-8")
         r = self._put("api/library",
-            data=song_json,
+            data=song_list_json,
             headers=headers)
 
         if r.getcode() != 200:
             print(dir(r))
-            print(song_json)
+            print(song_list_json)
             print(str(r.reason).encode("utf-8"))
             raise Exception("%s" % (r.getcode()))
 
@@ -312,6 +312,8 @@ class ApiClient(object):
         r = self._get("api/library", params={
                       "query": query,
                       "page": page,
+                      "orderby": 'id',
+                      'showBanished': True,
                       "limit": page_size})
         if r.getcode() != 200:
             raise Exception("%s %s" % (r.getcode(), r.msg))
