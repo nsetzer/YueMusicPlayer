@@ -16,14 +16,14 @@ cd %~dp0
 
 if not exist MSVC mkdir MSVC
 
-if not exist "C:\Program Files (x86)\CMake\bin\cmake.exe" goto CmakeError
+if not exist "C:\Program Files\CMake\bin\cmake.exe" goto CmakeError
 if not exist "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\vsvars32.bat" goto VarsError
 
 cd MSVC
 
 call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\vsvars32.bat"
 
-"C:\Program Files (x86)\CMake\bin\cmake.exe" -G  "Visual Studio 14 2015 Win64" ..
+"C:\Program Files\CMake\bin\cmake.exe" -G  "Visual Studio 14 2015 Win64" ..
 
 pause
 

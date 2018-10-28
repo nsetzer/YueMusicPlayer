@@ -578,16 +578,16 @@ def main():
     parser.add_argument('db', type=str,
                         help='path to yue database')
 
-    parser.add_argument("out", type=str, default = "-", nargs="?",
+    parser.add_argument("out", type=str, default="-", nargs="?",
                         help="write results to file")
 
-    parser.add_argument("--query", type=str, default = "",
+    parser.add_argument("--query", type=str, default="",
                         help="export files matching query")
 
-    parser.add_argument("--src", type=str, default = None,
+    parser.add_argument("--src", type=str, default=None,
                         help="file path source root")
 
-    parser.add_argument("--dst", type=str, default = None,
+    parser.add_argument("--dst", type=str, default=None,
                         help="file path destination root")
 
     args = parser.parse_args()

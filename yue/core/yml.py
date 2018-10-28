@@ -1,4 +1,4 @@
-
+#! python
 import codecs
 import io
 from collections import defaultdict
@@ -509,10 +509,13 @@ class YML(object):
         se = " "*len(te)
 
         items_s = []
-        for k,v in sorted(item.items()):
-            ks = self._stringify(k,depth+1,width-len(ts))
-            if len(ks)>1:
-                raise YmlException("Key Error: `%s` is not a basic type"%k)
+
+        ksk = [(self._stringify(k,depth+1,width-len(ts)), k) for k in item.keys()]
+        ksk.sort(key=lambda x: x[0])
+        for ks, k in ksk:
+            v = item[k]
+            if len(ks) > 1:
+                raise YmlException("Key Error: `%s` is not a basic type" % k)
             ks = ks[0]
             vs = self._stringify(v,depth+1,width-len(ts))
 

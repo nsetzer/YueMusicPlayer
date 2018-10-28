@@ -77,17 +77,17 @@ class AlbumArtView(QLabel):
         super().setPixmap(self.pixmap)
         self.setHidden(False)
 
-    def mouseReleaseEvent(self,event):
+    def mouseReleaseEvent(self, event):
 
-        if event.button()&Qt.LeftButton:
+        if event.button() & Qt.LeftButton:
             event.accept()
             if self.image is not None:
                 if AlbumArtView._dialog is None:
                     AlbumArtView._dialog = AlbumArtDialog(self)
                     AlbumArtView._dialog.finished.connect(self.onDialogClosed)
-                    AlbumArtView._dialog.setAttribute(Qt.WA_DeleteOnClose);
-                AlbumArtView._dialog.setImage( self.image )
-                AlbumArtView._dialog.resize(512,512)
+                    #AlbumArtView._dialog.setAttribute(Qt.WA_DeleteOnClose);
+                AlbumArtView._dialog.setImage(self.image)
+                AlbumArtView._dialog.resize(512, 512)
                 AlbumArtView._dialog.show()
         else:
             event.ignore()

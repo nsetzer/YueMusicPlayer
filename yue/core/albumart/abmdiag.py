@@ -1,4 +1,4 @@
-#! python $this
+#! cd ../../.. && python -m yue.core.albumart.abmdiag "D:\\Dropbox\\ConsolePlayer\\yue.db"
 
 import os
 import sys
