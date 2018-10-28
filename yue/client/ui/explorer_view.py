@@ -95,20 +95,21 @@ class YueExplorerModel(ExplorerModel):
 
         self.list_library_files = set()
 
-        self.brush_library = self.tbl_file.addRowHighlightComplexRule( self.indexInLibrary , QColor(128,128,224))
+        self.brush_library = self.tbl_file.addRowHighlightComplexRule(
+            self.indexInLibrary, QColor(128, 128, 224))
 
-    def _getNewFileTable(self,view):
-        tbl =  ExplorerFileTable(view,self)
-        tbl.showColumnHeader( True )
-        tbl.showRowHeader( False )
-        tbl.setLastColumnExpanding( False )
+    def _getNewFileTable(self, view):
+        tbl = ExplorerFileTable(view, self)
+        tbl.showColumnHeader(True)
+        tbl.showRowHeader(False)
+        tbl.setLastColumnExpanding(False)
 
         tbl.renamePaths.connect(self.action_rename)
         tbl.createFile.connect(self.action_touch)
         tbl.createDirectory.connect(self.action_mkdir)
         return tbl
 
-    def indexInLibrary(self,idx):
+    def indexInLibrary(self, idx):
         exists = self.view[idx]['name'].lower() in self.list_library_files
         #print(exists,self.view[idx]['name'].lower())
         # OSX normalized the file name
@@ -119,7 +120,7 @@ class YueExplorerModel(ExplorerModel):
 
         return exists
 
-    def action_play_song(self,item):
+    def action_play_song(self, item):
         path = self.view.realpath(item['name'])
         self.play_file.emit(path)
 
@@ -190,19 +191,19 @@ class YueExplorerModel(ExplorerModel):
     def onLoadComplete(self,data):
         super().onLoadComplete(data)
 
-        songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
-                                       for song in songs )
+        songs = Library.instance().searchDirectory(self.view.pwd(), False)
+        g = lambda song: self.view.split(song[Song.path])[1].lower()
+        self.list_library_files = set(g(song) for song in songs)
 
     def action_open_directory(self):
         # open the cwd in explorer
-        explorerOpen( self.view.pwd() )
+        explorerOpen(self.view.pwd())
 
     def onRenameFinished(self):
 
-        songs = Library.instance().searchDirectory(self.view.pwd(),False)
-        self.list_library_files = set( self.view.split(song[Song.path])[1].lower() \
-                                       for song in songs )
+        songs = Library.instance().searchDirectory(self.view.pwd(), False)
+        g = lambda song: self.view.split(song[Song.path])[1].lower()
+        self.list_library_files = set(g(song) for song in songs)
         self.tbl_file.update()
 
 
