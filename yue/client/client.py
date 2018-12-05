@@ -129,6 +129,7 @@ class ClientRepl(object):
         self.actions["clr"] = self.exclear
         self.actions["settings"] = self.exset
         self.actions["quick"] = self.exquick
+        self.actions["devinit"] = self.exdevinit
 
         self.helptopics['search'] = """ information on search format
 
@@ -571,6 +572,17 @@ class ClientRepl(object):
             alternatives = args[1:]
             print(alternatives)
             Library.instance().songPathHack(alternatives)
+
+    def exdevinit(self, args):
+        """
+        creates a new device and reloads the current song
+
+        useful if playback stops working
+        """
+        pos = self.client.device.position()
+        self.client.device.refresh()
+        song = self.client.device.load_current()
+        self.client.device.seek(pos)
 
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""

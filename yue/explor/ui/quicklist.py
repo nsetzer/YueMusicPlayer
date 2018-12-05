@@ -44,6 +44,7 @@ class ShortcutEditDialog(QDialog):
             (":/img/app_newlist.png","Plus"),
             (":/img/app_note.png","Note"),
             (":/img/app_eq.png","Mixer"),
+            (":/img/app_gear.png","Settings"),
         ]
         for i,(p,t) in enumerate(supported_icons):
             self.cbox_ipath.addItem(QIcon(p),t,p)

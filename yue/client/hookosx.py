@@ -10,26 +10,15 @@ import sys
 $ pip install pyobjc-core
 $ pip install osxmmkeys
 
+# The following works for OS version less than High Sierra
 # disable itunes from reacting to media keys
 launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist
 """
 
-"""
-play_pause
-next_track
-prev_track
-volume_down
-volume_up
-
-"""
-
-#try:
-#    while True:
-#        time.sleep(1)
-#except (KeyboardInterrupt, SystemExit):
-#    tap.stop()
-
-
+def emit(action):
+    action.emit()
+    # prevent iTunes from capturing the event
+    return False
 
 class HookThread(QObject):
     """docstring for HookThread"""
@@ -42,22 +31,23 @@ class HookThread(QObject):
     def __init__(self, parent=None):
         super(HookThread, self).__init__(parent)
         self.tap = osxmmkeys.Tap()
-        self.tap.on('play_pause', lambda : self.playpause.emit())
-        self.tap.on('next_track', lambda : self.play_next.emit())
-        self.tap.on('prev_track', lambda : self.play_prev.emit())
+        print("tapping play_pause, next_track, prev_track")
+        self.tap.on('play_pause', lambda: emit(self.playpause))
+        self.tap.on('next_track', lambda: emit(self.play_next))
+        self.tap.on('prev_track', lambda: emit(self.play_prev))
 
     def reload(self):
-        pass # no way to remap keys
+        pass
 
     def start(self):
         self.run()
 
     def run(self):
-        sys.stdout.write("KeyBoard Hook Thread (start)\n");
+        sys.stdout.write("KeyBoard Hook Thread (start)\n")
         self.tap.start()
 
     def join(self):
-        sys.stdout.write("KeyBoard Hook Thread (join)\n");
+        sys.stdout.write("KeyBoard Hook Thread (join)\n")
         # this causes python to never stop
         self.tap.stop()
 

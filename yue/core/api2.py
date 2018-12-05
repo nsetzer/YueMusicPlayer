@@ -498,6 +498,7 @@ class ApiClientWrapper(object):
             raise Exception("invalid song")
 
         fname = self.local_path(basedir, song)
+        fname = os.path.splitext(fname)[0] + ".mp3"
         dname, _ = os.path.split(fname)
         if not os.path.exists(dname):
             os.makedirs(dname)

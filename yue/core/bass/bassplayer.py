@@ -80,10 +80,12 @@ class BassPlayer(object):
             13: pybass.BASS_DATA_FFT8192,
             14: pybass.BASS_DATA_FFT16384,
         }
+
     @staticmethod
     def free():
         if not pybass.BASS_Free():
             print('BASS_Free error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
+
     @staticmethod
     def loadPlugin(plugpath):
         # TODO: plugins with unicode paths may not work on windows.
@@ -98,13 +100,16 @@ class BassPlayer(object):
     @staticmethod
     def errorCode():
         return pybass.BASS_ErrorGetCode()
+
     @staticmethod
-    def errorMessage( code ):
+    def errorMessage(code):
         return pybass.get_error_description(code)
+
     @staticmethod
     def error():
         c = pybass.BASS_ErrorGetCode()
-        return "%d:%s"%(c,pybass.get_error_description(c))
+        return "%d:%s" % (c, pybass.get_error_description(c))
+
     @staticmethod
     def exception():
         c = pybass.BASS_ErrorGetCode()
@@ -117,48 +122,49 @@ class BassPlayer(object):
 
     @staticmethod
     def supportsFloat():
-        l= lambda a,b,c,d:0
-        r = pybass.BASS_StreamCreate(44100,2,pybass.BASS_SAMPLE_FLOAT,pybass.STREAMPROC(l),0);
-        pybass.BASS_StreamFree(r);
-        return r!=0;
+        l = lambda a, b, c, d: 0
+        r = pybass.BASS_StreamCreate(44100, 2,
+            pybass.BASS_SAMPLE_FLOAT, pybass.STREAMPROC(l), 0)
+        pybass.BASS_StreamFree(r)
+        return r != 0
 
     @staticmethod
-    def statusMessage( status ):
-        if status==BassPlayer.STOPPED:
-            return "Stopped";
-        elif status==BassPlayer.PLAYING:
-            return "Playing";
-        elif status==BassPlayer.PAUSED:
-            return "Paused";
-        elif status==BassPlayer.STALLED:
-            return "Stalled";
+    def statusMessage(status):
+        if status == BassPlayer.STOPPED:
+            return "Stopped"
+        elif status == BassPlayer.PLAYING:
+            return "Playing"
+        elif status == BassPlayer.PAUSED:
+            return "Paused"
+        elif status == BassPlayer.STALLED:
+            return "Stalled"
         return "Unknown"
 
     def __init__(self, use_capi=False):
-        self.use_capi = use_capi # use stream callbacks
+        self.use_capi = use_capi  # use stream callbacks
 
-
-        self.channel = 0;
+        self.channel = 0
         self.dsp_blocks = {}
         # on error set this flag.
-        self.flagError = 0;
+        self.flagError = 0
 
-        self._volume = 75;
+        self._volume = 75
 
-        ptr = ctypes.pointer( ctypes.py_object( self ) )
-        self.cptr_self = ctypes.cast(ptr,ctypes.c_void_p)
+        ptr = ctypes.pointer(ctypes.py_object(self))
+        self.cptr_self = ctypes.cast(ptr, ctypes.c_void_p)
 
-        self.sync_callbacks = { "stream_end" : lambda x : sys.stdout.write("stream end\n") }
+        g = lambda x : sys.stdout.write("stream end\n")
+        self.sync_callbacks = {"stream_end" : g}
 
-    def setStreamEndCallback(self,cbk):
+    def setStreamEndCallback(self, cbk):
         """ def cbk( player ) """
         self.sync_callbacks['stream_end'] = cbk
 
-    def setStreamSetPosCallback(self,cbk):
+    def setStreamSetPosCallback(self, cbk):
         """ def cbk( player ) """
         self.sync_callbacks['stream_setpos'] = cbk
 
-    def setStreamPosCallback(self,cbk):
+    def setStreamPosCallback(self, cbk):
         """
         this callback is not strictly useful,
 
@@ -168,11 +174,11 @@ class BassPlayer(object):
         """
         self.sync_callbacks['stream_pos'] = cbk
 
-    def load(self,filepath):
+    def load(self, filepath):
 
-        lFlags = self.default_flags|pybass.BASS_STREAM_AUTOFREE
+        lFlags = self.default_flags | pybass.BASS_STREAM_AUTOFREE
         if isPosix:
-            #lFlags |= pybass.BASS_UNICODE
+            # lFlags |= pybass.BASS_UNICODE
             filepath = unicode(filepath).encode("utf-8")
         else:
             # don't change this.
@@ -184,9 +190,9 @@ class BassPlayer(object):
         channel = pybass.BASS_StreamCreateFile(False,filepath,0,0,lFlags)
         self.flagError = BassPlayer.errorCode()
 
-        if channel==0 or self.flagError!=0:
-            print("BASS LOAD: %s"%BassPlayer.error())
-            return False;
+        if channel == 0 or self.flagError != 0:
+            print("BASS LOAD: %s" % BassPlayer.error())
+            return False
             #print BassPlaerroryer.error()
             #raise IOError( "load song: " + BassPlayer.error() )
 
@@ -201,42 +207,42 @@ class BassPlayer(object):
         # (the BASS_SETVOLUME function sets the DEVICE volume.)
         self.volume(self._volume)
         # each dsp keeps track of whether or not it is enabled.
-        for _,dsp in self.dsp_blocks.items():
-            dsp.Register(self.channel);
+        for _, dsp in self.dsp_blocks.items():
+            dsp.Register(self.channel)
 
-        bytes = pybass.BASS_ChannelGetPosition(self.channel,pybass.BASS_POS_BYTE);
-        if bytes!=0:
-            print("BASS LOAD: position in bytes %d."%bytes)
+        position = pybass.BASS_ChannelGetPosition(
+            self.channel, pybass.BASS_POS_BYTE)
+        if position != 0:
+            print("BASS LOAD: position in bytes %d." % position)
 
         #
         # this causes a segfault on android :(
         if self.use_capi:
-            pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_END,0,syncStreamEnd, self.cptr_self )
+            pybass.BASS_ChannelSetSync(self.channel,
+                pybass.BASS_SYNC_END, 0, syncStreamEnd, self.cptr_self)
             #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_SETPOS,0,syncStreamSetPos, self.cptr_self )
             #pybass.BASS_ChannelSetSync(self.channel,pybass.BASS_SYNC_POS,0,syncStreamPos, self.cptr_self )
 
         return True
 
-    def decode(self,filepath):
+    def decode(self, filepath):
 
         self.unload()
 
-        dFlags = self.default_flags|pybass.BASS_STREAM_DECODE
+        dFlags = self.default_flags | pybass.BASS_STREAM_DECODE
 
         if isPosix:
             filepath = unicode(filepath).encode("utf-8")
         else:
             dFlags |= pybass.BASS_UNICODE
-            filepath = unicode(filepath)#.encode("utf-16")
+            filepath = unicode(filepath)  # .encode("utf-16")
 
-
-
-        channel = pybass.BASS_StreamCreateFile(False,filepath,0,0,dFlags)
+        channel = pybass.BASS_StreamCreateFile(False, filepath, 0, 0, dFlags)
 
         self.flagError = BassPlayer.errorCode()
-        if channel==0 or self.flagError!=0:
-            print("BASS LOAD: %s"%BassPlayer.error())
-            return False;
+        if channel == 0 or self.flagError != 0:
+            print("BASS LOAD: %s" % BassPlayer.error())
+            return False
 
         self.channel = channel
 
@@ -277,31 +283,38 @@ class BassPlayer(object):
         if self.channelIsValid():
             # TODO: determine whether check for error is needed
             #pybass.BASS_MusicFree(self.channel);
-            pybass.BASS_StreamFree(self.channel);
+            pybass.BASS_StreamFree(self.channel)
             self.channel=0
         return True
 
-    def play(self,restart=False):
+    def play(self, restart=False):
 
         if self.channelIsValid():
-            bytes = pybass.BASS_ChannelGetPosition(self.channel,pybass.BASS_POS_BYTE);
+            print("bass: channel play", self.channel)
+            bytes = pybass.BASS_ChannelGetPosition(self.channel, pybass.BASS_POS_BYTE);
             #print "bytes@PLAY:%d"%bytes
             #traceback.print_stack();
-            if pybass.BASS_ChannelPlay(self.channel,restart==True):
-                return True;
+            try:
+                if pybass.BASS_ChannelPlay(self.channel, restart):
+                    return True
+            finally:
+                print("bass: channel play +: ", BassPlayer.error())
+        print("bass: channel play -: ", BassPlayer.error())
         return False
 
     def pause(self):
 
         if self.channelIsValid():
-            pybass.BASS_ChannelPause(self.channel);
+            print("bass: channel pause", self.channel)
+            pybass.BASS_ChannelPause(self.channel)
             # todo check for errors
             return True
         return False
 
     def stop(self):
-        pybass.BASS_ChannelStop(self.channel);
-        pybass.BASS_ChannelSetPosition(self.channel,0,pybass.BASS_POS_BYTE);
+        print("bass: channel stop", self.channel)
+        pybass.BASS_ChannelStop(self.channel)
+        pybass.BASS_ChannelSetPosition(self.channel, 0, pybass.BASS_POS_BYTE)
 
     def getSamples(self,sampleCount=44100):
         """
@@ -430,10 +443,10 @@ class BassPlayer(object):
         print(chaninfo.origres)
         return chaninfo.freq
 
-    def addDsp(self,name,oDsp):
+    def addDsp(self, name, oDsp):
         self.dsp_blocks[name] = oDsp
 
-    def getDspData(self,dspname):
+    def getDspData(self, dspname):
         """
             abstraction later for dsps
             context dependent getter function for dsps

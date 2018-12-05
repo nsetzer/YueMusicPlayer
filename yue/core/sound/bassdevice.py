@@ -25,8 +25,8 @@ bass_states = {
 class BassSoundDevice(SoundDevice):
     """Playback implementation of Sound Device"""
     __instance = None
-    def __init__(self, playlist, libpath, use_capi = False, cbkfactory=None):
-        super(BassSoundDevice, self).__init__( playlist, cbkfactory )
+    def __init__(self, playlist, libpath, use_capi=False, cbkfactory=None):
+        super(BassSoundDevice, self).__init__(playlist, cbkfactory)
         self.volume = 0.5
         self.error_state = False
         self.current_song = None
@@ -42,20 +42,26 @@ class BassSoundDevice(SoundDevice):
         self.load_plugin(libpath, "basswma")
         self.load_plugin(libpath, "basswv")
 
-        self.device = BassPlayer(use_capi=use_capi)
+        self.use_capi = use_capi
+
+        self._createDevice()
+
+    def _createDevice(self):
+
+        self.device = BassPlayer(use_capi=self.use_capi)
 
         if ZBPEQ is not None:
             self.zbpeq = ZBPEQ(priority=250)
             self.zbpeq.setEnabled(False)
-            self.device.addDsp("zbpeq",self.zbpeq);
+            self.device.addDsp("zbpeq", self.zbpeq)
 
             self.voleq = VOLEQ(priority=500)
             self.voleq.setEnabled(False)
-            self.device.addDsp("voleq",self.voleq);
+            self.device.addDsp("voleq", self.voleq)
 
             self.zbvis = ZBVIS(priority=1000)
             self.zbvis.setEnabled(True)
-            self.device.addDsp("zbvis",self.zbvis);
+            self.device.addDsp("zbvis", self.zbvis)
 
             sys.stdout.write("successfully enabled DSP processes.\n")
         else:
@@ -65,8 +71,11 @@ class BassSoundDevice(SoundDevice):
             sys.stderr.write("error enabling DSP processes.\n")
 
         # this feature causes a segfault on android.
-        if use_capi:
-            self.device.setStreamEndCallback( self.on_bass_end )
+        if self.use_capi:
+            self.device.setStreamEndCallback(self.on_bass_end)
+
+    def refresh(self):
+        self._createDevice()
 
     def name(self):
         return "Bass Audio"
@@ -161,19 +170,19 @@ class BassSoundDevice(SoundDevice):
             except IndexError:
                 sys.stderr.write("error: No Current Song\n")
 
-    def seek(self,seconds):
-        self.device.position( seconds )
+    def seek(self, seconds):
+        self.device.position(seconds)
 
     def position(self):
         """ return current position in seconds (float)"""
-        return self.device.position( )
+        return self.device.position()
 
     def duration(self):
         return self.device.duration()
 
-    def setVolume(self,volume):
+    def setVolume(self, volume):
         """ volume: in range 0.0 - 1.0"""
-        self.device.volume( max(0,min(100,int(volume*100))) )
+        self.device.volume(max(0, min(100, int(volume*100))))
 
     def getVolume(self):
         """ volume: in range 0.0 - 1.0"""
@@ -183,7 +192,7 @@ class BassSoundDevice(SoundDevice):
         if self.error_state:
             return MediaState.error
         bass_state = self.device.status()
-        return bass_states.get(bass_state,MediaState.not_ready)
+        return bass_states.get(bass_state, MediaState.not_ready)
 
     def getDspData(self, dspproc):
         if dspproc == 'zbvis' and self.zbvis is not None:
@@ -192,9 +201,9 @@ class BassSoundDevice(SoundDevice):
     def updateDSP(self, proc):
         if "ZBPEQ" in proc and self.zbpeq is not None:
             seq = proc["ZBPEQ"]
-            if all( map(lambda x:x==0.0,seq) ):
-                self.zbpeq.setEnabled(False);
-                sys.stdout.write("ZBPEQ disabled");
+            if all(map(lambda x: x == 0.0, seq)):
+                self.zbpeq.setEnabled(False)
+                sys.stdout.write("ZBPEQ disabled")
             else:
-                self.zbpeq.setEnabled(True);
-            self.device.setDspData("zbpeq",seq)
+                self.zbpeq.setEnabled(True)
+            self.device.setDspData("zbpeq", seq)

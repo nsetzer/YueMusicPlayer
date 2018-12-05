@@ -37,6 +37,9 @@ from yue.explor.vagrant import getVagrantInstances,getVagrantSSH
 from yue.explor.util import proc_exec
 
 from yue.qtcommon.ResourceManager import ResourceManager
+
+from datetime import datetime
+
 """"
 FTP protocol
     server:port
@@ -207,6 +210,7 @@ class Calculator(QWidget):
         self.output.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.output.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.output.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.output.setFrameStyle(QFrame.Panel | QFrame.Sunken)
 
         self.input.accepted.connect(self.evaluate)
         self.layout.addWidget(self.input)
@@ -254,6 +258,41 @@ class Calculator(QWidget):
         except Exception as e:
             self.output.setText(str(e))
 
+class Clock(QWidget):
+    """docstring for Clock"""
+    def __init__(self, parent=None):
+        super(Clock, self).__init__(parent)
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(33)
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self.updateTime)
+
+        self.output1 = QLabel(self)
+        self.output1.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.output1.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Maximum)
+        self.output1.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.output1.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+        self.output2 = QLabel(self)
+        self.output2.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.output2.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Maximum)
+        self.output2.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.output2.setFrameStyle(QFrame.Panel | QFrame.Raised)
+
+        self.hbox = QHBoxLayout(self)
+        self.hbox.addWidget(self.output1)
+        self.hbox.addWidget(self.output2)
+        self.hbox.setContentsMargins(16, 0, 16, 0)
+
+        self.timer.start()
+
+    def updateTime(self):
+
+        self.output1.setText(datetime.now().strftime("%H:%M:%S"))
+        self.output2.setText(datetime.utcnow().strftime("%H:%M:%S"))
+
+
 class MainWindow(QMainWindow):
     """docstring for MainWindow"""
     def __init__(self, version_info, defaultpath, defaultpath_r=""):
@@ -264,7 +303,7 @@ class MainWindow(QMainWindow):
 
         self.sources = set()
 
-        self.version,self.versiondate,self.builddate = version_info
+        self.version, self.versiondate, self.builddate = version_info
 
         self.initMenuBar()
         self.initStatusBar()
@@ -310,6 +349,7 @@ class MainWindow(QMainWindow):
         self.pain_main.addWidget(self.dashboard)
 
         self.calculator = Calculator(self)
+        self.clock = Clock(self)
 
         self.image_view = ImageView(self)
         self.image_view.image_extensions = ResourceManager.instance(). \
@@ -317,6 +357,7 @@ class MainWindow(QMainWindow):
 
         self.wview = QWidget()
         self.vbox_view = QVBoxLayout(self.wview)
+        self.vbox_view.addWidget(self.clock)
         self.vbox_view.setContentsMargins(0, 0, 0, 0)
         self.vbox_view.addWidget(self.quickview.container)
         self.vbox_view.addWidget(self.wfview.container)
