@@ -1,4 +1,4 @@
-#! C:\\Python36\\python.exe setup.py install
+#! python36 setup.py install
 
 import imp,os,sys
 from setuptools import setup, Command

@@ -1,4 +1,4 @@
-#!C:\\Python36\\python.exe $this
+#!C:\\Python37\\python.exe $this
 """
 changelog
 
@@ -12,7 +12,7 @@ changelog
     move to Qt 5.10
 
 """
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 __datetime__ = ""
 __builddate__ = ""
 import codecs,traceback,sys

@@ -438,7 +438,6 @@ class Library(object):
                 "album": get_default(section, "album", "Unknown Album"),
                 "title": get_default(section, "title", "Unknown Title"),
                 "path": get_default(section, "path", ""),
-
             }
             self.insert(**song)
 
@@ -634,7 +633,7 @@ class Library(object):
         # escape all special characters .... including forward slash
         path = re.escape(path)
         # replace forward slash with a pattern that matches both slashes
-        path = path.replace("\\/", "[\\\\/]")
+        path = path.replace("/", "[\\\\/]")
 
         if recursive:
             # match any file that starts with
@@ -644,6 +643,7 @@ class Library(object):
             # todo linux: use "^%s[^/]*$"
             q = "^%s[^\\\\/]*$" % path
 
+        print("searchDirectory", q)
         rule = RegExpSearchRule(Song.path, q)
 
         return self.search(rule)
