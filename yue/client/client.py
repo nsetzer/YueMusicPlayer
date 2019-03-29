@@ -22,7 +22,7 @@ from sip import SIP_VERSION_STR, delete as sip_delete
 
 from .style import style_set_custom_theme, setApplicationPallete, currentStyle, clearStyle, StyleError
 
-from yue.qtcommon.Tab import TabWidget
+from ..qtcommon.Tab import TabWidget
 
 from ..core.sqlstore import SQLStore
 from ..core.settings import Settings
@@ -87,15 +87,15 @@ from .ui.song_view import CurrentSongView
 from .ui.art_view import AlbumArtView
 from .ui.volume import VolumeController
 
-from yue.qtcommon.logview import LogView
-from yue.qtcommon.LineEdit import LineEditRepl
-from yue.qtcommon.playbutton import PlayButton, AdvanceButton
-from yue.qtcommon.slider import PositionSlider
-from yue.qtcommon.closebutton import CloseTabButton
-from yue.qtcommon.ResourceManager import ResourceManager
+from ..qtcommon.logview import LogView
+from ..qtcommon.LineEdit import LineEditRepl
+from ..qtcommon.playbutton import PlayButton, AdvanceButton
+from ..qtcommon.slider import PositionSlider
+from ..qtcommon.closebutton import CloseTabButton
+from ..qtcommon.ResourceManager import ResourceManager
 
 try:
-    from yue.qtcommon.scieditor import CodeEditor
+    from ..qtcommon.scieditor import CodeEditor
 except ImportError:
     CodeEditor = None
 
