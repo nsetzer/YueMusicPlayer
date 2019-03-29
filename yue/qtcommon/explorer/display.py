@@ -371,6 +371,8 @@ class ExplorerModel(QWidget):
         self.tbl_file.focusQuery.connect(
             lambda: self.txt_filter.setFocus(Qt.ShortcutFocusReason))
 
+        self.tbl_file.editName.connect(self.action_rename_begin)
+
         self.tbl_file.findFiles.connect(self.onFindFilesShowBar)
         self.tbl_file.findReplaceInFiles.connect(lambda: self.onFindFilesShowBar(2))
 
@@ -631,7 +633,7 @@ class ExplorerModel(QWidget):
         cmdstr = Settings.instance()['cmd_open_native']
         os.system(cmdstr % path)
 
-    def action_rename_begin(self, items):
+    def action_rename_begin(self, items=None):
 
         row = list(self.tbl_file.selection)[0]
         col = -1
@@ -644,6 +646,9 @@ class ExplorerModel(QWidget):
         opts = self.tbl_file.columns[col].get_default_opts(row)
         if opts:
             self.tbl_file.columns[col].editor_start(*opts)
+
+        self.tbl_file.update()
+        self.tbl_file.scrollTo(row)
 
     def action_rename(self, jobs):
 

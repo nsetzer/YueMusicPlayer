@@ -75,6 +75,8 @@ class BassSoundDevice(SoundDevice):
             self.device.setStreamEndCallback(self.on_bass_end)
 
     def refresh(self):
+        BassPlayer.free()
+        BassPlayer.init()
         self._createDevice()
 
     def name(self):

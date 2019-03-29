@@ -75,13 +75,17 @@ class ExplorerController(DummyController):
 
         ctxtmenu.addSeparator()
 
-        act = ctxtmenu.addAction("Rename", lambda: model.action_rename_begin(items))
+        act = ctxtmenu.addAction("Rename",
+            lambda: model.action_rename_begin(items))
+        act.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_E))
         #act.setDisabled( len(items)!=1 )
 
         act = ctxtmenu.addAction("Copy", lambda: self.action_copy(model, items))
         act.setShortcut(QKeySequence("Ctrl+C"))
+
         act = ctxtmenu.addAction("Cut", lambda: self.action_cut(model, items))
         act.setShortcut(QKeySequence("Ctrl+X"))
+
         if not model.view.readonly():
             act = ctxtmenu.addAction("Paste", lambda: self.action_paste(model))
             act.setShortcut(QKeySequence("Ctrl+V"))

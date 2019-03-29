@@ -152,9 +152,9 @@ class ErrorResponse(Exception):
     def __init__(self, error):
         super(ErrorResponse, self).__init__()
         self.error = error
-        self._body = error.read()
+        # self._body = error.read()
         print(dir(self.error))
-        print(self._body)
+        # print(self._body)
 
         try:
             self._json = json.loads(self._body.decode("utf-8"))
@@ -376,7 +376,7 @@ class ApiClient(object):
             except Exception as e:
                 #urllib.error.URLError as e:
                 # <urlopen error [SSL: UNEXPECTED_RECORD] unexpected record (_ssl.c:833)>
-                print("%s" % e)
+                print("%s - %s %s %s" % (e, urlpath, params, headers))
         else:
             raise Exception("unable to get...")
 

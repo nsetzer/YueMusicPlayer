@@ -55,10 +55,10 @@ class BassPlayer(object):
         if BassPlayer.isINIT:
             return
         # float dsp is needed for my custom dsp blocks
-        pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP,True);
+        pybass.BASS_SetConfig(pybass.BASS_CONFIG_FLOATDSP, True)
         # enable automatic switching to the default device
         # used when someone plugs in / unplugs headphones, etc.
-        pybass.BASS_SetConfig(pybass.BASS_CONFIG_DEV_DEFAULT,True);
+        pybass.BASS_SetConfig(pybass.BASS_CONFIG_DEV_DEFAULT, True)
 
         if not pybass.BASS_Init(-1, sampleRate, 0, 0, 0):
             print('BASS_Init error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
@@ -85,6 +85,7 @@ class BassPlayer(object):
     def free():
         if not pybass.BASS_Free():
             print('BASS_Free error %s' % pybass.get_error_description(pybass.BASS_ErrorGetCode()))
+        BassPlayer.isINIT = False
 
     @staticmethod
     def loadPlugin(plugpath):
@@ -113,7 +114,7 @@ class BassPlayer(object):
     @staticmethod
     def exception():
         c = pybass.BASS_ErrorGetCode()
-        return BassException("%d:%s"%(c,pybass.get_error_description(c)))
+        return BassException("%d:%s" % (c, pybass.get_error_description(c)))
 
     @staticmethod
     def check_exception():
@@ -246,12 +247,12 @@ class BassPlayer(object):
 
         self.channel = channel
 
-        for _,dsp in self.dsp_blocks.items():
-            dsp.Register(channel);
+        for _, dsp in self.dsp_blocks.items():
+            dsp.Register(channel)
 
         return True
 
-    def stream(self,rate=44100,chans=2):
+    def stream(self, rate=44100, chans=2):
 
         self.unload()
 
@@ -271,20 +272,19 @@ class BassPlayer(object):
 
         return True
 
-    def streamPush(self,data):
+    def streamPush(self, data):
         length = len(data)
         buf = (ctypes.c_float*length)(*data)
-        print(length,len(buf))
-        dw_size  = pybass.BASS_StreamPutData(self.channel,buf,length);
+        print(length, len(buf))
+        dw_size  = pybass.BASS_StreamPutData(self.channel, buf, length)
         print(BassPlayer.error())
-
 
     def unload(self):
         if self.channelIsValid():
             # TODO: determine whether check for error is needed
             #pybass.BASS_MusicFree(self.channel);
             pybass.BASS_StreamFree(self.channel)
-            self.channel=0
+            self.channel = 0
         return True
 
     def play(self, restart=False):
@@ -298,7 +298,7 @@ class BassPlayer(object):
                 if pybass.BASS_ChannelPlay(self.channel, restart):
                     return True
             finally:
-                print("bass: channel play +: ", BassPlayer.error())
+                print("bass: channel play +: ", BassPlayer.error(), self.status())
         print("bass: channel play -: ", BassPlayer.error())
         return False
 
@@ -316,7 +316,7 @@ class BassPlayer(object):
         pybass.BASS_ChannelStop(self.channel)
         pybass.BASS_ChannelSetPosition(self.channel, 0, pybass.BASS_POS_BYTE)
 
-    def getSamples(self,sampleCount=44100):
+    def getSamples(self, sampleCount=44100):
         """
             if opened for decoding returns N samples
             returns sampleCount samples.
@@ -339,7 +339,7 @@ class BassPlayer(object):
             return None
         return buffer;
 
-    def fft(self,logn):
+    def fft(self, logn):
         """
             return the fft from the sample data.
             channel must be a decode channel
@@ -367,7 +367,7 @@ class BassPlayer(object):
             idx += 1
         return idx
 
-    def volume(self,vol=None):
+    def volume(self, vol=None):
         """
             set the volume to 'vol'.
             valid range is from 0 to 100.
@@ -386,15 +386,14 @@ class BassPlayer(object):
         return int(100*rt( flt.value ))
 
     def duration(self):
-        length=pybass.BASS_ChannelGetLength(self.channel, pybass.BASS_POS_BYTE);
-        seconds=pybass.BASS_ChannelBytes2Seconds(self.channel, length);
+        length = pybass.BASS_ChannelGetLength(self.channel, pybass.BASS_POS_BYTE);
+        seconds = pybass.BASS_ChannelBytes2Seconds(self.channel, length);
         return seconds
 
-
-    def position(self,seconds=None):
+    def position(self, seconds=None):
         """ get/set current position, in seconds.
         """
-        if seconds != None:
+        if seconds is not None:
             bytes = pybass.BASS_ChannelSeconds2Bytes(self.channel,seconds);
             length=pybass.BASS_ChannelGetLength(self.channel, pybass.BASS_POS_BYTE);
             if bytes > length:
@@ -408,24 +407,24 @@ class BassPlayer(object):
 
     def status(self):
 
-        if self.flagError!=0:
+        if self.flagError != 0:
             return BassPlayer.ERROR
 
-        status = pybass.BASS_ChannelIsActive(self.channel);
+        status = pybass.BASS_ChannelIsActive(self.channel)
 
-        if status==pybass.BASS_ACTIVE_STOPPED:
-            return BassPlayer.STOPPED;
-        elif status==pybass.BASS_ACTIVE_PLAYING:
-            return BassPlayer.PLAYING;
-        elif status==pybass.BASS_ACTIVE_PAUSED:
-            return BassPlayer.PAUSED;
-        elif status==pybass.BASS_ACTIVE_STALLED:
-            return BassPlayer.STALLED;
+        if status == pybass.BASS_ACTIVE_STOPPED:
+            return BassPlayer.STOPPED
+        elif status == pybass.BASS_ACTIVE_PLAYING:
+            return BassPlayer.PLAYING
+        elif status == pybass.BASS_ACTIVE_PAUSED:
+            return BassPlayer.PAUSED
+        elif status == pybass.BASS_ACTIVE_STALLED:
+            return BassPlayer.STALLED
         return BassPlayer.UNKNOWN
 
     def channelIsValid(self):
         """ returns true if play() will succeed """
-        return self.channel!=0
+        return self.channel != 0
 
     def isStereo(self):
         chaninfo = pybass.BASS_CHANNELINFO()
