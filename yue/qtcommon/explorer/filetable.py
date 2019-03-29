@@ -41,6 +41,7 @@ class ExplorerFileTable(LargeTable):
     findReplaceInFiles = pyqtSignal()
     deletePaths = pyqtSignal(list)  # list of items
     focusUp = pyqtSignal()
+    editName = pyqtSignal()
 
     def __init__(self, view, parent=None):
         super(ExplorerFileTable, self).__init__(parent)
@@ -65,6 +66,10 @@ class ExplorerFileTable(LargeTable):
         self.xcut_find = QShortcut(QKeySequence(QKeySequence.Find), self)
         self.xcut_find.setContext(Qt.WidgetShortcut)
         self.xcut_find.activated.connect(self.focusQuery.emit)
+
+        self.xcut_edit = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_E), self)
+        self.xcut_edit.setContext(Qt.WidgetShortcut)
+        self.xcut_edit.activated.connect(self.editName.emit)
 
         self.xcut_filter = QShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_F), self)
         self.xcut_filter.setContext(Qt.WidgetShortcut)
@@ -358,7 +363,6 @@ class ExplorerFileTable(LargeTable):
         #    self.parent().view._stat_data.clear()
 
         super().update()
-
 
 class MimeData(QMimeData):
     custom_data = {}    # dictionary which houses the mimetype=>data

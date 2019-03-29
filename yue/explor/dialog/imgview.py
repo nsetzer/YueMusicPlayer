@@ -27,7 +27,7 @@ class SourceImageView(SourceGraphicsView):
 class ImageDisplayDialog(QDialog):
 
     def __init__(self, parent=None):
-        super(ImageDisplayDialog, self).__init__(parent)
+        super(ImageDisplayDialog, self).__init__(None)
 
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(0, 0, 0, 0)
@@ -68,7 +68,10 @@ class ImageDisplayDialog(QDialog):
         self.vbox.addWidget(self.display)
         self.vbox.addWidget(self.statusbar)
 
-        self.resize(640, 480)
+        self.resize(1024, 800)
+
+        self.setSizeGripEnabled(True)
+
 
     def setSource(self, source, path):
 

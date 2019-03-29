@@ -57,6 +57,10 @@ class SoundDevice(object):
         self.path_alternatives = []
         self.last_alt = None
 
+    def refresh(self):
+        # refresh underlying device connection
+        pass
+
     # playback controls
 
     def name(self):
