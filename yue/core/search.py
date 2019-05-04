@@ -1,3 +1,14 @@
+
+# https://wiki.postgresql.org/wiki/Don%27t_Do_This
+
+
+# TODO:
+# Don't use BETWEEN
+# Use timestamp >= :date1 and timestam < :date2
+# why?: performance and between is >= and <=
+
+# Don't use timestamp, use timestamptz
+#
 from .nlpdatesearch import NLPDateRange
 from .util import lru_cache, format_delta, format_date, string_quote
 import re
@@ -13,12 +24,12 @@ if isPython3:
 class IntDate(int):
     """ integer tagged as an epoch-time, see SearchRule.fmtval()"""
     def __new__(cls, *args, **kwargs):
-        return  super(IntDate, cls).__new__(cls, args[0])
+        return super(IntDate, cls).__new__(cls, args[0])
 
 class IntTime(int):
     """ integer tagged as a time delta, see SearchRule.fmtval()"""
     def __new__(cls, *args, **kwargs):
-        return  super(IntTime, cls).__new__(cls, args[0])
+        return super(IntTime, cls).__new__(cls, args[0])
 
 class StrPos(str):
     """ A string tagged with a position value"""

@@ -6,4 +6,4 @@
 cd %~dp0
 
 :: add --debug build a console application
-C:\Python37\Scripts\pyinstaller yue.spec
+C:\Python37\Scripts\pyinstaller yue.spec --debug

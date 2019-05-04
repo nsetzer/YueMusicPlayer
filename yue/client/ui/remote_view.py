@@ -349,6 +349,7 @@ class HistoryPullJob(Job):
 
     def doTask(self):
 
+        # get history over the last month
         hist = History.instance().reopen()
 
         ts = int((datetime.datetime.now() - datetime.timedelta(28)).timestamp())
@@ -359,8 +360,8 @@ class HistoryPullJob(Job):
         records += result
 
         page = 1
-        num_pages = 20
-        while len(result) > 0 and page < 20:
+        num_pages = 50  # arbitrary maximum
+        while len(result) > 0 and page < 50:
             p = 90.0 * (page + 1) / num_pages
             self.setProgress(p)
             result = self.client.history_get(hist, ts, None, page, page_size)
@@ -380,6 +381,9 @@ class HistoryPullJob(Job):
             # hist._import(records)
             lib = Library.instance().reopen()
             lib.import_record(records)
+            print("imported %d records" % len(records))
+        else:
+            print("nothing to import")
 
 class HistoryPushJob(Job):
     def __init__(self, client):
@@ -398,7 +402,10 @@ class HistoryPushJob(Job):
         # get all records in the local database
         records = hist.export(rule)
 
+        print("found %d history records" % len(records))
+
         self.client.history_put(records)
+        print("push history success")
 
 """
 class HistoryDeleteJob(Job):

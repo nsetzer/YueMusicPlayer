@@ -9,6 +9,7 @@ import gzip
 import base64
 import argparse
 import hashlib
+import datetime
 
 from .song import Song, ArtNotFound, get_album_art
 from .history import History
@@ -221,12 +222,11 @@ class ApiClient(object):
 
     def history_get(self, start=0, end=None, page=0, page_size=500, callback=None):
         params = {
-            "start": 0,
+            "start": start,
+            "end": end or int((datetime.datetime.now()).timestamp()),
             "page": page,
             "page_size": page_size
         }
-        if end:
-            params['end'] = end
 
         r = self._get("api/library/history", params)
         result = json.loads(r.read().decode("utf-8"))
@@ -535,20 +535,20 @@ class ApiClientWrapper(object):
         db_records = history.export_date_range(start, end)
         records_set = set((r['date'] for r in db_records))
 
+        if not hasattr(self, 'songs') or len(self.songs) == 0:
+            raise Exception("songs not mapped: connect first")
+
         results = self.api.history_get(start, end, page, page_size, callback=callback)
         results = results['result']
 
         # if song references are mapped, translate json to old-style format
-        if len(self.songs) > 0:
-            n = len(results)
-            results = [{"date": r['timestamp'], "column": Song.playtime,
-                "uid": self.songs[r['song_id']]['uid'], 'value': None}
-                for r in results if (r['song_id'] in self.songs and
-                    r['timestamp'] not in records_set)]
-            if n != len(results):
-                print("got %d results, filtered to %d." % (n, len(results)))
-        else:
-            print("got %d results" % (len(results)))
+        n = len(results)
+        results = [{"date": r['timestamp'], "column": Song.playtime,
+            "uid": self.songs[r['song_id']]['uid'], 'value': None}
+            for r in results if (r['song_id'] in self.songs and
+                r['timestamp'] not in records_set)]
+        if n != len(results):
+            print("got %d results, filtered to %d." % (n, len(results)))
 
         return results
 

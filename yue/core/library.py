@@ -643,7 +643,6 @@ class Library(object):
             # todo linux: use "^%s[^/]*$"
             q = "^%s[^\\\\/]*$" % path
 
-        print("searchDirectory", q)
         rule = RegExpSearchRule(Song.path, q)
 
         return self.search(rule)
@@ -917,7 +916,7 @@ class Library(object):
         val = record['value']
         try:
             if col == Song.blocked:
-                return;
+                return
             elif col in Song.numberFields():
                 new_value = {col: int(val)}
             else:

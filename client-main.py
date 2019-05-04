@@ -1,4 +1,4 @@
-#!C:\\Python37\\python.exe $this
+#!python $this
 """
 changelog
 
